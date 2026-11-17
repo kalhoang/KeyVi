@@ -23,7 +23,7 @@ import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile, routePath } from "./lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "./lib/tone.mjs";
 import { esc, shortHash } from "./lib/util.mjs";
-import { fakeAnime, fakeBehaviour, fakeHero, fakeWindow, textOf as fakeTextOf } from "./testing/fake-home.mjs";
+import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeWindow, textOf as fakeTextOf } from "./testing/fake-home.mjs";
 
 const SITE_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(SITE_DIR, "..");
@@ -377,12 +377,12 @@ try {
   });
 
   await check("populated: donate block per PRD-R59 and S8 (bank VietQR only, bank and account number, no holder name)", async () => {
+    // The wording of the block is checked against spec/03-product.md and the app's catalog further down ("donate: ...").
     for (const [lang, path, bankLabel, accountLabel] of [["vi", ["ung-ho", "index.html"], "Ngân hàng", "Số tài khoản"], ["en", ["en", "donate", "index.html"], "Bank", "Account number"]]) {
       const d = read(...path);
-      if (lang === "vi") assert.match(d, /miễn phí và sẽ luôn miễn phí\. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp\./);
-      assert.match(d, /<img src="\/assets\/qr\/vietqr\.png(?:\?v=[0-9a-f]+)?" width="240" height="240" alt="[^"]+">/, `${lang}: bundled VietQR image`);
-      assert.ok(d.includes(`<dt>${bankLabel}</dt><dd>LioBank</dd>`), `${lang}: bank name`);
-      assert.ok(d.includes(`<dt>${accountLabel}</dt><dd>688688678</dd>`), `${lang}: account number`);
+      assert.match(d, /<img src="\/assets\/qr\/vietqr\.png(?:\?v=[0-9a-f]+)?" width="\d+" height="\d+" alt="[^"]+">/, `${lang}: bundled VietQR image`);
+      assert.ok(d.includes(`<dt>${bankLabel}</dt><dd><span data-copy-value>LioBank</span>`), `${lang}: bank name`);
+      assert.ok(d.includes(`<dt>${accountLabel}</dt><dd><span data-copy-value>688688678</span>`), `${lang}: account number`);
       assert.ok(!/momo/i.test(d), `${lang}: no MoMo (S8)`);
       assert.ok(!/Tên tài khoản|Chủ tài khoản|Account name|account holder/i.test(d), `${lang}: the holder's name is never shown (S8)`);
       assert.ok(!d.includes('class="verify"'), `${lang}: real details, nothing left to verify`);
@@ -602,7 +602,6 @@ try {
     const signs = new RegExp(`[™®]${sign ? `|${sign}` : ""}`);
     for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
       const named = `${brand.name}${sign}`;
-      const guides = new Set(ROUTES.filter((route) => route.id.startsWith("migrate-")).flatMap((route) => LANGS.map((lang) => outputFile(routePath(route.id, lang)))));
       assert.ok(pages.get(join(dist, "index.html")).match(/<title>([^<]*)<\/title>/)[1].includes(named), `${dist}: home title carries the sign`);
       for (const [file, html] of pages) {
         const page = file.slice(dist.length + 1);
@@ -612,9 +611,9 @@ try {
         const home = page === "index.html" || page === join("en", "index.html");
         assert.ok(home ? title.startsWith(named) : title.endsWith(` · ${named}`), `${page}: title "${title}" carries the sign`);
         assert.equal(html.match(/<meta property="og:title" content="([^"]*)">/)?.[1], title, `${page}: og:title matches the title`);
-        // The ui.descriptions are prose ({{AppNameTM}}), so they carry the sign too. The migration guides take their
-        // description from the guide intro, which moves to {{AppNameTM}} with the inner-page copy (plan Task 7).
-        if (!guides.has(page)) assert.ok((html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? "").includes(named), `${page}: description carries the sign`);
+        // The ui.descriptions are prose ({{AppNameTM}}), so they carry the sign too; the migration guides take their
+        // description from the guide intro, which names the product with the sign (plan Task 7).
+        assert.ok((html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? "").includes(named), `${page}: description carries the sign`);
         assert.ok(!html.includes("{{AppNameTM}}"), `${page}: unfilled {{AppNameTM}}`);
         for (const href of attrs(html, "href")) assert.ok(!signs.test(href), `${page}: sign in a URL ${href}`);
         for (const [, nav] of html.matchAll(/<nav\b[^>]*>([\s\S]*?)<\/nav>/g)) assert.ok(!signs.test(nav), `${page}: sign in navigation`);
@@ -1206,10 +1205,10 @@ try {
 
   await check("motion: first-party scripts never write markup or style attributes", async () => {
     // Review Focus 1: the production CSP drops such writes silently. Every script of site/static/assets but the
-    // vendored anime.js (copy.js joins when plan Task 7 adds it).
+    // vendored anime.js: home.js, matrix.js and the donate page's copy.js (plan Task 7).
     const forbidden = ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", 'setAttribute("style"', "setAttribute('style'", "cssText", "eval(", "new Function", "splitText", "scrambleText"];
     const scripts = (await walk(ASSETS_DIR)).filter((file) => file.endsWith(".js") && !file.startsWith(join(ASSETS_DIR, "vendor") + "/"));
-    assert.ok(scripts.some((file) => file.endsWith("/home.js")), "home.js is among them");
+    for (const name of ["home.js", "copy.js"]) assert.ok(scripts.some((file) => file.endsWith(`/${name}`)), `${name} is among them`);
     for (const file of scripts) {
       const text = await readFile(file, "utf8");
       assert.deepEqual(forbidden.filter((name) => text.includes(name)), [], file.slice(SITE_DIR.length + 1));
@@ -1381,6 +1380,136 @@ try {
     const download = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href)).download;
     for (const name of [...download.reqPermission.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]).concat("{{verifyHtml}}")) assert.ok(vi.install.steps[1].includes(name), `install step 2: ${name}`);
     for (const retired of ["demoPlaceholder", "demoCaption", "demoAlt", "typed", "why"]) assert.ok(!(retired in vi) && !(retired in en), `${retired} is retired`);
+  });
+
+  // Donate page (PRD-R59, design 7.5, plan Task 7): the in-app copy, verbatim from the spec in Vietnamese and from the
+  // app's catalog in English, with the bank details, the share text and the VietQR code.
+  const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
+  const named = brand.name + brand.trademarkSign;
+  const siteUrl = `https://${brand.host}`;
+  const donatePages = [["vi", read("ung-ho", "index.html")], ["en", read("en", "donate", "index.html")]];
+  const pageText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g, "")).replace(/\s+/g, " ");
+  // The backquoted strings of PRD-R59, tokens filled as the site fills them ({{app-slug}}.kal.vn is the site host).
+  const prdR59 = (await readFile(join(ROOT_DIR, "spec", "03-product.md"), "utf8")).split("\n").find((line) => line.startsWith("PRD-R59 ")) ?? "";
+  const fillSpec = (text) => text.replaceAll("https://{{app-slug}}.kal.vn", siteUrl).replaceAll("{{AppNameTM}}", named).replaceAll("{{AppName}}", brand.name);
+  const specQuotes = [...prdR59.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((quote) => !quote.startsWith("/") && quote !== "sponsorsUrl").map(fillSpec);
+  const specShare = { vi: specQuotes.find((quote) => quote.startsWith("Giới thiệu")), en: specQuotes.find((quote) => quote.startsWith("Check out")) };
+  // The English of the in-app block: Support.xcstrings, its %@ filled as the catalog comments say.
+  const supportCatalog = JSON.parse(await readFile(join(ROOT_DIR, "App", "Resources", "Localization", "Support.xcstrings"), "utf8"));
+  const catalogArgs = { title: [named], body: [named], howTo: [brand.name], accountTitle: [], shareTitle: [], shareText: [named, siteUrl], copy: [], share: [] };
+  const catalogEn = Object.entries(catalogArgs).map(([key, args]) => {
+    const value = supportCatalog.strings[`support.donate.${key}`]?.localizations?.en?.stringUnit?.value ?? `missing support.donate.${key}`;
+    return args.reduce((text, arg, index) => text.replace(/%(?:\d\$)?@/, (token) => (token === "%@" || token === `%${index + 1}$@` ? arg : token)), value);
+  });
+
+  await check("donate: PRD-R59 copy verbatim in vi, catalog copy in en, bank details, share text, VietQR, nothing else", () => {
+    assert.ok(specQuotes.length >= 9 && specShare.vi && specShare.en, "PRD-R59 quotes found in spec/03-product.md");
+    assert.ok(specShare.vi.endsWith(siteUrl) && specShare.en.endsWith(siteUrl), "the share text links the site");
+    for (const [lang, html] of donatePages) {
+      const text = pageText(html);
+      const expected = lang === "vi" ? specQuotes.filter((quote) => quote !== specShare.en) : catalogEn.concat(specShare.en);
+      for (const line of expected) assert.ok(text.includes(line), `${lang}: "${line}"`);
+      assert.match(mainOf(html), new RegExp(`<h1>${(lang === "vi" ? `Ủng hộ ${named}` : catalogEn[0]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</h1>`), `${lang}: the title is the h1`);
+      for (const value of ["LioBank", "688688678", "VietQR (Napas)"]) assert.ok(text.includes(value), `${lang}: ${value}`);
+      const images = mainOf(html).match(/<img\b[^>]*>/g) ?? [];
+      assert.equal(images.length, 1, `${lang}: one image, the VietQR code`);
+      assert.match(images[0], /\ssrc="\/assets\/qr\/vietqr\.png\?v=[0-9a-f]{10}"/, `${lang}: the bundled VietQR image`);
+      assert.ok(!/momo|zalopay|vnpay|shopeepay|paypal|patreon|ko-fi|stripe/i.test(html), `${lang}: no other payment method (S8)`);
+      assert.ok(!/Tên tài khoản|Chủ tài khoản|Người nhận:|Account name|account holder/i.test(text), `${lang}: the holder's name is never shown (S8)`);
+    }
+  });
+
+  await check("donate: copy and share buttons are hidden without JavaScript and copy.js loads only there", () => {
+    for (const [lang, html] of donatePages) {
+      const buttons = mainOf(html).match(/<button\b[^>]*>/g) ?? [];
+      const values = (name) => buttons.filter((tag) => new RegExp(`\\s${name}="`).test(tag)).map((tag) => unescapeHtml(attrs(tag, name)[0]));
+      assert.deepEqual(values("data-copy"), ["LioBank", "688688678", specShare[lang]], `${lang}: a copy button per value`);
+      assert.deepEqual(values("data-share"), [specShare[lang]], `${lang}: one share button with the share text`);
+      for (const tag of buttons) {
+        assert.match(tag, /\stype="button"/, `${lang}: ${tag} is a plain button`);
+        assert.match(tag, /\shidden[\s>]/, `${lang}: ${tag} is hidden until copy.js shows it`);
+      }
+      assert.match(html, /<script src="\/assets\/copy\.js\?v=[0-9a-f]{10}" defer><\/script>/, `${lang}: copy.js, deferred`);
+    }
+    for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
+      for (const [file, html] of pages) {
+        const page = file.slice(dist.length + 1);
+        const donate = page === "ung-ho/index.html" || page === "en/donate/index.html";
+        assert.equal(html.includes("/assets/copy.js"), donate, `${page}: copy.js only on the donate pages`);
+      }
+    }
+  });
+
+  await check("copy: copy.js shows copy buttons only with the clipboard API and the share button only with navigator.share", async () => {
+    const siteCopy = createRequire(import.meta.url)(join(ASSETS_DIR, "copy.js"));
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+    const page = ({ clipboard, share }) => {
+      const log = { written: [], shared: [], selected: [], timers: [] };
+      const scope = fakeElement("section", { "data-copy-scope": "" });
+      const status = fakeElement("p", { "data-copy-status": "", "data-copied": "Copied." });
+      const value = fakeElement("span", { "data-copy-value": "" });
+      value.textContent = "688688678";
+      const copyButton = Object.assign(fakeElement("button", { "data-copy": "688688678" }), { hidden: true });
+      const shareButton = Object.assign(fakeElement("button", { "data-share": "Check out" }), { hidden: true });
+      scope.found.set("[data-copy-status]", status);
+      scope.foundAll.set("[data-copy-value]", [value]);
+      for (const button of [copyButton, shareButton]) button.ancestors.set("[data-copy-scope]", scope);
+      const doc = Object.assign(fakeElement("#document"), { readyState: "complete" });
+      doc.foundAll.set("[data-copy]", [copyButton]);
+      doc.foundAll.set("[data-share]", [shareButton]);
+      const navigator = {};
+      if (clipboard) navigator.clipboard = { writeText: async (text) => { log.written.push(text); if (clipboard === "denied") throw new Error("NotAllowedError"); } };
+      if (share) navigator.share = async (data) => { log.shared.push(data); if (share !== true) throw Object.assign(new Error(share), { name: share }); };
+      const win = { document: doc, navigator, setTimeout: (fn) => log.timers.push(fn), getSelection: () => ({ selectAllChildren: (el) => log.selected.push(el) }) };
+      siteCopy.boot(win);
+      return { log, status, value, copyButton, shareButton };
+    };
+    const none = page({});
+    assert.deepEqual([none.copyButton.hidden, none.shareButton.hidden], [true, true], "no clipboard API, no share: both stay hidden");
+    const copy = page({ clipboard: "ok" });
+    assert.deepEqual([copy.copyButton.hidden, copy.shareButton.hidden], [false, true], "the clipboard API shows the copy button only");
+    copy.copyButton.dispatch("click");
+    await flush();
+    assert.deepEqual(copy.log.written, ["688688678"], "copies the button's text");
+    assert.equal(copy.status.textContent, "Copied.", "the status line says so");
+    copy.log.timers.forEach((fn) => fn());
+    assert.equal(copy.status.textContent, "", "and clears after a moment");
+    const denied = page({ clipboard: "denied" });
+    denied.copyButton.dispatch("click");
+    await flush();
+    assert.deepEqual(denied.log.selected, [denied.value], "a refused copy selects the value for Command+C");
+    assert.equal(denied.status.textContent, "", "and says nothing was copied by keeping the status empty");
+    const sharing = page({ clipboard: "ok", share: true });
+    assert.equal(sharing.shareButton.hidden, false, "navigator.share shows the share button");
+    sharing.shareButton.dispatch("click");
+    await flush();
+    assert.deepEqual([sharing.log.shared, sharing.log.written], [[{ text: "Check out" }], []], "shares the text");
+    const cancelled = page({ clipboard: "ok", share: "AbortError" });
+    cancelled.shareButton.dispatch("click");
+    await flush();
+    assert.deepEqual(cancelled.log.written, [], "closing the share sheet does nothing more");
+    const failed = page({ clipboard: "ok", share: "NotAllowedError" });
+    failed.shareButton.dispatch("click");
+    await flush();
+    assert.deepEqual(failed.log.written, ["Check out"], "a share that fails copies the text instead");
+  });
+
+  await check("copy: vi pages say file, never tệp", () => {
+    // PRD-R64 and spec 03 "Name and trademark sign": the exact quotes of a macOS pane, menu or button that macOS itself
+    // writes with tệp are the only exception; no vi page quotes one today. A quoted mention of the word itself (the
+    // changelog records the wording change) is not copy. URLs are not copy either (/ho-tro/chuyen-tu/tep-van-ban/).
+    const macosQuotes = [];
+    const problems = [];
+    for (const [dist, pages] of [[fallback, fallbackPages], [populated, pop]]) {
+      for (const [file, raw] of pages) {
+        const page = file.slice(dist.length + 1);
+        if (page.startsWith("en/") || isReleaseNotesPage(page)) continue;
+        let html = raw.replace(/\shref="[^"]*"/g, "").replace(/(?:&quot;|")tệp(?:&quot;|")/gi, "");
+        for (const quote of macosQuotes) html = html.replaceAll(quote, "");
+        for (const [context] of html.matchAll(/.{0,40}tệp.{0,40}/gis)) problems.push(`${page}: ${context.replace(/\s+/g, " ")}`);
+      }
+    }
+    assert.deepEqual(problems, []);
   });
 
   await check("vendor: anime.js 4.5.0 is vendored byte-exact with its licence (ADR 0603)", async () => {

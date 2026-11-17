@@ -3,6 +3,7 @@
 import { kit } from "../context.mjs";
 import { MIGRATION_SOURCES, routePath } from "../routes.mjs";
 import { esc } from "../util.mjs";
+import { pageHead } from "./head.mjs";
 
 function faq(kt) {
   const { c, f } = kt;
@@ -43,8 +44,7 @@ export function renderSupport(ctx, lang) {
   const s = c.support;
   const toc = s.toc.map(([id, label]) => `<li><a href="#${id}">${esc(label)}</a></li>`).join("");
   const body = `
-    <h1>${esc(s.h1)}</h1>
-    <p class="lede">${esc(s.lede)}</p>
+    ${pageHead(esc(s.h1), esc(s.lede))}
     <nav aria-label="${esc(s.tocLabel)}"><ul class="toc">${toc}</ul></nav>
     <div class="prose">
     <h2 id="${s.toc[0][0]}">${esc(s.faqHeading)}</h2>
@@ -92,10 +92,9 @@ export function renderMigration(ctx, lang, sourceId) {
     ? `<h2 id="export">${f(m.stepsHeading, extra)}</h2>${list(page.steps)}${screenshotSlot(kt, other)}<div class="callout warn"><p>${f("{{verifyHtml}}")} ${f(m.verifyNote)}</p></div>`
     : "";
   const body = `
-    <p><a href="${esc(routePath("support", lang))}#${esc(c.support.toc[4][0])}">&larr; ${esc(m.back)}</a></p>
-    <h1>${esc(heading)}</h1>
+    <p class="back-link"><a href="${esc(routePath("support", lang))}#${esc(c.support.toc[4][0])}">&larr; ${esc(m.back)}</a></p>
+    ${pageHead(esc(heading), f(page.intro, extra))}
     <div class="prose">
-      <p class="lede">${f(page.intro, extra)}</p>
       ${page.html ? f(page.html, extra) : ""}
       ${exportBlock}
       ${importBlock}

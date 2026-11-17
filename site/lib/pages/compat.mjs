@@ -4,6 +4,7 @@ import { kit } from "../context.mjs";
 import { STATUSES } from "../data.mjs";
 import { formatDate } from "../dates.mjs";
 import { esc } from "../util.mjs";
+import { pageHead } from "./head.mjs";
 
 // Keys are the status values of compat/schema/matrix.schema.json; the icon repeats the label's meaning so
 // the status is never conveyed by colour alone.
@@ -80,8 +81,7 @@ export function renderCompat(ctx, lang) {
   const issueUrl = `${ctx.config.githubRepo}/issues/new/choose`;
 
   const body = `
-    <h1>${esc(m.h1)}</h1>
-    <p class="lede">${esc(m.lede)}</p>
+    ${pageHead(esc(m.h1), esc(m.lede))}
     ${usingFixture ? `<div class="callout warn" data-sample-data><p>${esc(ui.common.sampleDataNotice)}</p></div>` : ""}
     <h2 id="legend">${esc(m.legendHeading)}</h2>
     <ul class="legend">${legend}</ul>
@@ -93,7 +93,7 @@ export function renderCompat(ctx, lang) {
 ${keys.map((k) => groupSection(kt, k, byCategory.get(k))).join("\n")}
     </div>`}
     <h2 id="report">${esc(m.reportHeading)}</h2>
-    <div class="prose">
+    <div class="card prose">
       <p>${esc(m.reportBody)}</p>
       <p><a class="btn" href="${esc(issueUrl)}" rel="noopener">${esc(m.reportLink)}</a></p>
       <p class="muted">${f(m.reportEmail)}</p>

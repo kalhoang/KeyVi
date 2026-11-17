@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vietnamese page copy: home, download, compatibility, changelog, privacy, donate.
 // Drafts from spec/03-product.md are reused verbatim where they exist (PRD-R40, PRD-R59).
-// Trusted HTML; tokens like {{AppName}} are filled at build time. Standard Vietnamese, addressed to "bạn".
+// Trusted HTML; tokens like {{AppName}} are filled at build time. Standard Vietnamese, addressed to "bạn"; "file", never
+// "tệp" (spec/03-product.md, "Name and trademark sign"). Prose names the product with {{AppNameTM}} at its first mention
+// in a block (a paragraph, an item, an answer); headings, buttons, steps that name the app as macOS shows it (open, quit,
+// its menu, a list or folder), paths and identifiers keep {{AppName}}. The donate title is PRD-R59's, verbatim.
 
 // Home (design 7.3): seven sections. Prose that names the product uses {{AppNameTM}}, buttons and the install steps
 // (which name the app as Finder shows it) use {{AppName}}. Demo ids name site/demo/frames.json entries; `req` cites the
@@ -157,7 +160,7 @@ export const download = {
   reqArch: "Máy Mac dùng chip Apple silicon hoặc Intel (một bản chạy cho cả hai). macOS 27 chỉ chạy trên Apple silicon.",
   reqExcluded: "Máy Mac không cài được macOS 12 Monterey chưa được hỗ trợ. macOS 13 và 14 vẫn được hỗ trợ nhưng không được kiểm thử riêng.",
   reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
-  reqNoOthers: "{{AppName}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
+  reqNoOthers: "{{AppNameTM}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",
   verifyHeading: "Tự kiểm tra file đã tải",
@@ -193,17 +196,31 @@ export const compat = {
 export const changelog = {
   h1: "Nhật ký thay đổi",
   lede: "Những thay đổi bạn nhìn thấy trong từng bản phát hành, gom theo ứng dụng.",
-  donateLine: "{{AppName}} miễn phí. Nếu thấy có ích, bạn có thể <a href=\"{{hrefDonate}}\">ủng hộ để Kal có thêm thời gian làm tiếp</a>.",
+  donateLine: "{{AppNameTM}} miễn phí. Nếu thấy có ích, bạn có thể <a href=\"{{hrefDonate}}\">ủng hộ để Kal có thêm thời gian làm tiếp</a>.",
 };
 
+// The donation block of the About pane (PRD-R59, Pa's copy of 15/11/2026), verbatim; the labels, the QR caption and its
+// hint are the app's (App/Resources/Localization/Support.xcstrings, support.donate.*). Pa's decision S8: a bank VietQR
+// code only; the bank name and the account number are shown, never the holder's name. The share text is posted in the
+// user's own voice, so it stays as Pa wrote it.
 export const donate = {
-  h1: "Ủng hộ {{AppName}}",
-  thanks: "{{AppName}} miễn phí và sẽ luôn miễn phí. Nếu thấy có ích, bạn có thể ủng hộ để Kal có thêm thời gian làm tiếp.",
-  promise: "Ủng hộ chỉ là tấm lòng. Không có tính năng nào bị khóa, và ứng dụng không bao giờ hiện lời nhắc ủng hộ.",
-  // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
-  vietqr: { h: "VietQR (Napas)", alt: "Mã QR VietQR để chuyển khoản ủng hộ tới tài khoản LioBank 688688678", bankLabel: "Ngân hàng", bankValue: "LioBank", accountLabel: "Số tài khoản", accountValue: "688688678", how: "Mở ứng dụng ngân hàng và chọn quét mã QR. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi xác nhận." },
+  title: "Ủng hộ {{AppNameTM}}",
+  body: "{{AppNameTM}} miễn phí vĩnh viễn. Nếu bạn thấy hữu dụng, có thể mời Kal 1 ly cafe để có tinh thần phát triển thêm tính năng mới.",
+  howTo: "Bạn có thể ủng hộ bằng cách chuyển khoản tới tài khoản bên dưới hoặc đơn giản là chia sẻ, giới thiệu {{AppName}} cho nhiều người sử dụng.",
+  accountTitle: "Thông tin tài khoản",
+  bankLabel: "Ngân hàng",
+  bank: "LioBank",
+  accountLabel: "Số tài khoản",
+  account: "688688678",
+  copy: "Sao chép",
+  copied: "Đã sao chép.",
+  shareTitle: "Nội dung chia sẻ",
+  shareText: "Giới thiệu với mọi người {{AppNameTM}}, một bộ gõ tiếng Việt miễn phí nhưng rất ngon nè! Tải ở đây: https://{{host}}",
+  share: "Chia sẻ...",
+  qrCaption: "VietQR (Napas)",
+  qrAlt: "Mã QR VietQR để chuyển khoản ủng hộ",
+  qrHow: "Quét mã bằng ứng dụng ngân hàng. Ứng dụng sẽ hiện tên người nhận để bạn kiểm tra trước khi chuyển.",
   sponsors: { h: "GitHub Sponsors", body: "Nếu bạn dùng GitHub, có thể ủng hộ định kỳ hoặc một lần.", link: "Mở trang GitHub Sponsors" },
-  privacy: "Ứng dụng không lưu thông tin người ủng hộ. Tiền đi thẳng từ tài khoản của bạn tới tài khoản nhận, không qua bên trung gian nào.",
 };
 
 export const privacy = {
@@ -288,7 +305,7 @@ export const privacy = {
 </ul>
 
 <h2 id="gop-y">Báo lỗi và hỗ trợ</h2>
-<p>Khi bạn mở một issue trên GitHub hoặc gửi email, nội dung bạn viết do bạn quyết định và tuân theo chính sách của GitHub hoặc nhà cung cấp email của bạn. {{AppName}} không tự gửi những gì bạn đã gõ.</p>
+<p>Khi bạn mở một issue trên GitHub hoặc gửi email, nội dung bạn viết do bạn quyết định và tuân theo chính sách của GitHub hoặc nhà cung cấp email của bạn. {{AppNameTM}} không tự gửi những gì bạn đã gõ.</p>
 
 <h2 id="ung-ho">Ủng hộ</h2>
 <p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng của bạn hoặc GitHub, theo chính sách riêng của họ.</p>

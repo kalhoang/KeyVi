@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // English page copy: home, download, compatibility, changelog, privacy, donate (mirrors content/vi/pages.mjs).
-// Trusted HTML; tokens like {{AppName}} are filled at build time.
+// Trusted HTML; tokens like {{AppName}} are filled at build time. Prose names the product with {{AppNameTM}} at its
+// first mention in a block (a paragraph, an item, an answer); headings, buttons, steps that name the app as macOS shows
+// it (open, quit, its menu, a list or folder), paths and identifiers keep {{AppName}}. The donate copy is the app's.
 
 // Home (design 7.3, 7.6): same structure as the vi copy. The demos still type Vietnamese, so the chat scene keeps its
 // Vietnamese messages and the behaviours intro explains what keeping English words means.
@@ -153,7 +155,7 @@ export const download = {
   reqArch: "A Mac with Apple silicon or Intel (one build runs on both). macOS 27 runs on Apple silicon only.",
   reqExcluded: "Macs that cannot run macOS 12 Monterey are not supported. macOS 13 and 14 are supported but not tested separately.",
   reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
-  reqNoOthers: "{{AppName}} asks for no other permission (no Screen Recording, no Full Disk Access).",
+  reqNoOthers: "{{AppNameTM}} asks for no other permission (no Screen Recording, no Full Disk Access).",
   trustHeading: "Signature and notarization",
   trustBody: "Every DMG is signed with Kal's Developer ID certificate, notarized by Apple and stapled with the notarization ticket, so macOS opens it without a warning. Automatic updates use Sparkle 2 and are signed with EdDSA; the app rejects an update with a wrong signature.",
   verifyHeading: "Check the file you downloaded",
@@ -189,17 +191,30 @@ export const compat = {
 export const changelog = {
   h1: "Changelog",
   lede: "The changes you can see in each release, grouped by app.",
-  donateLine: "{{AppName}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
+  donateLine: "{{AppNameTM}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
 };
 
+// The donation block of the About pane in English (PRD-R59): App/Resources/Localization/Support.xcstrings,
+// support.donate.*, word for word. Pa's decision S8: a bank VietQR code only; the bank name and the account number are
+// shown, never the holder's name. The share text is posted in the user's own voice, so it stays as Pa wrote it.
 export const donate = {
-  h1: "Donate to {{AppName}}",
-  thanks: "{{AppName}} is free and always will be. If you find it useful, you can chip in so Kal has more time to keep building it.",
-  promise: "Donating is a tip jar, nothing more. No feature is locked, and the app never shows a donation prompt.",
-  // Pa's decision S8: a bank VietQR code only; the bank name and the account number are shown, never the holder's name.
-  vietqr: { h: "VietQR (Napas)", alt: "VietQR code for a donation transfer to LioBank account 688688678", bankLabel: "Bank", bankValue: "LioBank", accountLabel: "Account number", accountValue: "688688678", how: "Open your banking app and choose scan QR. It shows the recipient's name so you can check it before you confirm." },
+  title: "Support {{AppNameTM}}",
+  body: "{{AppNameTM}} is free forever. If you find it useful, you can buy Kal a coffee to keep new features coming.",
+  howTo: "You can donate by bank transfer to the account below, or simply share {{AppName}} and recommend it to others.",
+  accountTitle: "Account details",
+  bankLabel: "Bank",
+  bank: "LioBank",
+  accountLabel: "Account number",
+  account: "688688678",
+  copy: "Copy",
+  copied: "Copied.",
+  shareTitle: "Share text",
+  shareText: "Check out {{AppNameTM}}, a free Vietnamese keyboard for Mac that is really good! Get it here: https://{{host}}",
+  share: "Share...",
+  qrCaption: "VietQR (Napas)",
+  qrAlt: "VietQR code for a donation transfer",
+  qrHow: "Scan the code with your banking app. It shows the recipient's name so you can check it before you send.",
   sponsors: { h: "GitHub Sponsors", body: "If you use GitHub, you can sponsor monthly or once.", link: "Open GitHub Sponsors" },
-  privacy: "The app stores no donor information. The money goes straight from your account to the receiving account, with no one in between.",
 };
 
 export const privacy = {
@@ -284,7 +299,7 @@ export const privacy = {
 </ul>
 
 <h2 id="feedback">Bug reports and support</h2>
-<p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppName}} never sends what you typed on its own.</p>
+<p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppNameTM}} never sends what you typed on its own.</p>
 
 <h2 id="donations">Donations</h2>
 <p>The app does not store or send donor information. The money moves between you and your bank or GitHub, under their own policies.</p>
