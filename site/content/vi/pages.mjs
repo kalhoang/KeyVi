@@ -151,7 +151,7 @@ export const home = {
     heading: "Cài trong một phút",
     steps: [
       "Mở file DMG và kéo {{AppName}} vào thư mục Applications.",
-      "Mở {{AppName}} và bật quyền mà màn hình thiết lập yêu cầu: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. Nếu màn hình có thêm <strong>Giám sát đầu vào</strong>, hãy bật luôn.",
+      "Mở {{AppName}} và bật quyền mà màn hình thiết lập yêu cầu: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. Nếu màn hình có thêm <strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>), hãy bật luôn.",
       "Gõ vài chữ vào ô gõ thử để thấy kết quả ngay.",
     ],
     brewLabel: "Hoặc cài bằng Homebrew",
@@ -187,7 +187,7 @@ export const download = {
   reqMacos: "{{macosRequirement}}",
   reqArch: "Máy Mac dùng chip Apple silicon hoặc Intel (một bản chạy cho cả hai). macOS 27 chỉ chạy trên Apple silicon.",
   reqExcluded: "Máy Mac không cài được macOS 12 Monterey chưa được hỗ trợ. macOS 13 và 14 vẫn được hỗ trợ nhưng không được kiểm thử riêng.",
-  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27, và <strong>Giám sát đầu vào</strong> trên máy mà macOS đòi thêm quyền này để nhận phím gõ (màn hình thiết lập chỉ hiện quyền này khi đó).",
+  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27, và <strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>) trên máy mà macOS đòi thêm quyền này để nhận phím gõ (màn hình thiết lập chỉ hiện quyền này khi đó).",
   reqNoOthers: "{{AppNameTM}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",

@@ -175,6 +175,8 @@ export async function runShellChecks(check, fixtures) {
     assert.match(en, /macOS 12 Monterey or later/);
     assert.match(page("rieng-tu", "index.html"), /Trợ năng \(macOS 12 tới 26\)/);
     assert.match(page("en", "privacy", "index.html"), /Accessibility \(macOS 12 to 26\)/);
+    // App/Resources/SystemPanes.json: macOS 12 capitalises the Vietnamese pane name, macOS 27 does not.
+    assert.ok(page("tai-ve", "index.html").includes("<strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>)"), "vi download: both spellings of Input Monitoring");
   });
 
   await check("fallback: changelog fills {{AppName}} from brand.env", () => {
