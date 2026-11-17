@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The builds every check module reads, made once per run of `node site/test.mjs`.
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "../build.mjs";
 import { LANGS } from "../lib/routes.mjs";
-import { SITE_DIR, readPages } from "./helpers.mjs";
+import { ROOT_DIR, SITE_DIR, readPages } from "./helpers.mjs";
 
 /** Builds the fallback, populated and empty sites under `tmp` and loads the home copy and demo frames. */
 export async function buildFixtures(tmp) {
@@ -17,10 +17,17 @@ export async function buildFixtures(tmp) {
   const offConfig = join(tmp, "config-no-analytics.json");
   await writeFile(offConfig, JSON.stringify({ ...shipped, analytics: undefined }));
 
-  // 1. Fallback data (no releases.json, sample matrix fixture).
+  // 1. Fallback data: the shipped data without releases.json. Once a release is published, site/data holds one, so the
+  // build reads a copy of the real matrix from a data directory without it (a dataDir override reads its matrix.json).
   const fallback = join(tmp, "fallback");
   const real = existsSync(join(SITE_DIR, "data", "releases.json"));
-  await build({ outDir: fallback, today: "2026-11-13", dataDir: real ? join(SITE_DIR, "fixtures", "empty") : undefined, configPath: offConfig });
+  let fallbackData;
+  if (real) {
+    fallbackData = join(tmp, "fallback-data");
+    await mkdir(fallbackData, { recursive: true });
+    await copyFile(join(ROOT_DIR, "compat", "matrix.json"), join(fallbackData, "matrix.json"));
+  }
+  await build({ outDir: fallback, today: "2026-11-13", dataDir: fallbackData, configPath: offConfig });
   const fallbackPages = await readPages(fallback);
 
   // 2. Populated fixtures: releases, matrix statuses, staleness, changelog.
