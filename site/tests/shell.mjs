@@ -80,6 +80,15 @@ export async function runShellChecks(check, fixtures) {
     }
   });
 
+  await check("styles: the mark beside the name is raised so its letters centre on the capitals (design 9 item 3)", async () => {
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    // translate moves the painted mark only, so nothing around it shifts; the header and the footer alike.
+    for (const selector of [".brand .mark", ".footer-name .mark"]) {
+      const rule = css.match(new RegExp(`${selector.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      assert.match(rule, /(?:^|;)\s*translate:\s*0 -12%;/, `${selector} { translate: 0 -12% }: ${rule}`);
+    }
+  });
+
   await check("tokens: text colours meet WCAG AA in light and dark (design 7.7)", async () => {
     const css = await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8");
     const block = (text) => Object.fromEntries([...(text ?? "").matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]));

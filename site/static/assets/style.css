@@ -132,6 +132,10 @@ kbd {
   letter-spacing: -0.02em;
   text-decoration: none;
 }
+/* The flex box centres the whole mark, the dot included, which left the letters about 5 px below the name's baseline at
+   the header size; the offset centres the letters on the capitals (design 9 item 3). translate moves the painted mark
+   only, so nothing around it shifts. */
+.brand .mark { translate: 0 -12%; }
 .site-nav { order: 3; width: 100%; }
 .site-nav ul, .footer-links { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 .site-nav ul { gap: 0 1.4rem; }
@@ -179,7 +183,8 @@ kbd {
 .site-footer p { margin: 0 0 0.4rem; }
 .footer-grid { display: grid; gap: 1.25rem 2rem; }
 .footer-name { display: flex; align-items: center; gap: 0.55rem; color: var(--ink); font-weight: 600; }
-.footer-name .mark { width: 1.4rem; }
+/* Raised like the header's mark (.brand .mark): the letters centre on the capitals of the name. */
+.footer-name .mark { width: 1.4rem; translate: 0 -12%; }
 .footer-links { gap: 0 1.3rem; }
 .footer-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); }
 .footer-links a:hover { color: var(--ink); }
