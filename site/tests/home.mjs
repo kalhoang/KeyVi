@@ -5,11 +5,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadBrand } from "../lib/brand.mjs";
-import { keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { keycapsHtml, wordsHtml } from "../lib/pages/home/markup.mjs";
 import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, stripKeys, LEARNED_BADGE, learningRows } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, stripKeys, keysEndOf, typedOnAfterEscape, learnedVietnamese, LEARNED_BADGE, learningRows } from "./helpers.mjs";
 
 /** No status, date or "verified" wording in the apps section (design 9 item 2), whatever the matrix says. */
 function assertNoStatus(label, html) {
@@ -131,7 +132,7 @@ export async function runHomeChecks(check, fixtures) {
       rows.forEach((row, index) => {
         // Each row holds its pass finished, the badge aside, and its keys strip ends at the key the pass is about.
         assert.equal(unescapeHtml(textOf(row.field.replace(LEARNED_BADGE, ""))), passes[index].text, `${label}: row ${index + 1} text`);
-        assert.equal(row.keys, stripKeys(passes[index].frames).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join(""), `${label}: row ${index + 1} keys`);
+        assert.equal(row.keys, stripKeys(passes[index].frames, keysEndOf(passes[index].frames)).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join(""), `${label}: row ${index + 1} keys`);
       });
       // The Escape keycap shows in each teaching row and closes its strip; the last row's strip ends at the learned word.
       for (const row of rows.slice(0, -1)) assert.match(row.keys, /<kbd class="keycap">esc<\/kbd>$/, `${label}: the teaching row shows Escape`);
@@ -151,6 +152,20 @@ export async function runHomeChecks(check, fixtures) {
       assert.ok(before.endsWith(`<mark>${esc(learned.text)}</mark>`), `${label}: the badge follows ${learned.text}: ${before}`);
       assert.match(rows.at(-1).field, lang === "vi" ? /<span class="learned-badge">/ : /<span class="learned-badge" lang="en">/, `${label}: the badge is in the page language`);
     }
+  });
+
+  await check("home: a demo outside the learning section ends its keys strip on its last key, even after Escape", () => {
+    // keysEnd is the learning rows' focus only (design 9 item 4); a correction that types on keeps its later keys.
+    const demo = typedOnAfterEscape(frames.demos["behaviour-escape"]);
+    assert.match(keycapsHtml(demo), /<kbd class="keycap">a<\/kbd>$/, "the static strip ends on the last key");
+    assert.match(keycapsHtml(demo, { upTo: keysEnd(demo.frames) }), /<kbd class="keycap">esc<\/kbd>$/, "a learning row's strip ends on Escape");
+  });
+
+  await check("home: the learned badge follows the learned word on either side the engine kept it (L9c)", () => {
+    const demo = learnedVietnamese(frames.demos["learning-reset"]);
+    const learned = wordsOf(demo).find((piece) => piece.learned);
+    assert.ok(learned && !learned.english, "the learned word is Vietnamese in this copy");
+    assert.ok(wordsHtml(demo, "<b>badge</b>").includes(`${esc(learned.text)}<b>badge</b>`), "the badge follows the Vietnamese learned word");
   });
 
   await check("home: the learning caption takes its words from the frames (design 9 item 4)", async () => {

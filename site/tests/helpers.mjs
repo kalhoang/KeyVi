@@ -161,13 +161,29 @@ export const plainText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g,
 export const tagsOf = (rowHtml) => rowHtml.split('<span class="tag">').slice(1).map((piece) => piece.replace(/<\/span>\s*$/, ""));
 /** What a tag says, in words: the plain form's template when plain Telex would have changed the word, keepTag otherwise. */
 export const tagText = (copy, { text, plain }) => (plain ? copy.plainTag.replace("{{word}}", text).replace("{{plain}}", plain) : copy.keepTag.replace("{{word}}", text));
-// The keys strip (design 9 item 4): it ends at the key a demo is about, the restore toggle of a correction or the commit
-// the engine took from memory (rule learned, L9c), else at the last key, and keeps the last eight keycaps up to there.
+// The keys strip keeps the last eight keycaps up to `end`, the last key by default. A learning row ends at the key it
+// is about (design 9 item 4): the restore toggle of a teaching pass or the commit the engine took from memory (rule
+// learned, L9c), the last of either (keysEndOf).
 export const keysEndOf = (frames) => {
   const focus = frames.findLastIndex((frame) => frame.toggle === true || frame.commit?.rule === "learned");
   return focus >= 0 ? focus : frames.length - 1;
 };
-export const stripKeys = (frames) => frames.slice(0, keysEndOf(frames) + 1).slice(-8).map((frame) => frame.key);
+export const stripKeys = (frames, end = frames.length - 1) => frames.slice(0, end + 1).slice(-8).map((frame) => frame.key);
+// A copy of behaviour-escape that types on after Escape: a correction demo whose toggle is not its last key.
+export const typedOnAfterEscape = (escape) => ({
+  ...escape,
+  text: `${escape.text} nha`,
+  frames: [...escape.frames, ...[..." nha"].map((key, index) => ({ key, text: `${escape.text}${" nha".slice(0, index + 1)}` }))],
+});
+// A copy of a learning demo whose learned word the engine kept on its Vietnamese side (L9c may keep either side).
+export const learnedVietnamese = (demo) => ({
+  ...demo,
+  frames: demo.frames.map((frame) => {
+    if (frame.commit?.rule !== "learned") return frame;
+    const { plain, ...commit } = frame.commit;
+    return { ...frame, commit: { ...commit, english: false } };
+  }),
+});
 // The learned badge of the learning section as lib/pages/home/learning.mjs writes it; its label is group 1.
 export const LEARNED_BADGE = /<span class="learned-badge"(?: lang="[a-z]+")?><span class="visually-hidden"> \(<\/span>([^<]*)<span class="visually-hidden">\)<\/span><\/span>/g;
 // The rows of the learning demo: label, field and keys strip of each `<li class="learning-row" data-run>`.

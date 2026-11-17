@@ -110,8 +110,9 @@
     return [0].concat(ratios.reverse());
   }
 
-  /** The index of the frame a keys strip ends at, as keysEnd of lib/demos.mjs: the restore toggle of a correction or the
-   * commit the engine took from memory (rule learned, L9c), the last of either; otherwise the last frame. */
+  /** The index of the frame a learning row's keys strip ends at, as keysEnd of lib/demos.mjs: the restore toggle of a
+   * teaching pass or the commit the engine took from memory (rule learned, L9c), the last of either; otherwise the last
+   * frame. Only the learning rows use it (runsOf); every other strip ends on its last key. */
   function keysEnd(frames) {
     for (let index = frames.length - 1; index >= 0; index -= 1) {
       const frame = frames[index];
@@ -120,9 +121,9 @@
     return frames.length - 1;
   }
 
-  /** The keys a strip shows once a demo is finished: the last eight up to keysEnd. */
-  function stripKeys(frames) {
-    return frames.slice(0, keysEnd(frames) + 1).slice(-KEYS_SHOWN).map((frame) => frame.key);
+  /** The keys a strip shows once a demo is finished: the last eight up to frame `end`, the last key by default. */
+  function stripKeys(frames, end = frames.length - 1) {
+    return frames.slice(0, end + 1).slice(-KEYS_SHOWN).map((frame) => frame.key);
   }
 
   /** Motion runs only for a visitor who did not ask for reduced motion, in a shown tab, on a part that is on screen. */
@@ -223,14 +224,18 @@
   }
 
   /** The field's nodes, English words in <mark> as lib/pages/home/markup.mjs writes them; `badge`, the static badge
-   * element of the learning demo's last row, follows the word the engine kept from memory. */
+   * element of the learning demo's last row, follows the word the engine kept from memory, whichever side it kept. */
   function fieldNodes(doc, pieces, badge) {
     return withoutTrailingNewlines(pieces).flatMap((piece) => {
-      if (!piece.english) return lineNodes(doc, piece.text);
-      const mark = doc.createElement("mark");
-      mark.textContent = piece.text;
-      return piece.learned && badge ? [mark, badge] : [mark];
+      const nodes = piece.english ? [markElement(doc, piece.text)] : lineNodes(doc, piece.text);
+      return piece.learned && badge ? nodes.concat([badge]) : nodes;
     });
+  }
+
+  function markElement(doc, text) {
+    const mark = doc.createElement("mark");
+    mark.textContent = text;
+    return mark;
   }
 
   function keycap(doc, key) {
@@ -258,11 +263,11 @@
   }
 
   /** Frame `index` of a demo: the field with its English words marked and the caret, and the new keycap while the strip
-   * has not reached the key the demo is about (keysEnd). */
-  function showFrame(view, player, frames, index) {
+   * has not passed frame `end` (the last key by default; a learning row's keysEnd). */
+  function showFrame(view, player, frames, index, end = frames.length - 1) {
     const frame = frames[index];
     view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, index), view.badge), view.caret);
-    if (index <= keysEnd(frames)) {
+    if (index <= end) {
       const cap = keycap(view.doc, frame.key);
       view.keys.append(cap);
       while (view.keys.children.length > KEYS_SHOWN) view.keys.firstElementChild.remove();
@@ -272,10 +277,10 @@
   }
 
   /** The finished demo, exactly as the static page shows it. */
-  function showFinal(view, frames) {
+  function showFinal(view, frames, end = frames.length - 1) {
     const last = frames.length - 1;
     view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, last), view.badge));
-    view.keys.replaceChildren(...stripKeys(frames).map((key) => keycap(view.doc, key)));
+    view.keys.replaceChildren(...stripKeys(frames, end).map((key) => keycap(view.doc, key)));
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -503,8 +508,8 @@
   /** The finished demo as on the static page; each field gets its own height back and screen readers read it again. */
   function behaviourRest(demo) {
     demo.playing = false;
-    demo.runs.forEach(({ view, frames }) => {
-      showFinal(view, frames);
+    demo.runs.forEach(({ view, frames, keysEnd: end }) => {
+      showFinal(view, frames, end);
       view.input.style.minHeight = "";
       view.input.removeAttribute("aria-busy");
     });
@@ -531,14 +536,14 @@
     runs.reduce((start, run, runIndex) => {
       if (runIndex > 0) {
         timeline.call(() => {
-          showFinal(runs[runIndex - 1].view, runs[runIndex - 1].frames);
+          showFinal(runs[runIndex - 1].view, runs[runIndex - 1].frames, runs[runIndex - 1].keysEnd);
           run.view.input.replaceChildren(run.view.caret);
         }, start);
       }
       const delays = schedule(run.frames, (demo.cycle += 1));
       const end = run.frames.reduce((at, frame, index) => {
         const time = at + delays[index];
-        timeline.call(() => showFrame(run.view, player, run.frames, index), time);
+        timeline.call(() => showFrame(run.view, player, run.frames, index, run.keysEnd), time);
         return time;
       }, start);
       return end + BEHAVIOUR.runGap;
@@ -605,15 +610,16 @@
     return { doc: ctx.doc, input: el.querySelector("[data-input]"), keys: el.querySelector("[data-keys]"), caret: caretElement(ctx.doc), badge: el.querySelector(".learned-badge") };
   }
 
-  /** What a figure plays, in order: one run for a behaviour figure; for the learning demo one row (data-run) per teaching
-   * pass, then the pass the engine typed from memory (lib/pages/home/learning.mjs). */
+  /** What a figure plays, in order: one run for a behaviour figure, its strip ending on its last key; for the learning
+   * demo one row (data-run) per teaching pass, then the pass the engine typed from memory (lib/pages/home/learning.mjs),
+   * each strip ending at the key the pass is about (keysEnd). */
   function runsOf(ctx, figure) {
     const demo = readFrames(figure);
     const rows = Array.from(figure.querySelectorAll("[data-run]"));
-    if (rows.length === 0) return [{ view: viewOf(ctx, figure), frames: demo.frames }];
+    if (rows.length === 0) return [{ view: viewOf(ctx, figure), frames: demo.frames, keysEnd: demo.frames.length - 1 }];
     const passes = (demo.teachPasses || []).concat([demo]);
     if (rows.length !== passes.length) throw new Error(`${rows.length} rows for ${passes.length} passes`);
-    return rows.map((row, index) => ({ view: viewOf(ctx, row), frames: passes[index].frames }));
+    return rows.map((row, index) => ({ view: viewOf(ctx, row), frames: passes[index].frames, keysEnd: keysEnd(passes[index].frames) }));
   }
 
   function setupBehaviour(ctx, figure) {

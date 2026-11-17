@@ -9,7 +9,7 @@ import { englishWords, keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demo
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
 import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeLearning, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
-import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf, stripKeys } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf, stripKeys, keysEndOf, typedOnAfterEscape, learnedVietnamese } from "./helpers.mjs";
 
 // deploy/site/nginx.conf compresses at this level; the 60 KB budget of design 7.8 is measured at it.
 const GZIP_LEVEL = 6;
@@ -96,13 +96,18 @@ export async function runMotionChecks(check, fixtures) {
     const { stripKeys: motionStripKeys } = siteMotion();
     const { byId } = await loadDemos(framesPath);
     for (const [id, demo] of byId) {
-      for (const [index, run] of [...(demo.teachPasses ?? []), demo].entries()) {
-        assert.deepEqual(motionStripKeys(run.frames), run.frames.slice(0, keysEnd(run.frames) + 1).slice(-8).map((frame) => frame.key), `${id} run ${index + 1}`);
+      // A learning row ends at the key it is about (keysEnd, design 9 item 4); every other demo on its last key.
+      const runs = demo.teachPasses ? [...demo.teachPasses, demo].map((run) => [run, keysEnd(run.frames)]) : [[demo, demo.frames.length - 1]];
+      for (const [index, [run, end]] of runs.entries()) {
+        assert.deepEqual(motionStripKeys(run.frames, end), run.frames.slice(0, end + 1).slice(-8).map((frame) => frame.key), `${id} run ${index + 1}`);
       }
     }
-    // A demo without a correction or a learned word ends on its last key; a teaching pass ends on Escape.
     assert.deepEqual(motionStripKeys(frames.demos["hero-chat"].frames), frames.demos["hero-chat"].frames.slice(-8).map((frame) => frame.key));
-    assert.equal(motionStripKeys(frames.demos["learning-reset"].teachPasses[0].frames).at(-1), "⎋");
+    const teaching = frames.demos["learning-reset"].teachPasses[0].frames;
+    assert.equal(motionStripKeys(teaching, keysEnd(teaching)).at(-1), "⎋", "a teaching row ends on Escape");
+    // A correction that types on after Escape keeps its later keys outside the learning section.
+    const typedOn = typedOnAfterEscape(frames.demos["behaviour-escape"]).frames;
+    assert.equal(motionStripKeys(typedOn).at(-1), "a", "the default strip ends on the last key");
   });
 
   await check("motion: first-party scripts never write markup or style attributes", async () => {
@@ -246,7 +251,7 @@ export async function runMotionChecks(check, fixtures) {
     const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
     const text = (row) => row.input.children.filter((child) => child !== parts.badge).map(fakeTextOf).join("");
     const keys = (row) => row.keys.children.map(fakeTextOf);
-    const finalKeys = (pass) => stripKeys(pass.frames).map(keyLabel);
+    const finalKeys = (pass) => stripKeys(pass.frames, keysEndOf(pass.frames)).map(keyLabel);
     win.show(parts.figure, 1);
     assert.equal(anime.timelines.length, 1, "plays once when it scrolls into view");
     assert.ok(parts.figure.hasAttribute("data-motion-ready"), "the control shows as the demo starts");
@@ -285,6 +290,31 @@ export async function runMotionChecks(check, fixtures) {
     assert.ok(anime.timelines[1].cancelled, "Stop cancels the typing");
     assert.deepEqual(parts.rows.map(text), passes.map((pass) => pass.text), "Stop leaves every row finished");
     assert.equal(parts.badge.parent, parts.rows[2].input, "with the badge");
+  });
+
+  await check("motion: a behaviour demo that types on after Escape keeps adding keycaps to its last key", () => {
+    const demo = { id: "behaviour-escape", ...typedOnAfterEscape(frames.demos["behaviour-escape"]) };
+    const parts = fakeBehaviour(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    const toggleAt = demo.frames.findIndex((frame) => frame.toggle === true);
+    anime.timelines[0].run(toggleAt + 3);
+    assert.equal(parts.keys.children.map(fakeTextOf).at(-1), keyLabel(demo.frames[toggleAt + 2].key), "the strip follows the keys after Escape");
+    anime.timelines[0].run();
+    assert.equal(parts.input.children.map(fakeTextOf).join(""), demo.text, "ends on the finished text");
+    assert.deepEqual(parts.keys.children.map(fakeTextOf), stripKeys(demo.frames).map(keyLabel), "and on its last eight keys");
+  });
+
+  await check("motion: the learned badge follows a learned word the engine kept Vietnamese (L9c)", () => {
+    const demo = { id: "learning-reset", ...learnedVietnamese(frames.demos["learning-reset"]) };
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    anime.timelines[0].run();
+    const children = parts.rows[2].input.children;
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge shows in the last row");
+    const learned = wordsOf(demo).find((piece) => piece.learned);
+    assert.ok(fakeTextOf(children[children.indexOf(parts.badge) - 1]).endsWith(learned.text), `the badge follows ${learned.text}`);
   });
 
   await check("motion: reduced motion turned on while the learning demo plays shows all three rows final", () => {

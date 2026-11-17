@@ -141,10 +141,11 @@ export function englishWords(demo) {
   return wordsOf(demo).filter((piece) => piece.english).map((piece) => piece.text);
 }
 
-/** The index of the frame a keys strip ends at: the key a demo is about, which is the restore toggle of a correction or
- * the commit the engine took from memory (rule learned, L9c), the last one of either; otherwise the last frame. The
- * teaching rows of the learning section end on Escape and its last row on the learned word (design 9 item 4); every
- * other demo ends on its last key. home.js mirrors it, so the animated strip ends as the static one. */
+/** The index of the frame a learning row's keys strip ends at: the key the pass is about, which is the restore toggle of
+ * a teaching pass or the commit the engine took from memory (rule learned, L9c), the last one of either; otherwise the
+ * last frame. The teaching rows end on Escape and the last row on the learned word (design 9 item 4). Only the learning
+ * section uses it: every other demo's strip ends on its last key, even a correction that types on after Escape.
+ * home.js mirrors it for the learning rows, so the animated strip ends as the static one. */
 export function keysEnd(frames) {
   const focus = frames.findLastIndex((frame) => frame.toggle === true || frame.commit?.rule === "learned");
   return focus >= 0 ? focus : frames.length - 1;

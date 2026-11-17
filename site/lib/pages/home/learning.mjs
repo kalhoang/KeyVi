@@ -9,7 +9,7 @@
 // them one after the other with the behaviour player when the figure scrolls into view, and the replay button works as
 // in section 2 (data-label-stop while it plays, data-label-replay at rest), described by the caption. Four static cards
 // follow: the learned words (PRD-R78), per-app memory and macros (PRD-R2) and the user's word lists (ENG-R860).
-import { correctionOf } from "../../demos.mjs";
+import { correctionOf, keysEnd } from "../../demos.mjs";
 import { esc } from "../../util.mjs";
 import { cardList } from "./cards.mjs";
 import { demoById, framesAttr, keycapsHtml, viLang, wordsHtml } from "./markup.mjs";
@@ -31,7 +31,7 @@ function rows(kt, passes) {
   if (labels.length !== passes.length) throw new Error(`home learning: ${labels.length} row labels for ${passes.length} passes of ${kt.c.home.learning.demo}`);
   return passes.map((pass, index) => {
     const badge = index === passes.length - 1 ? badgeHtml(kt) : "";
-    return `<li class="learning-row" data-run><span class="learning-label">${esc(labels[index])}</span><p class="demo-field" data-input${viLang(lang)}>${wordsHtml(pass, badge)}</p><p class="keys" data-keys aria-hidden="true">${keycapsHtml(pass)}</p></li>`;
+    return `<li class="learning-row" data-run><span class="learning-label">${esc(labels[index])}</span><p class="demo-field" data-input${viLang(lang)}>${wordsHtml(pass, badge)}</p><p class="keys" data-keys aria-hidden="true">${keycapsHtml(pass, { upTo: keysEnd(pass.frames) })}</p></li>`;
   }).join("\n            ");
 }
 

@@ -2,7 +2,7 @@
 // Markup shared by the home sections that show engine demos (design 7.2, 7.4): the final text with its English words
 // highlighted, the keys strip and the data-demo-frames payload that home.js animates. Text only through esc(); the
 // payload is JSON in an attribute, never an inline script (design 4).
-import { keyLabel, keysEnd, wordsOf } from "../../demos.mjs";
+import { keyLabel, wordsOf } from "../../demos.mjs";
 import { esc } from "../../util.mjs";
 
 // The keys strip keeps the last eight keycaps (plan Task 6).
@@ -16,19 +16,19 @@ export function demoById(ctx, id) {
 }
 
 /** The final text, English words in <mark> (design 7.1: a soft green highlight). The field shows the line; a closing
- * Return shows on the keys strip only. `learnedHtml` follows a word the engine kept from memory (rule learned, L9c):
- * the learning section's badge (design 9 item 4). */
+ * Return shows on the keys strip only. `learnedHtml` follows a word the engine kept from memory (rule learned, L9c),
+ * whichever side it kept: the learning section's badge (design 9 item 4). */
 export function wordsHtml(demo, learnedHtml = "") {
   return wordsOf(demo)
-    .map(({ text, english, learned }) => (english ? `<mark>${esc(text)}</mark>${learned ? learnedHtml : ""}` : esc(text)))
+    .map(({ text, english, learned }) => `${english ? `<mark>${esc(text)}</mark>` : esc(text)}${learned ? learnedHtml : ""}`)
     .join("")
     .replace(/\n+$/, "")
     .replace(/\n/g, "<br>");
 }
 
-/** The last keys of a demo as keycaps, up to the key it is about (keysEnd). */
-export function keycapsHtml(demo, count = KEYS_SHOWN) {
-  return demo.frames.slice(0, keysEnd(demo.frames) + 1).slice(-count).map((frame) => `<kbd class="keycap">${esc(keyLabel(frame.key))}</kbd>`).join("");
+/** The last keys of a demo as keycaps, up to frame `upTo` (the last key by default; a learning row passes keysEnd). */
+export function keycapsHtml(demo, { upTo = demo.frames.length - 1 } = {}) {
+  return demo.frames.slice(0, upTo + 1).slice(-KEYS_SHOWN).map((frame) => `<kbd class="keycap">${esc(keyLabel(frame.key))}</kbd>`).join("");
 }
 
 /** A data-demo-frames attribute value. */
