@@ -432,7 +432,8 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
         - `[data-keys]` holds the last keys as `<kbd class="keycap">`
         - `[data-tags]` holds one `<span class="tag">` per English word, from `keepTag`
         - `[data-sent]` is the sent bubble, holding the first sentence
-      - a `<button type="button" data-motion-toggle aria-pressed="false">` with the pause label
+      - a `<button type="button" data-motion-toggle aria-pressed="false">` with the pause label, in the flow and
+        invisible until home.js marks the hero `data-motion-ready` (see Task 6, "Showing the controls")
       - a visually hidden `<p>` with the finished sentence; the window is `aria-hidden="true"`
       - above the window, a static mini menu bar: the mark in its Vietnamese state with `menuBarLabel`, unchanged for
         the whole demo (design 6)
@@ -512,6 +513,11 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
   - **Pause:** the button toggles `aria-pressed` and its label, and pauses or resumes the timeline. Loops also pause
     when the hero leaves the viewport (IntersectionObserver) and on `visibilitychange`.
   - **Section 2:** each demo plays once when it scrolls into view, with a replay button.
+  - **Showing the controls** (review fix of Task 5): the pause button and the replay buttons are in the static HTML
+    without a `hidden` attribute, so they hold their place, and `home.css` keeps them `visibility: hidden` until their
+    owner carries `data-motion-ready`. home.js sets `data-motion-ready` on the hero section when the hero loop starts,
+    and on a behaviour figure once its demo has played; it never removes a control from the flow, so showing one moves
+    nothing (design 7.8). Each replay button comes before its figure's `figcaption`, which stays the last child.
   - **Section 3:** engine cards swap keys to result on hover and focus (CSS transition, no JS needed).
   - **Section 4:** threads draw in with `anime.svg.createDrawable` when the hub enters the viewport. Dots travel with
     `createMotionPath`, under the same pause rules.

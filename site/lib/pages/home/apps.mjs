@@ -58,7 +58,7 @@ export function renderApps(kt) {
   if (categories.length !== HUB_NODES.length) throw new Error(`home apps: ${categories.length} categories for ${HUB_NODES.length} hub nodes`);
   const threads = HUB_NODES.map((point) => `<path data-thread d="${threadPath(point)}"/>`).join("");
   return `<section class="home-section" data-section="apps" aria-labelledby="apps-title">
-      <div class="section-head"><h2 id="apps-title">${esc(apps.heading)}</h2><p>${esc(apps.intro)}</p></div>
+      <div class="section-head"><h2 id="apps-title">${esc(apps.heading)}</h2><p>${f(apps.intro)}</p></div>
       <div class="hub" data-hub>
         <svg class="hub-threads" viewBox="0 0 ${HUB_VIEWBOX.width} ${HUB_VIEWBOX.height}" aria-hidden="true" focusable="false">${threads}</svg>
         <div class="hub-centre" aria-hidden="true">${markSvg("mark hub-mark")}</div>

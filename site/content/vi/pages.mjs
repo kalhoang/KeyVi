@@ -147,7 +147,7 @@ export const download = {
   button: "Tải {{AppName}} {{version}} (DMG)",
   installHeading: "Cài đặt",
   install: [
-    "Mở tệp DMG và kéo {{AppName}} vào thư mục Applications.",
+    "Mở file DMG và kéo {{AppName}} vào thư mục Applications.",
     "Mở {{AppName}} từ thư mục Applications, không chạy trực tiếp từ DMG.",
     "Làm theo hướng dẫn trên màn hình để cấp quyền. Cả quá trình chỉ mất khoảng một phút.",
   ],
@@ -159,9 +159,9 @@ export const download = {
   reqNoOthers: "{{AppName}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",
-  verifyHeading: "Tự kiểm tra tệp đã tải",
-  verifyBody: "So mã SHA-256 của tệp với mã ghi ở trên, rồi kiểm tra chữ ký sau khi cài:",
-  verifyHashCmd: "shasum -a 256 &lt;đường dẫn tới tệp DMG&gt;",
+  verifyHeading: "Tự kiểm tra file đã tải",
+  verifyBody: "So mã SHA-256 của file với mã ghi ở trên, rồi kiểm tra chữ ký sau khi cài:",
+  verifyHashCmd: "shasum -a 256 &lt;đường dẫn tới file DMG&gt;",
   brewHeading: "Cài bằng Homebrew",
   brewBody: "Nếu bạn quản lý ứng dụng bằng Homebrew:",
   brewUpgrade: "Cập nhật và gỡ cài đặt:",
@@ -230,12 +230,12 @@ export const privacy = {
 <thead><tr><th scope="col">Dữ liệu</th><th scope="col">Nơi lưu</th><th scope="col">Ghi chú</th></tr></thead>
 <tbody>
 <tr><th scope="row">Cài đặt, quy tắc theo ứng dụng, chế độ Việt/Anh theo ứng dụng, gõ tắt</th><td><code>~/Library/Application Support/{{AppName}}/</code></td><td>Chỉ lưu những lựa chọn bạn tự đặt. Thư mục chỉ mình bạn đọc được. Gõ tắt là nội dung do bạn viết, có thể chứa chữ riêng tư.</td></tr>
-<tr><th scope="row">Bản sao lưu cài đặt</th><td><code>~/Library/Application Support/{{AppName}}/backups/</code></td><td>Giữ 5 bản gần nhất để khôi phục khi tệp bị hỏng.</td></tr>
-<tr><th scope="row">Nhật ký sức khỏe ứng dụng</th><td><code>~/Library/Logs/{{AppName}}/</code></td><td>Chỉ có sự kiện không chứa nội dung (loại phím, mã kết quả, thời gian). Tối đa 5 tệp, mỗi tệp 1 MB, giữ 14 ngày.</td></tr>
+<tr><th scope="row">Bản sao lưu cài đặt</th><td><code>~/Library/Application Support/{{AppName}}/backups/</code></td><td>Giữ 5 bản gần nhất để khôi phục khi file bị hỏng.</td></tr>
+<tr><th scope="row">Nhật ký sức khỏe ứng dụng</th><td><code>~/Library/Logs/{{AppName}}/</code></td><td>Chỉ có sự kiện không chứa nội dung (loại phím, mã kết quả, thời gian). Tối đa 5 file, mỗi file 1 MB, giữ 14 ngày.</td></tr>
 <tr><th scope="row">Bản ghi thao tác gõ (chỉ khi bạn bấm bắt đầu)</th><td><code>~/Library/Logs/{{AppName}}/captures/</code></td><td>Xem mục bên dưới. Tự xóa sau 24 giờ, không nằm trong bản sao lưu Time Machine.</td></tr>
 <tr><th scope="row">Trạng thái cập nhật (Sparkle)</th><td><code>~/Library/Preferences/{{bundleId}}.plist</code> và <code>~/Library/Caches/{{bundleId}}/</code></td><td>Do hệ thống quản lý theo mặc định.</td></tr>
 </tbody></table></div>
-<p>Mọi tệp ghi bằng cách ghi an toàn (ghi tệp tạm rồi đổi tên) để cập nhật hay mất điện không làm hỏng cài đặt. Đường dẫn đầy đủ để xóa nằm ở mục "Xóa dữ liệu" bên dưới.</p>
+<p>Mọi file ghi bằng cách ghi an toàn (ghi file tạm rồi đổi tên) để cập nhật hay mất điện không làm hỏng cài đặt. Đường dẫn đầy đủ để xóa nằm ở mục "Xóa dữ liệu" bên dưới.</p>
 
 <h2 id="gui-di">Ứng dụng gửi gì đi</h2>
 <p>Chỉ một thứ: <strong>kiểm tra cập nhật</strong>, mỗi 24 giờ (bạn tắt được trong Cài đặt).</p>
@@ -243,7 +243,7 @@ export const privacy = {
   <li>Ứng dụng tải <code>https://{{host}}/appcast.xml</code> qua HTTPS, rồi tải bản cập nhật từ cùng máy chủ khi bạn đồng ý hoặc khi cập nhật tự động đang bật. {{verifyHtml}} Nếu bản cập nhật cũng được lưu ở GitHub Releases, trang này sẽ ghi rõ.</li>
   <li>Như mọi yêu cầu web, máy chủ thấy địa chỉ IP của bạn và tên cùng phiên bản ứng dụng. Ứng dụng không gửi hồ sơ cấu hình hệ thống (tính năng này của Sparkle bị tắt).</li>
   <li>Bản cập nhật phải mang chữ ký EdDSA hợp lệ, nếu không ứng dụng từ chối cài.</li>
-  <li>Ngoài ra không có yêu cầu mạng nào khác. Có kiểm tra tự động trong quy trình phát hành để bảo đảm tệp chạy chỉ chứa các địa chỉ máy chủ đã khai báo.</li>
+  <li>Ngoài ra không có yêu cầu mạng nào khác. Có kiểm tra tự động trong quy trình phát hành để bảo đảm file chạy chỉ chứa các địa chỉ máy chủ đã khai báo.</li>
 </ul>
 
 <h2 id="chan-doan">Dữ liệu chẩn đoán gồm gì, không gồm gì</h2>
@@ -260,7 +260,7 @@ export const privacy = {
 <h3>Không bao giờ có trong báo cáo</h3>
 <ul>
   <li>Chữ bạn đã gõ, từ, giá trị của ô nhập, nội dung bảng nhớ tạm (clipboard).</li>
-  <li>Tiêu đề cửa sổ, địa chỉ trang web, đường dẫn tệp trong thư mục cá nhân của bạn (ngoài thư mục riêng của {{AppName}}).</li>
+  <li>Tiêu đề cửa sổ, địa chỉ trang web, đường dẫn file trong thư mục cá nhân của bạn (ngoài thư mục riêng của {{AppName}}).</li>
   <li>Nội dung gõ tắt (chỉ ghi số lượng).</li>
   <li>Danh sách chế độ theo ứng dụng của bạn, trừ mục của đúng ứng dụng bạn đang báo lỗi.</li>
 </ul>
@@ -280,8 +280,8 @@ export const privacy = {
 <h2 id="trang-web">Trang web</h2>
 <ul>
   <li>{{analyticsHtml}}</li>
-  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và tệp cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.</li>
-  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, mỗi ngày chúng tôi đếm số yêu cầu tới <code>appcast.xml</code> để ước lượng số máy đang dùng, và số lượt tải từng tệp; chỉ giữ con số tổng theo ngày.</li>
+  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.</li>
+  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, mỗi ngày chúng tôi đếm số yêu cầu tới <code>appcast.xml</code> để ước lượng số máy đang dùng, và số lượt tải từng file; chỉ giữ con số tổng theo ngày.</li>
   <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. {{verifyHtml}} Xác minh thời gian lưu nhật ký của hai lớp này trước khi công bố.</li>
   <li>Số lượt cài qua Homebrew lấy từ bộ đếm công khai của Homebrew.</li>
 </ul>

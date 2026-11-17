@@ -14,9 +14,9 @@ import { build } from "./build.mjs";
 import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAnalytics } from "./lib/analytics.mjs";
 import { loadBrand } from "./lib/brand.mjs";
 import { CATEGORIES, STATUSES } from "./lib/data.mjs";
-import { loadDemos, wordsOf } from "./lib/demos.mjs";
+import { keyLabel, loadDemos, wordsOf } from "./lib/demos.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "./lib/headers.mjs";
-import { HUB_NODES, HUB_VIEWBOX } from "./lib/pages/home/apps.mjs";
+import { HUB_NODES, HUB_VIEWBOX, renderApps } from "./lib/pages/home/apps.mjs";
 import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile, routePath } from "./lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "./lib/tone.mjs";
@@ -968,7 +968,40 @@ try {
         const final = frames.demos[id].text.replace(/\n/g, "").trim();
         assert.ok(text.includes(esc(final)), `${label}: ${id} "${final}" is not in the page text`);
       }
+      // The visible demo areas themselves hold the final state, not only the visually hidden list (Review Focus 3).
+      const keycaps = (demo) => demo.frames.slice(-8).map((frame) => `<kbd class="keycap">${esc(keyLabel(frame.key))}</kbd>`).join("");
+      const heroWindow = html.match(/<div class="mac-window" data-hero[\s\S]*?<div class="keys-strip">[\s\S]*?<\/div>/)?.[0] ?? "";
+      const chat = frames.demos["hero-chat"];
+      assert.equal(unescapeHtml(textOf(heroWindow.match(/<p data-input[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "")), chat.text, `${label}: the hero field holds the first sentence`);
+      assert.equal(heroWindow.match(/<span class="keys" data-keys>([\s\S]*?)<\/span><\/div>/)?.[1], keycaps(chat), `${label}: the hero keys strip holds the last 8 keys`);
+      for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
+        const demo = frames.demos[attrs(figure, "data-demo")[0]];
+        assert.equal(unescapeHtml(textOf(figure.match(/<p class="demo-field" data-input[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "")), demo.text.replace(/\n+$/, ""), `${label}: ${figure.slice(0, 60)} field`);
+        assert.equal(figure.match(/<p class="keys" data-keys[^>]*>([\s\S]*?)<\/p>/)?.[1], keycaps(demo), `${label}: ${figure.slice(0, 60)} keys`);
+      }
     }
+  });
+
+  await check("home: motion controls hold their place without JavaScript and show only once home.js is ready (design 7.8)", async () => {
+    for (const [label, html] of homePages) {
+      const controls = html.match(/<button\b[^>]*\sdata-(?:motion-toggle|replay)\b[^>]*>/g) ?? [];
+      assert.equal(controls.length, 4, `${label}: the pause control and three replay buttons`);
+      // A hidden attribute would take the button out of the flow and move the page when home.js reveals it.
+      for (const tag of controls) assert.ok(!/\shidden\b/.test(tag), `${label}: ${tag} is in the flow`);
+      for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
+        assert.match(figure, /<\/figcaption>\s*<\/figure>$/, `${label}: the figcaption is the last child of its figure`);
+      }
+    }
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(css, /\.motion-toggle,\s*\.replay\s*\{\s*visibility:\s*hidden;\s*\}/, "the controls are invisible but keep their space");
+    assert.match(css, /\[data-motion-ready\]\s*\.motion-toggle,\s*\[data-motion-ready\]\s*\.replay\s*\{\s*visibility:\s*visible;\s*\}/, "home.js reveals a control by marking its owner data-motion-ready");
+  });
+
+  await check("home: the apps intro goes through the token filler like every other intro", () => {
+    const intro = "{{AppName}} <code>Spotlight</code>";
+    const apps = { ...homeCopy.vi.apps, intro };
+    const html = renderApps({ ctx: { data: { matrix: { entries: [] } } }, c: { home: { apps } }, f: (text) => `[filled]${text}`, lang: "vi" });
+    assert.ok(html.includes(`<p>[filled]${intro}</p>`), "apps.intro is filled, not escaped");
   });
 
   await check("home: data-demo-frames parses and matches frames.json", () => {
@@ -1090,7 +1123,8 @@ try {
     assert.deepEqual(wordsOf(back).map((piece) => piece.text).join(""), "cả nhà ");
   });
 
-  await check("content: home copy has the same keys in vi and en, uses file not tệp, and has no dash characters", async () => {
+  await check("content: home copy has the same keys in vi and en, vi pages use file not tệp, and home has no dash characters", async () => {
+    const viPages = await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href);
     const load = async (lang) => (await import(pathToFileURL(join(SITE_DIR, "content", lang, "pages.mjs")).href)).home;
     const [vi, en] = [await load("vi"), await load("en")];
     // The shape of the copy: object keys and array lengths, recursively, with the type of every leaf.
@@ -1098,7 +1132,8 @@ try {
       : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, shape(value[key])])) : typeof value);
     assert.deepEqual(shape(en), shape(vi), "the en home copy has the keys of the vi copy");
     const strings = (value) => (typeof value === "string" ? [value] : value && typeof value === "object" ? Object.values(value).flatMap(strings) : []);
-    assert.deepEqual(strings(vi).filter((text) => /tệp/i.test(text)), [], "vi home says file, never tệp");
+    // Every vi page of pages.mjs, so the home and download pages agree; no copy here quotes a macOS pane (PRD-R62, PRD-R64).
+    assert.deepEqual(strings(viPages).filter((text) => /tệp/i.test(text)), [], "vi pages say file, never tệp");
     for (const [lang, home] of [["vi", vi], ["en", en]]) assert.deepEqual(strings(home).filter((text) => /[\u2013\u2014]/.test(text)), [], `${lang}: em or en dash`);
     assert.equal(vi.h1, "Gõ tiếng Việt lẫn tiếng Anh, không cần chuyển.");
     assert.equal(en.h1, "Type Vietnamese and English without switching.");

@@ -10,6 +10,12 @@
 .home-section > .section-head { margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
 .req { display: block; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.02em; }
 
+/* Motion controls (the hero's pause button, the behaviours' replay buttons) keep their place in the flow without
+   JavaScript and stay invisible, out of the tab order and the accessibility tree, until home.js marks their owner (the
+   hero section, a behaviour figure) data-motion-ready; showing them then moves nothing (design 7.8). */
+.motion-toggle, .replay { visibility: hidden; }
+[data-motion-ready] .motion-toggle, [data-motion-ready] .replay { visibility: visible; }
+
 /* Demo text: English words kept as typed get the soft green highlight (design 7.1). */
 [data-input] mark { padding: 0 0.12em; border-radius: 4px; background: var(--green-soft); color: inherit; }
 .keys { display: flex; justify-content: flex-end; gap: 0.3rem; min-width: 0; height: 2rem; margin: 0; overflow: hidden; }
@@ -70,14 +76,14 @@
   background: var(--card);
   box-shadow: var(--shadow-card);
 }
-.demo-window { display: grid; gap: 0.6rem; margin-bottom: 1.1rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--paper); }
+.demo-window { display: grid; gap: 0.6rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--paper); }
 .demo-field { min-height: calc(2 * 1.45em); margin: 0; font-size: 1.05rem; line-height: 1.45; overflow-wrap: anywhere; }
 .behaviour figcaption { margin: 0; color: var(--ink); font-size: 1rem; }
 .behaviour h3 { margin: 0 0 0.4rem; }
 .behaviour figcaption p { margin-bottom: 0; }
 .behaviour-note { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--line); color: var(--muted); font-size: 0.92rem; }
 .behaviour-note .req { display: inline; }
-.replay { align-self: flex-start; margin-top: 1rem; }
+.replay { align-self: flex-start; margin-block: 0.75rem 1.1rem; }
 
 /* 3. Cards: engine results and static illustrations. */
 .feature-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }

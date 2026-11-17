@@ -2,9 +2,9 @@
 // Section 1, the hero (design 6, 7.3 item 1): the value statement and the download call on the left; on the right a
 // generic chat window showing the first hero sentence finished, with the keys strip and a tag per English word, under a
 // mini menu bar whose mark stays in the Vietnamese state. home.js (plan Task 6) types the three hero demos in rotation
-// from data-demo-frames and reveals the pause button and the sent bubble; without JavaScript, or under reduced motion,
-// this final state is the whole demo (design 7.2). The window is aria-hidden; the sentences are also in a visually
-// hidden list (design 7.7).
+// from data-demo-frames, reveals the sent bubble and marks the section data-motion-ready to show the pause button;
+// without JavaScript, or under reduced motion, this final state is the whole demo (design 7.2). The window is
+// aria-hidden; the sentences are also in a visually hidden list (design 7.7).
 import { DEFAULT_MIN_MACOS } from "../../context.mjs";
 import { englishWords } from "../../demos.mjs";
 import { markSvg } from "../../layout.mjs";
@@ -39,11 +39,12 @@ function scene(kt, demos) {
         </div>`;
 }
 
-/** The pause and play control (WCAG 2.2.2). Hidden until home.js animates, so it never shows where nothing moves; the
- * data attributes carry both labels for its toggle. */
+/** The pause and play control (WCAG 2.2.2). It keeps its place in the flow, invisible (home.css) until home.js animates
+ * and marks the hero data-motion-ready, so it never shows where nothing moves and showing it shifts nothing (design 7.8);
+ * the data attributes carry both labels for its toggle. */
 function motionToggle({ pause, play }) {
   const labels = `data-label-pause="${esc(pause)}" data-label-play="${esc(play)}"`;
-  return `<button type="button" class="btn btn-ghost motion-toggle" data-motion-toggle aria-pressed="false" ${labels} hidden>${esc(pause)}</button>`;
+  return `<button type="button" class="btn btn-ghost motion-toggle" data-motion-toggle aria-pressed="false" ${labels}>${esc(pause)}</button>`;
 }
 
 export function renderHero(kt) {
