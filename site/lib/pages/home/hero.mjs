@@ -27,7 +27,7 @@ function minMacos(ctx) {
 /** A tag template as parts, literal text at even indexes and a slot name at odd ones (`["", "word", ", không thành ",
  * "plain", ""]`), each of `slots` exactly once. home.js writes the tags of the next sentences from the same parts (data
  * attributes), so the content needs no token in the page and every tag reads like the static ones. */
-export function tagParts(kt, name, slots) {
+function tagParts(kt, name, slots) {
   const template = kt.c.home.hero[name];
   const parts = kt.p(template, Object.fromEntries(slots.map((slot) => [slot, `${SLOT}${slot}${SLOT}`]))).split(SLOT);
   const found = parts.filter((part, index) => index % 2 === 1);

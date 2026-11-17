@@ -25,7 +25,7 @@ function badgeHtml(kt) {
 }
 
 /** One row per pass: its label, its finished text and its keys strip. */
-function rows(kt, demo, passes) {
+function rows(kt, passes) {
   const { lang } = kt;
   const labels = kt.c.home.learning.rows;
   if (labels.length !== passes.length) throw new Error(`home learning: ${labels.length} row labels for ${passes.length} passes of ${kt.c.home.learning.demo}`);
@@ -46,7 +46,7 @@ function figure(kt) {
   return `<figure class="learning-demo" data-demo="${esc(copy.demo)}" data-demo-frames="${framesAttr(demo)}" data-req="${esc(copy.req)}">
         <div class="demo-window">
           <ol class="learning-rows">
-            ${rows(kt, demo, passes)}
+            ${rows(kt, passes)}
           </ol>
         </div>
         <button type="button" class="btn btn-ghost replay" data-replay data-label-replay="${esc(labels.replay)}" data-label-stop="${esc(labels.stop)}" aria-describedby="${CAPTION_ID}">${esc(labels.replay)}</button>
