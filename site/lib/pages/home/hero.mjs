@@ -13,9 +13,19 @@ import { downloadBlock } from "./download.mjs";
 import { demoById, framesAttr, keycapsHtml, viLang, wordsHtml } from "./markup.mjs";
 
 export const HERO_DEMOS = Object.freeze(["hero-chat", "hero-email", "hero-note"]);
+// Stands for the word while keepTag is split into the plain text before and after it.
+const WORD_SLOT = "\u0000";
 
 function minMacos(ctx) {
   return String(ctx.data.releases.stable?.minimumSystemVersion || DEFAULT_MIN_MACOS).replace(/\.0+$/, "");
+}
+
+/** keepTag around its word, as data-tag-before and data-tag-after: home.js writes the tags of the next sentences as
+ * text with them, so the content needs no token in the page and the tags read like the static ones. */
+function tagTemplate(kt, keepTag) {
+  const parts = kt.p(keepTag, { word: WORD_SLOT }).split(WORD_SLOT);
+  if (parts.length !== 2) throw new Error(`home hero.keepTag needs {{word}} once: ${keepTag}`);
+  return `data-tag-before="${esc(parts[0])}" data-tag-after="${esc(parts[1])}"`;
 }
 
 function scene(kt, demos) {
@@ -32,7 +42,7 @@ function scene(kt, demos) {
               <p class="chat-peer"><span class="chat-name">${esc(hero.peerName)}</span><span class="bubble bubble-in"${vi}>${esc(hero.peerMessage)}</span></p>
               <p class="bubble bubble-out" data-sent hidden><span${vi}>${esc(first.text)}</span><span class="chat-status">${esc(hero.sentLabel)}</span></p>
               <div class="chat-input"><p data-input${vi}>${wordsHtml(first)}</p></div>
-              <p class="tags" data-tags>${tags}</p>
+              <p class="tags" data-tags ${tagTemplate(kt, hero.keepTag)}>${tags}</p>
             </div>
             <div class="keys-strip"><span class="keys-label">${esc(hero.keysLabel)}</span><span class="keys" data-keys>${keycapsHtml(first)}</span></div>
           </div>

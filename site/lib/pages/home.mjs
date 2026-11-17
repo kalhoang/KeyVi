@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Landing page (PRD-R73, design 7.3): seven sections in order, one module each under lib/pages/home/: the hero, the
 // three behaviours (the features anchor), the six cards, the apps hub with the Secure Input card, the proof band, the
-// install steps and the closing call. Every demo's final state comes from site/demo/frames.json (design 7.4).
+// install steps and the closing call. Every demo's final state comes from site/demo/frames.json (design 7.4); home.js
+// animates them with the vendored anime.js, both classic deferred scripts on the two home pages only (design 7.2,
+// ADR 0603).
 import { kit } from "../context.mjs";
 import { renderApps } from "./home/apps.mjs";
 import { renderBehaviours } from "./home/behaviours.mjs";
@@ -24,5 +26,6 @@ export function renderHome(ctx, lang) {
     description: kt.p(kt.ui.descriptions.home),
     body: `\n    ${SECTIONS.map((render) => render(kt)).join("\n    ")}`,
     styles: ["/assets/home.css"],
+    scripts: ["/assets/vendor/anime.umd.min.js", "/assets/home.js"],
   };
 }
