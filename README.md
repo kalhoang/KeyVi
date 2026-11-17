@@ -8,15 +8,15 @@ KeyVi™ is a Vietnamese input method for macOS, written from scratch by Kal. It
 
 ## Status
 
-**Pre-alpha. There is no public download yet.**
+**Version 1.0, the first public release (17 November 2026).** Download it from the website: [keyvi.kal.vn/en/download](https://keyvi.kal.vn/en/download/) (in Vietnamese: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/)). Installed copies update themselves through Sparkle.
 
-The first milestone is a private alpha (Kal plus up to 10 invited testers). It starts only when the engine corpus is green, fuzzing is clean and onboarding is usable, and it requires every P0 test to pass (PRD-R0). The three P0 items are the reason this project exists:
+Every release has to pass the P0 tests (PRD-R0). The three P0 items are the reason this project exists:
 
 1. Typing is never blocked "at random": the app pauses only for the operating system's secure-input state or a real password field, and says which app holds secure input.
 2. Slang such as `dzô` and `hẹo` can be typed: validity comes from the rules of Vietnamese spelling, not from a dictionary.
 3. Automatic return to English works on every boundary key (punctuation, Return, Tab), not only on Space.
 
-The roadmap (private alpha, closed beta, public beta, 1.0) and its entry and exit criteria are in [spec/03-product.md](spec/03-product.md) section 3.3. This README makes no claim beyond the specification.
+How 1.0 was reached without a public beta, and which roadmap criteria were met or waived on the way, is recorded in [ADR 0507](docs/decisions/0507-first-public-release-1-0.md). The roadmap and its entry and exit criteria are in [spec/03-product.md](spec/03-product.md) section 3.3; what changed in each release is in [CHANGELOG.md](CHANGELOG.md). This README makes no claim beyond the specification.
 
 ## What it is
 
@@ -33,12 +33,10 @@ The full scope and the list of things that are deliberately not built are in [sp
 
 ## Install
 
-Both options are placeholders until the first public build exists.
-
 | Method | Command or link |
 |---|---|
-| Notarized DMG | Download from `https://keyvi.kal.vn/tai-ve` (not available yet) |
-| Homebrew tap | `brew install --cask OWNER/tap/keyvi` (tap owner: VERIFY) |
+| Notarized DMG | Download page: [keyvi.kal.vn/en/download](https://keyvi.kal.vn/en/download/) (in Vietnamese: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/)) |
+| Homebrew tap | `brew install --cask kalhoang/tap/keyvi` |
 
 Requirements: macOS 12 Monterey or later, Apple silicon or Intel (universal binary) (PRD-R8, [ADR 0315](docs/decisions/0315-minimum-macos-12.md)).
 

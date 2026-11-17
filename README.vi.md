@@ -8,15 +8,15 @@ KeyVi™ là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. �
 
 ## Tình trạng
 
-**Giai đoạn pre-alpha. Hiện chưa có bản tải công khai.**
+**Phiên bản 1.0, bản phát hành công khai đầu tiên (17/11/2026).** Bạn tải ứng dụng tại website: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/). Các bản đã cài tự cập nhật qua Sparkle.
 
-Mốc đầu tiên là bản alpha riêng tư (Kal cùng tối đa 10 người thử được mời). Bản này chỉ bắt đầu khi bộ kiểm thử của engine đạt, fuzzing sạch và phần hướng dẫn ban đầu dùng được, đồng thời mọi bài kiểm thử P0 đều phải đạt (PRD-R0). Ba mục P0 là lý do dự án này tồn tại:
+Mọi bản phát hành đều phải đạt các bài kiểm thử P0 (PRD-R0). Ba mục P0 là lý do dự án này tồn tại:
 
 1. Gõ không bao giờ bị chặn "ngẫu nhiên": ứng dụng chỉ tạm dừng khi hệ điều hành báo chế độ nhập bảo mật hoặc khi ô đang gõ thật sự là ô mật khẩu, và cho bạn biết ứng dụng nào đang giữ chế độ đó.
 2. Gõ được tiếng lóng như `dzô` và `hẹo`: tính hợp lệ dựa trên quy tắc chính tả tiếng Việt, không dựa vào từ điển.
 3. Tự quay về tiếng Anh hoạt động với mọi phím kết thúc từ (dấu câu, Return, Tab), không chỉ phím Space.
 
-Lộ trình (alpha riêng tư, beta kín, beta công khai, 1.0) cùng tiêu chí vào và ra của từng giai đoạn nằm ở [spec/03-product.md](spec/03-product.md) mục 3.3. README này không nêu điều gì vượt ra ngoài bản đặc tả.
+Cách bản 1.0 được phát hành mà không qua beta công khai, cùng những tiêu chí của lộ trình đã đạt hoặc được miễn, được ghi trong [ADR 0507](docs/decisions/0507-first-public-release-1-0.md). Lộ trình cùng tiêu chí vào và ra của từng giai đoạn nằm ở [spec/03-product.md](spec/03-product.md) mục 3.3; những thay đổi của từng bản nằm ở [CHANGELOG.vi.md](CHANGELOG.vi.md). README này không nêu điều gì vượt ra ngoài bản đặc tả.
 
 ## Đây là gì
 
@@ -33,12 +33,10 @@ Phạm vi đầy đủ và danh sách những thứ cố ý không làm nằm �
 
 ## Cài đặt
 
-Cả hai cách dưới đây chỉ là chỗ giữ chỗ cho đến khi có bản phát hành công khai đầu tiên.
-
 | Cách cài | Lệnh hoặc liên kết |
 |---|---|
-| DMG đã công chứng (notarized) | Tải tại `https://keyvi.kal.vn/tai-ve` (chưa có) |
-| Homebrew tap | `brew install --cask OWNER/tap/keyvi` (chủ tài khoản tap: VERIFY) |
+| DMG đã công chứng (notarized) | Tải tại [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/) |
+| Homebrew tap | `brew install --cask kalhoang/tap/keyvi` |
 
 Yêu cầu: macOS 12 Monterey trở lên, máy chip Apple hoặc Intel (bản universal) (PRD-R8, [ADR 0315](docs/decisions/0315-minimum-macos-12.md)).
 
@@ -98,6 +96,6 @@ Toàn bộ các lớp kiểm thử, mức độ bao phủ và quy tắc đóng g
 - Đóng góp: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Báo cáo lỗ hổng bảo mật: [SECURITY.md](SECURITY.md)
 - Quy tắc ứng xử: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Nhật ký thay đổi: [CHANGELOG.md](CHANGELOG.md)
+- Nhật ký thay đổi: [CHANGELOG.vi.md](CHANGELOG.vi.md) (tiếng Anh: [CHANGELOG.md](CHANGELOG.md))
 - Website: `https://keyvi.kal.vn`
 - Hỗ trợ: GitHub Issues cho lỗi và tương thích, GitHub Discussions cho câu hỏi

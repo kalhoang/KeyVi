@@ -327,8 +327,11 @@ class FrontDoorBrandTests(unittest.TestCase):
                 # The heading carries the trademark sign of APP_TRADEMARK_SIGN (Pa, 15/11/2026).
                 self.assertEqual(text.splitlines()[0], f"# {name}{brand.get('APP_TRADEMARK_SIGN', '')}")
                 self.assertIn(f"`https://{host}`", text)
-                # The tap owner is still a VERIFY marker; only the cask name is the brand's.
+                # The tap is Pa's repository kalhoang/homebrew-tap (decision 0005 Q4); only the cask name is the brand's.
                 self.assertRegex(text, r"[\w.-]+/tap/" + re.escape(slug) + "`")
+                self.assertNotIn("OWNER/tap", text)
+                # 1.0.0 is out (ADR 0507): the README points at the download page of the site host.
+                self.assertRegex(text, r"\(https://" + re.escape(host) + r"/(en/download|tai-ve)/\)")
         notices = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
         self.assertIn(f"ships with {name} or its website", notices, "the DMG copies this file as it is")
         for form in ("bug.yml", "compatibility.yml"):
@@ -338,17 +341,22 @@ class FrontDoorBrandTests(unittest.TestCase):
                 self.assertNotIn("<slug>", text)
 
     def test_both_readmes_state_the_current_facts(self):
-        """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006)."""
+        """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006), and
+        1.0.0 of 2026-11-17 is the first public release (ADR 0507), so no pre-release status is left."""
         for rel, current, stale in (
             ("README.md", ("macOS 12 Monterey or later", "Apple silicon or Intel", "GNU General Public License",
                            "Mozilla Public License 2.0 (MPL-2.0)", "Config/Brand.xcconfig", "scripts/brand.env",
-                           "0315-minimum-macos-12.md"),
+                           "0315-minimum-macos-12.md", "Version 1.0", "first public release",
+                           "0507-first-public-release-1-0.md"),
              ("name is temporary", "not been chosen", "macOS 15", "macOS 14", "pending confirmation",
-              "MIT-licensed")),
+              "MIT-licensed", "Pre-alpha", "no public download", "not available yet", "placeholders until",
+              "tap owner: VERIFY")),
             ("README.vi.md", ("macOS 12 Monterey trở lên", "chip Apple hoặc Intel", "GNU GPL",
                               "Giấy phép Công cộng Mozilla 2.0 (MPL-2.0)",
-                              "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md"),
-             ("tên tạm", "chưa được chọn", "macOS 15", "macOS 14", "chờ người phát triển")),
+                              "Config/Brand.xcconfig", "scripts/brand.env", "0315-minimum-macos-12.md",
+                              "Phiên bản 1.0", "bản phát hành công khai đầu tiên", "0507-first-public-release-1-0.md"),
+             ("tên tạm", "chưa được chọn", "macOS 15", "macOS 14", "chờ người phát triển", "pre-alpha",
+              "chưa có bản tải", "(chưa có)", "chỗ giữ chỗ", "chủ tài khoản tap: VERIFY")),
         ):
             text = " ".join((REPO / rel).read_text(encoding="utf-8").split())
             for needle in current:
