@@ -51,17 +51,28 @@
 }
 .menubar-item { display: inline-flex; align-items: center; gap: 0.45rem; }
 .menubar-mark { width: 1.15rem; }
-/* The chat keeps one height whatever the sentence; messages sit at the bottom, as in a chat. */
-.chat { display: flex; flex-direction: column; justify-content: flex-end; gap: 0.75rem; height: 22rem; overflow: hidden; }
+/* The chat keeps one height whatever the sentence: every part that changes reserves its largest state (the sent cell
+   its tallest bubble, the field three lines, the tags the rows of the sentence with the most), so it grows with the width instead of clipping the
+   peer's message, and sending or typing moves nothing; messages sit at the bottom, as in a chat. */
+.chat { display: flex; flex-direction: column; justify-content: flex-end; gap: 0.75rem; min-height: 22rem; }
 .chat-peer { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; margin: 0; }
 .chat-name { color: var(--muted); font-size: 0.8rem; }
 .bubble { max-width: 85%; margin: 0; padding: 0.55rem 0.9rem; border-radius: 1.1rem; line-height: 1.4; overflow-wrap: anywhere; }
 .bubble-in { background: var(--paper-2); border-bottom-left-radius: 0.35rem; }
-.bubble-out { align-self: flex-end; border-bottom-right-radius: 0.35rem; background: var(--green-soft); color: var(--ink); }
+.bubble-out { border-bottom-right-radius: 0.35rem; background: var(--green-soft); color: var(--ink); }
+/* One sent bubble per hero sentence in one grid cell, invisible (still in the layout) until home.js shows the one just
+   sent; without JavaScript, or under reduced motion, nothing is sent and the cell stays empty. */
+.chat-sent { display: grid; }
+.chat-sent > .bubble-out { grid-area: 1 / 1; justify-self: end; align-self: end; visibility: hidden; }
 .chat-status { display: block; margin-top: 0.15rem; color: var(--muted); font-size: 0.72rem; text-align: right; }
 .chat-input { padding: 0.7rem 0.95rem; border: 1px solid var(--line-strong); border-radius: 1.2rem; background: var(--card); }
 .chat-input [data-input] { min-height: calc(3 * 1.45em); margin: 0; font-size: 1.05rem; line-height: 1.45; overflow-wrap: anywhere; }
 .tags { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0.4rem; min-height: 3.6rem; margin: 0; }
+/* The live tags and an invisible copy of each sentence's tags (lib/pages/home/hero.mjs) share one cell, so the row
+   keeps the height of the sentence with the most tag rows at every width. */
+.tags-cell { display: grid; }
+.tags-cell > .tags { grid-area: 1 / 1; }
+.tags-sizer { visibility: hidden; }
 .keys-strip { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.9rem; border-top: 1px solid var(--line); background: var(--paper-2); }
 .keys-label { flex: none; color: var(--muted); font-size: 0.75rem; }
 .keys-strip .keys { flex: 1 1 0; }
@@ -101,12 +112,13 @@
 .demo-row code, .illustration code { padding: 0; background: none; font-size: 0.92rem; }
 .arrow { color: var(--muted); }
 .out { font-size: 1.15rem; font-weight: 650; letter-spacing: -0.01em; }
-/* Engine cards: on hover, or with focus inside the card, the keys step back and the result comes forward (design 7.3
-   item 3). CSS only; style.css turns the transitions off under reduced motion. */
+/* Engine cards: on hover the keys step back and the result comes forward, a softer form of design 7.3 item 3 (recorded
+   in the plan, Task 6). The cards hold nothing focusable, so there is no focus state. CSS only; style.css turns the
+   transitions off under reduced motion. */
 .demo-row code, .demo-row .arrow, .demo-row .out { transition: color 200ms ease, transform 200ms ease; }
-.demo-row:hover code, .feature:focus-within .demo-row code { color: var(--muted); }
-.demo-row:hover .arrow, .feature:focus-within .demo-row .arrow { color: var(--green-text); transform: translateX(3px); }
-.demo-row:hover .out, .feature:focus-within .demo-row .out { color: var(--green-text); }
+.demo-row:hover code { color: var(--muted); }
+.demo-row:hover .arrow { color: var(--green-text); transform: translateX(3px); }
+.demo-row:hover .out { color: var(--green-text); }
 .out em { font-style: normal; }
 .illustration.macro { margin: 0.25rem 0 0; border: 1px dashed var(--line-strong); }
 .illustration.macro small { flex-basis: 100%; color: var(--muted); font-size: 0.85rem; }

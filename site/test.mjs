@@ -23,6 +23,7 @@ import { changelogHeadingId } from "./lib/pages/simple.mjs";
 import { LANGS, ROUTES, outputFile, routePath } from "./lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "./lib/tone.mjs";
 import { esc, shortHash } from "./lib/util.mjs";
+import { fakeAnime, fakeBehaviour, fakeHero, fakeWindow, textOf as fakeTextOf } from "./testing/fake-home.mjs";
 
 const SITE_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(SITE_DIR, "..");
@@ -1234,7 +1235,17 @@ try {
       const hero = section(html, "hero");
       const copy = homeCopy[lang].hero;
       for (const hook of ["data-input", "data-keys", "data-tags"]) assert.match(hero, new RegExp(`\\s${hook}[\\s>]`), `${label}: hero ${hook}`);
-      assert.match(hero, /<p class="bubble bubble-out" data-sent hidden><span\b/, `${label}: the sent bubble starts with the sentence span`);
+      // One sent bubble per hero sentence, stacked in one cell, so the window reserves the tallest (design 7.8).
+      const sent = hero.match(/<div class="chat-sent" data-sent>([\s\S]*?)<\/div>/)?.[1] ?? "";
+      const bubbles = [...sent.matchAll(/<p class="bubble bubble-out"><span\b[^>]*>([^<]*)<\/span><span class="chat-status">/g)].map((m) => unescapeHtml(m[1]));
+      assert.deepEqual(bubbles, (framesAttr(heroTag(html)) ?? []).map((demo) => demo.text), `${label}: a sent bubble for each hero sentence, in order`);
+      assert.ok(!/\shidden[\s>]/.test(sent), `${label}: the sent bubbles keep their place in the flow`);
+      // The tags row reserves the most rows any sentence needs: an invisible copy of each sentence's tags shares its cell.
+      const cell = hero.match(/<div class="tags-cell">([\s\S]*?)<\/div>/)?.[1] ?? "";
+      const sizers = [...cell.matchAll(/<p class="tags tags-sizer">([\s\S]*?)<\/p>/g)].map((m) => [...m[1].matchAll(/<span class="tag">([^<]*)<\/span>/g)].map((t) => unescapeHtml(t[1])));
+      const expected = (framesAttr(heroTag(html)) ?? []).map((demo) => englishWords(demo).map((word) => copy.keepTag.replace("{{word}}", word)));
+      assert.deepEqual(sizers, expected, `${label}: a tag sizer for each hero sentence`);
+      assert.match(cell, /<p class="tags" data-tags\b/, `${label}: the live tags share the sizers' cell`);
       const toggle = hero.match(/<button\b[^>]*\sdata-motion-toggle\b[^>]*>/)?.[0] ?? "";
       assert.deepEqual([attrs(toggle, "data-label-pause")[0], attrs(toggle, "data-label-play")[0]], [esc(copy.pause), esc(copy.play)], `${label}: the toggle carries both labels`);
       // The tag template around the word, so a tag home.js writes reads like a static one.
@@ -1243,9 +1254,79 @@ try {
       assert.equal(`${before}online${after}`, copy.keepTag.replace("{{word}}", "online"), `${label}: data-tag-before and data-tag-after`);
       for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
         for (const hook of ["data-input", "data-keys", "data-replay"]) assert.match(figure, new RegExp(`\\s${hook}[\\s>]`), `${label}: ${figure.slice(0, 60)} ${hook}`);
+        // The button is the demo's stop control while it plays and its replay button at rest (WCAG 2.2.2).
+        const button = figure.match(/<button\b[^>]*\sdata-replay\b[^>]*>/)?.[0] ?? "";
+        const behaviours = homeCopy[lang].behaviours;
+        assert.deepEqual([attrs(button, "data-label-replay")[0], attrs(button, "data-label-stop")[0]], [esc(behaviours.replay), esc(behaviours.stop)], `${label}: ${figure.slice(0, 60)} replay and stop labels`);
       }
       assert.match(section(html, "apps"), /<svg class="hub-threads"[^>]*>(?:<path data-thread d="[^"]+"\/>){7}<\/svg>/, `${label}: the hub threads`);
     }
+  });
+
+  // The DOM wiring of home.js, run against site/testing/fake-home.mjs: a recording anime.js whose timelines run by hand.
+  const bootFake = (setup) => {
+    const anime = fakeAnime();
+    const win = fakeWindow(anime);
+    setup(win);
+    siteMotion().boot(win);
+    return { anime, win };
+  };
+
+  await check("motion: a behaviour demo shows a stop control from its first frame and stops at once (WCAG 2.2.2)", () => {
+    const { schedule } = siteMotion();
+    // The punctuation demo types for more than 5 s (design 4, WCAG 2.2.2), so its figure needs the control while it plays.
+    const punctuation = frames.demos["behaviour-punctuation"];
+    const longest = Math.max(...Array.from({ length: 50 }, (unused, seed) => schedule(punctuation.frames, seed + 1).reduce((sum, delay) => sum + delay, 0)));
+    assert.ok(longest > 5000, `behaviour-punctuation types for ${longest} ms`);
+    for (const id of ["behaviour-punctuation", "behaviour-revision", "behaviour-escape"]) {
+      const demo = { id, ...frames.demos[id] };
+      const final = demo.text.replace(/\n+$/, "");
+      const parts = fakeBehaviour(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+      const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+      win.show(parts.figure, 1);
+      assert.equal(anime.timelines.length, 1, `${id}: plays when it scrolls into view`);
+      assert.ok(parts.figure.hasAttribute("data-motion-ready"), `${id}: the control shows as the demo starts`);
+      assert.equal(parts.replay.textContent, "Stop", `${id}: and it reads Stop while the demo plays`);
+      anime.timelines[0].run(2);
+      assert.notEqual(parts.input.children.map(fakeTextOf).join(""), final, `${id}: typing`);
+      parts.replay.dispatch("click");
+      assert.ok(anime.timelines[0].cancelled, `${id}: Stop cancels the typing`);
+      assert.equal(parts.input.children.map(fakeTextOf).join(""), final, `${id}: Stop leaves the finished text`);
+      assert.equal(parts.replay.textContent, "Replay", `${id}: then the button replays`);
+      win.show(parts.figure, 0);
+      win.show(parts.figure, 1);
+      assert.equal(anime.timelines.length, 1, `${id}: a stopped demo does not start again by itself`);
+      parts.replay.dispatch("click");
+      assert.equal(anime.timelines.length, 2, `${id}: Replay plays it again`);
+      assert.equal(parts.replay.textContent, "Stop", `${id}: Stop while it replays`);
+      anime.timelines[1].run();
+      assert.equal(parts.input.children.map(fakeTextOf).join(""), final, `${id}: ends on the finished text`);
+      assert.equal(parts.replay.textContent, "Replay", `${id}: Replay once it has played`);
+      assert.ok(parts.figure.hasAttribute("data-motion-ready"), `${id}: the control stays`);
+    }
+  });
+
+  await check("motion: sending a hero message shows a reserved bubble and moves nothing (design 7.8)", async () => {
+    const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
+    const parts = fakeHero(demos);
+    const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
+    win.show(parts.windowEl, 1);
+    const shown = () => parts.bubbles.map((bubble) => bubble.style.visibility === "visible");
+    assert.deepEqual(shown(), [false, false, false], "nothing sent before the first send");
+    anime.timelines.at(-1).run();
+    assert.deepEqual(shown(), [true, false, false], "the first sentence is sent");
+    anime.timelines.at(-1).run();
+    anime.timelines.at(-1).run();
+    assert.deepEqual(shown(), [false, true, false], "the second sentence replaces it in the same place");
+    assert.equal(parts.sent.hidden, undefined, "home.js never takes the sent cell out of the flow");
+    assert.ok(parts.bubbles.every((bubble) => bubble.hidden === undefined && bubble.textContent === demos[parts.bubbles.indexOf(bubble)].text), "the bubbles keep their sentences");
+    // home.css: the chat grows to hold the tallest bubble instead of clipping the peer's message at a fixed height.
+    const css = (await readFile(join(ASSETS_DIR, "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    const chat = css.match(/\.chat\s*\{([^}]*)\}/)?.[1] ?? "";
+    assert.ok(!/(?:^|;)\s*height:/.test(chat) && !/overflow:\s*hidden/.test(chat), `.chat has no fixed height and clips nothing: ${chat}`);
+    assert.match(css, /\.chat-sent\s*>\s*\.bubble-out\s*\{[^}]*grid-area:\s*1\s*\/\s*1;[^}]*visibility:\s*hidden;/, "the bubbles share one cell, invisible until sent");
+    assert.match(css, /\.tags-cell\s*>\s*\.tags\s*\{[^}]*grid-area:\s*1\s*\/\s*1;/, "the tags share one cell with their sizers");
+    assert.match(css, /\.tags-sizer\s*\{[^}]*visibility:\s*hidden;/, "the sizers reserve space without showing");
   });
 
   await check("motion: home page JavaScript is at most 60 KB gzipped (design 7.8)", async () => {

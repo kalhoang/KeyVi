@@ -4,8 +4,10 @@
 // (lib/pages/home/). With it:
 // - the hero types its three sentences in rotation from data-demo-frames, the engine's frames (site/demo/frames.json):
 //   the field follows each frame, the keys strip keeps the last eight keys, a tag pops in when an English word is
-//   committed, and the finished message moves into the sent bubble before the next sentence starts;
-// - each behaviour demo of section 2 plays once when it scrolls into view, then shows its replay button;
+//   committed, and the finished message shows as sent (its bubble, reserved in the layout) before the next sentence
+//   starts;
+// - each behaviour demo of section 2 plays once when it scrolls into view; its button shows as the demo starts, stops it
+//   while it plays (WCAG 2.2.2: the punctuation demo types for more than five seconds) and replays it at rest;
 // - the hub threads of section 4 draw in when the hub comes into view, and a dot travels along each thread, for less
 //   than five seconds per visit (WCAG 2.2.2: the hub has no pause control).
 // Rules: nothing autoplays under prefers-reduced-motion and the final states stay; motion pauses off-screen and while
@@ -298,12 +300,13 @@
     });
   }
 
-  /** The message moves into the sent bubble; the field empties and the tags fade for the next sentence. */
+  /** The message shows in its sent bubble, which home.css keeps in the layout, invisible, so the chat reserves the
+   * tallest bubble and showing one moves nothing (design 7.8); the field empties and the tags fade for the next
+   * sentence. */
   function sendMessage(hero, index) {
     const { view, player } = hero;
-    hero.sentText.textContent = hero.demos[index].text;
-    hero.sent.hidden = false;
-    player.animate(hero.sent, { opacity: [0, 1], translateY: [12, 0], duration: UI.bubble, ease: "out(3)" });
+    hero.bubbles.forEach((bubble, at) => (bubble.style.visibility = at === index ? "visible" : ""));
+    player.animate(hero.bubbles[index], { opacity: [0, 1], translateY: [12, 0], duration: UI.bubble, ease: "out(3)" });
     view.input.replaceChildren(view.caret);
     const leaving = Array.from(hero.tags.children);
     hero.tagEls.clear();
@@ -379,7 +382,6 @@
     if (!windowEl) return null;
     const section = windowEl.closest("[data-section]");
     const tags = windowEl.querySelector("[data-tags]");
-    const sent = windowEl.querySelector("[data-sent]");
     const hero = {
       demos: readFrames(windowEl),
       section,
@@ -388,8 +390,8 @@
       tagBefore: tags.getAttribute("data-tag-before") || "",
       tagAfter: tags.getAttribute("data-tag-after") || "",
       tagEls: new Map(),
-      sent,
-      sentText: sent.firstElementChild,
+      // One sent bubble per sentence, in the order of the demos (lib/pages/home/hero.mjs).
+      bubbles: Array.from(windowEl.querySelector("[data-sent]").children),
       player: createPlayer(ctx.anime),
       // The static field shows the first sentence finished; it is sent first, then the next one is typed.
       current: 0,
@@ -411,18 +413,30 @@
   // ---------------------------------------------------------------------------------------------------------------
   // Section 2: the behaviour demos
 
+  /** The button stops the demo while it plays and replays it at rest; its labels are in data-label-stop and
+   * data-label-replay (lib/pages/home/behaviours.mjs). */
+  function behaviourLabel(demo) {
+    if (!demo.control) return;
+    const label = demo.control.getAttribute(demo.playing ? "data-label-stop" : "data-label-replay");
+    if (label) demo.control.textContent = label;
+  }
+
   /** The finished demo as on the static page; the field gets its own height back. */
   function behaviourRest(demo) {
     demo.playing = false;
     showFinal(demo.view, demo.frames);
     demo.view.input.style.minHeight = "";
     demo.view.input.removeAttribute("aria-busy");
+    behaviourLabel(demo);
   }
 
   function behaviourPlay(demo) {
     const { view, frames, player } = demo;
     const delays = schedule(frames, (demo.cycle += 1));
     demo.playing = true;
+    // The control shows from the first frame, so the motion can be stopped (design 4, WCAG 2.2.2).
+    demo.figure.setAttribute("data-motion-ready", "");
+    behaviourLabel(demo);
     // The field keeps the height of its final text while it types, so nothing below it moves (design 7.8); the exact
     // height, since offsetHeight rounds.
     view.input.style.minHeight = `${view.input.getBoundingClientRect().height}px`;
@@ -439,9 +453,15 @@
   }
 
   function behaviourEnd(demo) {
-    behaviourRest(demo);
     demo.played = true;
-    demo.figure.setAttribute("data-motion-ready", "");
+    behaviourRest(demo);
+  }
+
+  /** Stop: the finished text at once; the demo does not start again by itself. */
+  function behaviourStop(demo) {
+    demo.player.stop();
+    demo.played = true;
+    behaviourRest(demo);
   }
 
   function behaviourUpdate(demo, env) {
@@ -457,8 +477,13 @@
     demo.player.resume();
   }
 
-  function behaviourReplay(demo, env) {
+  function behaviourPress(demo, env) {
     if (demo.stopped) return;
+    if (demo.playing) behaviourStop(demo);
+    else behaviourReplay(demo, env);
+  }
+
+  function behaviourReplay(demo, env) {
     demo.player.stop();
     behaviourRest(demo);
     behaviourPlay(demo);
@@ -475,6 +500,7 @@
   function setupBehaviour(ctx, figure) {
     const demo = {
       figure,
+      control: figure.querySelector("[data-replay]"),
       frames: readFrames(figure).frames,
       view: { doc: ctx.doc, input: figure.querySelector("[data-input]"), keys: figure.querySelector("[data-keys]"), caret: caretElement(ctx.doc) },
       player: createPlayer(ctx.anime),
@@ -485,8 +511,7 @@
       playing: false,
       stopped: false,
     };
-    const replay = figure.querySelector("[data-replay]");
-    if (replay) replay.addEventListener("click", () => behaviourReplay(demo, ctx.env));
+    if (demo.control) demo.control.addEventListener("click", () => behaviourPress(demo, ctx.env));
     watch(ctx, figure, BEHAVIOUR.startRatio, (isIntersecting, ratio) => {
       demo.visible = isIntersecting;
       demo.ratio = ratio;

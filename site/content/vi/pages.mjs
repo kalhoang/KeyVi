@@ -27,6 +27,7 @@ export const home = {
     heading: "Một câu, hai thứ tiếng",
     intro: "Bạn gõ tiếng Việt như bình thường. Từ tiếng Anh tự giữ nguyên, nên bạn không phải dừng lại để chuyển chế độ.",
     replay: "Xem lại",
+    stop: "Dừng",
     items: [
       {
         id: "punctuation",

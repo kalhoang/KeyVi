@@ -24,6 +24,7 @@ export const home = {
     heading: "One sentence, two languages",
     intro: "A Vietnamese keyboard turns some letters into marks: in Telex, a letter after a vowel can add a tone and a doubled vowel adds a circumflex, so English words would come out with marks they should not have. {{AppNameTM}} recognizes English words and leaves them exactly as you typed them, while the Vietnamese words around them get their marks.",
     replay: "Replay",
+    stop: "Stop",
     items: [
       {
         id: "punctuation",

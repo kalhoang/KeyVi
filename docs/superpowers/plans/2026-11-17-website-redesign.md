@@ -509,16 +509,26 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
     - the input text follows each frame's `text`
     - the keys strip keeps the last 8 keycaps
     - a tag pops in when an English commit lands (spring or `outBack`, 300 to 500 ms)
-    - at the end the message moves into the sent bubble, then the next sentence starts
+    - at the end the message moves into the sent bubble, then the next sentence starts. Review fix of Task 6: the
+      hero renders one sent bubble per sentence, stacked in one grid cell of `[data-sent]` and `visibility: hidden`,
+      and home.js shows the one just sent through `el.style.visibility`; `.chat` has a `min-height` instead of a
+      fixed height with `overflow: hidden`, so the window reserves its tallest state at every width (the first
+      sentence clipped the peer's message at 390 px and by 13 px at 1280 px) and sending moves nothing (design 7.8).
   - **Pause:** the button toggles `aria-pressed` and its label, and pauses or resumes the timeline. Loops also pause
     when the hero leaves the viewport (IntersectionObserver) and on `visibilitychange`.
-  - **Section 2:** each demo plays once when it scrolls into view, with a replay button.
+  - **Section 2:** each demo plays once when it scrolls into view, with a replay button. Review fix of Task 6: the
+    punctuation demo types for about 6 s, so the button shows from the demo's first frame and stops it while it plays
+    (`data-label-stop`, content key `home.behaviours.stop`), then replays it (`data-label-replay`); a stopped demo shows
+    its final state and does not start again by itself (design 4, WCAG 2.2.2).
   - **Showing the controls** (review fix of Task 5): the pause button and the replay buttons are in the static HTML
     without a `hidden` attribute, so they hold their place, and `home.css` keeps them `visibility: hidden` until their
     owner carries `data-motion-ready`. home.js sets `data-motion-ready` on the hero section when the hero loop starts,
-    and on a behaviour figure once its demo has played; it never removes a control from the flow, so showing one moves
+    and on a behaviour figure when its demo starts; it never removes a control from the flow, so showing one moves
     nothing (design 7.8). Each replay button comes before its figure's `figcaption`, which stays the last child.
-  - **Section 3:** engine cards swap keys to result on hover and focus (CSS transition, no JS needed).
+  - **Section 3:** engine cards swap keys to result on hover and focus (CSS transition, no JS needed). Deviation of
+    Task 6, for the integrator to approve or reverse: on hover the keys turn muted, the arrow moves 3 px and the result
+    turns green, rather than the keys being replaced by the result (design 7.3 item 3); the cards hold nothing
+    focusable, so there is no focus state.
   - **Section 4:** threads draw in with `anime.svg.createDrawable` when the hub enters the viewport. Dots travel with
     `createMotionPath`, under the same pause rules.
   - **Reduced motion:** nothing autoplays, the final states stay, and the threads are drawn statically.

@@ -2,9 +2,11 @@
 // Section 1, the hero (design 6, 7.3 item 1): the value statement and the download call on the left; on the right a
 // generic chat window showing the first hero sentence finished, with the keys strip and a tag per English word, under a
 // mini menu bar whose mark stays in the Vietnamese state. home.js (plan Task 6) types the three hero demos in rotation
-// from data-demo-frames, reveals the sent bubble and marks the section data-motion-ready to show the pause button;
-// without JavaScript, or under reduced motion, this final state is the whole demo (design 7.2). The window is
-// aria-hidden; the sentences are also in a visually hidden list (design 7.7).
+// from data-demo-frames, shows the sent bubble of each finished sentence and marks the section data-motion-ready to
+// show the pause button; without JavaScript, or under reduced motion, this final state is the whole demo (design 7.2).
+// The sent bubbles, one per sentence, share one cell and stay invisible until sent (home.css), so the chat reserves the
+// tallest at every width and sending one moves nothing (design 7.8). The window is aria-hidden; the sentences are also
+// in a visually hidden list (design 7.7).
 import { DEFAULT_MIN_MACOS } from "../../context.mjs";
 import { englishWords } from "../../demos.mjs";
 import { markSvg } from "../../layout.mjs";
@@ -33,16 +35,19 @@ function scene(kt, demos) {
   const hero = c.home.hero;
   const [first] = demos;
   const vi = viLang(lang);
-  const tags = englishWords(first).map((word) => `<span class="tag">${f(hero.keepTag, { word })}</span>`).join("");
+  const tagsOf = (demo) => englishWords(demo).map((word) => `<span class="tag">${f(hero.keepTag, { word })}</span>`).join("");
+  // An invisible copy of each sentence's tags in the cell of the live tags, so the row reserves the most rows any
+  // sentence needs at every width (home.css, design 7.8).
+  const sizers = demos.map((demo) => `<p class="tags tags-sizer">${tagsOf(demo)}</p>`).join("");
   return `<div class="hero-scene" aria-hidden="true">
           <div class="menubar"><span class="menubar-item">${markSvg("mark menubar-mark")}<span>${esc(hero.menuBarLabel)}</span></span></div>
           <div class="mac-window" data-hero data-demo-frames="${framesAttr(demos)}">
             <div class="mac-window-bar"><span>${esc(hero.windowTitle)}</span></div>
             <div class="mac-window-body chat">
               <p class="chat-peer"><span class="chat-name">${esc(hero.peerName)}</span><span class="bubble bubble-in"${vi}>${esc(hero.peerMessage)}</span></p>
-              <p class="bubble bubble-out" data-sent hidden><span${vi}>${esc(first.text)}</span><span class="chat-status">${esc(hero.sentLabel)}</span></p>
+              <div class="chat-sent" data-sent>${demos.map((demo) => `<p class="bubble bubble-out"><span${vi}>${esc(demo.text)}</span><span class="chat-status">${esc(hero.sentLabel)}</span></p>`).join("")}</div>
               <div class="chat-input"><p data-input${vi}>${wordsHtml(first)}</p></div>
-              <p class="tags" data-tags ${tagTemplate(kt, hero.keepTag)}>${tags}</p>
+              <div class="tags-cell">${sizers}<p class="tags" data-tags ${tagTemplate(kt, hero.keepTag)}>${tagsOf(first)}</p></div>
             </div>
             <div class="keys-strip"><span class="keys-label">${esc(hero.keysLabel)}</span><span class="keys" data-keys>${keycapsHtml(first)}</span></div>
           </div>
