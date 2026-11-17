@@ -194,16 +194,11 @@
     });
   }
 
-  /** The tags after the last frame. */
+  /** The tags after the last frame, in the order their words became English: a commit or a revision that keeps a word
+   * as typed adds one, a revision that gives it back to Vietnamese takes it out. */
   function finalTags(frames) {
     const steps = tagSteps(frames);
     return steps.length === 0 ? [] : steps[steps.length - 1];
-  }
-
-  /** The raw keys of the English words, in the order they become English: a commit or a revision that keeps a word
-   * as typed adds it, a revision that gives it back to Vietnamese takes it out. */
-  function tagsFor(frames) {
-    return finalTags(frames).map((tag) => tag.raw);
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -770,5 +765,5 @@
     });
   }
 
-  return Object.freeze({ schedule, keyLabel, shouldAnimate, tagsFor, fieldPieces, stripKeys, behaviourStartRatio, boot });
+  return Object.freeze({ schedule, keyLabel, shouldAnimate, finalTags, fieldPieces, stripKeys, behaviourStartRatio, boot });
 });

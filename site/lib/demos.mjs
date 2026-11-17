@@ -137,11 +137,6 @@ export function wordsOf(demo) {
   return [...pieces, ...plainPieces(demo.text.slice(cursor))];
 }
 
-/** The English words of the final text, in order: the words the hero tags as kept (their plain forms: wordsOf). */
-export function englishWords(demo) {
-  return wordsOf(demo).filter((piece) => piece.english).map((piece) => piece.text);
-}
-
 /** The index of the frame a learning row's keys strip ends at: the key the pass is about, which is the restore toggle of
  * a teaching pass or the commit the engine took from memory (rule learned, L9c), the last one of either; otherwise the
  * last frame. The teaching rows end on Escape and the last row on the learned word (design 9 item 4). Only the learning

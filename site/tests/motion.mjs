@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { englishWords, keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
 import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeLearning, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
@@ -42,8 +42,9 @@ export async function runMotionChecks(check, fixtures) {
     assert.notDeepEqual(schedule(chat, 1), schedule(chat, 2), "the seed varies the jitter");
   });
 
-  await check("motion: keyLabel and tagsFor", async () => {
-    const { keyLabel: motionKeyLabel, tagsFor } = siteMotion();
+  await check("motion: keyLabel and finalTags", async () => {
+    const { keyLabel: motionKeyLabel, finalTags } = siteMotion();
+    const tagsFor = (frames) => finalTags(frames).map((tag) => tag.raw);
     for (const lang of LANGS) {
       assert.deepEqual([" ", "⏎", "⎋", "a", "6"].map((key) => motionKeyLabel(key, lang)), ["space", "return", "esc", "a", "6"], lang);
       // The animated keys strip ends as the static one: the legend of lib/demos.mjs for every key of frames.json.
@@ -53,9 +54,12 @@ export async function runMotionChecks(check, fixtures) {
     const english = chat.filter((frame) => frame.commit?.english).map((frame) => frame.commit.raw);
     assert.ok(english.length > 0, "the hero sentence has English words");
     assert.deepEqual(tagsFor(chat), english, "hero-chat: its English commits, in order");
-    // Every demo's tags end as the static page's (englishWords, the words in <mark> and the hero tags).
+    // Every demo's tags end as the static page's: the English pieces of wordsOf, which the hero renders, plain forms too.
     const { byId } = await loadDemos(framesPath);
-    for (const [id, demo] of byId) assert.deepEqual(tagsFor(demo.frames), englishWords(demo), id);
+    for (const [id, demo] of byId) {
+      const kept = wordsOf(demo).filter((piece) => piece.english);
+      assert.deepEqual(finalTags(demo.frames).map(({ raw, plain }) => ({ raw, plain })), kept.map(({ text, plain }) => ({ raw: text, plain })), id);
+    }
     assert.deepEqual(tagsFor(byId.get("behaviour-revision").frames), ["tricky", "as", "hell"], "a revision that restores adds its word");
     // RV4: the next word gives a restored word back to Vietnamese, so its tag goes.
     const back = [
