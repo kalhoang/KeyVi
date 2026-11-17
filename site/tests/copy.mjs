@@ -47,8 +47,8 @@ export async function runCopyChecks(check, fixtures) {
     assert.equal(en.learning.intro, "{{AppNameTM}} learns from the corrections you make. Correct a word twice and {{AppName}} types it your way from then on. Everything it learns stays on this Mac, and you can see and remove it in Settings.");
     assert.deepEqual([vi.learning.rows, en.learning.rows], [["Lần 1", "Lần 2", "Từ lần sau"], ["1st time", "2nd time", "From then on"]]);
     assert.deepEqual([vi.learning.learned, en.learning.learned], ["Đã nhớ", "Learned"]);
-    assert.equal(vi.learning.caption, "Gõ {{raw}} ra {{vi}}? Bấm Escape để lấy lại {{raw}}. Sửa hai lần, {{AppName}} nhớ luôn.");
-    assert.equal(en.learning.caption, "Typed {{raw}} and got {{vi}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.");
+    assert.equal(vi.learning.caption, "Gõ {{raw}} ra {{viHtml}}? Bấm Escape để lấy lại {{raw}}. Sửa hai lần, {{AppName}} nhớ luôn.");
+    assert.equal(en.learning.caption, "Typed {{raw}} and got {{viHtml}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.");
     assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
     // Design 9 item 1: a kept word's tag names what plain Telex would have typed; the caption says so; the peer's message
     // is Vietnamese on both pages.

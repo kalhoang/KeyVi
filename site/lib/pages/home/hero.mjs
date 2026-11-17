@@ -49,9 +49,6 @@ function tagHtml(templates, piece) {
   return `<span class="tag">${templateOf(templates, piece).map((part, index) => (index % 2 === 0 ? esc(part) : slot[part]())).join("")}</span>`;
 }
 
-/** What a tag says, as plain text for the hidden list. */
-const tagText = (templates, piece) => templateOf(templates, piece).map((part, index) => (index % 2 === 0 ? part : piece[part === "word" ? "text" : "plain"])).join("");
-
 const keptWords = (demo) => wordsOf(demo).filter((piece) => piece.english);
 
 function scene(kt, demos, templates) {
@@ -92,10 +89,17 @@ function motionToggle({ pause, play }) {
   return `<button type="button" class="btn btn-ghost motion-toggle" data-motion-toggle aria-describedby="${CAPTION_ID}" ${labels}>${esc(pause)}</button>`;
 }
 
+/** What a tag says in words, as HTML for the hidden list: off the vi page the plain form is Vietnamese inside the page
+ * language, so it carries lang="vi" for screen readers (design 7.6). */
+function tagWordsHtml(templates, piece, lang) {
+  const slot = { word: () => esc(piece.text), plain: () => (lang === "vi" ? esc(piece.plain) : `<span${viLang(lang)}>${esc(piece.plain)}</span>`) };
+  return templateOf(templates, piece).map((part, index) => (index % 2 === 0 ? esc(part) : slot[part]())).join("");
+}
+
 /** A sentence of the hidden list, then its tags in words: "(test, không thành tét; ...)". */
 function sentenceItem(kt, templates, demo) {
-  const tags = keptWords(demo).map((piece) => tagText(templates, piece));
-  return `<li><span${viLang(kt.lang)}>${esc(demo.text)}</span>${tags.length > 0 ? ` (${esc(tags.join("; "))})` : ""}</li>`;
+  const tags = keptWords(demo).map((piece) => tagWordsHtml(templates, piece, kt.lang));
+  return `<li><span${viLang(kt.lang)}>${esc(demo.text)}</span>${tags.length > 0 ? ` (${tags.join("; ")})` : ""}</li>`;
 }
 
 export function renderHero(kt) {

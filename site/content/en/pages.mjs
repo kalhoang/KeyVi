@@ -54,7 +54,7 @@ export const home = {
     demo: "learning-reset",
     rows: ["1st time", "2nd time", "From then on"],
     learned: "Learned",
-    caption: "Typed {{raw}} and got {{vi}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.",
+    caption: "Typed {{raw}} and got {{viHtml}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.",
     req: "D28, ENG-R863",
     cards: [
       {

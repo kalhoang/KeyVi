@@ -199,8 +199,10 @@ export async function runHomeChecks(check, fixtures) {
       const copy = homeCopy[lang].learning;
       const figure = section(html, "learning").match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
       const caption = figure.match(/<figcaption><p id="learning-caption">([\s\S]*?)<\/p><\/figcaption>/)?.[1];
-      const expected = copy.caption.replaceAll("{{raw}}", raw).replaceAll("{{vi}}", vi).replaceAll("{{AppName}}", brand.name);
+      const expected = copy.caption.replaceAll("{{raw}}", raw).replaceAll("{{viHtml}}", vi).replaceAll("{{AppName}}", brand.name);
       assert.equal(unescapeHtml(textOf(caption ?? "")), expected, `${label}: the caption`);
+      // The caption describes the replay button: on the English page the Vietnamese word is read as Vietnamese.
+      assert.equal((caption ?? "").includes(`<span lang="vi">${esc(vi)}</span>`), lang !== "vi", `${label}: ${vi} carries lang="vi" off the vi page`);
     }
   });
 
@@ -285,6 +287,11 @@ export async function runHomeChecks(check, fixtures) {
         const item = [...hidden.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => unescapeHtml(textOf(m[1]))).find((text) => text.startsWith(frames.demos[id].text));
         assert.ok(item, `${label}: ${id} is in the hidden list`);
         for (const piece of wordsOf(frames.demos[id]).filter((p) => p.english)) assert.ok(item.includes(tagText(copy, piece)), `${label}: ${id} says "${tagText(copy, piece)}" in words`);
+        // Off the vi page the plain forms are Vietnamese inside English text, so screen readers need lang="vi" on them.
+        const raw = [...hidden.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]).find((html) => unescapeHtml(textOf(html)).startsWith(frames.demos[id].text));
+        for (const piece of wordsOf(frames.demos[id]).filter((p) => p.plain)) {
+          assert.equal(raw.includes(`<span lang="vi">${esc(piece.plain)}</span>`), lang !== "vi", `${label}: ${id} marks ${piece.plain} as Vietnamese off the vi page`);
+        }
       }
     }
     const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");

@@ -43,6 +43,8 @@ function figure(kt) {
   const passes = [...demo.teachPasses, demo];
   const { raw, vi } = correctionOf(demo.teachPasses[0]);
   const labels = kt.c.home.behaviours;
+  // The caption also describes the replay button: off the vi page the Vietnamese word carries lang="vi" (design 7.6).
+  const viHtml = kt.lang === "vi" ? esc(vi) : `<span${viLang(kt.lang)}>${esc(vi)}</span>`;
   return `<figure class="learning-demo" data-demo="${esc(copy.demo)}" data-demo-frames="${framesAttr(demo)}" data-req="${esc(copy.req)}">
         <div class="demo-window">
           <ol class="learning-rows">
@@ -50,7 +52,7 @@ function figure(kt) {
           </ol>
         </div>
         <button type="button" class="btn btn-ghost replay" data-replay data-label-replay="${esc(labels.replay)}" data-label-stop="${esc(labels.stop)}" aria-describedby="${CAPTION_ID}">${esc(labels.replay)}</button>
-        <figcaption><p id="${CAPTION_ID}">${f(copy.caption, { raw, vi })}</p></figcaption>
+        <figcaption><p id="${CAPTION_ID}">${f(copy.caption, { raw, viHtml })}</p></figcaption>
       </figure>`;
 }
 
