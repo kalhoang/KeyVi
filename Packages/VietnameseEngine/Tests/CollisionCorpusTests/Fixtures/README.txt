@@ -25,6 +25,10 @@ Provenance
   (30 random corpus lines, 20 corpus lines with a revision, 10 lines of the tone-after-vowel file, 5 lines of each
   set): every label is right and every output follows the rules of spec 8.1 and ENG-R828, including the known
   failures listed in docs/decisions/0008-collision-learning.md. Then the files were frozen.
+  Re-recorded on 17/11/2026 for rule L4 as amended by the product owner (spec/01-engine.md ENG-R804, REG-37): 34
+  sentences of each corpus file changed, every one toward the intended words (`pass`, `posts`, `costs`, `off`,
+  `mess`, `nests`, `Terraform`, `Grafana`, `DeepSeek`), reviewed one by one; the sets and every label are
+  unchanged.
 
 Format (tab-separated, one sentence per line, lines starting with # are comments)
   id        sentence id (PA, CS, EN, VI for the corpus; ADV, STR, HLD for the sets)

@@ -10,6 +10,10 @@ package struct CommitInputs: Sendable {
     package let rawLowercased: String
     package let facts: CommittedTextFacts
     package let escapeUsed: Bool
+    /// The last key was an escape (`Composition.endsWithEscape`, rule L4).
+    package let endsWithEscape: Bool
+    /// An escape was not a doubling (`Composition.escapedAcrossKeys`, rule L4).
+    package let escapedAcrossKeys: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -27,6 +31,8 @@ package struct CommitInputs: Sendable {
         rawLowercased = ASCII.string(token.composition.raw, lowercasing: true)
         facts = CommittedTextFacts(committed)
         escapeUsed = token.composition.escapeUsed
+        endsWithEscape = token.composition.endsWithEscape
+        escapedAcrossKeys = token.composition.escapedAcrossKeys
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -65,6 +71,9 @@ package struct CommitContext: Sendable {
     /// ENG-R850 (d): the token is the first word of its line (`CommitPolicy.isLineStart`), for rule L9's sentence
     /// condition (`CommitPolicy.startsSentence`) and RV5 of ENG-R828.
     package var atLineStart: Bool
+    /// Rule L9c may read the learned memory (ENG-R863). Off only where rule L4 asks what the keys of an escaped form
+    /// commit on their own: the memory decides collision words, never an escape (ENG-R877, REG-37).
+    package var readsMemory = true
 
     package init(
         runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
@@ -120,8 +129,13 @@ package struct CommitPolicy: Sendable {
     /// depend on `lookaheadRevision`, which the rules turn off in every code-context app (PLT-R357).
     package let lineRevision: Bool
 
+    /// The composition rules of the configuration: rule L4 composes the keys of an escaped form to learn whether
+    /// the escape was needed (amended by the product owner on 17/11/2026, REG-37).
+    let rules: ComposerRules
+
     package init(resources: Resources, configuration: EngineConfiguration) {
         self.resources = resources
+        rules = ComposerRules(configuration)
         autoRestore = configuration.autoRestore
         appContext = configuration.appContext
         collisionRules = configuration.lookaheadRevision
@@ -167,10 +181,7 @@ package struct CommitPolicy: Sendable {
         // L3b: camel case (ENG-R904).
         if inputs.camelCase { return restore(.camelCase) }
         // L4: an escape was used.
-        if inputs.escapeUsed {
-            if isEnglish(inputs.facts.lowercased) { return .kept(.escape) }
-            return isEnglish(r) ? restore(.escape) : .kept(.escape)
-        }
+        if inputs.escapeUsed { return decideEscape(inputs, rawLowercased: r, context: context) }
         switch inputs.facts.validity {
         case .invalid: return restore(.invalid)  // L5
         case .extended:  // L6, unless the memory votes for the other side (L9c)
@@ -231,7 +242,7 @@ package struct CommitPolicy: Sendable {
 
     /// ENG-R802: rules L3b to L11 restore only when auto restore is on.
     @inline(__always)
-    private func restore(_ rule: CommitRule) -> CommitDecision {
+    func restore(_ rule: CommitRule) -> CommitDecision {
         autoRestore ? .restored(rule) : .kept(rule)
     }
 

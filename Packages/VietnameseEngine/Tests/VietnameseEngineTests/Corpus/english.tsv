@@ -31,6 +31,6 @@ EN020	Telex	qa-english	macOS\s	macOS\s	-	L0
 EN021	Telex	qa-english	iPhone\s	iPhone\s	-	camel case, L0
 EN022	Telex	qa-english	text,\suser;\swifi?\sUSB)\scase!\n	text,\suser;\swifi?\sUSB)\scase!\n	-	every boundary key commits the same way (P0-3)
 EN023	Telex	qa-english	traffic\scurrent\sissue\swith\stext\s	traffic\scurrent\sissue\swith\stext\s	-	a sentence
-EN024	Telex	-	current\s	curent\s	-	without the hand list current is not English: L4 keeps the escaped form
+EN024	Telex	-	current\s	current\s	-	without the hand list neither current nor curent is English, and curent goes on after the escape with a second vowel group: L4 restores the keys (REG-37; L4 kept curent before 17/11/2026)
 EN025	Telex	qa-english	Traffic\sCurrent\sIssue\s	Traffic\sCurrent\sIssue\s	-	capitalised (ENG-R332)
 EN026	Telex	qa-english	GITHUB\sMACOS\s	GITHUB\sMACOS\s	-	all capitals

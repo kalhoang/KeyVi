@@ -368,4 +368,18 @@ struct RegressionTests {
         #expect(try Committing.text("tar nhaatj.log ", terminal) == "tar nhật.log ")
         #expect(try Committing.text("tar\nthuwr ", terminal) == "tar\nthử ")
     }
+
+    @Test("REG-37: an English word that hits an escape mid-word commits as typed")
+    func reg37() throws {
+        // The product owner's report of 17/11/2026: `leecher` showed `lêch`, the third `e` escaped the circumflex
+        // and the commit kept `lecher`, because neither `lecher` nor `leecher` is in the lexicon (rule L4 as it was).
+        // A display with two vowel groups that went on after the escape cannot be one Vietnamese syllable.
+        #expect(try Committing.text("leecher ") == "leecher ")
+        #expect(try Committing.text("cheeseburger, ") == "cheeseburger, ")
+        // The deliberate escapes of Telex users stay: elongations, names, the escape examples of 4.7.
+        #expect(try Committing.text("boooong ") == "booong ")
+        #expect(try Committing.text("Kroong Anaa ") == "Krông Ana ")
+        #expect(try Committing.text("ass ") == "as ")
+        #expect(try Committing.text("www ") == "www ")
+    }
 }

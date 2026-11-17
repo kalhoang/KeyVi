@@ -25,12 +25,33 @@ struct EnglishCorpusGateTests {
             configuration: EngineConfiguration(lookaheadRevision: false))
     }
 
+    /// The ENG-T11 exceptions of the English run: every entry but the L4 ones, which change only in Vietnamese context
+    /// (rule L4 as amended by the product owner on 17/11/2026, REG-37).
+    static func englishRunExceptions() throws -> Set<String> {
+        Set(try exceptionRows().filter { $0.rule != "L4" }.map(\.word))
+    }
+
+    /// The L4 entries: word -> the escaped form it keeps in Vietnamese context.
+    static func vietnameseContextEscapes() throws -> [String: String] {
+        Dictionary(uniqueKeysWithValues: try exceptionRows().filter { $0.rule == "L4" }.map { ($0.word, $0.display) })
+    }
+
+    /// `known-exceptions.txt` as `word<TAB>display<TAB>rule<TAB>reason` rows.
+    static func exceptionRows() throws -> [(word: String, display: String, rule: String)] {
+        try String(contentsOf: RealData.knownExceptionsFile, encoding: .utf8).split(separator: "\n")
+            .filter { !$0.hasPrefix("#") }
+            .map { line in
+                let cells = line.split(separator: "\t").map(String.init)
+                guard cells.count == 4 else { throw TestFailure("known-exceptions.txt: malformed row \(line)") }
+                return (cells[0], cells[1], cells[2])
+            }
+    }
+
     @Test("ENG-R871, ENG-T11: at least 99.5 % unchanged in an English run, every failure a known exception")
     func englishRun() throws {
         let (words, report) = try Self.report.get()
         let resources = try RealData.resources()
-        let exceptions = EnglishCorpusCheck.exceptions(
-            try String(contentsOf: RealData.knownExceptionsFile, encoding: .utf8))
+        let exceptions = try Self.englishRunExceptions()
         // ENG-R827: a `run: vi` row is never restored by the English run; L11 keeps it Vietnamese by design.
         let runExempt = report.changedInEnglishRun.filter {
             resources.collision.runExempt.contains($0.word) && $0.decision == .kept(.ambiguityTable)
@@ -51,14 +72,15 @@ struct EnglishCorpusGateTests {
         #expect(unlisted.isEmpty, "not in known-exceptions.txt:\n\(RealData.listing(unlisted))")
         let stale = exceptions.subtracting(changed.map(\.word)).sorted()
         #expect(stale.isEmpty, "known exceptions that no longer change: \(stale)")
+        // REG-37: in an English run L4 restores the keys of a doubled word whose two forms are English.
+        #expect(
+            changed.allSatisfy { $0.decision?.rule != .escape }, "\(changed.filter { $0.decision?.rule == .escape })")
     }
 
     @Test("ENG-R829: with lookaheadRevision off the English run changes exactly the known exceptions")
     func englishRunWithoutTheCollisionRules() throws {
         let report = try Self.reportWithoutCollisionRules.get()
-        let exceptions = EnglishCorpusCheck.exceptions(
-            try String(contentsOf: RealData.knownExceptionsFile, encoding: .utf8))
-        #expect(Set(report.changedInEnglishRun.map(\.word)) == exceptions)
+        #expect(Set(report.changedInEnglishRun.map(\.word)) == (try Self.englishRunExceptions()))
         // Vietnamese context does not depend on the collision rules.
         let (_, withRules) = try Self.report.get()
         #expect(report.changedInVietnameseContext == withRules.changedInVietnameseContext)
@@ -76,21 +98,27 @@ struct EnglishCorpusGateTests {
         #expect(report.changedShareInVietnameseContext <= 0.03)
         // 100 % of the changed words are rows decided vi (proposed, reviewed or unreviewed, ENG-R821) whose
         // display is an attested Tier A syllable (ENG-R820). The ENG-T11 exceptions of the same corpus are
-        // the only other changes: rules L4, L6 and L7 decide them before the context or the table is read, so
-        // each must change exactly as in the English run (docs/decisions/0202).
+        // the only other changes: rules L6 and L7 decide them before the context or the table is read, so
+        // each must change exactly as in the English run (docs/decisions/0202); and the L4 entries, the deliberate
+        // escapes the product owner kept in Vietnamese context on 17/11/2026 (REG-37), change to the display listed.
         let englishRun = Dictionary(
             report.changedInEnglishRun.map { ($0.word, $0.committed) }, uniquingKeysWith: { first, _ in first })
-        let exceptions = Set(englishRun.keys).intersection(
-            EnglishCorpusCheck.exceptions(try String(contentsOf: RealData.knownExceptionsFile, encoding: .utf8)))
+        let exceptions = Set(englishRun.keys).intersection(try Self.englishRunExceptions())
         let documented = changed.filter { exceptions.contains($0.word) }
         #expect(documented.allSatisfy { englishRun[$0.word] == $0.committed })
-        let rest = changed.filter { !exceptions.contains($0.word) }
+        let escapes = try Self.vietnameseContextEscapes()
+        let escaped = changed.filter { escapes[$0.word] != nil }
+        #expect(escaped.allSatisfy { escapes[$0.word] == $0.committed && $0.decision == .kept(.escape) })
+        #expect(Set(escaped.map(\.word)) == Set(escapes.keys), "every L4 entry changes in Vietnamese context")
+        let rest = changed.filter { !exceptions.contains($0.word) && escapes[$0.word] == nil }
         let withoutViRow = rest.filter { resources.ambiguity[$0.word] != .vietnamese }
         #expect(withoutViRow.isEmpty, "changed without a vi row:\n\(RealData.listing(withoutViRow))")
         let candidates = Set(report.unexplainedVietnameseChanges(resources: resources).map(\.word))
         let unexplained = rest.filter { candidates.contains($0.word) }
         #expect(unexplained.isEmpty, "not an ambiguity candidate:\n\(RealData.listing(unexplained))")
-        print("[ENG-R872] \(rest.count) vi rows, \(documented.count) known exceptions (rules L4, L6, L7)")
+        print(
+            "[ENG-R872] \(rest.count) vi rows, \(documented.count) known exceptions (rules L6, L7), \(escaped.count) "
+                + "deliberate escapes (rule L4)")
     }
 }
 

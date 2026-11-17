@@ -152,7 +152,7 @@ CS0050	mixed	A	Em guwir laij banr tax invoice ddax suwar, anh check giups em aj{
 CS0051	mixed	B	Minhf choots agenda cho buooir meeting sangs mai nhuw sau aj{RET}	Mình chốt agenda cho buổi meeting sáng mai như sau ạ{RET}	-	Mình chốt agenda cho buổi meeting sáng/V/enkeys-row-vi/after-en-1,before-vi,mid mai như sau ạ
 VI0089	pure-vi	A	Camr own anh chij ddax danhf thowif gian cho buooir phongr vaans hoom nay{RET}	Cảm ơn anh chị đã dành thời gian cho buổi phỏng vấn hôm nay{RET}	-	Cảm ơn/V/enkeys-row-vi/after-vi,before-vi,mid anh chị đã dành thời gian cho buổi phỏng vấn hôm nay
 CS0052	mixed	A	Kinhs guwir anh, em guwir kemf theo ddaay banr offer chinhs thuwcs{RET}	Kính gửi anh, em gửi kèm theo đây bản offer chính thức{RET}	-	Kính gửi anh em gửi kèm theo đây bản offer chính thức
-CS0053	mixed	A	Banj aays ddax pass vongf phongr vaans thuws hai, minhf sawps xeeps vongf cuoois nhes{RET}	Bạn ấy đã pas vòng phỏng vấn thứ hai, mình sắp xếp vòng cuối nhé{RET}	-	Bạn ấy đã pass vòng phỏng vấn thứ hai mình sắp xếp vòng cuối nhé
+CS0053	mixed	A	Banj aays ddax pass vongf phongr vaans thuws hai, minhf sawps xeeps vongf cuoois nhes{RET}	Bạn ấy đã pass vòng phỏng vấn thứ hai, mình sắp xếp vòng cuối nhé{RET}	-	Bạn ấy đã pass vòng phỏng vấn thứ hai mình sắp xếp vòng cuối nhé
 CS0054	mixed	B	Seeps muoons xem soos lieeuj nayf truwowcs khi hopj vowis board{RET}	Sếp muốn xem số liệu này trước khi họp với board{RET}	-	Sếp/V/enkeys-row-vi/before-vi,start muốn xem số liệu này trước khi họp với board
 CS0055	mixed	A	Em ddax update file kees hoachj treen drive, moij nguwowif xem nhes{RET}	Em đã update file kế hoạch trên drive, mọi người xem nhé{RET}	-	Em đã update file kế/H hoạch trên drive mọi người xem nhé
 CS0056	mixed	A	Anh cho em xin cais template baos caos tuaanf vowis aj{RET}	Anh cho em xin cái template báo cáo tuần với ạ{RET}	-	Anh cho em xin cái template báo cáo tuần với ạ
@@ -171,7 +171,7 @@ CS0065	mixed	B	Anh review giumf em cais howpj ddoongf truwowcs khi guwir khachs 
 CS0066	mixed	A	Maays anh chij nhows noopj report truwowcs thuws Saus giumf em nha{RET}	Mấy anh chị nhớ nộp report trước thứ Sáu giùm em nha{RET}	-	Mấy anh chị nhớ nộp report trước thứ Sáu giùm em nha
 VI0093	pure-vi	B	Em xin nghir pheps hai ngayf, vieecj em ddax giao laij cho banj Vy rooif as{RET}	Em xin nghỉ phép hai ngày, việc em đã giao lại cho bạn Vy rồi á{RET}	-	Em xin nghỉ phép hai ngày việc em đã giao lại cho bạn Vy rồi á/V/enkeys-row-vi/after-vi,before-RET
 CS0067	mixed	B	Tieenf taxi ddi gawpj khachs em gom laij cuoois thangs claim mootj laanf{RET}	Tiền taxi đi gặp khách em gom lại cuối tháng claim một lần{RET}	-	Tiền taxi/E/unattested/after-vi,before-vi,mid đi gặp khách em gom lại cuối tháng claim một lần
-CS0068	mixed	A	Banj ddos pass phongr vaans rooif as, minhf henj vongf cuoois tuaanf sau nha{RET}	Bạn đó pas phỏng vấn rồi á, mình hẹn vòng cuối tuần sau nha{RET}	-	Bạn đó/H pass phỏng vấn rồi á/V/enkeys-row-vi/after-vi,before-comma,before-vi mình hẹn vòng cuối tuần sau nha
+CS0068	mixed	A	Banj ddos pass phongr vaans rooif as, minhf henj vongf cuoois tuaanf sau nha{RET}	Bạn đó pass phỏng vấn rồi á, mình hẹn vòng cuối tuần sau nha{RET}	-	Bạn đó/H pass phỏng vấn rồi á/V/enkeys-row-vi/after-vi,before-comma,before-vi mình hẹn vòng cuối tuần sau nha
 VI0094	pure-vi	A	Seeps nois muoons coi soos nayf truwowcs khi hopj vowis ban giams ddoocs{RET}	Sếp nói muốn coi số này trước khi họp với ban giám đốc{RET}	-	Sếp/V/enkeys-row-vi/before-vi,start nói muốn coi số này trước khi họp với ban giám đốc
 CS0069	mixed	B	Em mowis update file kees hoachj treen drive, anh chij coi giumf em{RET}	Em mới update file kế hoạch trên drive, anh chị coi giùm em{RET}	-	Em mới update file kế/H hoạch trên drive anh chị coi giùm em
 CS0070	mixed	B	Camr own anh chij ddax hoox trowj team em trong duwj ans vuwaf rooif{RET}	Cảm ơn anh chị đã hỗ trợ team em trong dự án vừa rồi{RET}	-	Cảm ơn/V/enkeys-row-vi/after-vi,before-vi,mid anh chị đã hỗ trợ team em trong dự án vừa rồi
@@ -239,7 +239,7 @@ VI0117	pure-vi	B	Minhf cos theer dowif cuoocj goij sang 3 giowf dduwowcj khoong 
 VI0118	pure-vi	A	Nhowf anh guwir giumf em cais soos ddieenj thoaij cuar been vaanj chuyeenr{RET}	Nhờ anh gửi giùm em cái số điện thoại của bên vận chuyển{RET}	-	Nhờ anh gửi giùm em cái số điện thoại của bên/V/enkeys-row-vi/after-vi,before-vi,mid vận chuyển
 VI0119	pure-vi	B	Sangs mai em ddeens muoonj khoangr 30 phuts vif phair dduwa con ddi khams{RET}	Sáng mai em đến muộn khoảng 30 phút vì phải đưa con đi khám{RET}	-	Sáng/V/enkeys-row-vi/before-vi,start mai em đến muộn khoảng phút vì phải đưa con đi khám
 VI0120	pure-vi	B	Em xin guwir lowif camr own chaan thanhf ddeens toanf theer anh chij trong phongf{RET}	Em xin gửi lời cảm ơn chân thành đến toàn thể anh chị trong phòng{RET}	-	Em xin gửi lời cảm ơn/V/enkeys-row-vi/after-vi,before-vi,mid chân thành đến toàn thể anh chị trong phòng
-CS0109	mixed	A	Anh owi test treen staging pass heets rooif, em merge nha{RET}	Anh ơi test trên staging pas hết rồi, em merge nha{RET}	-	Anh ơi test/E/table-en/after-vi,before-vi,mid trên staging pass hết rồi em merge nha
+CS0109	mixed	A	Anh owi test treen staging pass heets rooif, em merge nha{RET}	Anh ơi test trên staging pass hết rồi, em merge nha{RET}	-	Anh ơi test/E/table-en/after-vi,before-vi,mid trên staging pass hết rồi em merge nha
 CS0110	mixed	A	Cais bug nayf chir bij treen Safari thooi as, Chrome binhf thuwowngf{RET}	Cái bug này chỉ bị trên Safari thôi á, Chrome bình thường{RET}	-	Cái bug này chỉ bị trên Safari thôi á/V/enkeys-row-vi/after-vi,before-comma,before-en Chrome bình thường
 CS0111	mixed	A	Em mowis push code leen branch feature, anh review giumf em{RET}	Em mới push code lên branch feature, anh review giùm em{RET}	-	Em mới push code lên branch feature anh review giùm em
 CS0112	mixed	B	Build treen CI fail rooif, hinhf nhuw do thieeus bieens env{RET}	Build trên CI fail rồi, hình như do thiếu biến env{RET}	-	Build trên CI fail rồi hình như do thiếu biến env
@@ -265,19 +265,19 @@ CS0131	mixed	A	Max connection cuar Postgres ddang ddeer 100, tawng leen 200 nhes
 CS0132	mixed	A	Cais loop nayf chayj hoaif hoong duwngf, chawcs thieeus ddieeuf kieenj thoats{RET}	Cái loop này chạy hoài hông dừng, chắc thiếu điều kiện thoát{RET}	-	Cái loop này chạy hoài hông dừng chắc thiếu điều kiện thoát
 CS0133	mixed	A	Em sex vieets theem unit test cho hamf parse nayf{RET}	Em sẽ viết thêm unit test cho hàm parse này{RET}	-	Em sẽ/V/enkeys-row-vi/after-vi,before-vi,mid viết thêm unit test/E/table-en/after-en-1,before-vi,mid cho hàm parse này
 CS0134	mixed	B	Mai minhf sex release banr 2.3, toois nay freeze code nha{RET}	Mai mình sẽ release bản 2.3, tối nay freeze code nha{RET}	-	Mai mình sẽ/V/enkeys-row-vi/after-vi,before-en,mid release bản tối nay freeze code nha
-CS0135	mixed	B	Dashboard Grafana khoong hieenj soos lieeuj tuwf toois qua{RET}	Dashboard Gràna không hiện số liệu từ tối qua{RET}	-	Dashboard Grafana không hiện số liệu từ tối qua
+CS0135	mixed	B	Dashboard Grafana khoong hieenj soos lieeuj tuwf toois qua{RET}	Dashboard Grafana không hiện số liệu từ tối qua{RET}	-	Dashboard Grafana không hiện số liệu từ tối qua
 CS0136	mixed	A	Kafka consumer bij lag towis 2 trieeuj message rooif as{RET}	Kầk consumer bị lag tới 2 triệu message rồi á{RET}	-	Kafka/E/tierB-kept/before-en,start consumer bị lag tới triệu message rồi á/V/enkeys-row-vi/after-vi,before-RET
-CS0137	mixed	A	Terraform plan baos sex xoas 3 resource, dduwngf apply vooij{RET}	Teraform plan báo sẽ xóa 3 resource, đừng apply vội{RET}	-	Terraform plan báo sẽ/V/enkeys-row-vi/after-vi,before-vi,mid xóa resource đừng apply vội
-CS0138	mixed	A	Em thuwr DeepSeek vowis Claude cho task nayf, Claude oonr hown{RET}	Em thử Dépeek với Claude cho task này, Claude ổn hơn{RET}	-	Em thử DeepSeek với Claude cho task này Claude ổn hơn
+CS0137	mixed	A	Terraform plan baos sex xoas 3 resource, dduwngf apply vooij{RET}	Terraform plan báo sẽ xóa 3 resource, đừng apply vội{RET}	-	Terraform plan báo sẽ/V/enkeys-row-vi/after-vi,before-vi,mid xóa resource đừng apply vội
+CS0138	mixed	A	Em thuwr DeepSeek vowis Claude cho task nayf, Claude oonr hown{RET}	Em thử DeepSeek với Claude cho task này, Claude ổn hơn{RET}	-	Em thử DeepSeek với Claude cho task này Claude ổn hơn
 CS0139	mixed	A	Repo nayf dungf Rust cho phaanf core, Python cho phaanf script{RET}	Repo này dùng Rút cho phần core, Python cho phần script{RET}	-	Repo này dùng Rust/E/table-vi/after-vi,before-vi,mid cho phần core Python cho phần script
 CS0140	mixed	B	Cais REST API cux minhf giuwx laij cho client cux xaif{RET}	Cái RÉT API cũ mình giữ lại cho client cũ xài{RET}	-	Cái REST/E/table-vi/after-vi,before-en,mid API cũ mình giữ lại cho client cũ xài
 CS0141	mixed	B	Anh chayj laij pipeline giups em, lucs nayx runner bij treo{RET}	Anh chạy lại pipeline giúp em, lúc nãy runner bị treo{RET}	-	Anh chạy lại pipeline giúp em lúc nãy runner bị treo
-CS0142	mixed	A	Maays cais posts treen blog dev em ddax review xong rooif{RET}	Mấy cái pots trên blog dev em đã review xong rồi{RET}	-	Mấy cái posts trên blog dev em đã review xong rồi
-CS0143	mixed	B	Chi phis cloud thangs nayf tawng vif costs cuar log storage{RET}	Chi phí cloud tháng này tăng vì cots của log storage{RET}	-	Chi phí cloud tháng này tăng vì costs của log storage
+CS0142	mixed	A	Maays cais posts treen blog dev em ddax review xong rooif{RET}	Mấy cái posts trên blog dev em đã review xong rồi{RET}	-	Mấy cái posts trên blog dev em đã review xong rồi
+CS0143	mixed	B	Chi phis cloud thangs nayf tawng vif costs cuar log storage{RET}	Chi phí cloud tháng này tăng vì costs của log storage{RET}	-	Chi phí cloud tháng này tăng vì costs của log storage
 CS0144	mixed	B	Em mowis fix cais looix off by one trong vongf lawpj{RET}	Em mới fix cái lỗi of by one trong vòng lặp{RET}	-	Em mới fix cái lỗi off by one trong vòng lặp
 CS0145	mixed	A	Code nayf mess quas, refactor laij truwowcs khi theem tinhs nawng{RET}	Code này mes quá, refactor lại trước khi thêm tính năng{RET}	-	Code này mess quá refactor lại trước khi thêm tính năng
 CS0146	mixed	A	Thawngf scheduler nos chayj lucs 2 giowf sangs, nhows dduwngf restart giowf ddos{RET}	Thằng scheduler nó chạy lúc 2 giờ sáng, nhớ đừng restart giờ đó{RET}	-	Thằng scheduler nó/H chạy lúc giờ sáng/V/enkeys-row-vi/after-vi,before-comma,before-vi nhớ đừng restart giờ đó/H
-CS0147	mixed	A	Cos ai bieets sao test nayf flaky khoong, lucs pass lucs fail{RET}	Có ai biết sao test này flaky không, lúc pas lúc fail{RET}	-	Có/H ai biết sao test/E/table-en/after-vi,before-vi,mid này flaky không lúc pass lúc fail
+CS0147	mixed	A	Cos ai bieets sao test nayf flaky khoong, lucs pass lucs fail{RET}	Có ai biết sao test này flaky không, lúc pass lúc fail{RET}	-	Có/H ai biết sao test/E/table-en/after-vi,before-vi,mid này flaky không lúc pass lúc fail
 CS0148	mixed	B	Em theem nuts export CSV owr trang baos caos rooif nha{RET}	Em thêm nút export CSV ở trang báo cáo rồi nha{RET}	-	Em thêm nút/V/enkeys-row-vi/after-vi,before-en,mid export CSV ở trang báo cáo rồi nha
 VI0121	pure-vi	A	Teen bieens nayf khos hieeur quas, ddooir laij cho rox nghiax ddi{RET}	Tên biến này khó hiểu quá, đổi lại cho rõ nghĩa đi{RET}	-	Tên/V/enkeys-row-vi/before-vi,start biến này khó hiểu quá đổi lại cho rõ nghĩa đi
 CS0149	mixed	B	Minhf queen chuwa theem index cho cootj nayf neen query chaamj{RET}	Mình quên chưa thêm index cho cột này nên query chậm{RET}	-	Mình quên/V/enkeys-row-vi/after-vi,before-vi,mid chưa thêm index cho cột này nên query chậm
@@ -465,7 +465,7 @@ CS0316	mixed	B	Vieets docs cho API nayf theo chuaanr OpenAPI{RET}	Viết dóc ch
 CS0317	mixed	B	Review PR nayf vaf lieetj kee cacs vaans ddeef theo muwcs ddooj nghieem trongj{RET}	Review PR này và liệt kê các vấn đề theo mức độ nghiêm trọng{RET}	-	Review PR này và liệt kê các vấn đề theo mức độ nghiêm trọng
 CS0318	mixed	A	Ddooir teen bieens cho deex hieeur hown, dduwngf ddooir logic{RET}	Đổi tên biến cho dễ hiểu hơn, đừng đổi logic{RET}	-	Đổi tên/V/enkeys-row-vi/after-vi,before-vi,mid biến cho dễ hiểu hơn đừng đổi logic
 CS0319	mixed	B	Timf taats car choox goij hamf deprecated nayf trong repo{RET}	Tìm tất cả chỗ gọi hàm deprecated này trong repo{RET}	-	Tìm tất cả/V/enkeys-row-vi/after-vi,before-vi,mid chỗ gọi hàm deprecated này trong repo
-CS0320	mixed	B	Lamf cho cais test nayf heets flaky, dduwngf suwar test cho pass buwaf{RET}	Làm cho cái test này hết flaky, đừng sửa test cho pas bừa{RET}	-	Làm cho cái test/E/table-en/after-vi,before-vi,mid này hết flaky đừng sửa test/E/table-en/after-vi,before-vi,mid cho pass bừa
+CS0320	mixed	B	Lamf cho cais test nayf heets flaky, dduwngf suwar test cho pass buwaf{RET}	Làm cho cái test này hết flaky, đừng sửa test cho pass bừa{RET}	-	Làm cho cái test/E/table-en/after-vi,before-vi,mid này hết flaky đừng sửa test/E/table-en/after-vi,before-vi,mid cho pass bừa
 CS0321	mixed	A	Vieets mootj ddoanj regex bawts email howpj leej{RET}	Viết một đoạn regex bắt email hợp lệ{RET}	-	Viết một đoạn regex bắt email hợp lệ
 VI0136	pure-vi	B	Dichj ddoanj moo tar nayf sang tieengs Anh giumf{RET}	Dịch đoạn mô tả này sang tiếng Anh giùm{RET}	-	Dịch đoạn mô/V/enkeys-row-vi/after-vi,before-vi,mid tả/V/enkeys-row-vi/after-vi,before-vi,mid này sang tiếng Anh giùm
 CS0322	mixed	A	So sanhs hai cachs tieeps caanj nayf, cais naof toots hown cho production{RET}	So sánh hai cách tiếp cận này, cái nào tốt hơn cho production{RET}	-	So sánh hai cách tiếp cận này cái nào tốt/V/enkeys-row-vi/after-vi,before-vi,mid hơn cho production
@@ -515,10 +515,10 @@ CS0364	mixed	A	Gom maays cais docs rowif racj thanhf mootj file{RET}	Gom mấy c
 CS0365	mixed	A	Kieemr tra looix CORS khi goij API tuwf trinhf duyeetj{RET}	Kiểm tra lỗi CÓ khi gọi API từ trình duyệt{RET}	-	Kiểm tra lỗi CORS/E/nonlex/after-vi,before-vi,mid khi gọi API từ trình duyệt
 CS0366	mixed	B	Theem params phaan trang cho endpoint nayf{RET}	Thêm pấm phân trang cho endpoint này{RET}	-	Thêm params/E/nonlex/after-vi,before-vi,mid phân trang cho endpoint này
 CS0367	mixed	B	Caif ddawtj Kafka local bawngf Docker Compose giups minhf{RET}	Cài đặt Kầk local bằng Docker Compose giúp mình{RET}	-	Cài đặt Kafka/E/tierB-kept/after-vi,before-en,mid local bằng Docker Compose giúp mình
-CS0368	mixed	A	Vieets Terraform cho bucket S3 vowis quyeenf private{RET}	Viết Teraform cho bucket S3 với quyền private{RET}	-	Viết Terraform cho bucket S với quyền private
-CS0369	mixed	A	Taoj dashboard Grafana theo doix latency{RET}	Tạo dashboard Gràna theo dõi latency{RET}	-	Tạo dashboard Grafana theo dõi latency
+CS0368	mixed	A	Vieets Terraform cho bucket S3 vowis quyeenf private{RET}	Viết Terraform cho bucket S3 với quyền private{RET}	-	Viết Terraform cho bucket S với quyền private
+CS0369	mixed	A	Taoj dashboard Grafana theo doix latency{RET}	Tạo dashboard Grafana theo dõi latency{RET}	-	Tạo dashboard Grafana theo dõi latency
 CS0370	mixed	B	Vieets laij phaanf nayf bawngf Rust coi cos nhanh hown hoong{RET}	Viết lại phần này bằng Rút coi có nhanh hơn hông{RET}	-	Viết lại phần này bằng Rust/E/table-vi/after-vi,before-vi,mid coi có/H nhanh hơn hông
-CS0371	mixed	A	So sanhs DeepSeek vowis Claude cho vieecj vieets test{RET}	So sánh Dépeek với Claude cho việc viết test{RET}	-	So sánh DeepSeek với Claude cho việc viết test/E/table-en/after-vi,before-RET
+CS0371	mixed	A	So sanhs DeepSeek vowis Claude cho vieecj vieets test{RET}	So sánh DeepSeek với Claude cho việc viết test{RET}	-	So sánh DeepSeek với Claude cho việc viết test/E/table-en/after-vi,before-RET
 CS0372	mixed	B	Nhows theem toast baos thanhf coong sau khi luwu{RET}	Nhớ thêm toát báo thành công sau khi lưu{RET}	-	Nhớ thêm toast/E/table-vi/after-vi,before-vi,mid báo thành công sau khi lưu
 CS0373	mixed	B	Ddooir teen cacs file theo quy uwowcs kebab case{RET}	Đổi tên các file theo quy ước kebab case{RET}	-	Đổi tên/V/enkeys-row-vi/after-vi,before-vi,mid các file theo quy ước kebab case
 VI0138	pure-vi	B	Sau khi xong thif toms tawts laij nhuwngx gif ddax lamf{RET}	Sau khi xong thì tóm tắt lại những gì đã làm{RET}	-	Sau khi xong thì tóm tắt lại những gì/H đã làm
@@ -542,7 +542,7 @@ CS0385	mixed	A	Best seller thangs 10 ddax quay trowr laij{RET}	Best seller thán
 CS0386	mixed	A	Top 3 best seller cuar shop tuaanf nayf nef moij nguwowif{RET}	Top 3 best seller của shop tuần này nè mọi người{RET}	-	Top best/E/table-en/after-en-1,after-number,before-en,mid,mwe seller của shop tuần này nè mọi người
 VI0144	pure-vi	B	Booj suwu taapj mowis ddax cos mawtj taij taats car cuwar hangf{RET}	Bộ sưu tập mới đã có mặt tại tất cả cửa hàng{RET}	-	Bộ sưu tập mới đã có/H mặt tại tất cả/V/enkeys-row-vi/after-vi,before-vi,mid cửa hàng
 CS0387	mixed	A	Ddawng kys ngay ddeer nhaanj voucher 100 nghinf cho ddown ddaauf tieen{RET}	Đăng ký ngay để nhận voucher 100 nghìn cho đơn đầu tiên{RET}	-	Đăng ký ngay để nhận voucher nghìn cho đơn đầu tiên
-CS0388	mixed	B	Sale off toanf booj ddoof muaf hef, ghes shop lieenf nha{RET}	Sale of toàn bộ đồ mùa hè, ghé shop liền nha{RET}	-	Sale off toàn bộ đồ mùa hè ghé shop liền nha
+CS0388	mixed	B	Sale off toanf booj ddoof muaf hef, ghes shop lieenf nha{RET}	Sale off toàn bộ đồ mùa hè, ghé shop liền nha{RET}	-	Sale off toàn bộ đồ mùa hè ghé shop liền nha
 VI0145	pure-vi	B	Uwu ddaix ddoocj quyeenf cho thanhf vieen, chir trong 3 ngayf{RET}	Ưu đãi độc quyền cho thành viên, chỉ trong 3 ngày{RET}	-	Ưu đãi độc quyền cho thành viên chỉ trong ngày
 VI0146	pure-vi	A	Sanr phaamr chinhs hangx, baor hanhf 12 thangs{RET}	Sản phẩm chính hãng, bảo hành 12 tháng{RET}	-	Sản phẩm chính hãng bảo hành tháng
 VI0147	pure-vi	B	Hangf mowis veef, maays baf voo coi lieenf ddi nef{RET}	Hàng mới về, mấy bà vô coi liền đi nè{RET}	-	Hàng mới về mấy bà vô coi liền đi nè
@@ -632,8 +632,8 @@ CS0432	mixed	A	Cos ai ddi Sapa thangs nayf khoong, ddi chung cho vui{RET}	Có ai
 VI0187	pure-vi	B	Themf buns mawms quas maf owr xa nhaf{RET}	Thèm bún mắm quá mà ở xa nhà{RET}	-	Thèm bún/V/enkeys-row-vi/after-vi,before-vi,mid mắm quá mà ở xa nhà
 VI0188	pure-vi	A	Nawm nay quyeets taam ddocj heets 20 cuoons sachs{RET}	Năm nay quyết tâm đọc hết 20 cuốn sách{RET}	-	Năm nay quyết tâm đọc hết cuốn sách
 CS0433	mixed	B	Mowis mua caay guitar, taapj dduwowcj 3 howpj aam rooif nef{RET}	Mới mua cây guitar, tập được 3 hợp âm rồi nè{RET}	-	Mới mua cây guitar tập được hợp âm rồi nè
-CS0434	mixed	A	Ai caanf pass laij ves concert thif inbox minhf nhes{RET}	Ai cần pas lại vé concert thì inbox mình nhé{RET}	-	Ai cần pass lại vé concert thì inbox mình nhé
-CS0435	mixed	A	Pass laij cais mays anhr cux, conf mowis 95% nha moij nguwowif{RET}	Pas lại cái máy ảnh cũ, còn mới 95% nha mọi người{RET}	-	Pass lại cái máy ảnh cũ còn mới nha mọi người
+CS0434	mixed	A	Ai caanf pass laij ves concert thif inbox minhf nhes{RET}	Ai cần pass lại vé concert thì inbox mình nhé{RET}	-	Ai cần pass lại vé concert thì inbox mình nhé
+CS0435	mixed	A	Pass laij cais mays anhr cux, conf mowis 95% nha moij nguwowif{RET}	Pass lại cái máy ảnh cũ, còn mới 95% nha mọi người{RET}	-	Pass lại cái máy ảnh cũ còn mới nha mọi người
 VI0189	pure-vi	A	Anhr chupj bawngf ddieenj thoaij thooi maf nets cawng{RET}	Ảnh chụp bằng điện thoại thôi mà nét căng{RET}	-	Ảnh chụp bằng điện thoại thôi mà nét/V/enkeys-row-vi/after-vi,before-vi,mid căng
 CS0436	mixed	B	Trowif muwa maf ngooif nghe nhacj thif chill heets naacs{RET}	Trời mưa mà ngồi nghe nhạc thì chill hết nấc{RET}	-	Trời mưa mà ngồi nghe nhạc thì chill hết nấc
 CS0437	mixed	B	Ai cos link baif hats nayf khoong cho minhf xin{RET}	Ai có link bài hát này không cho mình xin{RET}	-	Ai có/H link bài hát/V/enkeys-row-vi/after-vi,before-vi,mid này không cho mình xin
@@ -735,8 +735,8 @@ CS0513	mixed	A	Ddocj giups em maays cais docs, nhaats laf phaanf setup.{RET}	Đ�
 CS0514	mixed	B	Em ddax vieets theem test. Anh coi giumf nha{RET}	Em đã viết thêm test. Anh coi giùm nha{RET}	-	Em đã viết thêm test/E/table-en/after-vi,before-period Anh coi giùm nha
 CS0515	mixed	A	Banr nayf ddax cos trong list.{RET}	Bản này đã có trong list.{RET}	-	Bản này đã có/H trong list/E/table-en/after-vi,before-period,line-end
 CS0516	mixed	B	Phaanf ddos em ddeer chung trong cais box.{RET}	Phần đó em để chung trong cái bõ.{RET}	-	Phần đó/H em để chung trong cái box/E/table-vi/after-vi,before-period,line-end
-CS0517	mixed	A	Hoom nay team ddax fix xong bug, pass heets test!{RET}	Hôm nay team đã fix xong bug, pas hết test!{RET}	-	Hôm nay team đã fix xong bug pass hết test/E/table-en/after-vi,before-exclam,line-end
-CS0518	mixed	A	Cuoois cungf cungx pass!{RET}	Cuối cùng cũng pas!{RET}	-	Cuối cùng cũng pass
+CS0517	mixed	A	Hoom nay team ddax fix xong bug, pass heets test!{RET}	Hôm nay team đã fix xong bug, pass hết test!{RET}	-	Hôm nay team đã fix xong bug pass hết test/E/table-en/after-vi,before-exclam,line-end
+CS0518	mixed	A	Cuoois cungf cungx pass!{RET}	Cuối cùng cũng pass!{RET}	-	Cuối cùng cũng pass
 CS0519	mixed	A	Ai ddang giuwx cais room?{RET}	Ai đang giữ cái room?{RET}	-	Ai đang giữ cái room/E/table-en/after-vi,before-question,line-end
 CS0520	mixed	B	Been kia cos ai dungf host nayf hoong, hay minhf tawts?{RET}	Bên kia có ai dùng hót này hông, hay mình tắt?{RET}	-	Bên/V/enkeys-row-vi/before-vi,start kia có/H ai dùng host/E/table-vi/after-vi,before-vi,mid này hông hay mình tắt
 CS0521	mixed	B	Guwir cho em cais cost?{RET}	Gửi cho em cái cost?{RET}	-	Gửi cho em cái cost/E/table-en/after-vi,before-question,line-end
@@ -784,7 +784,7 @@ CS0552	mixed	B	Phongf hopj (room B) ddang cos nguwowif dungf{RET}	Phòng họp (
 CS0553	mixed	B	Moij nguwowif dungf max nguoonf owr repo mowis (docs cos ghi rox){RET}	Mọi người dùng mã nguồn ở repo mới (dóc có ghi rõ){RET}	-	Mọi người dùng mã/H nguồn ở repo mới docs/E/nonlex/after-vi,before-vi,in-parens,mid có/H ghi rõ
 CS0554	mixed	A	Top 3 best seller cuar thangs laf aos len{RET}	Top 3 best seller của tháng là áo len{RET}	-	Top best/E/table-en/after-en-1,after-number,before-en,mid,mwe seller của tháng là áo len
 CS0555	mixed	B	Conf 2 test fail, em ddang coi{RET}	Còn 2 test fail, em đang coi{RET}	-	Còn test/E/table-en/after-number,after-vi,before-en,mid fail em đang coi
-CS0556	mixed	A	Cos 5 posts mowis treen fanpage{RET}	Có 5 pots mới trên fanpage{RET}	-	Có/H posts mới trên fanpage
+CS0556	mixed	A	Cos 5 posts mowis treen fanpage{RET}	Có 5 posts mới trên fanpage{RET}	-	Có/H posts mới trên fanpage
 CS0557	mixed	B	Giamr 30% cost so vowis nawm ngoais{RET}	Giảm 30% cost so với năm ngoái{RET}	-	Giảm cost/E/table-en/after-number,after-vi,before-en,mid so với năm ngoái
 CS0558	mixed	B	Minhf caanf 4 room cho buooir workshop{RET}	Mình cần 4 room cho buổi workshop{RET}	-	Mình cần room/E/table-en/after-number,after-vi,before-vi,mid cho buổi workshop
 CS0559	mixed	A	Ddax guwir 12 list khachs hangf cho team sales{RET}	Đã gửi 12 list khách hàng cho team sales{RET}	-	Đã gửi list/E/table-en/after-number,after-vi,before-vi,mid khách hàng cho team sales
@@ -948,7 +948,7 @@ CS0686	mixed	A	Ok, choots list!{RET}	Ok, chốt list!{RET}	-	Ok chốt list/E/ta
 CS0687	mixed	A	Ddowij maix mowis towis bus... meetj ghee{RET}	Đợi mãi mới tới bú... mệt ghê{RET}	-	Đợi mãi mới tới bus/E/table-vi/after-vi,before-ellipsis mệt ghê/H
 CS0688	mixed	B	Ddang chayj test... chowf chuts{RET}	Đang chạy test... chờ chút{RET}	-	Đang chạy test/E/table-en/after-vi,before-ellipsis chờ chút
 CS0689	mixed	A	Ok anh, I got it{RET}tows sex guwir lieenf{RET}	Ok anh, I got it{RET}tớ sẽ gửi liền{RET}	-	Ok anh I got it tớ/V/enkeys-row-vi/before-vi,start sẽ/V/enkeys-row-vi/after-vi,before-vi,mid gửi liền
-CS0690	mixed	B	Test pass heets rooif, thanks everyone{RET}been QA kieemr tra laij giups em{RET}	Test pas hết rồi, thanks everyone{RET}bên QA kiểm tra lại giúp em{RET}	-	Test/E/table-en/before-en,start pass hết rồi thanks everyone bên/V/enkeys-row-vi/before-en,start QA kiểm tra lại giúp em
+CS0690	mixed	B	Test pass heets rooif, thanks everyone{RET}been QA kieemr tra laij giups em{RET}	Test pass hết rồi, thanks everyone{RET}bên QA kiểm tra lại giúp em{RET}	-	Test/E/table-en/before-en,start pass hết rồi thanks everyone bên/V/enkeys-row-vi/before-en,start QA kiểm tra lại giúp em
 CS0691	mixed	A	I think so too{RET}car team ddoongf ys heets chuwa{RET}	I think so too{RET}cả team đồng ý hết chưa{RET}	-	I think so too/E/table-vi/after-en-3plus,before-RET cả/V/enkeys-row-vi/before-en,start team đồng ý hết chưa
 CS0692	mixed	B	See you tomorrow{RET}tows ddi truwowcs nhes{RET}	See you tomorrow{RET}tớ đi trước nhé{RET}	-	See/E/unattested/before-en,mwe,start you tomorrow tớ/V/enkeys-row-vi/before-vi,start đi trước nhé
 CS0693	mixed	B	Thank you so much{RET}camr own moij nguwowif nhieeuf nha{RET}	Thank you so much{RET}cảm ơn mọi người nhiều nha{RET}	-	Thank you so much cảm ơn/V/enkeys-row-vi/after-vi,before-vi,mid mọi người nhiều nha
@@ -964,23 +964,23 @@ EN0002	pure-en	A	As soon as the build passes, we can ship it{RET}	As soon as the
 EN0003	pure-en	B	How long does the test suite take to run{RET}	How long does the test suite take to run{RET}	0:phrase	How/E/table-vi/before-en,mwe,start long does/E/unattested/after-en-2,before-en,mid the test/E/table-en/after-en-3plus,before-en,mid suite take to run
 EN0004	pure-en	B	Now that the room is booked, send the invite{RET}	Now that the room is booked, send the invite{RET}	0:phrase	Now/E/table-vi/before-en,mwe,start that the room/E/table-en/after-en-3plus,before-en,mid is/E/table-en/after-en-3plus,before-en,mid booked send the invite
 EN0005	pure-en	A	There is a bug in the list view when it is empty{RET}	There is a bug in the list view when it is empty{RET}	0:phrase	There/E/table-vi/before-en,mwe,start is/E/table-en/after-en-1,before-en,mid,mwe a bug in the list/E/table-en/after-en-3plus,before-en,mid view when it is/E/table-en/after-en-3plus,before-en,mid empty
-EN0006	pure-en	A	These are the costs we need to cut this quarter{RET}	These are the cots we need to cut this quarter{RET}	0:phrase	These/E/table-vi/before-en,start are the costs we need to cut this/E/table-vi/after-en-3plus,before-en,mid quarter
+EN0006	pure-en	A	These are the costs we need to cut this quarter{RET}	These are the costs we need to cut this quarter{RET}	0:phrase	These/E/table-vi/before-en,start are the costs we need to cut this/E/table-vi/after-en-3plus,before-en,mid quarter
 EN0007	pure-en	A	Has anyone seen my charger{RET}	Há anyone seen my charger{RET}	-	Has/E/table-vi/before-en,start anyone seen/E/table-vi/after-en-2,before-en,mid my charger
 EN0008	pure-en	B	Its battery lasts for two days{RET}	Ít battery lasts for two days{RET}	-	Its/E/table-vi/before-en,start battery lasts for two days/E/unattested/after-en-3plus,before-RET
 EN0009	pure-en	A	If the host is down, the whole site goes down too{RET}	Ì the host is down, the whole site goes down too{RET}	-	If/E/table-vi/before-en,start the host/E/table-vi/after-en-2,before-en,mid is/E/table-en/after-en-3plus,before-en,mid down/E/unattested/after-en-3plus,before-comma,before-en the whole site goes/E/unattested/after-en-3plus,before-en,mid down/E/unattested/after-en-3plus,before-en,mid too/E/table-vi/after-en-3plus,before-RET
-EN0010	pure-en	A	Most of the posts were about the new release{RET}	Most of the pots were about the new release{RET}	0:phrase	Most/E/table-vi/before-en,mwe,start of/E/table-vi/after-en-1,before-en,mid,mwe the posts were about the new release
+EN0010	pure-en	A	Most of the posts were about the new release{RET}	Most of the posts were about the new release{RET}	0:phrase	Most/E/table-vi/before-en,mwe,start of/E/table-vi/after-en-1,before-en,mid,mwe the posts were about the new release
 EN0011	pure-en	A	I did not see the message until this morning{RET}	I did not see the message until this morning{RET}	-	I did/E/table-vi/after-en-1,before-en,mid not see/E/unattested/after-en-3plus,before-en,mid the message until this/E/table-vi/after-en-3plus,before-en,mid morning
 EN0012	pure-en	A	We must reset the counter after each loop{RET}	We must reset the counter after each loop{RET}	-	We must/E/table-vi/after-en-1,before-en,mid reset/E/table-vi/after-en-2,before-en,mid the counter after each loop
-EN0013	pure-en	A	The last time we tried this, it was a mess{RET}	The last time we tried this, it was a mes{RET}	-	The last/E/table-vi/after-en-1,before-en,mid,mwe time we tried this/E/table-vi/after-en-3plus,before-comma,before-en it was/E/table-en/after-en-3plus,before-en,mid a mess
+EN0013	pure-en	A	The last time we tried this, it was a mess{RET}	The last time we tried this, it was a mess{RET}	-	The last/E/table-vi/after-en-1,before-en,mid,mwe time we tried this/E/table-vi/after-en-3plus,before-comma,before-en it was/E/table-en/after-en-3plus,before-en,mid a mess
 EN0014	pure-en	B	Too many tabs open, my laptop is dying{RET}	Too many tabs open, my laptop is dying{RET}	0:phrase	Too/E/table-vi/before-en,mwe,start many tabs open my laptop is/E/table-en/after-en-3plus,before-en,mid dying
 EN0015	pure-en	A	Here is the link to the docs{RET}	Here is the link to the dóc{RET}	0:phrase	Here/E/table-vi/before-en,mwe,start is/E/table-en/after-en-1,before-en,mid,mwe the link to the docs/E/nonlex/after-en-3plus,before-RET
 EN0016	pure-en	A	She won the race by six seconds{RET}	She won the race by six seconds{RET}	-	She won/E/table-vi/after-en-1,before-en,mid the race by six/E/table-vi/after-en-3plus,before-en,mid seconds
-EN0017	pure-en	B	Can you pass me the salt{RET}	Can you pas me the salt{RET}	-	Can you pass me the salt
-EN0018	pure-en	B	Turn off the lights when you leave the room{RET}	Turn of the lights when you leave the room{RET}	0:phrase	Turn/E/table-vi/before-en,mwe,start off the lights when you leave the room/E/table-en/after-en-3plus,before-RET
+EN0017	pure-en	B	Can you pass me the salt{RET}	Can you pass me the salt{RET}	-	Can you pass me the salt
+EN0018	pure-en	B	Turn off the lights when you leave the room{RET}	Turn off the lights when you leave the room{RET}	0:phrase	Turn/E/table-vi/before-en,mwe,start off the lights when you leave the room/E/table-en/after-en-3plus,before-RET
 EN0019	pure-en	B	The worst part was the waiting{RET}	The worst part was the waiting{RET}	-	The worst/E/table-vi/after-en-1,before-en,mid part was/E/table-en/after-en-3plus,before-en,mid the waiting
 EN0020	pure-en	A	That was a wrong turn, go back{RET}	That was a wrong turn, go back{RET}	-	That was/E/table-en/after-en-1,before-en,mid a wrong/E/unattested/after-en-3plus,before-en,mid turn/E/table-vi/after-en-3plus,before-comma,before-en go back
 EN0021	pure-en	A	It does not make sense to me{RET}	It does not make sense to me{RET}	-	It does/E/unattested/after-en-1,before-en,mid not make sense/E/table-vi/after-en-3plus,before-en,mid,mwe to me
-EN0022	pure-en	B	Do not lose your boarding pass{RET}	Do not lose your boarding pas{RET}	-	Do not lose/E/table-vi/after-en-2,before-en,mid your boarding pass
+EN0022	pure-en	B	Do not lose your boarding pass{RET}	Do not lose your boarding pass{RET}	-	Do not lose/E/table-vi/after-en-2,before-en,mid your boarding pass
 EN0023	pure-en	A	We chose the cheaper plan for now{RET}	We chose the cheaper plan for now{RET}	-	We chose/E/table-vi/after-en-1,before-en,mid the cheaper plan for now/E/table-vi/after-en-3plus,before-RET
 EN0024	pure-en	B	Let us toast to the new team{RET}	Let us toast to the new team{RET}	-	Let us/E/table-vi/after-en-1,before-en,mid toast/E/table-vi/after-en-2,before-en,mid to the new team
 EN0025	pure-en	A	The gas station is just down the road{RET}	The gas station is just down the road{RET}	-	The gas/E/table-vi/after-en-1,before-en,mid station is/E/table-en/after-en-3plus,before-en,mid just down/E/unattested/after-en-3plus,before-en,mid the road
@@ -1002,7 +1002,7 @@ EN0040	pure-en	A	The ocean looked vast from the plane{RET}	The ocean looked vast
 EN0041	pure-en	B	Cast the value to an integer first{RET}	Cát the value to an integer first{RET}	-	Cast/E/table-vi/before-en,start the value to an integer first
 EN0042	pure-en	B	She keeps her notes in a wooden chest{RET}	She keeps her notes in a wooden chest{RET}	-	She keeps/E/unattested/after-en-1,before-en,mid her/E/unattested/after-en-2,before-en,mid notes in a wooden chest/E/table-vi/after-en-3plus,before-RET
 EN0043	pure-en	A	A pipe burst in the kitchen last night{RET}	A pipe burst in the kitchen last night{RET}	-	A pipe burst/E/table-vi/after-en-2,before-en,mid in the kitchen last/E/table-vi/after-en-3plus,before-en,mid night
-EN0044	pure-en	A	Dust off the old laptop and try again{RET}	Dust of the old laptop and try again{RET}	-	Dust/E/unattested/before-en,start off the old laptop and try again
+EN0044	pure-en	A	Dust off the old laptop and try again{RET}	Dust off the old laptop and try again{RET}	-	Dust/E/unattested/before-en,start off the old laptop and try again
 EN0045	pure-en	A	Thanks for the gifts, the kids loved them{RET}	Thanks for the gifts, the kids loved them{RET}	-	Thanks for the gifts/E/unattested/after-en-3plus,before-comma,before-en the kids loved them
 EN0046	pure-en	A	No pets are allowed in this building{RET}	No pets are allowed in this building{RET}	-	No pets/E/unattested/after-en-1,before-en,mid are allowed in this/E/table-vi/after-en-3plus,before-en,mid building
 EN0047	pure-en	B	He puts sugar in everything{RET}	He puts sugar in everything{RET}	-	He puts/E/unattested/after-en-1,before-en,mid sugar in everything
@@ -1031,11 +1031,11 @@ EN0069	pure-en	B	The market is in a boom right now{RET}	The market is in a boom 
 EN0070	pure-en	B	What does this term mean{RET}	What does this term mean{RET}	-	What does/E/unattested/after-en-1,before-en,mid this/E/table-vi/after-en-2,before-en,mid term/E/unattested/after-en-3plus,before-en,mid mean
 EN0071	pure-en	B	I gave her the keys yesterday{RET}	I gave her the keys yesterday{RET}	-	I gave her/E/unattested/after-en-2,before-en,mid the keys yesterday
 EN0072	pure-en	B	The war ended many years ago{RET}	The war ended many years ago{RET}	-	The war/E/unattested/after-en-1,before-en,mid ended many years ago
-EN0073	pure-en	A	Turn the heater off before you go{RET}	Tủn the heater of before you go{RET}	-	Turn/E/table-vi/before-en,start the heater off before you go
-EN0074	pure-en	B	The mess in the kitchen is not mine{RET}	The mes in the kitchen is not mine{RET}	-	The mess in the kitchen is/E/table-en/after-en-3plus,before-en,mid not mine
-EN0075	pure-en	A	All posts must be approved by an admin{RET}	All pots must be approved by an admin{RET}	-	All posts must/E/table-vi/after-en-2,before-en,mid be approved by an admin
-EN0076	pure-en	A	Shipping costs went up again{RET}	Shipping cots went up again{RET}	-	Shipping costs went up again
-EN0077	pure-en	B	Bees build their nests in hollow trees{RET}	Bế build their nets in hollow trees{RET}	-	Bees/E/table-vi/before-en,start build their nests in hollow trees/E/unattested/after-en-3plus,before-RET
+EN0073	pure-en	A	Turn the heater off before you go{RET}	Tủn the heater off before you go{RET}	-	Turn/E/table-vi/before-en,start the heater off before you go
+EN0074	pure-en	B	The mess in the kitchen is not mine{RET}	The mess in the kitchen is not mine{RET}	-	The mess in the kitchen is/E/table-en/after-en-3plus,before-en,mid not mine
+EN0075	pure-en	A	All posts must be approved by an admin{RET}	All posts must be approved by an admin{RET}	-	All posts must/E/table-vi/after-en-2,before-en,mid be approved by an admin
+EN0076	pure-en	A	Shipping costs went up again{RET}	Shipping costs went up again{RET}	-	Shipping costs went up again
+EN0077	pure-en	B	Bees build their nests in hollow trees{RET}	Bế build their nests in hollow trees{RET}	-	Bees/E/table-vi/before-en,start build their nests in hollow trees/E/unattested/after-en-3plus,before-RET
 EN0078	pure-en	B	We have been waiting for an hour{RET}	We have been waiting for an hour{RET}	-	We have been/E/table-vi/after-en-2,before-en,mid waiting for an hour
 EN0079	pure-en	A	Is it too late to change the order{RET}	Is it too late to change the order{RET}	-	Is/E/table-en/before-en,start it too/E/table-vi/after-en-2,before-en,mid,mwe late to change the order
 EN0080	pure-en	B	There are six tests that keep failing{RET}	There are six tests that keep failing{RET}	0:phrase	There/E/table-vi/before-en,mwe,start are six/E/table-vi/after-en-2,before-en,mid tests that keep failing
@@ -1058,7 +1058,7 @@ EN0096	pure-en	B	This is a major change to the API{RET}	This is a major change t
 EN0097	pure-en	A	I lost a pair of socks in the wash{RET}	I lost a pair of socks in the wash{RET}	-	I lost/E/table-vi/after-en-1,before-en,mid a pair/E/unattested/after-en-3plus,before-en,mid of/E/table-vi/after-en-3plus,before-en,mid socks in the wash
 EN0098	pure-en	B	Some parts of the city flood when it rains{RET}	Some parts of the city flood when it rains{RET}	-	Some parts/E/unattested/after-en-1,before-en,mid of/E/table-vi/after-en-2,before-en,mid the city flood when it rains
 EN0099	pure-en	A	It is past midnight, go to sleep{RET}	It is past midnight, go to sleep{RET}	-	It is/E/table-en/after-en-1,before-en,mid past/E/unattested/after-en-2,before-en,mid midnight go to sleep
-EN0100	pure-en	A	A few days off would help{RET}	A few days of would help{RET}	-	A few days/E/unattested/after-en-2,before-en,mid off would help
+EN0100	pure-en	A	A few days off would help{RET}	A few days off would help{RET}	-	A few days/E/unattested/after-en-2,before-en,mid off would help
 EN0101	pure-en	B	Hey guys, the meeting moved to three{RET}	Hey guys, the meeting moved to three{RET}	-	Hey guys/E/unattested/after-en-1,before-comma,before-en the meeting moved to three
 EN0102	pure-en	B	He says the train is delayed{RET}	He says the train is delayed{RET}	-	He says/E/unattested/after-en-1,before-en,mid the train is/E/table-en/after-en-3plus,before-en,mid delayed
 EN0103	pure-en	A	Everything goes to plan so far{RET}	Everything goes to plan so far{RET}	-	Everything goes/E/unattested/after-en-1,before-en,mid to plan so far
@@ -1107,7 +1107,7 @@ EN0145	pure-en	B	As far as I know, the office is closed{RET}	As far as I know, t
 EN0146	pure-en	A	As long as it works, I am happy{RET}	As long as it works, I am happy{RET}	0:phrase	As/E/table-vi/before-en,mwe,start long as/E/table-vi/after-en-2,before-en,mid,mwe it works I am happy
 EN0147	pure-en	A	It was not as bad as I thought{RET}	It was not as bad as I thought{RET}	-	It was/E/table-en/after-en-1,before-en,mid not as/E/table-vi/after-en-3plus,before-en,mid,mwe bad as/E/table-vi/after-en-3plus,before-en,mid,mwe I thought
 EN0148	pure-en	A	Use the API key as is, do not change it{RET}	Use the API key as is, do not change it{RET}	-	Use the API key as/E/table-vi/after-en-3plus,before-en,mid,mwe is/E/table-en/after-en-3plus,before-comma,before-en,mwe do not change it
-EN0149	pure-en	B	Nobody knows how much it costs{RET}	Nobody knows how much it cots{RET}	-	Nobody knows how/E/table-vi/after-en-2,before-en,mid,mwe much it costs
+EN0149	pure-en	B	Nobody knows how much it costs{RET}	Nobody knows how much it costs{RET}	-	Nobody knows how/E/table-vi/after-en-2,before-en,mid,mwe much it costs
 EN0150	pure-en	A	I think it is too late now{RET}	I think it is too late now{RET}	-	I think it is/E/table-en/after-en-3plus,before-en,mid too/E/table-vi/after-en-3plus,before-en,mid,mwe late now/E/table-vi/after-en-3plus,before-RET
 EN0151	pure-en	B	Here we go again{RET}	Here we go again{RET}	0:nextEnglish	Here/E/table-vi/before-en,mwe,start we go again
 EN0152	pure-en	B	There it is, right where you left it{RET}	Thể it is, right where you left it{RET}	-	There/E/table-vi/before-en,mwe,start it is/E/table-en/after-en-2,before-comma,before-en,mwe right where you left it

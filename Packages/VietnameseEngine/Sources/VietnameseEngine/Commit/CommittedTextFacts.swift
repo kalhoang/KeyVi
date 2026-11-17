@@ -15,6 +15,10 @@ package struct CommittedTextFacts: Sendable, Hashable {
     /// `C` in lowercase (ASCII letters folded, Vietnamese letters through the letter table, ENG-R905),
     /// for the lexicon (L4) and attested-syllable (L8) lookups.
     package private(set) var lowercased = ""
+    /// The vowel groups of `C`: maximal runs of vowel letters, any other character ending a run (`booong` 1, `dd` 0,
+    /// `lecher` 2). One Vietnamese syllable has at most one (3.13), so rule L4 reads two or more as a word typed
+    /// through an escape (amended by the product owner on 17/11/2026, REG-37).
+    package private(set) var vowelGroups = 0
 
     /// No syllable has more letters (`ngh` + a four-letter rhyme such as `iêng`, 3.3 and 3.7): a longer
     /// text is invalid without a parse.
@@ -30,9 +34,11 @@ package struct CommittedTextFacts: Sendable, Hashable {
         // tokens, REG-02); lowercase letters have the same UTF-8 length as their capitals.
         var lowercaseBytes: [UInt8] = []
         lowercaseBytes.reserveCapacity(text.utf8.count)
+        var inVowelGroup = false
         for scalar in text.unicodeScalars {
             guard let glyph = Self.glyph(scalar) else {
                 onlyLetters = false
+                inVowelGroup = false
                 if scalar.value >= 0x80 { isASCII = false }
                 UTF8.encode(scalar) { lowercaseBytes.append($0) }
                 continue
@@ -41,7 +47,11 @@ package struct CommittedTextFacts: Sendable, Hashable {
                 isASCII = false
                 hasVietnameseOnlyLetter = true
             }
-            if glyph.letter.isVowel { hasVowel = true }
+            if glyph.letter.isVowel {
+                hasVowel = true
+                if !inVowelGroup { vowelGroups += 1 }
+            }
+            inVowelGroup = glyph.letter.isVowel
             if glyph.tone != .level {
                 tone = glyph.tone
                 toneCount += 1
