@@ -3,10 +3,11 @@
 import assert from "node:assert/strict";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { build } from "../build.mjs";
+import { build, countVerifyMarkers } from "../build.mjs";
 import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAnalytics } from "../lib/analytics.mjs";
 import { loadBrand } from "../lib/brand.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "../lib/headers.mjs";
+import { verifyBadge } from "../lib/layout.mjs";
 import { changelogHeadingId } from "../lib/pages/simple.mjs";
 import { LANGS, ROUTES, routePath } from "../lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "../lib/tone.mjs";
@@ -31,6 +32,9 @@ export async function runShellChecks(check, fixtures) {
   });
 
   await check("shell: header links features, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
+    // The repository is the brand's (APP_REPOSITORY_URL) unless site/config.json names another one (lib/config.mjs).
+    const repository = shipped.githubRepo || (await loadBrand(join(ROOT_DIR, "scripts", "brand.env"))).repositoryUrl;
+    assert.match(repository, /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+$/, "the footer links a GitHub repository");
     const part = (html, tag) => html.match(new RegExp(`<${tag} class="site-${tag}"[\\s\\S]*?</${tag}>`))?.[0] ?? "";
     const links = (html) => attrs(html, "href").filter((href) => !href.startsWith("#"));
     const features = { vi: "/#tinh-nang", en: "/en/#features" };
@@ -40,7 +44,7 @@ export async function runShellChecks(check, fixtures) {
       assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
       assert.match(header, /<a class="btn" href="[^"]+"[^>]*>[^<]+<\/a>/, `${label}: the download link is a button`);
       assert.match(header, /<svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, `${label}: the mark beside the name`);
-      assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), shipped.githubRepo, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
+      assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), repository, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
     }
     // Review Focus 4: without a stable release the header shows the disabled state, never a download button.
     const header = part(fallbackPages.get(join(fallback, "index.html")), "header");
@@ -369,7 +373,14 @@ export async function runShellChecks(check, fixtures) {
   });
 
   await check("strict mode refuses to ship VERIFY markers and placeholder config", async () => {
-    await assert.rejects(() => build({ outDir: join(tmp, "strict"), today: "2026-12-10", strict: true }), /--strict/);
+    // The site has no marker left (tests/release.mjs builds it strictly), so the gate is checked on its two inputs:
+    // the count of badges in built pages, and a config that still holds placeholder values.
+    assert.equal(countVerifyMarkers([{ html: `<p>${verifyBadge("vi")} a ${verifyBadge("en")}</p>` }, { html: "<p>b</p>" }]), 2);
+    assert.equal(countVerifyMarkers([{ html: '<p class="verified">c</p>' }]), 0);
+    const placeholderConfig = join(tmp, "strict-placeholders.json");
+    await writeFile(placeholderConfig, JSON.stringify({ ...shipped, githubRepo: "https://github.com/OWNER/REPO", homebrewTap: "OWNER/tap" }));
+    await assert.rejects(() => build({ outDir: join(tmp, "strict"), today: "2026-12-10", strict: true, configPath: placeholderConfig }),
+      /--strict: \d+ VERIFY marker\(s\) and placeholder config value\(s\) \[githubRepo, homebrewTap\] remain/);
   });
 
   await check("brand name is never hard-coded in site sources (CLAUDE.md)", async () => {
