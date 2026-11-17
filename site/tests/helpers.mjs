@@ -161,3 +161,15 @@ export const plainText = (html) => unescapeHtml(mainOf(html).replace(/<[^>]*>/g,
 export const tagsOf = (rowHtml) => rowHtml.split('<span class="tag">').slice(1).map((piece) => piece.replace(/<\/span>\s*$/, ""));
 /** What a tag says, in words: the plain form's template when plain Telex would have changed the word, keepTag otherwise. */
 export const tagText = (copy, { text, plain }) => (plain ? copy.plainTag.replace("{{word}}", text).replace("{{plain}}", plain) : copy.keepTag.replace("{{word}}", text));
+// The keys strip (design 9 item 4): it ends at the key a demo is about, the restore toggle of a correction or the commit
+// the engine took from memory (rule learned, L9c), else at the last key, and keeps the last eight keycaps up to there.
+export const keysEndOf = (frames) => {
+  const focus = frames.findLastIndex((frame) => frame.toggle === true || frame.commit?.rule === "learned");
+  return focus >= 0 ? focus : frames.length - 1;
+};
+export const stripKeys = (frames) => frames.slice(0, keysEndOf(frames) + 1).slice(-8).map((frame) => frame.key);
+// The learned badge of the learning section as lib/pages/home/learning.mjs writes it; its label is group 1.
+export const LEARNED_BADGE = /<span class="learned-badge"(?: lang="[a-z]+")?><span class="visually-hidden"> \(<\/span>([^<]*)<span class="visually-hidden">\)<\/span><\/span>/g;
+// The rows of the learning demo: label, field and keys strip of each `<li class="learning-row" data-run>`.
+export const learningRows = (html) => [...html.matchAll(/<li class="learning-row" data-run><span class="learning-label">([^<]*)<\/span><p class="demo-field" data-input[^>]*>([\s\S]*?)<\/p><p class="keys" data-keys aria-hidden="true">([\s\S]*?)<\/p><\/li>/g)]
+  .map(([, label, field, keys]) => ({ label, field, keys }));

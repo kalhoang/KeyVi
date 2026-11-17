@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Section 7, the closing call (design 7.3 item 7): the message once more, the download call and one quiet line to the
+// Section 8, the closing call (design 7.3 item 7): the message once more, the download call and one quiet line to the
 // donate page (PRD-R57; the footer links it too).
 import { esc } from "../../util.mjs";
 import { downloadBlock } from "./download.mjs";

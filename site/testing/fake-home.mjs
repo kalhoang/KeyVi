@@ -228,3 +228,25 @@ export function fakeHero(demos) {
   section.found = new Map([["[data-motion-toggle]", toggle]]);
   return { section, windowEl, input, keys, tags, sent, bubbles, toggle };
 }
+
+/** The learning demo as lib/pages/home/learning.mjs renders it: one row per pass, each with its field and keys strip,
+ * and the learned badge in the last row's field, which home.js moves along as that row types. */
+export function fakeLearning(demo, buttonAttributes) {
+  const figure = fakeElement("figure", { "data-demo": demo.id, "data-demo-frames": JSON.stringify(demo) });
+  const demoWindow = fakeElement("div", { class: "demo-window" });
+  const replay = fakeElement("button", { "data-replay": "", ...buttonAttributes });
+  replay.textContent = buttonAttributes["data-label-replay"] ?? "";
+  const badge = fakeElement("span", { class: "learned-badge" });
+  badge.textContent = "Learned";
+  const rows = [...(demo.teachPasses ?? []), demo].map((pass, index, all) => {
+    const row = fakeElement("li", { "data-run": "" });
+    const input = fakeElement("p", { "data-input": "" });
+    const keys = fakeElement("p", { "data-keys": "" });
+    row.found = new Map([["[data-input]", input], ["[data-keys]", keys], ...(index === all.length - 1 ? [[".learned-badge", badge]] : [])]);
+    return { row, input, keys };
+  });
+  rows.at(-1).input.append(badge);
+  figure.found = new Map([[".demo-window", demoWindow], ["[data-replay]", replay]]);
+  figure.foundAll = new Map([["[data-run]", rows.map(({ row }) => row)]]);
+  return { figure, demoWindow, replay, badge, rows };
+}

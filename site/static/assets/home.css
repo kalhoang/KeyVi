@@ -9,9 +9,10 @@
 .home-section { margin-block: clamp(4rem, 9vw, 6.5rem); }
 .home-section > .section-head { margin-bottom: clamp(1.5rem, 3vw, 2.5rem); }
 
-/* Motion controls (the hero's pause button, the behaviours' replay buttons) keep their place in the flow without
-   JavaScript and stay invisible, out of the tab order and the accessibility tree, until home.js marks their owner (the
-   hero section, a behaviour figure) data-motion-ready; showing them then moves nothing (design 7.8). */
+/* Motion controls (the hero's pause button, the replay buttons of the behaviours and the learning demo) keep their
+   place in the flow without JavaScript and stay invisible, out of the tab order and the accessibility tree, until
+   home.js marks their owner (the hero section, a behaviour or learning figure) data-motion-ready; showing them then
+   moves nothing (design 7.8). */
 .motion-toggle, .replay { visibility: hidden; }
 [data-motion-ready] .motion-toggle, [data-motion-ready] .replay { visibility: visible; }
 
@@ -108,7 +109,58 @@
 .behaviour-note { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--line); color: var(--muted); font-size: 0.92rem; }
 .replay { align-self: flex-start; margin-block: 0.75rem 1.1rem; }
 
-/* 3. Cards: engine results and static illustrations. */
+/* 3. Learning (design 9 item 4): the demo in one card, a row per pass (its label, the field and the keys strip), then the
+   four static cards. The rows hold their finished text without JavaScript; while home.js types, each field keeps the
+   height of that text, so the badge appearing in the last row moves nothing. */
+.learning-demo {
+  display: flex;
+  flex-direction: column;
+  max-width: 46rem;
+  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
+  padding: clamp(1.1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+}
+.learning-rows { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.learning-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.35rem 1rem; margin: 0; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--line); }
+.learning-row:last-child { padding-bottom: 0; border-bottom: 0; }
+.learning-label { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.learning-row .demo-field { min-height: 0; }
+@media (min-width: 40rem) {
+  .learning-row { grid-template-columns: 7.5rem minmax(0, 1fr); align-items: baseline; }
+  .learning-row .keys { grid-column: 2; }
+}
+/* "Đã nhớ" after the word the engine kept from memory; its parentheses are for screen readers only. */
+.learned-badge {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0.05em 0.55em;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--on-green);
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1.45;
+  vertical-align: 0.12em;
+}
+.learning-demo figcaption { margin: 0; color: var(--ink); font-size: 1rem; }
+.learning-demo figcaption p { margin: 0; }
+/* The sample row of the learned-words sheet: keys, arrow, result, the context in words and the remove control, drawn. */
+.learned-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.6rem; margin: 0.25rem 0 0; padding: 0.55rem 0.75rem; border-radius: var(--radius-s); background: var(--paper-2); }
+.learned-row small { margin-left: auto; color: var(--muted); font-size: 0.85rem; }
+.remove-mark {
+  flex: none;
+  align-self: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: linear-gradient(var(--muted), var(--muted)) center / 0.5rem 1.5px no-repeat;
+}
+
+/* 4. Cards: engine results and static illustrations. */
 .feature-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
 .feature-grid > li { display: flex; flex-direction: column; margin: 0; }
 .feature h3 { margin: 0 0 0.4rem; }
@@ -135,7 +187,7 @@
 .app-modes li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-s); background: var(--paper-2); }
 .app-modes .mode { color: var(--green-text); font-weight: 600; }
 
-/* 4. Apps: a list of categories below 900 px; from 900 px the hub with the threads, each node where its thread ends
+/* 5. Apps: a list of categories below 900 px; from 900 px the hub with the threads, each node where its thread ends
    (the points of HUB_NODES in site/lib/pages/home/apps.mjs, in percent of the 1000 x 600 drawing). */
 .hub { position: relative; }
 .hub-threads, .hub-centre { display: none; }
@@ -188,13 +240,13 @@
   .hub-node-7 { left: 80%; top: 86.6667%; }
 }
 
-/* 5. Proof: three points on the dark band. */
+/* 6. Proof: three points on the dark band. */
 .proof { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); margin: 2rem 0 0; padding: 0; list-style: none; }
 .proof li { margin: 0; padding-top: 1rem; border-top: 2px solid var(--green-on-dark); }
 .proof h3 { margin: 0 0 0.4rem; font-size: 1.15rem; }
 .proof p { margin: 0 0 0.5rem; }
 
-/* 6. Install: three numbered steps. */
+/* 7. Install: three numbered steps. */
 .install-steps { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); margin: 0 0 1.75rem; padding: 0; list-style: none; counter-reset: step; }
 .install-steps li {
   position: relative;
@@ -220,7 +272,7 @@
   font-weight: 700;
 }
 
-/* 7. Closing call. */
+/* 8. Closing call. */
 .closing {
   display: grid;
   justify-items: center;

@@ -5,11 +5,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { englishWords, keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { englishWords, keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
-import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf } from "./helpers.mjs";
+import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeLearning, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
+import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf, stripKeys } from "./helpers.mjs";
 
 // deploy/site/nginx.conf compresses at this level; the 60 KB budget of design 7.8 is measured at it.
 const GZIP_LEVEL = 6;
@@ -92,6 +92,19 @@ export async function runMotionChecks(check, fixtures) {
     }
   });
 
+  await check("motion: the animated keys strip ends as the static one (stripKeys and keysEnd)", async () => {
+    const { stripKeys: motionStripKeys } = siteMotion();
+    const { byId } = await loadDemos(framesPath);
+    for (const [id, demo] of byId) {
+      for (const [index, run] of [...(demo.teachPasses ?? []), demo].entries()) {
+        assert.deepEqual(motionStripKeys(run.frames), run.frames.slice(0, keysEnd(run.frames) + 1).slice(-8).map((frame) => frame.key), `${id} run ${index + 1}`);
+      }
+    }
+    // A demo without a correction or a learned word ends on its last key; a teaching pass ends on Escape.
+    assert.deepEqual(motionStripKeys(frames.demos["hero-chat"].frames), frames.demos["hero-chat"].frames.slice(-8).map((frame) => frame.key));
+    assert.equal(motionStripKeys(frames.demos["learning-reset"].teachPasses[0].frames).at(-1), "⎋");
+  });
+
   await check("motion: first-party scripts never write markup or style attributes", async () => {
     // Review Focus 1: the production CSP drops such writes silently. Every script of site/static/assets but the
     // vendored anime.js: home.js, matrix.js and the donate page's copy.js (plan Task 7).
@@ -162,6 +175,19 @@ export async function runMotionChecks(check, fixtures) {
         assert.match(figure, /<div class="demo-window">/, `${label}: ${figure.slice(0, 60)} the demo window`);
       }
       assert.match(section(html, "apps"), /<svg class="hub-threads"[^>]*>(?:<path data-thread d="[^"]+"\/>){7}<\/svg>/, `${label}: the hub threads`);
+      // The learning demo (design 9 item 4) reuses the behaviour player: a figure with data-demo, one data-run row per
+      // pass, a replay button described by the caption and the demo window home.js hides while it types.
+      const learning = section(html, "learning").match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      assert.match(learning, /^<figure class="learning-demo" data-demo="learning-reset" data-demo-frames="/, `${label}: the learning figure`);
+      assert.equal((learning.match(/<li class="learning-row" data-run>/g) ?? []).length, 3, `${label}: three rows`);
+      assert.equal((learning.match(/\sdata-input[\s>]/g) ?? []).length, 3, `${label}: a field per row`);
+      assert.equal((learning.match(/\sdata-keys[\s>]/g) ?? []).length, 3, `${label}: a keys strip per row`);
+      assert.match(learning, /<div class="demo-window">/, `${label}: the learning demo window`);
+      const replay = learning.match(/<button\b[^>]*\sdata-replay\b[^>]*>/)?.[0] ?? "";
+      const labels = homeCopy[lang].behaviours;
+      assert.deepEqual([attrs(replay, "data-label-replay")[0], attrs(replay, "data-label-stop")[0]], [esc(labels.replay), esc(labels.stop)], `${label}: learning replay and stop labels`);
+      const captionId = attrs(replay, "aria-describedby")[0];
+      assert.ok(captionId && learning.includes(`<p id="${captionId}">`), `${label}: the learning button is described by the demo's caption`);
     }
   });
 
@@ -211,6 +237,71 @@ export async function runMotionChecks(check, fixtures) {
       assert.equal(parts.replay.textContent, "Replay", `${id}: Replay once it has played`);
       assert.ok(parts.figure.hasAttribute("data-motion-ready"), `${id}: the control stays`);
     }
+  });
+
+  await check("motion: the learning demo types its rows one after the other, then rests on the final rows (design 9 item 4)", () => {
+    const demo = { id: "learning-reset", ...frames.demos["learning-reset"] };
+    const passes = [...demo.teachPasses, demo];
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    const text = (row) => row.input.children.filter((child) => child !== parts.badge).map(fakeTextOf).join("");
+    const keys = (row) => row.keys.children.map(fakeTextOf);
+    const finalKeys = (pass) => stripKeys(pass.frames).map(keyLabel);
+    win.show(parts.figure, 1);
+    assert.equal(anime.timelines.length, 1, "plays once when it scrolls into view");
+    assert.ok(parts.figure.hasAttribute("data-motion-ready"), "the control shows as the demo starts");
+    assert.equal(parts.replay.textContent, "Stop", "Stop while it plays");
+    assert.equal(parts.demoWindow.getAttribute("aria-hidden"), "true", "the demo window is hidden from screen readers while it types");
+    assert.deepEqual(parts.rows.map(text), ["", "", ""], "every row starts empty");
+    const timeline = anime.timelines[0];
+    timeline.run(passes[0].frames.length);
+    assert.equal(text(parts.rows[0]), passes[0].text, "the first row types its pass");
+    assert.deepEqual(keys(parts.rows[0]), finalKeys(passes[0]), "its keys strip stops on Escape");
+    assert.equal(keys(parts.rows[0]).at(-1), "esc", "the Escape keycap shows in a teaching row");
+    assert.deepEqual([text(parts.rows[1]), text(parts.rows[2])], ["", ""], "the next rows wait");
+    // The last row: the badge comes with the commit the engine took from memory, not before.
+    const learnedAt = passes[2].frames.findIndex((frame) => frame.commit?.rule === "learned");
+    const lastStart = timeline.calls.length - passes[2].frames.length;
+    timeline.run(lastStart + learnedAt);
+    assert.notEqual(parts.badge.parent, parts.rows[2].input, "no badge before the learned commit");
+    assert.equal(text(parts.rows[1]), passes[1].text, "the second row typed before the last");
+    timeline.run(lastStart + learnedAt + 1);
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge shows with the learned commit");
+    timeline.run();
+    passes.forEach((pass, index) => {
+      assert.equal(text(parts.rows[index]), pass.text, `row ${index + 1} ends on its text`);
+      assert.deepEqual(keys(parts.rows[index]), finalKeys(pass), `row ${index + 1} ends on its static keys`);
+      assert.ok(!parts.rows[index].input.children.some((child) => child.className === "caret"), `row ${index + 1} has no caret left`);
+    });
+    const learnedWord = parts.rows[2].input.children[parts.rows[2].input.children.indexOf(parts.badge) - 1];
+    assert.equal(learnedWord?.tagName === "MARK" && learnedWord.textContent, wordsOf(demo).find((piece) => piece.learned).text, "the badge follows the learned word");
+    assert.ok(!parts.demoWindow.hasAttribute("aria-hidden"), "readable once it rests");
+    assert.equal(parts.replay.textContent, "Replay", "then the button replays");
+    parts.replay.dispatch("click");
+    assert.equal(anime.timelines.length, 2, "Replay plays it again");
+    assert.deepEqual(parts.rows.map(text), ["", "", ""], "from empty rows");
+    anime.timelines[1].run(3);
+    parts.replay.dispatch("click");
+    assert.ok(anime.timelines[1].cancelled, "Stop cancels the typing");
+    assert.deepEqual(parts.rows.map(text), passes.map((pass) => pass.text), "Stop leaves every row finished");
+    assert.equal(parts.badge.parent, parts.rows[2].input, "with the badge");
+  });
+
+  await check("motion: reduced motion turned on while the learning demo plays shows all three rows final", () => {
+    const demo = { id: "learning-reset", ...frames.demos["learning-reset"] };
+    const passes = [...demo.teachPasses, demo];
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    anime.timelines[0].run(passes[0].frames.length + 4);
+    win.reduceMotion();
+    assert.ok(anime.timelines[0].cancelled, "the typing stops");
+    assert.deepEqual(parts.rows.map((row) => row.input.children.filter((child) => child !== parts.badge).map(fakeTextOf).join("")), passes.map((pass) => pass.text), "every row final");
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge in the last row");
+    assert.ok(!parts.figure.hasAttribute("data-motion-ready"), "the control goes");
+    win.show(parts.figure, 0);
+    win.show(parts.figure, 1);
+    assert.equal(anime.timelines.length, 1, "nothing starts again");
   });
 
   await check("motion: Replay in a hidden tab waits until the tab shows again (design 7.2)", () => {

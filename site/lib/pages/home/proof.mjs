@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Section 5, three things you can check (PRD-R73, design 7.3 item 5): no data collection, free, open source, on the
+// Section 6, three things you can check (PRD-R73, design 7.3 item 5): no data collection, free, open source, on the
 // dark band (dark in both schemes).
 import { esc } from "../../util.mjs";
 

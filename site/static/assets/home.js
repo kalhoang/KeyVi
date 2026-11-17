@@ -10,7 +10,11 @@
 //   can show); its button shows as the demo starts, stops it while it plays (WCAG 2.2.2: the punctuation demo types for
 //   more than five seconds) and replays it at rest; while it types, its window is hidden from screen readers (design
 //   7.7), so a half-typed sentence is never read;
-// - the hub threads of section 4 draw in when the hub comes into view, and a dot travels along each thread, for less
+// - the learning demo of section 3 (design 9 item 4) is played by the same player: its rows, one per pass of the
+//   engine's learning demo, type one after the other, each keys strip stopping at the key the pass is about (Escape in
+//   a teaching row, the learned word in the last), and the last row's badge comes with the commit the engine took from
+//   memory;
+// - the hub threads of section 5 draw in when the hub comes into view, and a dot travels along each thread, for less
 //   than five seconds per visit (WCAG 2.2.2: the hub has no pause control).
 // Rules: nothing autoplays under prefers-reduced-motion and the final states stay; motion pauses off-screen and while
 // the tab is hidden; the hero's button pauses and resumes it and its label says what pressing does next (a plain action
@@ -42,8 +46,8 @@
   // sent, and the next one starts.
   const HERO = Object.freeze({ firstHold: 2200, startGap: 300, endHold: 1500, afterSend: 1100 });
   // A behaviour demo starts once 60 % of it shows, or, in a viewport too short for that, once 80 % of what the viewport
-  // can show of it does (behaviourStartRatio).
-  const BEHAVIOUR = Object.freeze({ startRatio: 0.6, viewportShare: 0.8, startGap: 400 });
+  // can show of it does (behaviourStartRatio). A demo of several rows (the learning demo) waits runGap between rows.
+  const BEHAVIOUR = Object.freeze({ startRatio: 0.6, viewportShare: 0.8, startGap: 400, runGap: 900 });
   // The ratios the behaviour observer reports: each is at most 1.2 times the next smaller one, so the window between a
   // start ratio and the most of the figure that can show (1.25 times the start ratio) always holds one.
   const BEHAVIOUR_THRESHOLDS = Object.freeze(geometricThresholds(BEHAVIOUR.startRatio, 1.2, 0.01));
@@ -104,6 +108,21 @@
     const ratios = [];
     for (let ratio = top; ratio >= floor; ratio /= step) ratios.push(ratio);
     return [0].concat(ratios.reverse());
+  }
+
+  /** The index of the frame a keys strip ends at, as keysEnd of lib/demos.mjs: the restore toggle of a correction or the
+   * commit the engine took from memory (rule learned, L9c), the last of either; otherwise the last frame. */
+  function keysEnd(frames) {
+    for (let index = frames.length - 1; index >= 0; index -= 1) {
+      const frame = frames[index];
+      if (frame.toggle === true || (frame.commit && frame.commit.rule === "learned")) return index;
+    }
+    return frames.length - 1;
+  }
+
+  /** The keys a strip shows once a demo is finished: the last eight up to keysEnd. */
+  function stripKeys(frames) {
+    return frames.slice(0, keysEnd(frames) + 1).slice(-KEYS_SHOWN).map((frame) => frame.key);
   }
 
   /** Motion runs only for a visitor who did not ask for reduced motion, in a shown tab, on a part that is on screen. */
@@ -203,13 +222,14 @@
     return text ? rest.concat([{ text, english: pieces[last].english }]) : withoutTrailingNewlines(rest);
   }
 
-  /** The field's nodes, English words in <mark> as lib/pages/home/markup.mjs writes them. */
-  function fieldNodes(doc, pieces) {
+  /** The field's nodes, English words in <mark> as lib/pages/home/markup.mjs writes them; `badge`, the static badge
+   * element of the learning demo's last row, follows the word the engine kept from memory. */
+  function fieldNodes(doc, pieces, badge) {
     return withoutTrailingNewlines(pieces).flatMap((piece) => {
       if (!piece.english) return lineNodes(doc, piece.text);
       const mark = doc.createElement("mark");
       mark.textContent = piece.text;
-      return [mark];
+      return piece.learned && badge ? [mark, badge] : [mark];
     });
   }
 
@@ -227,30 +247,35 @@
     return caret;
   }
 
+  const hasFrames = (run) => Boolean(run) && Array.isArray(run.frames) && run.frames.length > 0;
+
   function readFrames(el) {
     const value = JSON.parse(el.getAttribute("data-demo-frames") || "null");
     const demos = Array.isArray(value) ? value : [value];
-    const valid = demos.length > 0 && demos.every((demo) => demo && Array.isArray(demo.frames) && demo.frames.length > 0);
+    const valid = demos.length > 0 && demos.every((demo) => hasFrames(demo) && (demo.teachPasses === undefined || demo.teachPasses.every(hasFrames)));
     if (!valid) throw new Error("data-demo-frames holds no frames");
     return value;
   }
 
-  /** Frame `index` of a demo: the field with its English words marked and the caret, and the new keycap. */
+  /** Frame `index` of a demo: the field with its English words marked and the caret, and the new keycap while the strip
+   * has not reached the key the demo is about (keysEnd). */
   function showFrame(view, player, frames, index) {
     const frame = frames[index];
-    view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, index)), view.caret);
-    const cap = keycap(view.doc, frame.key);
-    view.keys.append(cap);
-    while (view.keys.children.length > KEYS_SHOWN) view.keys.firstElementChild.remove();
-    player.animate(cap, { scale: [0.8, 1], duration: UI.key, ease: "out(3)" });
+    view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, index), view.badge), view.caret);
+    if (index <= keysEnd(frames)) {
+      const cap = keycap(view.doc, frame.key);
+      view.keys.append(cap);
+      while (view.keys.children.length > KEYS_SHOWN) view.keys.firstElementChild.remove();
+      player.animate(cap, { scale: [0.8, 1], duration: UI.key, ease: "out(3)" });
+    }
     if (frame.toggle) player.animate(view.input, { opacity: [0.35, 1], duration: UI.toggle, ease: "out(2)" });
   }
 
   /** The finished demo, exactly as the static page shows it. */
   function showFinal(view, frames) {
     const last = frames.length - 1;
-    view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, last)));
-    view.keys.replaceChildren(...frames.slice(-KEYS_SHOWN).map((frame) => keycap(view.doc, frame.key)));
+    view.input.replaceChildren(...fieldNodes(view.doc, fieldPieces(frames, last), view.badge));
+    view.keys.replaceChildren(...stripKeys(frames).map((key) => keycap(view.doc, key)));
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -465,7 +490,7 @@
   }
 
   // ---------------------------------------------------------------------------------------------------------------
-  // Section 2: the behaviour demos
+  // Sections 2 and 3: the behaviour demos and the learning demo
 
   /** The button stops the demo while it plays and replays it at rest; its labels are in data-label-stop and
    * data-label-replay (lib/pages/home/behaviours.mjs). */
@@ -475,38 +500,60 @@
     if (label) demo.control.textContent = label;
   }
 
-  /** The finished demo as on the static page; the field gets its own height back and screen readers read it again. */
+  /** The finished demo as on the static page; each field gets its own height back and screen readers read it again. */
   function behaviourRest(demo) {
     demo.playing = false;
-    showFinal(demo.view, demo.frames);
-    demo.view.input.style.minHeight = "";
-    demo.view.input.removeAttribute("aria-busy");
+    demo.runs.forEach(({ view, frames }) => {
+      showFinal(view, frames);
+      view.input.style.minHeight = "";
+      view.input.removeAttribute("aria-busy");
+    });
     if (demo.window) demo.window.removeAttribute("aria-hidden");
     behaviourLabel(demo);
   }
 
+  /** Each field keeps the height of its final text while it types, so nothing below it moves (design 7.8); the exact
+   * height, since offsetHeight rounds. Every field starts empty, the first one with the caret. */
+  function behaviourClear(demo) {
+    demo.runs.forEach(({ view }) => {
+      view.input.style.minHeight = `${view.input.getBoundingClientRect().height}px`;
+      view.input.setAttribute("aria-busy", "true");
+      view.input.replaceChildren();
+      view.keys.replaceChildren();
+    });
+    demo.runs[0].view.input.replaceChildren(demo.runs[0].view.caret);
+  }
+
+  /** The runs in one timeline, one after the other: a run's frames at the typing pace, then runGap, then the run before
+   * shows finished (its caret goes) and the next one starts. */
+  function behaviourSchedule(demo, timeline) {
+    const { runs, player } = demo;
+    runs.reduce((start, run, runIndex) => {
+      if (runIndex > 0) {
+        timeline.call(() => {
+          showFinal(runs[runIndex - 1].view, runs[runIndex - 1].frames);
+          run.view.input.replaceChildren(run.view.caret);
+        }, start);
+      }
+      const delays = schedule(run.frames, (demo.cycle += 1));
+      const end = run.frames.reduce((at, frame, index) => {
+        const time = at + delays[index];
+        timeline.call(() => showFrame(run.view, player, run.frames, index), time);
+        return time;
+      }, start);
+      return end + BEHAVIOUR.runGap;
+    }, BEHAVIOUR.startGap);
+  }
+
   function behaviourPlay(demo) {
-    const { view, frames, player } = demo;
-    const delays = schedule(frames, (demo.cycle += 1));
     demo.playing = true;
     // The control shows from the first frame, so the motion can be stopped (design 4, WCAG 2.2.2).
     demo.figure.setAttribute("data-motion-ready", "");
     behaviourLabel(demo);
-    // The field keeps the height of its final text while it types, so nothing below it moves (design 7.8); the exact
-    // height, since offsetHeight rounds.
-    view.input.style.minHeight = `${view.input.getBoundingClientRect().height}px`;
-    view.input.setAttribute("aria-busy", "true");
+    behaviourClear(demo);
     // A screen reader never reads the half-typed sentence; the figcaption stays readable (design 7.7).
     if (demo.window) demo.window.setAttribute("aria-hidden", "true");
-    view.input.replaceChildren(view.caret);
-    view.keys.replaceChildren();
-    player.timeline({ onComplete: () => behaviourEnd(demo) }, (timeline) => {
-      frames.reduce((at, frame, index) => {
-        const time = at + delays[index];
-        timeline.call(() => showFrame(view, player, frames, index), time);
-        return time;
-      }, BEHAVIOUR.startGap);
-    });
+    demo.player.timeline({ onComplete: () => behaviourEnd(demo) }, (timeline) => behaviourSchedule(demo, timeline));
   }
 
   function behaviourEnd(demo) {
@@ -553,13 +600,28 @@
     demo.figure.removeAttribute("data-motion-ready");
   }
 
+  /** The field, keys strip, caret and badge (the learning demo's last row only) a run writes to. */
+  function viewOf(ctx, el) {
+    return { doc: ctx.doc, input: el.querySelector("[data-input]"), keys: el.querySelector("[data-keys]"), caret: caretElement(ctx.doc), badge: el.querySelector(".learned-badge") };
+  }
+
+  /** What a figure plays, in order: one run for a behaviour figure; for the learning demo one row (data-run) per teaching
+   * pass, then the pass the engine typed from memory (lib/pages/home/learning.mjs). */
+  function runsOf(ctx, figure) {
+    const demo = readFrames(figure);
+    const rows = Array.from(figure.querySelectorAll("[data-run]"));
+    if (rows.length === 0) return [{ view: viewOf(ctx, figure), frames: demo.frames }];
+    const passes = (demo.teachPasses || []).concat([demo]);
+    if (rows.length !== passes.length) throw new Error(`${rows.length} rows for ${passes.length} passes`);
+    return rows.map((row, index) => ({ view: viewOf(ctx, row), frames: passes[index].frames }));
+  }
+
   function setupBehaviour(ctx, figure) {
     const demo = {
       figure,
       control: figure.querySelector("[data-replay]"),
       window: figure.querySelector(".demo-window"),
-      frames: readFrames(figure).frames,
-      view: { doc: ctx.doc, input: figure.querySelector("[data-input]"), keys: figure.querySelector("[data-keys]"), caret: caretElement(ctx.doc) },
+      runs: runsOf(ctx, figure),
       player: createPlayer(ctx.anime),
       cycle: 0,
       visible: false,
@@ -580,7 +642,7 @@
   }
 
   // ---------------------------------------------------------------------------------------------------------------
-  // Section 4: the hub threads
+  // Section 5: the hub threads
 
   function hubDraw(hub) {
     hub.drawn = true;
@@ -702,5 +764,5 @@
     });
   }
 
-  return Object.freeze({ schedule, keyLabel, shouldAnimate, tagsFor, fieldPieces, behaviourStartRatio, boot });
+  return Object.freeze({ schedule, keyLabel, shouldAnimate, tagsFor, fieldPieces, stripKeys, behaviourStartRatio, boot });
 });

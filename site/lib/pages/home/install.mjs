@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Section 6, install in a minute (design 7.3 item 6): three steps, the permission named as the download page names it
+// Section 7, install in a minute (design 7.3 item 6): three steps, the permission named as the download page names it
 // (with its VERIFY marker), and the brew line again.
 import { esc } from "../../util.mjs";
 import { brewLine } from "./download.mjs";

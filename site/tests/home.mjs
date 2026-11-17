@@ -4,11 +4,12 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { loadBrand } from "../lib/brand.mjs";
 import { keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, stripKeys, LEARNED_BADGE, learningRows } from "./helpers.mjs";
 
 /** Home page sections, compat hub and demo data. */
 export async function runHomeChecks(check, fixtures) {
@@ -38,22 +39,14 @@ export async function runHomeChecks(check, fixtures) {
     for (const [label, html] of homePages) {
       const heroIds = (framesAttr(heroTag(html)) ?? []).map((demo) => demo.id);
       const used = new Set([...heroIds, ...attrs(html, "data-demo")]);
-      // Demos waiting for their home section (design 9 item 4). The exception removes itself: once the page shows a
-      // pending demo the check fails until the id leaves this set, and a new demo is never hidden by it.
-      const pending = new Set(["learning-reset"]);
-      for (const id of pending) {
-        assert.ok(id in frames.demos, `${label}: pending demo ${id} is in frames.json`);
-        assert.ok(!used.has(id), `${label}: ${id} is on the page now, take it out of the pending set`);
-      }
-      const placed = Object.keys(frames.demos).filter((id) => !pending.has(id));
-      assert.deepEqual([...used].sort(), placed.sort(), `${label}: the page uses every demo of frames.json`);
+      assert.deepEqual([...used].sort(), Object.keys(frames.demos).sort(), `${label}: the page uses every demo of frames.json`);
       const text = textOf(mainOf(html));
       for (const id of used) {
         const final = frames.demos[id].text.replace(/\n/g, "").trim();
         assert.ok(text.includes(esc(final)), `${label}: ${id} "${final}" is not in the page text`);
       }
       // The visible demo areas themselves hold the final state, not only the visually hidden list (Review Focus 3).
-      const keycaps = (demo) => demo.frames.slice(-8).map((frame) => `<kbd class="keycap">${esc(keyLabel(frame.key))}</kbd>`).join("");
+      const keycaps = (demo) => stripKeys(demo.frames).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join("");
       const heroWindow = html.match(/<div class="mac-window" data-hero[\s\S]*?<div class="keys-strip">[\s\S]*?<\/div>/)?.[0] ?? "";
       const chat = frames.demos["hero-chat"];
       assert.equal(unescapeHtml(textOf(heroWindow.match(/<p data-input[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "")), chat.text, `${label}: the hero field holds the first sentence`);
@@ -69,10 +62,10 @@ export async function runHomeChecks(check, fixtures) {
   await check("home: motion controls hold their place without JavaScript and show only once home.js is ready (design 7.8)", async () => {
     for (const [label, html] of homePages) {
       const controls = html.match(/<button\b[^>]*\sdata-(?:motion-toggle|replay)\b[^>]*>/g) ?? [];
-      assert.equal(controls.length, 4, `${label}: the pause control and three replay buttons`);
+      assert.equal(controls.length, 5, `${label}: the pause control, three behaviour replay buttons and the learning demo's`);
       // A hidden attribute would take the button out of the flow and move the page when home.js reveals it.
       for (const tag of controls) assert.ok(!/\shidden\b/.test(tag), `${label}: ${tag} is in the flow`);
-      for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
+      for (const figure of html.match(/<figure class="(?:behaviour|learning-demo)"[\s\S]*?<\/figure>/g) ?? []) {
         assert.match(figure, /<\/figcaption>\s*<\/figure>$/, `${label}: the figcaption is the last child of its figure`);
       }
     }
@@ -86,11 +79,15 @@ export async function runHomeChecks(check, fixtures) {
       const h = homeCopy[lang];
       const expected = [
         ...h.behaviours.items.filter((item) => item.note).map((item) => item.noteReq),
+        h.learning.req,
+        ...h.learning.cards.map((item) => item.req),
         ...h.cards.items.map((item) => item.req),
         h.apps.secureInput.req,
       ];
+      // Design 9 item 4: the learning demo cites D28 and ENG-R863, its cards PRD-R78, PRD-R2 twice and ENG-R860.
+      assert.deepEqual([h.learning.req, ...h.learning.cards.map((item) => item.req)], ["D28, ENG-R863", "PRD-R78", "PRD-R2", "PRD-R2", "ENG-R860"], `${label}: learning requirements`);
       const main = mainOf(html);
-      assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, every card and the Secure Input card carry their requirement`);
+      assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, the learning demo, every card and the Secure Input card carry their requirement`);
       assert.ok(!/class="[^"]*\breq\b/.test(main), `${label}: no visible requirement line`);
       const visible = unescapeHtml(textOf(main));
       for (const id of new Set(expected.flatMap((req) => req.split(/,\s*/)))) {
@@ -99,6 +96,100 @@ export async function runHomeChecks(check, fixtures) {
     }
     const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
     assert.ok(!/\.req\b/.test(css), "home.css has no rule left for the removed requirement line");
+  });
+
+  await check("home: eight sections in order, learning third (design 9 item 4)", () => {
+    for (const [label, html] of homePages) {
+      const order = attrs(mainOf(html), "data-section");
+      assert.deepEqual(order, ["hero", "behaviours", "learning", "cards", "apps", "proof", "install", "closing"], `${label}: sections`);
+    }
+  });
+
+  await check("home: the learning section shows the generated demo in three rows, final without JavaScript (design 9 item 4)", () => {
+    const demo = frames.demos["learning-reset"];
+    const passes = [...demo.teachPasses, demo];
+    assert.equal(passes.length, 3, "two teaching passes and the pass the engine took from memory");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].learning;
+      const part = section(html, "learning");
+      assert.match(part, /^<section class="home-section" data-section="learning" aria-labelledby="learning-title">/, `${label}: the section`);
+      assert.ok(part.includes(`<h2 id="learning-title">${esc(copy.heading)}</h2>`), `${label}: heading`);
+      const figure = part.match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      assert.equal(attrs(figure, "data-demo")[0], "learning-reset", `${label}: the demo of frames.json`);
+      assert.deepEqual(framesAttr(figure.match(/<figure[^>]*>/)?.[0] ?? ""), demo, `${label}: its frames, teaching passes included`);
+      assert.equal(attrs(figure, "data-req")[0], esc("D28, ENG-R863"), `${label}: data-req`);
+      const rows = learningRows(figure);
+      assert.deepEqual(rows.map((row) => unescapeHtml(row.label)), copy.rows, `${label}: the row labels`);
+      rows.forEach((row, index) => {
+        // Each row holds its pass finished, the badge aside, and its keys strip ends at the key the pass is about.
+        assert.equal(unescapeHtml(textOf(row.field.replace(LEARNED_BADGE, ""))), passes[index].text, `${label}: row ${index + 1} text`);
+        assert.equal(row.keys, stripKeys(passes[index].frames).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join(""), `${label}: row ${index + 1} keys`);
+      });
+      // The Escape keycap shows in each teaching row and closes its strip; the last row's strip ends at the learned word.
+      for (const row of rows.slice(0, -1)) assert.match(row.keys, /<kbd class="keycap">esc<\/kbd>$/, `${label}: the teaching row shows Escape`);
+      assert.ok(!rows.at(-1).keys.includes(">esc<"), `${label}: no Escape in the last row`);
+    }
+  });
+
+  await check("home: the learned badge marks the word the engine kept by rule learned, in the last row only (L9c)", () => {
+    const demo = frames.demos["learning-reset"];
+    const learned = demo.frames.find((frame) => frame.commit?.rule === "learned")?.commit;
+    assert.ok(learned, "frames.json: the final pass keeps a word by rule learned");
+    for (const [label, html, lang] of homePages) {
+      const rows = learningRows(section(html, "learning"));
+      assert.deepEqual(rows.map((row) => [...row.field.matchAll(LEARNED_BADGE)].length), [0, 0, 1], `${label}: one badge, in the last row`);
+      assert.equal([...section(html, "learning").matchAll(LEARNED_BADGE)][0]?.[1], esc(homeCopy[lang].learning.learned), `${label}: the badge says ${homeCopy[lang].learning.learned}`);
+      const before = rows.at(-1).field.split(LEARNED_BADGE)[0];
+      assert.ok(before.endsWith(`<mark>${esc(learned.text)}</mark>`), `${label}: the badge follows ${learned.text}: ${before}`);
+      assert.match(rows.at(-1).field, lang === "vi" ? /<span class="learned-badge">/ : /<span class="learned-badge" lang="en">/, `${label}: the badge is in the page language`);
+    }
+  });
+
+  await check("home: the learning caption takes its words from the frames (design 9 item 4)", async () => {
+    const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
+    const demo = frames.demos["learning-reset"];
+    const trailing = (text) => text.match(/[\p{L}\p{M}\p{N}]+$/u)?.[0];
+    // What the engine showed before the restore toggle and what the toggle gave back, the same in every teaching pass.
+    const corrections = demo.teachPasses.map((pass) => {
+      const at = pass.frames.findIndex((frame) => frame.toggle === true);
+      assert.ok(at > 0 && pass.frames[at].key === "⎋", "the correction is the Escape key");
+      return { raw: trailing(pass.frames[at].text), vi: trailing(pass.frames[at - 1].text) };
+    });
+    assert.ok(corrections.every((c) => c.raw === corrections[0].raw && c.vi === corrections[0].vi && c.raw !== c.vi), JSON.stringify(corrections));
+    const { raw, vi } = corrections[0];
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].learning;
+      const figure = section(html, "learning").match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      const caption = figure.match(/<figcaption><p id="learning-caption">([\s\S]*?)<\/p><\/figcaption>/)?.[1];
+      const expected = copy.caption.replaceAll("{{raw}}", raw).replaceAll("{{vi}}", vi).replaceAll("{{AppName}}", brand.name);
+      assert.equal(unescapeHtml(textOf(caption ?? "")), expected, `${label}: the caption`);
+    }
+  });
+
+  await check("home: learning cards name the app's own panes, buttons and lists, and section 4 keeps four cards", async () => {
+    const catalog = JSON.parse(await readFile(join(ROOT_DIR, "App", "Resources", "Localization", "Settings.xcstrings"), "utf8"));
+    const string = (key, lang) => catalog.strings[key]?.localizations?.[lang]?.stringUnit?.value ?? `missing ${key}`;
+    const demo = frames.demos["learning-reset"];
+    const at = demo.frames.findIndex((frame) => frame.commit?.rule === "learned");
+    const previous = demo.frames.slice(0, at).findLast((frame) => frame.commit)?.commit;
+    // The sample row of the learned-words sheet (PRD-R78): the learned word after a Vietnamese word, as in the demo.
+    assert.ok(previous && previous.english === false, "the learned word follows a Vietnamese word in the demo");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang];
+      const cards = [...section(html, "learning").matchAll(/<li class="card feature" data-card="([^"]+)" data-static data-req="[^"]*">([\s\S]*?)<\/li>\s*(?=<li class="card|<\/ul>)/g)];
+      assert.deepEqual(cards.map((m) => m[1]), ["learned", "perApp", "macros", "wordLists"], `${label}: the four static learning cards`);
+      const learned = copy.learning.cards.find((card) => card.id === "learned");
+      assert.ok(learned.body.includes(`<em>${string("settings.typing.learnedChoices.show", lang)}</em>`), `${label}: the button label of Settings.xcstrings`);
+      assert.ok(learned.body.includes(string("settings.pane.typing", lang)), `${label}: the Typing pane`);
+      assert.equal(learned.illustration.context, string("settings.typing.learnedChoices.context.afterVietnamese", lang), `${label}: the context words of the sheet`);
+      const sample = cards[0][2].match(/<p class="illustration learned-row">([\s\S]*?)<\/p>/)?.[1] ?? "";
+      assert.match(sample, new RegExp(`^<code>${demo.frames[at].commit.raw}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${demo.frames[at].commit.text}</span><small>${esc(learned.illustration.context)}</small>`), `${label}: the sample row ${sample}`);
+      const lists = copy.learning.cards.find((card) => card.id === "wordLists");
+      assert.deepEqual(lists.illustration.lists, [string("settings.typing.keepAsTyped.title", lang), string("settings.typing.keepVietnamese.title", lang)], `${label}: the two user lists (ENG-R860)`);
+      assert.ok(lists.body.includes(string("settings.pane.typing", lang)), `${label}: the lists live in the Typing pane`);
+      const typeYourWay = [...section(html, "cards").matchAll(/<li class="card feature" data-card="([^"]+)"/g)].map((m) => m[1]);
+      assert.deepEqual(typeYourWay, ["anywhere", "slang", "method", "layouts"], `${label}: section 4 keeps four cards`);
+    }
   });
 
   await check("home: the apps intro goes through the token filler like every other intro", async () => {

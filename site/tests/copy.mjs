@@ -29,12 +29,21 @@ export async function runCopyChecks(check, fixtures) {
     assert.equal(vi.h1, "Gõ tiếng Việt lẫn tiếng Anh, không cần chuyển.");
     assert.equal(en.h1, "Type Vietnamese and English without switching.");
     // The section headings of design 7.3 and the ids the renderers and frames.json share (plan Task 4).
-    assert.deepEqual([vi.behaviours.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
-      ["Một câu, hai thứ tiếng", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+    assert.deepEqual([vi.behaviours.heading, vi.learning.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
+      ["Một câu, hai thứ tiếng", "Càng gõ càng hợp với bạn", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
     assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
-    assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "macros", "layouts", "perApp"]);
+    assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "layouts"]);
+    assert.deepEqual(vi.learning.cards.map((item) => item.id), ["learned", "perApp", "macros", "wordLists"]);
     assert.ok(!("categories" in vi.apps) && !("categories" in en.apps), "the hub takes its category names from ui.categories, as the compatibility page does");
     assert.deepEqual(vi.cards.items.flatMap((item) => item.demos ?? []), ["card-anywhere", "card-slang", "card-telex", "card-vni", "card-traditional", "card-modern"]);
+    // Design 9 item 4, with the English of the review of 17/11/2026.
+    assert.equal(en.learning.heading, "The more you type, the better it fits");
+    assert.equal(vi.learning.intro, "{{AppNameTM}} học từ chính những lần bạn sửa. Chữ nào bạn sửa hai lần, lần sau {{AppName}} tự gõ đúng ý bạn. Mọi thứ học được chỉ lưu trên máy này, và bạn xem, xóa được trong Cài đặt.");
+    assert.equal(en.learning.intro, "{{AppNameTM}} learns from the corrections you make. Correct a word twice and {{AppName}} types it your way from then on. Everything it learns stays on this Mac, and you can see and remove it in Settings.");
+    assert.deepEqual([vi.learning.rows, en.learning.rows], [["Lần 1", "Lần 2", "Từ lần sau"], ["1st time", "2nd time", "From then on"]]);
+    assert.deepEqual([vi.learning.learned, en.learning.learned], ["Đã nhớ", "Learned"]);
+    assert.equal(vi.learning.caption, "Gõ {{raw}} ra {{vi}}? Bấm Escape để lấy lại {{raw}}. Sửa hai lần, {{AppName}} nhớ luôn.");
+    assert.equal(en.learning.caption, "Typed {{raw}} and got {{vi}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.");
     assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
     // Design 9 item 1: a kept word's tag names what plain Telex would have typed; the caption says so; the peer's message
     // is Vietnamese on both pages.

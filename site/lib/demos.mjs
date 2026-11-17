@@ -141,6 +141,28 @@ export function englishWords(demo) {
   return wordsOf(demo).filter((piece) => piece.english).map((piece) => piece.text);
 }
 
+/** The index of the frame a keys strip ends at: the key a demo is about, which is the restore toggle of a correction or
+ * the commit the engine took from memory (rule learned, L9c), the last one of either; otherwise the last frame. The
+ * teaching rows of the learning section end on Escape and its last row on the learned word (design 9 item 4); every
+ * other demo ends on its last key. home.js mirrors it, so the animated strip ends as the static one. */
+export function keysEnd(frames) {
+  const focus = frames.findLastIndex((frame) => frame.toggle === true || frame.commit?.rule === "learned");
+  return focus >= 0 ? focus : frames.length - 1;
+}
+
+const TRAILING_WORD = /[\p{L}\p{M}\p{N}]+$/u;
+
+/** The correction a teaching pass makes with the restore toggle (design 9 item 4): `vi`, the word the engine showed
+ * before the toggle, and `raw`, the keys the toggle gave back. The learning caption names both, so its words always
+ * come from the engine. Throws when the pass has no toggle after a word. */
+export function correctionOf(pass) {
+  const at = pass.frames.findIndex((frame) => frame.toggle === true);
+  const raw = at > 0 ? pass.frames[at].text.match(TRAILING_WORD)?.[0] : undefined;
+  const vi = at > 0 ? pass.frames[at - 1].text.match(TRAILING_WORD)?.[0] : undefined;
+  if (!raw || !vi) throw new Error(`${LABEL}: a teaching pass has no restore toggle after a word`);
+  return { raw, vi };
+}
+
 // Key notation of site/demo/script.json and the legend printed on a Mac keycap.
 const KEY_LABELS = new Map([[" ", "space"], ["⏎", "return"], ["⎋", "esc"], ["⌫", "delete"]]);
 
