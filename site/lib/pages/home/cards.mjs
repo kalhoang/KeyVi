@@ -2,7 +2,8 @@
 // Section 3, "type your way" (design 7.3 item 3): six cards. Engine cards show the keys and what the engine made of them
 // (site/demo/frames.json); the modern tone placement is written in <em>, the setting's example (site/lib/tone.mjs).
 // Static cards (macros, layouts, per-app memory) are illustrations the engine does not decide, never animated as if
-// typed (design 7.4). Each card ends with the requirement that proves it.
+// typed (design 7.4). Each card carries the requirement that proves it in data-req, which the page does not show (Pa,
+// 17/11/2026: a general reader cannot use the IDs; site/tests/home.mjs ties them to the content).
 import { esc } from "../../util.mjs";
 import { demoById, viLang } from "./markup.mjs";
 
@@ -34,11 +35,10 @@ function card(kt, item) {
   const illustrate = ILLUSTRATIONS[item.id];
   if (!item.demos && !(illustrate && item.illustration)) throw new Error(`home card ${item.id}: neither demos nor an illustration`);
   const visual = item.demos ? engineRows(kt, item) : illustrate(item.illustration, lang);
-  return `<li class="card feature" data-card="${esc(item.id)}"${item.demos ? "" : " data-static"}>
+  return `<li class="card feature" data-card="${esc(item.id)}"${item.demos ? "" : " data-static"} data-req="${esc(item.req)}">
           <h3>${esc(item.title)}</h3>
           <p>${f(item.body)}</p>
           ${visual}
-          <small class="req">${esc(item.req)}</small>
         </li>`;
 }
 
