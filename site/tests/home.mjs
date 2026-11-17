@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { loadBrand } from "../lib/brand.mjs";
 import { keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { keycapsHtml, wordsHtml } from "../lib/pages/home/markup.mjs";
+import { learnedRowHtml } from "../lib/pages/home/cards.mjs";
 import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
@@ -166,6 +167,20 @@ export async function runHomeChecks(check, fixtures) {
     const learned = wordsOf(demo).find((piece) => piece.learned);
     assert.ok(learned && !learned.english, "the learned word is Vietnamese in this copy");
     assert.ok(wordsHtml(demo, "<b>badge</b>").includes(`${esc(learned.text)}<b>badge</b>`), "the badge follows the Vietnamese learned word");
+  });
+
+  await check("home: the learned-words card shows the learned word's keys, then what it became (PRD-R78, L9c)", () => {
+    // The engine may keep the Vietnamese side of the learned word: the sheet's row then reads keys -> Vietnamese word.
+    const demo = frames.demos["learning-reset"];
+    const commit = demo.frames.find((frame) => frame.commit?.rule === "learned").commit;
+    assert.ok(commit.plain && commit.plain !== commit.raw, "the learned word has a Vietnamese reading");
+    const viSide = {
+      ...demo,
+      text: demo.text.replace(commit.text, commit.plain),
+      frames: demo.frames.map((frame) => (frame.commit?.rule === "learned" ? { ...frame, commit: { ...frame.commit, text: commit.plain, english: false } } : frame)),
+    };
+    assert.equal(wordsOf(viSide).find((piece) => piece.learned)?.raw, commit.raw, "the learned piece carries its keys");
+    assert.match(learnedRowHtml(viSide, "ctx"), new RegExp(`^<p class="illustration learned-row"><code>${esc(commit.raw)}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${esc(commit.plain)}</span><small>ctx</small>`));
   });
 
   await check("home: the learning caption takes its words from the frames (design 9 item 4)", async () => {

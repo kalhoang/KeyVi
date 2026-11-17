@@ -152,7 +152,7 @@
   const plainPieces = (text) => (text.match(PIECE) || []).map((piece) => ({ text: piece, english: false }));
 
   /** The field after frame `index`, as words and separators `{ text, english }` (with `plain` on an English word plain
-   * Telex would have changed, ENG-R802, and `learned: true` on a word kept by rule learned, L9c): the words committed
+   * Telex would have changed, ENG-R802, and `learned: true` with its keys in `raw` on a word kept by rule learned, L9c): the words committed
    * so far carry their latest state. After the last frame this
    * is wordsOf of lib/demos.mjs, which renders the static field. */
   function fieldPieces(frames, index) {
@@ -161,7 +161,7 @@
       const at = token.text ? findWord(text, token.text, state.cursor) : -1;
       if (at < 0) return state;
       const base = token.plain ? { text: token.text, english: token.english === true, plain: token.plain } : { text: token.text, english: token.english === true };
-      const piece = token.rule === "learned" ? Object.assign({}, base, { learned: true }) : base;
+      const piece = token.rule === "learned" ? Object.assign({}, base, { learned: true, raw: token.raw }) : base;
       return { pieces: state.pieces.concat(plainPieces(text.slice(state.cursor, at)), [piece]), cursor: at + token.text.length };
     }, { pieces: [], cursor: 0 });
     return placed.pieces.concat(plainPieces(text.slice(placed.cursor)));

@@ -26,14 +26,16 @@ function engineRows(kt, item) {
 
 const listOf = (className, items) => `<ul class="illustration ${className}">${items.map((html) => `<li>${html}</li>`).join("")}</ul>`;
 
-/** A row of the learned-words sheet (PRD-R78): the word's keys, an arrow, what it becomes and the context in words. The
- * word is the one the learning demo's engine kept from memory, so the card and the demo agree; for an English choice
- * the word stays its keys. The context words are the sheet's (Settings.xcstrings). */
-function learnedRow({ context }, kt) {
-  const word = wordsOf(demoById(kt.ctx, kt.c.home.learning.demo)).find((piece) => piece.learned);
+/** A row of the learned-words sheet (PRD-R78) for the word the learning demo's engine kept from memory, so the card and
+ * the demo agree: the word's keys, an arrow, what it becomes (L9c keeps either side: the keys for an English choice,
+ * the Vietnamese reading otherwise) and the context in words, which are the sheet's (Settings.xcstrings). */
+export function learnedRowHtml(demo, context) {
+  const word = wordsOf(demo).find((piece) => piece.learned);
   if (!word) throw new Error("home learning card: the learning demo keeps no word by rule learned");
-  return `<p class="illustration learned-row"><code>${esc(word.text)}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${esc(word.text)}</span><small>${esc(context)}</small><span class="remove-mark" aria-hidden="true"></span></p>`;
+  return `<p class="illustration learned-row"><code>${esc(word.raw)}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${esc(word.text)}</span><small>${esc(context)}</small><span class="remove-mark" aria-hidden="true"></span></p>`;
 }
+
+const learnedRow = ({ context }, kt) => learnedRowHtml(demoById(kt.ctx, kt.c.home.learning.demo), context);
 
 const ILLUSTRATIONS = {
   macros: ({ keys, result, caption }, kt) => `<p class="illustration macro">${keysTo(keys, esc(result), kt.lang)}<small>${esc(caption)}</small></p>`,

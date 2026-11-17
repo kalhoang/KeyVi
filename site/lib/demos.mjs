@@ -113,8 +113,9 @@ const plainPieces = (text) => (text.match(/[\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]
  * The final text split into words and separators, in order, each `{ text, english }`, and `plain` on an English word
  * that plain Telex would have typed otherwise (ENG-R802). A word is English when its latest state is: a commit says what
  * a token became, and a later frame's `revised` replaces the commit of the token before it (the next word fixed it,
- * D29). `learned: true` marks a word the engine kept from memory (commit rule `learned`, L9c): the learning section's
- * "remembered" badge reads it, never the word itself; a revised token has no rule, so a revision drops the mark.
+ * D29). `learned: true` marks a word the engine kept from memory (commit rule `learned`, L9c), with its keys in `raw`:
+ * the learning section's "remembered" badge and learned-words card read them, never the word itself; a revised token
+ * has no rule, so a revision drops the mark.
  * Joining the pieces gives the demo's text back. A teaching pass (`{ text, frames }`) is read the same way.
  */
 export function wordsOf(demo) {
@@ -129,7 +130,7 @@ export function wordsOf(demo) {
       text: token.text,
       english: token.english === true,
       ...(token.plain ? { plain: token.plain } : {}),
-      ...(token.rule === "learned" ? { learned: true } : {}),
+      ...(token.rule === "learned" ? { learned: true, raw: token.raw } : {}),
     };
     return { pieces: [...state.pieces, ...plainPieces(demo.text.slice(state.cursor, at)), piece], cursor: at + token.text.length };
   }, { pieces: [], cursor: 0 });
