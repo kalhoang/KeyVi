@@ -50,6 +50,11 @@ struct CorpusScore {
     private(set) var badRevisions: [String] = []
     /// `id: raw -> with (without), rule` for every non-collision word the collision rules changed.
     private(set) var nonCollisionChanges: [String] = []
+    /// `id: raw -> with (without)` for every doubled word whose two forms are English that the collision rules brought
+    /// back to the keys typed, its intended word: rule L4 reads the English run, English-lean words included, and the
+    /// phrases (amended by the product owner on 17/11/2026, REG-37), so `The mess` and `Turn off` keep the word typed
+    /// only with the rules on. Not a non-collision change: it never damages a word.
+    private(set) var escapesBroughtBack: [String] = []
     private(set) var exactSentences = 0
     /// Sentences whose field or revisions differ from the frozen fixture.
     private(set) var mismatches: [String] = []
@@ -116,9 +121,12 @@ struct CorpusScore {
                 hidden = hidden.adding(ok)
             case .plain:
                 if let baseWords, baseWords[index] != output {
-                    nonCollisionChanges.append(
-                        "\(sentence.id): \(token.raw) -> \(output) (\(baseWords[index])), \(Self.ruleName(token.decision))"
-                    )
+                    let change = "\(sentence.id): \(token.raw) -> \(output) (\(baseWords[index]))"
+                    if token.decision == .restored(.escape), ok {
+                        escapesBroughtBack.append(change)
+                    } else {
+                        nonCollisionChanges.append(change + ", \(Self.ruleName(token.decision))")
+                    }
                 }
             case .collision(let intended, let category, let positions):
                 collisions = collisions.adding(ok, intended: intended)
@@ -190,11 +198,12 @@ struct CorpusScore {
             "EN \(english.percent) (\(english.right)/\(english.total))  VI \(vietnamese.percent) "
                 + "(\(vietnamese.right)/\(vietnamese.total))  all \(everything.percent)  revisions \(revisions) good "
                 + "\(goodRevisions) bad \(badRevisions.count)  per1k \(String(format: "%.1f", perThousand))  "
-                + "non-collision changes \(nonCollisionChanges.count)  exact \(exactSentences)  hidden "
-                + "\(hidden.right)/\(hidden.total)",
+                + "non-collision changes \(nonCollisionChanges.count)  escapes brought back \(escapesBroughtBack.count)  "
+                + "exact \(exactSentences)  hidden \(hidden.right)/\(hidden.total)",
         ]
         lines += badRevisions.prefix(20).map { "BAD \($0)" }
         lines += nonCollisionChanges.prefix(20).map { "NONC \($0)" }
+        lines += escapesBroughtBack.prefix(20).map { "L4 \($0)" }
         lines += Self.table("By position", byPosition)
         lines += Self.table("By category", byCategory)
         lines += Self.table("By group", byGroup)

@@ -26,6 +26,10 @@ package struct Composition: Sendable, Hashable {
     package internal(set) var escapedKinds: EscapeKinds = []
     /// An escape happened in this token (rule L4 of 8.1).
     package internal(set) var escapeUsed = false
+    /// An escape key did not come right after a key whose effect it removed: not the doubling of 4.7 but a
+    /// transform letter that came back later in a word typed through (`costs`: the second `s` after `t`; `leecher`:
+    /// the third `e` after `ch`). Rule L4 then restores the keys (amended by the product owner on 17/11/2026, REG-37).
+    package internal(set) var escapedAcrossKeys = false
     /// Raw index of the key that started literal mode; nil while composing (4.5).
     package internal(set) var literalStart: Int?
     /// Set when the key that started literal mode was appended by an escape (4.7, ENG-R442: `ass`,
@@ -86,6 +90,17 @@ package struct Composition: Sendable, Hashable {
     }
 
     package var isLiteral: Bool { literalStart != nil }
+
+    /// The last key of the token is an escape (4.7): its letter is the last letter (`Karr`, `Anaa`) or it started
+    /// literal mode (`ass`, `nhaamff`, VNI `a11`). The user saw the escaped form and committed it as shown, which
+    /// rule L4 reads as a deliberate escape (amended by the product owner on 17/11/2026, REG-37).
+    package var endsWithEscape: Bool {
+        let last = raw.count - 1
+        guard last >= 0 else { return false }
+        if let literalStart { return literalStart == last && literalEscapeUndone != nil }
+        guard let letter = letters.last else { return false }
+        return letter.flags.contains(.escape) && Int(letter.source) == last
+    }
 
     /// ENG-R904: the raw keys are camel case (input to rule L3b).
     package var isCamelCase: Bool { camelCase.isCamelCase }
@@ -184,6 +199,7 @@ package struct Composition: Sendable, Hashable {
     mutating func escape(_ kind: EscapeKinds, key: UInt8, at index: Int, undoing: KeySet) {
         escapedKinds.insert(kind)
         escapeUsed = true
+        if index == 0 || !undoing.contains(index - 1) { escapedAcrossKeys = true }
         appendLetterOrLiteral(key, at: index, flags: .escape, undoing: undoing)
     }
 

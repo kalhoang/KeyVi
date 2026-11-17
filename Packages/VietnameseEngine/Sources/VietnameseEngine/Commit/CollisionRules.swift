@@ -69,7 +69,9 @@ extension CommitPolicy {
     /// L9c (ENG-R863): the memory's vote for a collision word in the current context, nil when the rules
     /// decide.
     func memoryVote(_ rawLowercased: String, context: CommitContext) -> Language? {
-        guard !resources.collisionMemory.isEmpty, isCollisionWord(rawLowercased) else { return nil }
+        guard context.readsMemory, !resources.collisionMemory.isEmpty, isCollisionWord(rawLowercased) else {
+            return nil
+        }
         return resources.collisionMemory.vote(word: rawLowercased, context: context.memoryContext)
     }
 

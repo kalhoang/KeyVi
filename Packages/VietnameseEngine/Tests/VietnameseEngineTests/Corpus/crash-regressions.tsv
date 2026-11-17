@@ -23,7 +23,7 @@ CR012	Telex	-	«vieejt»×5vie	việt«vieejt»×4vie	«vieejt»×5vie	33 keys w
 CR013	Telex	-	«vieejt»×5vie\s	«vieejt»×5vie\s	-	33 keys with marks, committed (restored, L5)
 CR014	Telex	-	«blinh»×12blhm	«blinh»×12blhm	«blinh»×12blhm	64 keys, no marks
 CR015	Telex	-	«dduwowcj»×8	dược«dduwowcj»×7	«dduwowcj»×8	64 keys with marks: the ninth key d escapes the stroke (ENG-R415) and goes literal (ENG-R442)
-CR016	Telex	-	«dduwowcj»×8\s	dược«dduwowcj»×7\s	-	committed: an escape was used, L4 keeps the composed form
+CR016	Telex	-	«dduwowcj»×8\s	«dduwowcj»×8\s	-	committed: the ninth key d escapes a stroke typed seven keys before it, no doubling, so L4 restores the keys (REG-37; L4 kept the composed form before 17/11/2026)
 CR017	Telex	-	a«sfrxj»×13	ảxj	a«sfrxj»×13	66 keys alternating tones: composing until the 64-key cap, then literal (ENG-R641)
 CR018	Telex	-	a«sfrxj»×13\s	a«sfrxj»×13\s	-	committed
 CR019	VNI	-	a«12345»×13	ả45	a«12345»×13	VNI alternating tones past the cap

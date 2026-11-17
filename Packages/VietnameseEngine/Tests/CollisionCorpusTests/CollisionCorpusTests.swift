@@ -43,6 +43,9 @@ struct CollisionCorpusTests {
             score.badRevisions.isEmpty,
             "ENG-R876, any wrong revision fails:\n\(score.badRevisions.joined(separator: "\n"))")
         #expect(score.nonCollisionChanges.isEmpty, "\(score.nonCollisionChanges.joined(separator: "\n"))")
+        // REG-37: rule L4 reads the English run (English-lean words included) and the phrases, so with the rules on
+        // `The mess` (EN0074) and `Turn off` (EN0018) keep the word typed, which they do not with the rules off.
+        #expect(score.escapesBroughtBack.count == 2, "\(score.escapesBroughtBack.joined(separator: "\n"))")
         #expect(score.collisions.english.share >= 0.75)
         #expect(score.hidden.right == score.hidden.total, "hidden collisions are never changed by a rule")
         if fixture == .toneLast {
@@ -73,7 +76,9 @@ struct CollisionCorpusTests {
         #expect(score.revisions == 0)
         #expect(score.collisions.english.right == 421 && score.collisions.english.total == 720)
         #expect(score.collisions.vietnamese.right == 589 && score.collisions.vietnamese.total == 623)
-        #expect(score.exactSentences == 876)
+        // 876 until rule L4 was amended on 17/11/2026 (REG-37): 27 more sentences keep `pass`, `posts`, `costs`, `off`,
+        // `Terraform`, `Grafana` and `DeepSeek` as typed.
+        #expect(score.exactSentences == 903)
     }
 
     /// ENG-R850 as amended on 15/11/2026 (REG-35): terminals and code editors carry Vietnamese prose too, so in the

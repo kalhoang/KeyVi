@@ -186,3 +186,21 @@ separately from the app (spec/04-quality-release.md QA-R27).
   does not move: in the code context English intent 549 of 720, Vietnamese intent 620 of 623 and 501 of 507, 99 and
   97 revisions, the one reviewed wrong revision still CS0571 `Host mới` (`host` is on the list, so RV5 decides it as
   before); the general-context numbers and the prose corpus in the code context are unchanged.
+- Rule L4, the escape at commit (ENG-R804, REG-37, product owner 17/11/2026): `leecher` committed `lecher`, because
+  the third `e` escaped the circumflex of `lêch` and the old L4 kept the escaped form when neither form was English
+  (about 4,600 words of `/usr/share/dict/words`), and `dessert`, `costs`, `pass` and `off` committed `desert`,
+  `cots`, `pas` and `of` because the escaped form was English. A deliberate escape is now a doubling (the escape
+  key right after the key whose effect it removes, `Composition.escapedAcrossKeys`). With both forms English the
+  escaped form is kept only for a needed doubling (the keys of `C` alone commit something else, learned memory left
+  out) outside an English context (the run of ENG-R823 or a phrase of ENG-R826): `off` alone and `tắt of đi` keep
+  `of`, `turn off the light` and `the mess` keep the keys, `pass` and `dessert` always do. With neither form
+  English the escaped form is kept when every escape was a doubling and it has one vowel group at most
+  (`CommittedTextFacts.vowelGroups`) or ends with the escape (`Composition.endsWithEscape`): `nhâmf`, `booong`,
+  `Krông Ana` stay, `leecher`, `cheeseburger`, `coffeehouse`, `pajama` commit as typed. The reason code stays
+  `escape`. Sweeps with the default configuration: 4,696 of 5,824 differing words of web2 and 45 of 392 of the
+  lexicon now commit as typed, none newly changed; ENG-T11 lists no L4 entry for the English run (56 changed
+  words, was 106) and five Vietnamese-context entries; the W11 fixtures keep `pass`, `posts`, `costs`, `off`,
+  `Terraform`, `Grafana`, `DeepSeek` in 34 more sentences with the collision numbers unchanged. Spec rows X01 to X24
+  (13.9.5), `escape-regression.txt` (393 words). Known costs, pinned by tests: the English context looks back only
+  (`day off`, `mess up` and `Off the record` keep `day of`, `mes up`, `Of the record`), and a tone key between the
+  circumflex key and its escape breaks the doubling (`theesee` is restored, `thesee` keeps `thée`).
