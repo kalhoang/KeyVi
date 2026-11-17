@@ -105,8 +105,9 @@ export async function checkSite(check, label, dist, { allowedScriptTag = "" } = 
     for (const [file, html] of pages) {
       const compat = isCompatPage(file);
       const robots = /<meta name="robots" content="noindex">/.test(html);
-      // The 404 page has always carried noindex; every listed page is indexed.
-      if (compat ? !robots : robots && rel(file) !== "404.html") problems.push(`${rel(file)}: ${compat ? "no" : "unexpected"} noindex`);
+      // The 404 page has always carried noindex, and so do the release-notes pages publish-release writes for the
+      // update window (ADR 0304); every listed page is indexed.
+      if (compat ? !robots : robots && rel(file) !== "404.html" && !isReleaseNotesPage(rel(file))) problems.push(`${rel(file)}: ${compat ? "no" : "unexpected"} noindex`);
       // The compatibility pages may link to each other (language switch, alternates); no other page links to them.
       if (compat) continue;
       for (const href of attrs(html, "href")) {

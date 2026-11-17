@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-G7+vjOKtYmndlkKwK5RTNJTXV8qyNE7J9zN82DUMg4k='; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>KeyVi 1.0.0</title>
+<style>/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Release-notes pages written by scripts/publish-release (ADR 0304): shown inside the in-app update window, */
+/* so they are compact and carry no site navigation. Same palette as style.css. publish-release inlines this */
+/* file into each page, which then loads nothing else (PLT-R906). When it changes, add its new SHA-256 to */
+/* style-src in static/_headers and keep the old ones for pages already published (site/test.mjs checks). */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --ink: #1d1c1a;
+  --muted: #5a5850;
+  --line: #d9d4c6;
+  --link: #1a6a4f;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141513;
+    --ink: #ecebe6;
+    --muted: #b0aea4;
+    --line: #35362f;
+    --link: #7fd9b2;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-body);
+}
+main {
+  max-width: 40rem;
+  padding: 0.75rem 1rem 1rem;
+}
+h1 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+h3 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.25rem;
+}
+ul {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+p {
+  margin: 0.25rem 0;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+a {
+  color: var(--link);
+}
+a:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>KeyVi 1.0.0</h1>
+<section lang="vi" aria-labelledby="notes-vi">
+<h2 id="notes-vi">Tiếng Việt</h2>
+<ul>
+<li>Bản phát hành công khai đầu tiên của KeyVi: gõ tiếng Việt (Telex hoặc VNI) và tiếng Anh trong cùng một câu mà không cần chuyển chế độ. Từ tiếng Anh như &quot;file&quot; hay &quot;server&quot; giữ đúng như bạn gõ, dù từ kết thúc bằng phím nào, còn những từ có thể là cả hai, như as hay á, được chọn theo các từ xung quanh.</li>
+<li>Nhấn Escape ngay sau một từ để lấy lại đúng các phím bạn đã gõ; nhấn thêm lần nữa thì Escape hoạt động như bình thường. KeyVi không dùng Escape trong cửa sổ dòng lệnh, trình soạn mã, trò chơi, ứng dụng điều khiển máy tính từ xa và các trình khởi chạy như Spotlight, Raycast và Alfred.</li>
+<li>KeyVi học từ những lần bạn sửa từ trong từng ứng dụng: một từ bạn sửa giống nhau hai lần trong một ứng dụng sẽ được gõ như vậy trong ứng dụng đó từ lần sau. Cài đặt &gt; Kiểu gõ liệt kê các từ đã học kèm tên ứng dụng để bạn xem lại, cho một từ áp dụng trong mọi ứng dụng hoặc xóa từ đó.</li>
+<li>Mỗi ứng dụng nhớ chế độ tiếng Việt hay tiếng Anh riêng và có thể có quy tắc riêng. Viết tắt giúp bạn gõ nhanh những đoạn chữ dài, và hai danh sách từ &quot;Giữ nguyên như đã gõ&quot; và &quot;Giữ là tiếng Việt&quot; quyết định cách những từ bạn thêm vào đó hiện ra.</li>
+<li>Có sẵn cài đặt cho các ứng dụng thông dụng, trong đó có Safari, Google Chrome, Slack, Zalo, Microsoft Office, Spotlight, Terminal, iTerm2 và Visual Studio Code. Những gì bạn gõ không bao giờ rời khỏi máy Mac: kết nối mạng tự động duy nhất là kiểm tra cập nhật.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/nhat-ky-thay-doi/#v1.0.0">Xem nhật ký thay đổi đầy đủ</a></p>
+</section>
+<section lang="en" aria-labelledby="notes-en">
+<h2 id="notes-en">English</h2>
+<ul>
+<li>First public release of KeyVi: write Vietnamese (Telex or VNI) and English in the same sentence without switching. English words such as &quot;file&quot; and &quot;server&quot; stay as you typed them, whichever key ends the word, and words that can be either, such as as or á, follow the words around them.</li>
+<li>Escape right after a word gives back the keys you typed, and a second Escape works as usual. KeyVi leaves Escape alone in terminals, code editors, games, remote desktop apps and launchers such as Spotlight, Raycast and Alfred.</li>
+<li>KeyVi learns from your corrections in each app: a word you correct the same way twice in one app is typed that way there from then on. Settings &gt; Typing lists the learned words with their app, so you can review them, make one apply everywhere or forget it.</li>
+<li>Each app remembers its own Vietnamese or English mode and can have its own rule. Macros expand your shortcuts into longer text, and the word lists &quot;Keep as typed&quot; and &quot;Keep as Vietnamese&quot; fix how the words you add to them come out.</li>
+<li>Ready-made settings for common apps, among them Safari, Google Chrome, Slack, Zalo, Microsoft Office, Spotlight, Terminal, iTerm2 and Visual Studio Code. Nothing you type leaves your Mac: the only automatic network traffic is the update check.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/en/changelog/#v1.0.0">Read the full changelog</a></p>
+</section>
+</main>
+</body>
+</html>

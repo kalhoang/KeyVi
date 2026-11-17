@@ -67,6 +67,8 @@ export async function runShellChecks(check, fixtures) {
       assert.ok(pages.get(join(dist, "index.html")).match(/<title>([^<]*)<\/title>/)[1].includes(named), `${dist}: home title carries the sign`);
       for (const [file, html] of pages) {
         const page = file.slice(dist.length + 1);
+        // The release-notes pages are written by publish-release for the update window (ADR 0304), not by the site.
+        if (isReleaseNotesPage(page)) continue;
         // Every page title carries the sign: the home pages open with it, the others end with the " · " suffix.
         const title = html.match(/<title>([^<]*)<\/title>/)?.[1];
         assert.ok(title !== undefined, `${page}: has a <title>`);

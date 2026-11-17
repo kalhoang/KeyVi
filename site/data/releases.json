@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "releases": [
+    {
+      "version": "1.0.0",
+      "build": 1000099,
+      "channel": "stable",
+      "date": "2026-11-18",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.0.0.dmg",
+      "sha256": "2c8266b6cf77ac7306a083a0ba97bf58c221ad6bba3f33cf3b5a87fdfeaa1de8",
+      "size": 8528859,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "- Bản phát hành công khai đầu tiên của KeyVi: gõ tiếng Việt (Telex hoặc VNI) và tiếng Anh trong cùng một câu mà không cần chuyển chế độ. Từ tiếng Anh như \"file\" hay \"server\" giữ đúng như bạn gõ, dù từ kết thúc bằng phím nào, còn những từ có thể là cả hai, như as hay á, được chọn theo các từ xung quanh.\n- Nhấn Escape ngay sau một từ để lấy lại đúng các phím bạn đã gõ; nhấn thêm lần nữa thì Escape hoạt động như bình thường. KeyVi không dùng Escape trong cửa sổ dòng lệnh, trình soạn mã, trò chơi, ứng dụng điều khiển máy tính từ xa và các trình khởi chạy như Spotlight, Raycast và Alfred.\n- KeyVi học từ những lần bạn sửa từ trong từng ứng dụng: một từ bạn sửa giống nhau hai lần trong một ứng dụng sẽ được gõ như vậy trong ứng dụng đó từ lần sau. Cài đặt > Kiểu gõ liệt kê các từ đã học kèm tên ứng dụng để bạn xem lại, cho một từ áp dụng trong mọi ứng dụng hoặc xóa từ đó.\n- Mỗi ứng dụng nhớ chế độ tiếng Việt hay tiếng Anh riêng và có thể có quy tắc riêng. Viết tắt giúp bạn gõ nhanh những đoạn chữ dài, và hai danh sách từ \"Giữ nguyên như đã gõ\" và \"Giữ là tiếng Việt\" quyết định cách những từ bạn thêm vào đó hiện ra.\n- Có sẵn cài đặt cho các ứng dụng thông dụng, trong đó có Safari, Google Chrome, Slack, Zalo, Microsoft Office, Spotlight, Terminal, iTerm2 và Visual Studio Code. Những gì bạn gõ không bao giờ rời khỏi máy Mac: kết nối mạng tự động duy nhất là kiểm tra cập nhật.",
+        "en": "- First public release of KeyVi: write Vietnamese (Telex or VNI) and English in the same sentence without switching. English words such as \"file\" and \"server\" stay as you typed them, whichever key ends the word, and words that can be either, such as as or á, follow the words around them.\n- Escape right after a word gives back the keys you typed, and a second Escape works as usual. KeyVi leaves Escape alone in terminals, code editors, games, remote desktop apps and launchers such as Spotlight, Raycast and Alfred.\n- KeyVi learns from your corrections in each app: a word you correct the same way twice in one app is typed that way there from then on. Settings > Typing lists the learned words with their app, so you can review them, make one apply everywhere or forget it.\n- Each app remembers its own Vietnamese or English mode and can have its own rule. Macros expand your shortcuts into longer text, and the word lists \"Keep as typed\" and \"Keep as Vietnamese\" fix how the words you add to them come out.\n- Ready-made settings for common apps, among them Safari, Google Chrome, Slack, Zalo, Microsoft Office, Spotlight, Terminal, iTerm2 and Visual Studio Code. Nothing you type leaves your Mac: the only automatic network traffic is the update check."
+      }
+    }
+  ]
+}
