@@ -33,8 +33,14 @@ export async function runCopyChecks(check, fixtures) {
       ["Một câu, hai thứ tiếng", "Càng gõ càng hợp với bạn", "Gõ theo cách của bạn", "Chạy trong mọi ứng dụng phổ biến", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
     // Design 9 item 2: the apps section names categories and apps, with no status and no link to the compatibility page.
     assert.equal(en.apps.heading, "Works in all the popular apps");
-    assert.equal(vi.apps.intro, "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã: bạn gõ ở đâu, {{AppNameTM}} chạy ở đó.");
-    assert.equal(en.apps.intro, "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors: wherever you type, {{AppNameTM}} works.");
+    // The intro lists the kinds of apps only: nothing is verified yet, so it promises no app in particular (design 9 item 2).
+    assert.equal(vi.apps.intro, "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã.");
+    assert.equal(en.apps.intro, "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors.");
+    // The unlisted compatibility page stays for the app's "Tìm hiểu thêm" link; its description claims no check either.
+    for (const lang of LANGS) {
+      const ui = (await import(pathToFileURL(join(SITE_DIR, "content", lang, "ui.mjs")).href)).default;
+      assert.ok(!/kiểm tra với|ngày kiểm tra|tested with|last check/i.test(ui.descriptions.compat), `${lang}: the compatibility description claims no check: ${ui.descriptions.compat}`);
+    }
     for (const retired of ["verifiedOn", "link"]) assert.ok(!(retired in vi.apps) && !(retired in en.apps), `apps.${retired} is retired`);
     assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
     assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "layouts"]);

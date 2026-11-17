@@ -124,7 +124,7 @@ export const home = {
   // Section 5 names the categories and apps of compat/matrix.json, with no status, date or link (design 9 item 2).
   apps: {
     heading: "Works in all the popular apps",
-    intro: "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors: wherever you type, {{AppNameTM}} works.",
+    intro: "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors.",
     secureInput: {
       title: "When macOS blocks every input method",
       body: "When an app turns on secure input, usually because a password field is still open, macOS pauses every input method. {{AppNameTM}} tells you which app holds it and how to turn it off, and types again from the first key after it is released. {{AppName}} never guesses that you are typing a password.",

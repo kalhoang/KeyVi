@@ -134,7 +134,7 @@ export const home = {
   // Section 5 names the categories and apps of compat/matrix.json, with no status, date or link (design 9 item 2).
   apps: {
     heading: "Chạy trong mọi ứng dụng phổ biến",
-    intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã: bạn gõ ở đâu, {{AppNameTM}} chạy ở đó.",
+    intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã.",
     secureInput: {
       title: "Khi macOS chặn mọi bộ gõ",
       body: "Khi một ứng dụng bật chế độ nhập bảo mật (Secure Input), thường vì một ô mật khẩu còn mở, macOS tạm dừng mọi bộ gõ. {{AppNameTM}} cho bạn biết ứng dụng nào đang giữ chế độ này và cách tắt, rồi gõ lại ngay từ phím đầu tiên sau khi chế độ này tắt. {{AppName}} không tự đoán là bạn đang gõ mật khẩu.",

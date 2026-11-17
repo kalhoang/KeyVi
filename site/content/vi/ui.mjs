@@ -31,7 +31,7 @@ export default {
   descriptions: {
     home: "{{AppNameTM}} là bộ gõ tiếng Việt cho macOS: mặc định hợp lý, từ tiếng Anh tự giữ nguyên, không thu thập dữ liệu, miễn phí.",
     download: "Tải {{AppNameTM}} cho macOS: bản ổn định, bản beta, mã SHA-256, yêu cầu hệ thống và cài bằng Homebrew.",
-    compat: "Danh sách ứng dụng đã kiểm tra với {{AppNameTM}}, kèm trạng thái, ghi chú và ngày kiểm tra gần nhất.",
+    compat: "Trạng thái tương thích của từng ứng dụng với {{AppNameTM}}, cập nhật khi có kết quả kiểm tra.",
     changelog: "Những thay đổi người dùng nhìn thấy trong từng bản phát hành của {{AppNameTM}}.",
     privacy: "Mọi thứ {{AppNameTM}} lưu và gửi đi, dữ liệu chẩn đoán gồm gì, và chính sách phân tích của trang web.",
     support: "Câu hỏi thường gặp, cách xử lý theo triệu chứng, cách báo lỗi và hướng dẫn chuyển từ bộ gõ khác sang {{AppNameTM}}.",

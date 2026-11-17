@@ -30,7 +30,7 @@ export default {
   descriptions: {
     home: "{{AppNameTM}} is a Vietnamese input method for macOS: sensible defaults, English words stay as typed, no data collection, free.",
     download: "Download {{AppNameTM}} for macOS: stable and beta builds, SHA-256 checksums, system requirements and Homebrew.",
-    compat: "Apps tested with {{AppNameTM}}, with status, notes and the date of the last check.",
+    compat: "The compatibility status of each app with {{AppNameTM}}, updated as checks are done.",
     changelog: "User-visible changes in every {{AppNameTM}} release.",
     privacy: "Everything {{AppNameTM}} stores and sends, what diagnostics contain, and the website analytics policy.",
     support: "FAQ, troubleshooting by symptom, how to report a bug, and guides for moving from another input method to {{AppNameTM}}.",
