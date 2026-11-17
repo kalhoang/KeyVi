@@ -61,6 +61,11 @@ separately from the app (spec/04-quality-release.md QA-R27).
 - `site-demo-frames` (not a product): types the website's demo sentences (`site/demo/script.json`) through the
   engine and writes `site/demo/frames.json`, the field after every key with each commit and revision; `--check`
   fails when the committed file is stale (PRD-R73). The engine coverage gates exclude it like `lexicon-builder`.
+  Schema version 2 of both files: a kept English word carries `plain`, what the engine shows for its keys with auto
+  restore off when that differs (`test` gives `tét`, ENG-R802), and a learning demo (`teachKeys`, `teach`,
+  `teachExpect`) is taught first: its teaching passes feed their collision signals to `ReferenceCollisionMemory`
+  (ENG-R863), the engine is rebuilt with each snapshot (ENG-R865), and the tool fails unless every pass corrects and
+  the final pass keeps a word by rule L9c.
 
 ### Changed
 
