@@ -42,9 +42,10 @@ export function renderDownload(ctx, lang) {
   const { c, f, p, ui } = kt;
   const d = c.download;
   const { stable, beta, archive } = ctx.data.releases;
+  // Before the first release the line names the deployment target, macOS 12 (DEFAULT_MIN_MACOS, project.yml
+  // MACOSX_DEPLOYMENT_TARGET); a release names the LSMinimumSystemVersion that scripts/publish-release recorded.
   const minimum = stable?.minimumSystemVersion ?? beta?.minimumSystemVersion ?? "";
-  const usingDefaultMinimum = minimum === "";
-  const macosLine = `${esc(macosRequirement(lang, minimum))}${usingDefaultMinimum ? ` ${f("{{verifyHtml}}")}` : ""}`;
+  const macosLine = esc(macosRequirement(lang, minimum));
 
   const releaseSections = [];
   if (stable) releaseSections.push(releaseBlock(kt, stable, d.stableHeading, "stable"));
