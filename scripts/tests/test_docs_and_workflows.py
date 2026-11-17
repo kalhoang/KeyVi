@@ -1204,14 +1204,16 @@ class IntegratorDecisionTests(unittest.TestCase):
 
 
 class ChangelogTests(unittest.TestCase):
-    """CHANGELOG.md and CHANGELOG.vi.md (QA-R66, QA-R67, PRD-R51; ADR 0507): an empty Unreleased section above the
-    first public release, 1.0.0 of 2026-11-17. A release section is also its release notes, which
-    scripts/publish-release reads from these two files, so it has to pass the same check: at most five visible lines
-    in each language, no dash, no unfilled placeholder."""
+    """CHANGELOG.md and CHANGELOG.vi.md (QA-R66, QA-R67, PRD-R51; ADR 0507). Only what holds over time is pinned:
+    Unreleased leads, every release heading has the Keep a Changelog form, newest first, and the 1.0.0 section (looked
+    up by version, not by position) is the release notes scripts/publish-release published for the first public
+    release: at most five visible lines in each language, no dash, no unfilled placeholder. Later entries under
+    Unreleased and later release sections do not break these tests."""
 
     FILES = {"en": REPO / "CHANGELOG.md", "vi": REPO / "CHANGELOG.vi.md"}
     RELEASE = "1.0.0"
-    HEADINGS = ["[Unreleased]", "[1.0.0] - 2026-11-17"]
+    RELEASE_HEADING = "[1.0.0] - 2026-11-17"
+    RELEASE_FORM = re.compile(r"^\[(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?\] - \d{4}-\d{2}-\d{2}$")
 
     @classmethod
     def text(cls, lang: str = "en") -> str:
@@ -1230,13 +1232,40 @@ class ChangelogTests(unittest.TestCase):
     def release_text(cls, lang: str = "en") -> str:
         return " ".join(cls.notes(lang).split())
 
-    def test_unreleased_is_empty_and_sits_above_the_first_release(self):
+    @classmethod
+    def headings(cls, lang: str) -> list[str]:
+        return re.findall(r"^## (.+)$", cls.text(lang), re.M)
+
+    def test_unreleased_leads_and_releases_are_newest_first(self):
         for lang in self.FILES:
             with self.subTest(lang=lang):
-                text = self.text(lang)
-                self.assertEqual(re.findall(r"^## (.+)$", text, re.M), self.HEADINGS)
-                unreleased = text.split("\n## [Unreleased]\n", 1)[1].split("\n## [", 1)[0]
-                self.assertEqual(unreleased.strip(), "", "Unreleased is empty right after the release")
+                headings = self.headings(lang)
+                self.assertEqual(headings[0], "[Unreleased]", "Unreleased is the first section")
+                self.assertEqual(headings.count("[Unreleased]"), 1)
+                releases = headings[1:]
+                self.assertIn(self.RELEASE_HEADING, releases, "the first public release keeps its heading and date")
+                keys = []
+                for heading in releases:
+                    match = self.RELEASE_FORM.match(heading)
+                    self.assertIsNotNone(match, f"not a release heading: {heading}")
+                    major, minor, patch, beta = match.groups()
+                    keys.append((int(major), int(minor), int(patch), int(beta) if beta else 10**6))
+                self.assertEqual(keys, sorted(keys, reverse=True), "release sections are newest first")
+                self.assertEqual(len(set(keys)), len(keys), "each release appears once")
+        self.assertEqual(self.headings("vi")[1:], self.headings("en")[1:], "both files list the same releases")
+
+    def test_the_tests_survive_a_new_unreleased_entry_and_a_later_release(self):
+        """The rule the header states (a user-visible PR adds its entry under Unreleased) must not fail this suite."""
+        text = self.text("en").replace(
+            "## [Unreleased]\n",
+            "## [Unreleased]\n\n### Fixed\n\n- Fixed a later bug in Safari.\n\n"
+            "## [1.0.1] - 2026-12-01\n\n- Fixed duplicated letters in the Chrome address bar.\n", 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "CHANGELOG.md"
+            copy.write_text(text, encoding="utf-8")
+            result = py("lib/publish_helpers.py", "changelog-notes", "--file", str(copy), "--version", self.RELEASE)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), self.notes("en"), "1.0.0 is found by version, not by position")
 
     def test_the_release_notes_pass_the_publish_check(self):
         brand = FrontDoorBrandTests.repo_brand()
