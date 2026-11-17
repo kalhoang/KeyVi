@@ -183,6 +183,26 @@ class NoticesTests(unittest.TestCase):
                     self.assertIn("Source:", header, f"{svg} needs a source comment (CLR-R7)")
                     self.assertIn("CLR-R7", header)
 
+    def test_no_placeholder_is_left_for_the_dmg(self):
+        """scripts/make-dmg.sh copies this file into every DMG as it is, so from 1.0.0 (ADR 0507) no entry may say it
+        is a placeholder; the 'Other assets' lines state what ships, and hold only while the tree agrees."""
+        self.assertNotRegex(self.NOTICES.lower(), r"\(placeholder|\*\*placeholder\*\*|placeholder;")
+        assets = self.section(4).split("\n### Other assets\n", 1)[1]
+        background = REPO / "packaging" / "dmg" / "background.png"
+        self.assertFalse(background.exists(), "a DMG background was added: record its author, date and source")
+        self.assertIn("**DMG background**: none", assets)
+        stylesheets = sorted((REPO / "site" / "static" / "assets").glob("*.css"))
+        self.assertTrue(stylesheets)
+        for css in stylesheets:
+            with self.subTest(css=css.name):
+                self.assertNotIn("@font-face", css.read_text(encoding="utf-8"), "a web font must be listed in section 5")
+        self.assertIn("**Fonts**: none", assets)
+        onboarding = [path for path in (REPO / "App").rglob("*")
+                      if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".mov", ".mp4", ".pdf", ".heic"}
+                      and "AppIcon.appiconset" not in path.parts and "DonationVietQR.imageset" not in path.parts]
+        self.assertEqual(onboarding, [], "list these app images or recordings in THIRD_PARTY_NOTICES.md section 4")
+        self.assertIn("**Illustrations and screen recordings**: none", assets)
+
     def test_status_glyph_code_is_recorded_as_original_artwork(self):
         glyph = "App/Sources/Shell/StatusGlyph.swift"
         self.assertIn("CLR-R7", (REPO / glyph).read_text(encoding="utf-8")[:600])
