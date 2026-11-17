@@ -12,7 +12,7 @@ import { SITE_DIR, ROOT_DIR, ASSETS_DIR, attrs, isReleaseNotesPage, mainOf, unes
 
 /** Content, donate and copy checks. */
 export async function runCopyChecks(check, fixtures) {
-  const { fallback, fallbackPages, populated, pop, read } = fixtures;
+  const { fallback, fallbackPages, populated, pop, read, frames } = fixtures;
 
   await check("content: home copy has the same keys in vi and en, vi pages use file not tệp, and home has no dash characters", async () => {
     const viPages = await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href);
@@ -33,7 +33,7 @@ export async function runCopyChecks(check, fixtures) {
       ["Một câu, hai thứ tiếng", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
     assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
     assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "macros", "layouts", "perApp"]);
-    assert.deepEqual(Object.keys(vi.apps.categories), ["browser", "chat", "office", "notes", "launcher", "terminal", "developer"]);
+    assert.ok(!("categories" in vi.apps) && !("categories" in en.apps), "the hub takes its category names from ui.categories, as the compatibility page does");
     assert.deepEqual(vi.cards.items.flatMap((item) => item.demos ?? []), ["card-anywhere", "card-slang", "card-telex", "card-vni", "card-traditional", "card-modern"]);
     assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
     assert.equal(vi.install.steps.length, 3);
@@ -238,6 +238,29 @@ export async function runCopyChecks(check, fixtures) {
     // The cards on the support page keep the capitalised list form.
     assert.match(read("ho-tro", "index.html"), /<strong>File văn bản hoặc CSV<\/strong>/);
     assert.match(read("en", "support", "index.html"), /<strong>Plain text or CSV file<\/strong>/);
+  });
+
+  await check("content: every key example of the tone-marks-anywhere FAQ is one the engine turns into Vietnamese (ENG-R107)", async () => {
+    // The engine's words, from the demos of site/demo/frames.json (keys and text aligned word by word), then the ones
+    // checked with a private site-demo-frames script (17/11/2026) for examples no demo types.
+    const engine = new Map([["vieetj", "việt"], ["tieengs", "tiếng"], ["dangd", "đang"], ["caanf", "cần"]]);
+    for (const demo of Object.values(frames.demos)) {
+      const keys = (demo.keys ?? "").trim().split(/\s+/);
+      const words = demo.text.trim().split(/\s+/);
+      if (keys.length === words.length) keys.forEach((key, index) => engine.set(key, words[index]));
+    }
+    for (const lang of LANGS) {
+      const { support } = await import(pathToFileURL(join(SITE_DIR, "content", lang, "support.mjs")).href);
+      const [, answer] = support.faq.find(([question]) => /vị trí bất kỳ|anywhere in the word/.test(question)) ?? [];
+      assert.ok(answer, `${lang}: the tone-marks-anywhere FAQ`);
+      const examples = [...answer.matchAll(/<code>([^<]+)<\/code>/g)].map((m) => m[1]);
+      assert.ok(examples.length >= 2, `${lang}: key examples in the answer`);
+      for (const keys of examples.filter((example) => example !== "d")) {
+        const word = engine.get(keys);
+        assert.ok(word, `${lang}: ${keys} is a key sequence the engine output is known for`);
+        assert.ok(word !== keys && /[^\x00-\x7f]/.test(word), `${lang}: ${keys} gives ${word}, not the keys as typed`);
+      }
+    }
   });
 
   await check("donate: each copy button is named after the value it copies, as the app's VoiceOver labels are", () => {

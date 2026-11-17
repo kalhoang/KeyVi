@@ -3,8 +3,9 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
-import { HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
+import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
 import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
@@ -72,10 +73,11 @@ export async function runHomeChecks(check, fixtures) {
     assert.match(css, /\[data-motion-ready\]\s*\.motion-toggle,\s*\[data-motion-ready\]\s*\.replay\s*\{\s*visibility:\s*visible;\s*\}/, "home.js reveals a control by marking its owner data-motion-ready");
   });
 
-  await check("home: the apps intro goes through the token filler like every other intro", () => {
+  await check("home: the apps intro goes through the token filler like every other intro", async () => {
     const intro = "{{AppName}} <code>Spotlight</code>";
     const apps = { ...homeCopy.vi.apps, intro };
-    const html = renderApps({ ctx: { data: { matrix: { entries: [] } } }, c: { home: { apps } }, f: (text) => `[filled]${text}`, lang: "vi" });
+    const ui = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "ui.mjs")).href)).default;
+    const html = renderApps({ ctx: { data: { matrix: { entries: [] } } }, c: { home: { apps } }, ui, f: (text) => `[filled]${text}`, lang: "vi" });
     assert.ok(html.includes(`<p>[filled]${intro}</p>`), "apps.intro is filled, not escaped");
   });
 
@@ -115,12 +117,13 @@ export async function runHomeChecks(check, fixtures) {
     const base = (name) => name.replace(/\s*\([^)]*\)$/, "");
     // fixtures/empty has no matrix, so its build shows the sample fixture, whose every row is notVerified.
     for (const [label, html, lang, entries] of [["empty vi", emptyHome.vi, "vi", sample], ["empty en", emptyHome.en, "en", sample], ...homePages.slice(0, 2).map(([l, h, g]) => [l, h, g, real])]) {
-      const copy = homeCopy[lang].apps;
-      assert.deepEqual(nodes(html).map((node) => node.category), Object.keys(copy.categories), `${label}: one node per category, in order`);
-      assert.equal((hub(html).match(/<path data-thread\b/g) ?? []).length, Object.keys(copy.categories).length, `${label}: one thread per category`);
+      // The hub names each category as the compatibility page does (ui.categories), so the two pages agree.
+      const ui = (await import(pathToFileURL(join(SITE_DIR, "content", lang, "ui.mjs")).href)).default;
+      assert.deepEqual(nodes(html).map((node) => node.category), [...HUB_CATEGORIES], `${label}: one node per category, in order`);
+      assert.equal((hub(html).match(/<path data-thread\b/g) ?? []).length, HUB_CATEGORIES.length, `${label}: one thread per category`);
       assert.match(hub(html), /<div class="hub" data-hub>/, `${label}: the hub`);
       for (const { category, inner } of nodes(html)) {
-        assert.ok(inner.includes(esc(copy.categories[category])), `${label}: ${category} label`);
+        assert.ok(inner.startsWith(`<strong>${esc(ui.categories[category])}</strong>`), `${label}: ${category} label as on the compatibility page`);
         const names = (inner.match(/<span class="hub-apps">([^<]*)<\/span>/)?.[1] ?? "").split(", ").filter(Boolean).map(unescapeHtml);
         // The apps the maintainers ranked (tier 1 or 2) when the category has any, every app otherwise.
         const inCategory = entries.filter((entry) => entry.category === category);

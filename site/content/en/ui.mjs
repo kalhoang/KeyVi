@@ -43,7 +43,7 @@ export default {
     knownLimitation: { label: "Known limitation", help: "A known limit, with an explanation and a workaround." },
   },
   categories: {
-    browser: "Browsers", office: "Office", chat: "Chat", developer: "Editors and development",
+    browser: "Browsers", office: "Office", chat: "Chat", developer: "Code editors",
     terminal: "Terminals", design: "Design", launcher: "Launchers", remote: "Remote desktop",
     system: "System", game: "Games", notes: "Note-taking", other: "Other",
   },

@@ -46,8 +46,8 @@ export const home = {
       },
       {
         id: "escape",
-        title: "Esc trả lại đúng phím bạn gõ",
-        body: "Bấm Esc ngay sau một từ để lấy lại đúng các phím đã gõ: <em>Việt</em> trở về <code>Vieetj</code>.",
+        title: "Escape trả lại đúng phím bạn gõ",
+        body: "Bấm Escape ngay sau một từ để lấy lại đúng các phím đã gõ: <em>Việt</em> trở về <code>Vieetj</code>.",
       },
     ],
   },
@@ -104,7 +104,6 @@ export const home = {
   apps: {
     heading: "Chạy trong app bạn dùng hằng ngày",
     intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã. Danh sách tương thích ghi rõ tình trạng của từng ứng dụng.",
-    categories: { browser: "Trình duyệt", chat: "Trò chuyện", office: "Văn phòng", notes: "Ghi chú", launcher: "Gọi nhanh", terminal: "Terminal", developer: "Soạn mã" },
     verifiedOn: "kiểm tra {{dateHtml}}",
     link: "Xem danh sách ứng dụng tương thích",
     secureInput: {

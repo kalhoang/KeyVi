@@ -658,6 +658,26 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
 
 **Phase C:**
 - Task 9.
-- A whole-branch review.
+- A whole-branch review. Whole-branch review fixes (17/11/2026), in three commits:
+  - `site/test.mjs` (about 1,670 lines) is split into check modules under `site/tests/` (fixtures, helpers, the
+    per-build site checks, then data, shell, home, motion, copy and tooling), still run by `node site/test.mjs`, which
+    builds once; the 96 checks kept their names and order.
+  - Motion and accessibility: the hero pause button is a plain action button (no `aria-pressed`; its label swaps and
+    says what pressing does; `aria-describedby` names the hidden caption `#hero-caption`); a behaviour demo's player
+    mirrors the environment even at rest, so Replay in a hidden tab or off screen waits; a demo starts at
+    min(60 %, 80 % of what the viewport can show of it), with geometric observer thresholds, so a short viewport or a
+    high zoom still starts it; each replay button is described by its figure's title (`#behaviour-<id>-title`) and the
+    `.demo-window` is `aria-hidden` while it types (design 7.7); the fake DOM now completes animations (the faded hero
+    tags are removed; reduced motion mid-sentence settles on the finished sentence); `site/preview.mjs` refuses a
+    symbolic link that leads outside the folder; nginx compresses at `gzip_comp_level 6`, the level the 60 KB check
+    measures; the keys strip fades its clipped left edge with a `mask-image` gradient.
+  - Copy and docs: the tone-marks-anywhere FAQ and spec 03 (D3, the "never a switch" line) say `vieetj`, since `vietj`
+    stays as typed (Task 1 note), and a check ties every key example of that FAQ to an engine result; the English
+    section 2 intro says you never have to stop and switch languages, as the Vietnamese one does; PRD-R57 is amended
+    for the footer link and the home closing line, and PRD-R59 and the trademark-sign paragraph note the redesign as
+    done; the home hub names its categories from `ui.categories` like the compatibility page (`HUB_CATEGORIES` in
+    `lib/pages/home/apps.mjs` keeps the node order; English `developer` became "Code editors" so it fits its node);
+    the Vietnamese home page says Escape, as the FAQ and the app do; design 7.3 item 1 says each hero sentence ends
+    with a Vietnamese word.
 - The integrator's local gate `Kal-Key-wt/tools/verify-all.sh`. Add `swift run --package-path Packages/VietnameseEngine --scratch-path .build-main site-demo-frames --check` to it.
 - Merge to `main` with `--no-ff`.

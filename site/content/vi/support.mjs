@@ -12,7 +12,7 @@ export const support = {
   toc: [["cau-hoi", "Câu hỏi thường gặp"], ["xu-ly", "Xử lý theo triệu chứng"], ["bao-loi", "Cách báo lỗi"], ["thoi-gian-phan-hoi", "Thời gian phản hồi"], ["chuyen-tu", "Chuyển từ bộ gõ khác"]],
   faqHeading: "Câu hỏi thường gặp",
   faq: [
-    ["Vì sao không có tùy chọn \"gõ dấu ở vị trí bất kỳ\"?", "Vì tính năng đó luôn bật và không phải cài đặt. Bạn gõ phím dấu sau phụ âm cuối (<code>vietj</code>, <code>tieengs</code>), ở giữa từ, hoặc phím <code>d</code> thứ hai ở cuối từ (<code>dangd</code>) đều ra đúng."],
+    ["Vì sao không có tùy chọn \"gõ dấu ở vị trí bất kỳ\"?", "Vì tính năng đó luôn bật và không phải cài đặt. Bạn gõ phím dấu sau phụ âm cuối (<code>vieetj</code>, <code>tieengs</code>), ở giữa từ, hoặc phím <code>d</code> thứ hai ở cuối từ (<code>dangd</code>) đều ra đúng."],
     ["Từ tiếng Anh vẫn bị thêm dấu, hoặc từ tiếng Việt bị giữ nguyên thì sao?", "Mở Cài đặt, mục Kiểu gõ. Ở phần khôi phục tiếng Anh có hai danh sách: \"giữ nguyên như đã gõ\" và \"giữ là tiếng Việt\". Thêm từ đó vào danh sách tương ứng là xong. Bạn cũng có thể báo từ đó để được xem xét thêm vào dữ liệu."],
     ["Vì sao không có gõ tắt phụ âm nhanh (cc thành ch, kk thành kh)?", "Vì tính năng này làm sai cả những từ bình thường (<code>cc</code> thành <code>ch</code>, <code>kkk</code> thành <code>khk</code>). {{AppNameTM}} cố ý không có, kể cả dạng tùy chọn."],
     ["Dấu thanh đặt kiểu <em>hòa</em> hay <em>hoà</em>?", "Mặc định là kiểu truyền thống (<em>hòa</em>, <em>thủy</em>, <em>khỏe</em>). Kiểu mới (<em>hoà</em>, <em>thuỷ</em>, <em>khoẻ</em>) chỉ cách một công tắc trong Cài đặt, mục Kiểu gõ."],

@@ -167,8 +167,9 @@ Items marked *(integrator's call)* were not decided by the product owner; they c
    "Chiều nay họp online, nhớ gửi file slide trước deadline nha". This replaces PRD-R73's 20-second screen
    recording (decided by the product owner on 17/11/2026, section 6): crisp at any size, in both languages,
    always in step with the engine, nothing to re-record per release. The other sentences live in
-   `site/demo/script.json`; a sentence whose last word is English ends with a boundary (the note ends with a
-   period), because the last word is only decided, and restored, when a boundary commits it.
+   `site/demo/script.json`; each hero sentence ends with a Vietnamese word (`nha`, `nhé`), because an English last
+   word is decided, and restored, only when a boundary commits it. `behaviour-punctuation` is the demo that ends
+   English words before a boundary (a comma, a period, Return).
 2. **"Một câu, hai thứ tiếng": three core behaviours,** each a small demo that plays when it scrolls into view:
    English words stay as typed even when the word ends with a comma, a period or Return, and in a chat app Return
    is delivered after the correction (P0-3, ENG-R910); typing the next word fixes the previous one (D29,

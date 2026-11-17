@@ -10,8 +10,11 @@ import { markSvg } from "../../layout.mjs";
 import { routePath } from "../../routes.mjs";
 import { esc } from "../../util.mjs";
 
+// The categories on the hub, in node order. Their names are those of the compatibility page (ui.categories), so the two
+// pages always agree.
+export const HUB_CATEGORIES = Object.freeze(["browser", "chat", "office", "notes", "launcher", "terminal", "developer"]);
 // The thread drawing: the mark at the centre of a 1000 x 600 box, four nodes on the top row and three on the bottom row,
-// in the order of the home copy's categories. home.css puts .hub-node-1 to -7 at the same points (site/test.mjs checks).
+// in the order of HUB_CATEGORIES. home.css puts .hub-node-1 to -7 at the same points (site/test.mjs checks).
 export const HUB_VIEWBOX = Object.freeze({ width: 1000, height: 600 });
 const CENTRE = Object.freeze({ x: 500, y: 300 });
 export const HUB_NODES = Object.freeze([
@@ -46,7 +49,7 @@ function appLabel(kt, { name, entry }) {
 }
 
 function node(kt, category, index) {
-  const label = `<strong>${esc(kt.c.home.apps.categories[category])}</strong>`;
+  const label = `<strong>${esc(kt.ui.categories[category])}</strong>`;
   const apps = hubApps(kt.ctx.data.matrix.entries, category).map((app) => appLabel(kt, app)).join(", ");
   return `<li class="hub-node hub-node-${index + 1}" data-category="${esc(category)}">${label}${apps ? `<span class="hub-apps">${apps}</span>` : ""}</li>`;
 }
@@ -54,15 +57,14 @@ function node(kt, category, index) {
 export function renderApps(kt) {
   const { c, f, lang } = kt;
   const apps = c.home.apps;
-  const categories = Object.keys(apps.categories);
-  if (categories.length !== HUB_NODES.length) throw new Error(`home apps: ${categories.length} categories for ${HUB_NODES.length} hub nodes`);
+  if (HUB_CATEGORIES.length !== HUB_NODES.length) throw new Error(`home apps: ${HUB_CATEGORIES.length} categories for ${HUB_NODES.length} hub nodes`);
   const threads = HUB_NODES.map((point) => `<path data-thread d="${threadPath(point)}"/>`).join("");
   return `<section class="home-section" data-section="apps" aria-labelledby="apps-title">
       <div class="section-head"><h2 id="apps-title">${esc(apps.heading)}</h2><p>${f(apps.intro)}</p></div>
       <div class="hub" data-hub>
         <svg class="hub-threads" viewBox="0 0 ${HUB_VIEWBOX.width} ${HUB_VIEWBOX.height}" aria-hidden="true" focusable="false">${threads}</svg>
         <div class="hub-centre" aria-hidden="true">${markSvg("mark hub-mark")}</div>
-        <ul class="hub-list">${categories.map((category, index) => node(kt, category, index)).join("")}</ul>
+        <ul class="hub-list">${HUB_CATEGORIES.map((category, index) => node(kt, category, index)).join("")}</ul>
       </div>
       <p class="hub-link"><a href="${esc(routePath("compat", lang))}">${esc(apps.link)}</a></p>
       <div class="card secure-input">

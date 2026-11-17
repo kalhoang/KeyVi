@@ -10,7 +10,7 @@ export const support = {
   toc: [["faq", "FAQ"], ["troubleshooting", "Troubleshooting by symptom"], ["report", "How to report a bug"], ["response-targets", "Response targets"], ["migrate", "Moving from another input method"]],
   faqHeading: "FAQ",
   faq: [
-    ["Why is there no \"type tone marks anywhere in the word\" option?", "Because it is always on and not a setting. You can type the tone key after the final consonant (<code>vietj</code>, <code>tieengs</code>), in the middle of the word, or the second <code>d</code> at the end (<code>dangd</code>) and the result is correct."],
+    ["Why is there no \"type tone marks anywhere in the word\" option?", "Because it is always on and not a setting. You can type the tone key after the final consonant (<code>vieetj</code>, <code>tieengs</code>), in the middle of the word, or the second <code>d</code> at the end (<code>dangd</code>) and the result is correct."],
     ["An English word still gets marks, or a Vietnamese word stays unchanged. What now?", "Open Settings, Typing. Under English restore there are two lists: \"keep as typed\" and \"keep as Vietnamese\". Add the word to the matching list and you are done. You can also report the word so it can be considered for the bundled data."],
     ["Why are there no quick consonant shortcuts (cc to ch, kk to kh)?", "Because they break ordinary words (<code>cc</code> becomes <code>ch</code>, <code>kkk</code> becomes <code>khk</code>). {{AppNameTM}} leaves them out on purpose, even as an option."],
     ["Is the tone placed as <em>hòa</em> or <em>hoà</em>?", "The default is the traditional style (<em>hòa</em>, <em>thủy</em>, <em>khỏe</em>). The modern style (<em>hoà</em>, <em>thuỷ</em>, <em>khoẻ</em>) is one toggle away in Settings, Typing."],

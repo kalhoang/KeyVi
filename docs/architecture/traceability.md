@@ -333,7 +333,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R54 | Critical updates shown immediately, dismissible | appcast | R | release track |  |
 | PRD-R55 | No Sparkle system profiling | `App/Info.plist` `SUEnableSystemProfiling` | L | skeleton (done) |  |
 | PRD-R56 | Free; donations are a tip jar | n/a | D | n/a |  |
-| PRD-R57 | Donation entry points only those listed | menu, About pane, site | M | W1-G, W2-B; site track |  |
+| PRD-R57 | Donation entry points only those listed (amended 17/11/2026: also the website footer link and the home page closing line) | menu, About pane, site (`/ung-ho`, footer link, home closing line in `site/lib/pages/home/closing.mjs`) | M, U (`node site/test.mjs`: donation entry points only where PRD-R57 allows) | W1-G, W2-B; site track |  |
 | PRD-R58 | No nags, counters or locked features | all UI | D, M | all UI workstreams |  |
 | PRD-R59 | Donation block content (Pa's copy of 15/11/2026: two columns, account details with copy buttons, share text with the macOS share menu), bundled QR assets | `DonationInfo.details`, `AboutSupportContent.shareText`, `DonationSection` (About pane); the website's `/ung-ho` (`renderDonate` in `site/lib/pages/simple.mjs`, `site/static/assets/copy.js`) | U, M (`SettingsModelsTests`, `SpecDraftCopyTests`, `DonationQRTests`, `node site/test.mjs`) | W2-B, W12-S; Pa | **Pa** |
 | PRD-R60 | No Polar.sh or Buy Me a Coffee | site, docs | D | site track |  |
