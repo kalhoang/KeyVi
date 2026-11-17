@@ -682,3 +682,30 @@ harness); vanilla JS (ES2020); CSS custom properties; anime.js 4.5.0 (vendored; 
     with a Vietnamese word.
 - The integrator's local gate `Kal-Key-wt/tools/verify-all.sh`. Add `swift run --package-path Packages/VietnameseEngine --scratch-path .build-main site-demo-frames --check` to it.
 - Merge to `main` with `--no-ff`.
+
+## Phase D (17/11/2026)
+
+The product owner's review of the preview, [design section 9](../specs/2026-11-16-website-redesign-design.md), on the
+branch `feat/w20d-site-review`:
+
+- **Task A, the generator.** `site-demo-frames` records `plain` on a kept English word (the display of an engine with
+  auto restore and the revision off, ENG-R802) and runs learning demos: teaching passes folded into
+  `ReferenceCollisionMemory` (ENG-R863) with the engine rebuilt between passes (ENG-R865); it fails when a pass teaches
+  nothing or the final pass has no `learned` commit (L9c). Script and frames move to schema version 2 with the new hero
+  sentences and `learning-reset`; the site loader validates plain forms and teaching passes, and `wordsOf` marks the
+  learned word. Commits `feat(site-demo-frames): record plain forms and learning demos`,
+  `docs: describe the plain forms and learning demos of site-demo-frames`,
+  `fix(site): enforce the learning demo invariants and mark the learned word`,
+  `test(site-demo-frames): pin the teaching pass mismatch path by its message`.
+- **Task B, the site.** Commits:
+  - `feat(site): hero tags name the plain Telex form of each kept word` (item 1): "test, không thành tét", the plain
+    form struck through, both templates handed to `home.js` as parts, the tags said in words in the hidden list; the
+    new caption and peer message.
+  - `feat(site): learning section with the generated learning demo` (item 4): home section 3 with the three rows of
+    `learning-reset`, the learned badge read from the commit rule, the caption's words from the frames, four static
+    cards; the behaviour player plays a list of runs and each keys strip ends at the key its demo is about (`keysEnd`).
+  - `feat(site): unlist the compatibility page and drop status from the apps hub` (item 2): the apps hub names apps
+    only, the `unlisted` route flag keeps the page out of the navigation, the sitemap and every link, with `noindex`.
+  - `fix(site): raise the logo mark so its letters centre on the name` (item 3).
+  - `docs: record the review of 17/11/2026 in the spec, decisions and traceability` (PRD-R73, spec 04, decision 0005,
+    this note).

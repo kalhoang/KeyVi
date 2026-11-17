@@ -403,6 +403,7 @@
           "key": " ",
           "revised": {
             "english": true,
+            "plain": "á",
             "raw": "as",
             "text": "as"
           },
@@ -780,90 +781,127 @@
           "text": "Chiều nay "
         },
         {
-          "key": "h",
-          "text": "Chiều nay h"
+          "key": "m",
+          "text": "Chiều nay m"
         },
         {
-          "key": "o",
-          "text": "Chiều nay ho"
+          "key": "e",
+          "text": "Chiều nay me"
         },
         {
-          "key": "j",
-          "text": "Chiều nay họ"
+          "key": "e",
+          "text": "Chiều nay mê"
         },
         {
-          "key": "p",
-          "text": "Chiều nay họp"
+          "key": "t",
+          "text": "Chiều nay mêt"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay mêti"
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay mêtin"
+        },
+        {
+          "key": "g",
+          "text": "Chiều nay mêting"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "mêting",
+            "raw": "meeting",
+            "rule": "invalid",
+            "text": "meeting"
+          },
+          "key": " ",
+          "text": "Chiều nay meeting "
+        },
+        {
+          "key": "t",
+          "text": "Chiều nay meeting t"
+        },
+        {
+          "key": "r",
+          "text": "Chiều nay meeting tr"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay meeting tre"
+        },
+        {
+          "key": "e",
+          "text": "Chiều nay meeting trê"
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay meeting trên"
         },
         {
           "commit": {
             "english": false,
             "outcome": "kept",
-            "raw": "hojp",
+            "raw": "treen",
             "rule": "notEnglish",
-            "text": "họp"
+            "text": "trên"
           },
           "key": " ",
-          "text": "Chiều nay họp "
+          "text": "Chiều nay meeting trên "
+        },
+        {
+          "key": "Z",
+          "text": "Chiều nay meeting trên Z"
         },
         {
           "key": "o",
-          "text": "Chiều nay họp o"
+          "text": "Chiều nay meeting trên Zo"
         },
         {
-          "key": "n",
-          "text": "Chiều nay họp on"
+          "key": "o",
+          "text": "Chiều nay meeting trên Zô"
         },
         {
-          "key": "l",
-          "text": "Chiều nay họp onl"
-        },
-        {
-          "key": "i",
-          "text": "Chiều nay họp onli"
-        },
-        {
-          "key": "n",
-          "text": "Chiều nay họp onlin"
-        },
-        {
-          "key": "e",
-          "text": "Chiều nay họp online"
+          "key": "m",
+          "text": "Chiều nay meeting trên Zôm"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "kept",
-            "raw": "online",
-            "rule": "unchanged",
-            "text": "online"
+            "outcome": "restored",
+            "plain": "Zôm",
+            "raw": "Zoom",
+            "rule": "extendedSpelling",
+            "text": "Zoom"
           },
           "key": ",",
-          "text": "Chiều nay họp online,"
+          "text": "Chiều nay meeting trên Zoom,"
         },
         {
           "key": " ",
-          "text": "Chiều nay họp online, "
+          "text": "Chiều nay meeting trên Zoom, "
         },
         {
           "key": "n",
-          "text": "Chiều nay họp online, n"
+          "text": "Chiều nay meeting trên Zoom, n"
         },
         {
           "key": "h",
-          "text": "Chiều nay họp online, nh"
+          "text": "Chiều nay meeting trên Zoom, nh"
         },
         {
           "key": "o",
-          "text": "Chiều nay họp online, nho"
+          "text": "Chiều nay meeting trên Zoom, nho"
         },
         {
           "key": "w",
-          "text": "Chiều nay họp online, nhơ"
+          "text": "Chiều nay meeting trên Zoom, nhơ"
         },
         {
           "key": "s",
-          "text": "Chiều nay họp online, nhớ"
+          "text": "Chiều nay meeting trên Zoom, nhớ"
         },
         {
           "commit": {
@@ -874,268 +912,51 @@
             "text": "nhớ"
           },
           "key": " ",
-          "text": "Chiều nay họp online, nhớ "
-        },
-        {
-          "key": "g",
-          "text": "Chiều nay họp online, nhớ g"
-        },
-        {
-          "key": "u",
-          "text": "Chiều nay họp online, nhớ gu"
-        },
-        {
-          "key": "w",
-          "text": "Chiều nay họp online, nhớ gư"
-        },
-        {
-          "key": "i",
-          "text": "Chiều nay họp online, nhớ gưi"
-        },
-        {
-          "key": "r",
-          "text": "Chiều nay họp online, nhớ gửi"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "guwir",
-            "rule": "notEnglish",
-            "text": "gửi"
-          },
-          "key": " ",
-          "text": "Chiều nay họp online, nhớ gửi "
-        },
-        {
-          "key": "f",
-          "text": "Chiều nay họp online, nhớ gửi f"
-        },
-        {
-          "key": "i",
-          "text": "Chiều nay họp online, nhớ gửi fi"
-        },
-        {
-          "key": "l",
-          "text": "Chiều nay họp online, nhớ gửi fil"
-        },
-        {
-          "key": "e",
-          "text": "Chiều nay họp online, nhớ gửi file"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "file",
-            "rule": "unchanged",
-            "text": "file"
-          },
-          "key": " ",
-          "text": "Chiều nay họp online, nhớ gửi file "
-        },
-        {
-          "key": "s",
-          "text": "Chiều nay họp online, nhớ gửi file s"
-        },
-        {
-          "key": "l",
-          "text": "Chiều nay họp online, nhớ gửi file sl"
-        },
-        {
-          "key": "i",
-          "text": "Chiều nay họp online, nhớ gửi file sli"
-        },
-        {
-          "key": "d",
-          "text": "Chiều nay họp online, nhớ gửi file slid"
-        },
-        {
-          "key": "e",
-          "text": "Chiều nay họp online, nhớ gửi file slide"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "slide",
-            "rule": "unchanged",
-            "text": "slide"
-          },
-          "key": " ",
-          "text": "Chiều nay họp online, nhớ gửi file slide "
+          "text": "Chiều nay meeting trên Zoom, nhớ "
         },
         {
           "key": "t",
-          "text": "Chiều nay họp online, nhớ gửi file slide t"
+          "text": "Chiều nay meeting trên Zoom, nhớ t"
         },
         {
-          "key": "r",
-          "text": "Chiều nay họp online, nhớ gửi file slide tr"
-        },
-        {
-          "key": "u",
-          "text": "Chiều nay họp online, nhớ gửi file slide tru"
-        },
-        {
-          "key": "w",
-          "text": "Chiều nay họp online, nhớ gửi file slide trư"
-        },
-        {
-          "key": "o",
-          "text": "Chiều nay họp online, nhớ gửi file slide trươ"
-        },
-        {
-          "key": "w",
-          "text": "Chiều nay họp online, nhớ gửi file slide trươ"
-        },
-        {
-          "key": "c",
-          "text": "Chiều nay họp online, nhớ gửi file slide trươc"
+          "key": "e",
+          "text": "Chiều nay meeting trên Zoom, nhớ te"
         },
         {
           "key": "s",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước"
+          "text": "Chiều nay meeting trên Zoom, nhớ té"
         },
         {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "truwowcs",
-            "rule": "notEnglish",
-            "text": "trước"
-          },
-          "key": " ",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước "
-        },
-        {
-          "key": "d",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước d"
-        },
-        {
-          "key": "e",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước de"
-        },
-        {
-          "key": "a",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước dea"
-        },
-        {
-          "key": "d",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước dead"
-        },
-        {
-          "key": "l",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadl"
-        },
-        {
-          "key": "i",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadli"
-        },
-        {
-          "key": "n",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadlin"
-        },
-        {
-          "key": "e",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline"
+          "key": "t",
+          "text": "Chiều nay meeting trên Zoom, nhớ tét"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "kept",
-            "raw": "deadline",
-            "rule": "unchanged",
-            "text": "deadline"
+            "outcome": "restored",
+            "plain": "tét",
+            "raw": "test",
+            "rule": "ambiguityTable",
+            "text": "test"
           },
           "key": " ",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline "
-        },
-        {
-          "key": "n",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline n"
-        },
-        {
-          "key": "h",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nh"
-        },
-        {
-          "key": "a",
-          "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nha"
-        }
-      ],
-      "keys": "Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha",
-      "method": "telex",
-      "text": "Chiều nay họp online, nhớ gửi file slide trước deadline nha",
-      "toneStyle": "traditional"
-    },
-    "hero-email": {
-      "frames": [
-        {
-          "key": "A",
-          "text": "A"
-        },
-        {
-          "key": "n",
-          "text": "An"
-        },
-        {
-          "key": "h",
-          "text": "Anh"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "Anh",
-            "rule": "unchanged",
-            "text": "Anh"
-          },
-          "key": " ",
-          "text": "Anh "
-        },
-        {
-          "key": "g",
-          "text": "Anh g"
-        },
-        {
-          "key": "w",
-          "text": "Anh gư"
-        },
-        {
-          "key": "i",
-          "text": "Anh gưi"
-        },
-        {
-          "key": "r",
-          "text": "Anh gửi"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "gwir",
-            "rule": "notEnglish",
-            "text": "gửi"
-          },
-          "key": " ",
-          "text": "Anh gửi "
+          "text": "Chiều nay meeting trên Zoom, nhớ test "
         },
         {
           "key": "l",
-          "text": "Anh gửi l"
+          "text": "Chiều nay meeting trên Zoom, nhớ test l"
         },
         {
           "key": "a",
-          "text": "Anh gửi la"
+          "text": "Chiều nay meeting trên Zoom, nhớ test la"
         },
         {
           "key": "i",
-          "text": "Anh gửi lai"
+          "text": "Chiều nay meeting trên Zoom, nhớ test lai"
         },
         {
           "key": "j",
-          "text": "Anh gửi lại"
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại"
         },
         {
           "commit": {
@@ -1146,217 +967,781 @@
             "text": "lại"
           },
           "key": " ",
-          "text": "Anh gửi lại "
-        },
-        {
-          "key": "e",
-          "text": "Anh gửi lại e"
-        },
-        {
-          "key": "m",
-          "text": "Anh gửi lại em"
-        },
-        {
-          "key": "a",
-          "text": "Anh gửi lại ema"
-        },
-        {
-          "key": "i",
-          "text": "Anh gửi lại emai"
-        },
-        {
-          "key": "l",
-          "text": "Anh gửi lại email"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "email",
-            "rule": "unchanged",
-            "text": "email"
-          },
-          "key": " ",
-          "text": "Anh gửi lại email "
-        },
-        {
-          "key": "c",
-          "text": "Anh gửi lại email c"
-        },
-        {
-          "key": "h",
-          "text": "Anh gửi lại email ch"
-        },
-        {
-          "key": "o",
-          "text": "Anh gửi lại email cho"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "cho",
-            "rule": "unchanged",
-            "text": "cho"
-          },
-          "key": " ",
-          "text": "Anh gửi lại email cho "
-        },
-        {
-          "key": "t",
-          "text": "Anh gửi lại email cho t"
-        },
-        {
-          "key": "e",
-          "text": "Anh gửi lại email cho te"
-        },
-        {
-          "key": "a",
-          "text": "Anh gửi lại email cho tea"
-        },
-        {
-          "key": "m",
-          "text": "Anh gửi lại email cho team"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "team",
-            "rule": "unchanged",
-            "text": "team"
-          },
-          "key": " ",
-          "text": "Anh gửi lại email cho team "
-        },
-        {
-          "key": "t",
-          "text": "Anh gửi lại email cho team t"
-        },
-        {
-          "key": "r",
-          "text": "Anh gửi lại email cho team tr"
-        },
-        {
-          "key": "u",
-          "text": "Anh gửi lại email cho team tru"
-        },
-        {
-          "key": "w",
-          "text": "Anh gửi lại email cho team trư"
-        },
-        {
-          "key": "o",
-          "text": "Anh gửi lại email cho team trươ"
-        },
-        {
-          "key": "w",
-          "text": "Anh gửi lại email cho team trươ"
-        },
-        {
-          "key": "c",
-          "text": "Anh gửi lại email cho team trươc"
-        },
-        {
-          "key": "s",
-          "text": "Anh gửi lại email cho team trước"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "truwowcs",
-            "rule": "notEnglish",
-            "text": "trước"
-          },
-          "key": " ",
-          "text": "Anh gửi lại email cho team trước "
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại "
         },
         {
           "key": "b",
-          "text": "Anh gửi lại email cho team trước b"
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại b"
         },
         {
-          "key": "u",
-          "text": "Anh gửi lại email cho team trước bu"
+          "key": "a",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại ba"
         },
         {
-          "key": "o",
-          "text": "Anh gửi lại email cho team trước buo"
-        },
-        {
-          "key": "o",
-          "text": "Anh gửi lại email cho team trước buô"
-        },
-        {
-          "key": "i",
-          "text": "Anh gửi lại email cho team trước buôi"
+          "key": "n",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại ban"
         },
         {
           "key": "r",
-          "text": "Anh gửi lại email cho team trước buổi"
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản"
         },
         {
           "commit": {
             "english": false,
             "outcome": "kept",
-            "raw": "buooir",
+            "raw": "banr",
             "rule": "notEnglish",
-            "text": "buổi"
+            "text": "bản"
           },
           "key": " ",
-          "text": "Anh gửi lại email cho team trước buổi "
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản "
         },
         {
-          "key": "c",
-          "text": "Anh gửi lại email cho team trước buổi c"
+          "key": "m",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản m"
+        },
+        {
+          "key": "o",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mo"
+        },
+        {
+          "key": "w",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mơ"
+        },
+        {
+          "key": "i",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mơi"
+        },
+        {
+          "key": "s",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "mowis",
+            "rule": "notEnglish",
+            "text": "mới"
+          },
+          "key": " ",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới "
+        },
+        {
+          "key": "n",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới n"
+        },
+        {
+          "key": "h",
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới nh"
         },
         {
           "key": "a",
-          "text": "Anh gửi lại email cho team trước buổi ca"
+          "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới nha"
+        }
+      ],
+      "keys": "Chieeuf nay meeting treen Zoom, nhows test laij banr mowis nha",
+      "method": "telex",
+      "text": "Chiều nay meeting trên Zoom, nhớ test lại bản mới nha",
+      "toneStyle": "traditional"
+    },
+    "hero-email": {
+      "frames": [
+        {
+          "key": "E",
+          "text": "E"
+        },
+        {
+          "key": "m",
+          "text": "Em"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Em",
+            "rule": "unchanged",
+            "text": "Em"
+          },
+          "key": " ",
+          "text": "Em "
+        },
+        {
+          "key": "g",
+          "text": "Em g"
+        },
+        {
+          "key": "w",
+          "text": "Em gư"
+        },
+        {
+          "key": "i",
+          "text": "Em gưi"
+        },
+        {
+          "key": "r",
+          "text": "Em gửi"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "gwir",
+            "rule": "notEnglish",
+            "text": "gửi"
+          },
+          "key": " ",
+          "text": "Em gửi "
+        },
+        {
+          "key": "a",
+          "text": "Em gửi a"
+        },
+        {
+          "key": "n",
+          "text": "Em gửi an"
+        },
+        {
+          "key": "h",
+          "text": "Em gửi anh"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "anh",
+            "rule": "unchanged",
+            "text": "anh"
+          },
+          "key": " ",
+          "text": "Em gửi anh "
         },
         {
           "key": "l",
-          "text": "Anh gửi lại email cho team trước buổi cal"
+          "text": "Em gửi anh l"
         },
         {
-          "key": "l",
-          "text": "Anh gửi lại email cho team trước buổi call"
+          "key": "i",
+          "text": "Em gửi anh li"
+        },
+        {
+          "key": "s",
+          "text": "Em gửi anh lí"
+        },
+        {
+          "key": "t",
+          "text": "Em gửi anh lít"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "kept",
-            "raw": "call",
-            "rule": "unchanged",
-            "text": "call"
+            "outcome": "restored",
+            "plain": "lít",
+            "raw": "list",
+            "rule": "ambiguityTable",
+            "text": "list"
           },
           "key": " ",
-          "text": "Anh gửi lại email cho team trước buổi call "
+          "text": "Em gửi anh list "
         },
         {
-          "key": "n",
-          "text": "Anh gửi lại email cho team trước buổi call n"
+          "key": "t",
+          "text": "Em gửi anh list t"
         },
         {
-          "key": "h",
-          "text": "Anh gửi lại email cho team trước buổi call nh"
-        },
-        {
-          "key": "e",
-          "text": "Anh gửi lại email cho team trước buổi call nhe"
+          "key": "a",
+          "text": "Em gửi anh list ta"
         },
         {
           "key": "s",
-          "text": "Anh gửi lại email cho team trước buổi call nhé"
+          "text": "Em gửi anh list tá"
+        },
+        {
+          "key": "k",
+          "text": "Em gửi anh list ták"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "ták",
+            "raw": "task",
+            "rule": "extendedSpelling",
+            "text": "task"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task "
+        },
+        {
+          "key": "t",
+          "text": "Em gửi anh list task t"
+        },
+        {
+          "key": "u",
+          "text": "Em gửi anh list task tu"
+        },
+        {
+          "key": "a",
+          "text": "Em gửi anh list task tua"
+        },
+        {
+          "key": "a",
+          "text": "Em gửi anh list task tuâ"
+        },
+        {
+          "key": "n",
+          "text": "Em gửi anh list task tuân"
+        },
+        {
+          "key": "f",
+          "text": "Em gửi anh list task tuần"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "tuaanf",
+            "rule": "notEnglish",
+            "text": "tuần"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần "
+        },
+        {
+          "key": "n",
+          "text": "Em gửi anh list task tuần n"
+        },
+        {
+          "key": "a",
+          "text": "Em gửi anh list task tuần na"
+        },
+        {
+          "key": "y",
+          "text": "Em gửi anh list task tuần nay"
+        },
+        {
+          "key": "f",
+          "text": "Em gửi anh list task tuần này"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "nayf",
+            "rule": "notEnglish",
+            "text": "này"
+          },
+          "key": ",",
+          "text": "Em gửi anh list task tuần này,"
+        },
+        {
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, "
+        },
+        {
+          "key": "a",
+          "text": "Em gửi anh list task tuần này, a"
+        },
+        {
+          "key": "n",
+          "text": "Em gửi anh list task tuần này, an"
+        },
+        {
+          "key": "h",
+          "text": "Em gửi anh list task tuần này, anh"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "anh",
+            "rule": "unchanged",
+            "text": "anh"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, anh "
+        },
+        {
+          "key": "s",
+          "text": "Em gửi anh list task tuần này, anh s"
+        },
+        {
+          "key": "o",
+          "text": "Em gửi anh list task tuần này, anh so"
+        },
+        {
+          "key": "r",
+          "text": "Em gửi anh list task tuần này, anh sỏ"
+        },
+        {
+          "key": "t",
+          "text": "Em gửi anh list task tuần này, anh sỏt"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "sỏt",
+            "raw": "sort",
+            "rule": "invalid",
+            "text": "sort"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, anh sort "
+        },
+        {
+          "key": "l",
+          "text": "Em gửi anh list task tuần này, anh sort l"
+        },
+        {
+          "key": "a",
+          "text": "Em gửi anh list task tuần này, anh sort la"
+        },
+        {
+          "key": "i",
+          "text": "Em gửi anh list task tuần này, anh sort lai"
+        },
+        {
+          "key": "j",
+          "text": "Em gửi anh list task tuần này, anh sort lại"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "laij",
+            "rule": "notEnglish",
+            "text": "lại"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, anh sort lại "
+        },
+        {
+          "key": "g",
+          "text": "Em gửi anh list task tuần này, anh sort lại g"
+        },
+        {
+          "key": "i",
+          "text": "Em gửi anh list task tuần này, anh sort lại gi"
+        },
+        {
+          "key": "u",
+          "text": "Em gửi anh list task tuần này, anh sort lại giu"
+        },
+        {
+          "key": "s",
+          "text": "Em gửi anh list task tuần này, anh sort lại giú"
+        },
+        {
+          "key": "p",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "giusp",
+            "rule": "notEnglish",
+            "text": "giúp"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp "
+        },
+        {
+          "key": "e",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp e"
+        },
+        {
+          "key": "m",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "em",
+            "rule": "unchanged",
+            "text": "em"
+          },
+          "key": " ",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em "
+        },
+        {
+          "key": "n",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em n"
+        },
+        {
+          "key": "h",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em nh"
+        },
+        {
+          "key": "e",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em nhe"
+        },
+        {
+          "key": "s",
+          "text": "Em gửi anh list task tuần này, anh sort lại giúp em nhé"
         }
       ],
-      "keys": "Anh gwir laij email cho team truwowcs buooir call nhes",
+      "keys": "Em gwir anh list task tuaanf nayf, anh sort laij giusp em nhes",
       "method": "telex",
-      "text": "Anh gửi lại email cho team trước buổi call nhé",
+      "text": "Em gửi anh list task tuần này, anh sort lại giúp em nhé",
       "toneStyle": "traditional"
     },
     "hero-note": {
+      "frames": [
+        {
+          "key": "B",
+          "text": "B"
+        },
+        {
+          "key": "e",
+          "text": "Be"
+        },
+        {
+          "key": "s",
+          "text": "Bé"
+        },
+        {
+          "key": "t",
+          "text": "Bét"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "Bét",
+            "raw": "Best",
+            "rule": "ambiguityTable",
+            "text": "Best"
+          },
+          "key": " ",
+          "text": "Best "
+        },
+        {
+          "key": "c",
+          "text": "Best c"
+        },
+        {
+          "key": "a",
+          "text": "Best ca"
+        },
+        {
+          "key": "s",
+          "text": "Best cá"
+        },
+        {
+          "key": "e",
+          "text": "Best cáe"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "cáe",
+            "raw": "case",
+            "rule": "invalid",
+            "text": "case"
+          },
+          "key": " ",
+          "text": "Best case "
+        },
+        {
+          "key": "t",
+          "text": "Best case t"
+        },
+        {
+          "key": "h",
+          "text": "Best case th"
+        },
+        {
+          "key": "i",
+          "text": "Best case thi"
+        },
+        {
+          "key": "f",
+          "text": "Best case thì"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "thif",
+            "rule": "notEnglish",
+            "text": "thì"
+          },
+          "key": " ",
+          "text": "Best case thì "
+        },
+        {
+          "key": "t",
+          "text": "Best case thì t"
+        },
+        {
+          "key": "h",
+          "text": "Best case thì th"
+        },
+        {
+          "key": "u",
+          "text": "Best case thì thu"
+        },
+        {
+          "key": "w",
+          "text": "Best case thì thư"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "thuws",
+            "rule": "notEnglish",
+            "text": "thứ"
+          },
+          "key": " ",
+          "text": "Best case thì thứ "
+        },
+        {
+          "key": "S",
+          "text": "Best case thì thứ S"
+        },
+        {
+          "key": "a",
+          "text": "Best case thì thứ Sa"
+        },
+        {
+          "key": "u",
+          "text": "Best case thì thứ Sau"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ Sáu"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "Saus",
+            "rule": "notEnglish",
+            "text": "Sáu"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu "
+        },
+        {
+          "key": "c",
+          "text": "Best case thì thứ Sáu c"
+        },
+        {
+          "key": "h",
+          "text": "Best case thì thứ Sáu ch"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu cho"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chô"
+        },
+        {
+          "key": "t",
+          "text": "Best case thì thứ Sáu chôt"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ Sáu chốt"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "choots",
+            "rule": "notEnglish",
+            "text": "chốt"
+          },
+          "key": ",",
+          "text": "Best case thì thứ Sáu chốt,"
+        },
+        {
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, "
+        },
+        {
+          "key": "b",
+          "text": "Best case thì thứ Sáu chốt, b"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chốt, bo"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ Sáu chốt, bó"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ Sáu chốt, bos"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "bos",
+            "raw": "boss",
+            "rule": "escape",
+            "text": "boss"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, boss "
+        },
+        {
+          "key": "d",
+          "text": "Best case thì thứ Sáu chốt, boss d"
+        },
+        {
+          "key": "u",
+          "text": "Best case thì thứ Sáu chốt, boss du"
+        },
+        {
+          "key": "y",
+          "text": "Best case thì thứ Sáu chốt, boss duy"
+        },
+        {
+          "key": "e",
+          "text": "Best case thì thứ Sáu chốt, boss duye"
+        },
+        {
+          "key": "e",
+          "text": "Best case thì thứ Sáu chốt, boss duyê"
+        },
+        {
+          "key": "t",
+          "text": "Best case thì thứ Sáu chốt, boss duyêt"
+        },
+        {
+          "key": "j",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "duyeetj",
+            "rule": "notEnglish",
+            "text": "duyệt"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt "
+        },
+        {
+          "key": "x",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt x"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xo"
+        },
+        {
+          "key": "n",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xon"
+        },
+        {
+          "key": "g",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "xong",
+            "rule": "unchanged",
+            "text": "xong"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong "
+        },
+        {
+          "key": "l",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong l"
+        },
+        {
+          "key": "a",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong la"
+        },
+        {
+          "key": "f",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "laf",
+            "rule": "notEnglish",
+            "text": "là"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là "
+        },
+        {
+          "key": "p",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là p"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là po"
+        },
+        {
+          "key": "s",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là pó"
+        },
+        {
+          "key": "t",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là pót"
+        },
+        {
+          "commit": {
+            "english": true,
+            "outcome": "restored",
+            "plain": "pót",
+            "raw": "post",
+            "rule": "notAttested",
+            "text": "post"
+          },
+          "key": " ",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post "
+        },
+        {
+          "key": "l",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post l"
+        },
+        {
+          "key": "u",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post lu"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post luo"
+        },
+        {
+          "key": "o",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post luô"
+        },
+        {
+          "key": "n",
+          "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post luôn"
+        }
+      ],
+      "keys": "Best case thif thuws Saus choots, boss duyeetj xong laf post luoon",
+      "method": "telex",
+      "text": "Best case thì thứ Sáu chốt, boss duyệt xong là post luôn",
+      "toneStyle": "traditional"
+    },
+    "learning-reset": {
       "frames": [
         {
           "key": "N",
@@ -1390,175 +1775,52 @@
           "text": "Nhớ "
         },
         {
-          "key": "c",
-          "text": "Nhớ c"
-        },
-        {
-          "key": "a",
-          "text": "Nhớ ca"
-        },
-        {
-          "key": "a",
-          "text": "Nhớ câ"
-        },
-        {
-          "key": "p",
-          "text": "Nhớ câp"
-        },
-        {
-          "key": "j",
-          "text": "Nhớ cập"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "caapj",
-            "rule": "notEnglish",
-            "text": "cập"
-          },
-          "key": " ",
-          "text": "Nhớ cập "
-        },
-        {
-          "key": "n",
-          "text": "Nhớ cập n"
-        },
-        {
-          "key": "h",
-          "text": "Nhớ cập nh"
-        },
-        {
-          "key": "a",
-          "text": "Nhớ cập nha"
-        },
-        {
-          "key": "a",
-          "text": "Nhớ cập nhâ"
-        },
-        {
-          "key": "t",
-          "text": "Nhớ cập nhât"
-        },
-        {
-          "key": "j",
-          "text": "Nhớ cập nhật"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "nhaatj",
-            "rule": "notEnglish",
-            "text": "nhật"
-          },
-          "key": " ",
-          "text": "Nhớ cập nhật "
-        },
-        {
-          "key": "a",
-          "text": "Nhớ cập nhật a"
-        },
-        {
-          "key": "p",
-          "text": "Nhớ cập nhật ap"
-        },
-        {
-          "key": "p",
-          "text": "Nhớ cập nhật app"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "app",
-            "rule": "unchanged",
-            "text": "app"
-          },
-          "key": " ",
-          "text": "Nhớ cập nhật app "
-        },
-        {
-          "key": "m",
-          "text": "Nhớ cập nhật app m"
-        },
-        {
-          "key": "o",
-          "text": "Nhớ cập nhật app mo"
-        },
-        {
-          "key": "w",
-          "text": "Nhớ cập nhật app mơ"
-        },
-        {
-          "key": "i",
-          "text": "Nhớ cập nhật app mơi"
-        },
-        {
-          "key": "s",
-          "text": "Nhớ cập nhật app mới"
-        },
-        {
-          "commit": {
-            "english": false,
-            "outcome": "kept",
-            "raw": "mowis",
-            "rule": "notEnglish",
-            "text": "mới"
-          },
-          "key": ",",
-          "text": "Nhớ cập nhật app mới,"
-        },
-        {
-          "key": " ",
-          "text": "Nhớ cập nhật app mới, "
-        },
-        {
-          "key": "c",
-          "text": "Nhớ cập nhật app mới, c"
-        },
-        {
-          "key": "h",
-          "text": "Nhớ cập nhật app mới, ch"
+          "key": "r",
+          "text": "Nhớ r"
         },
         {
           "key": "e",
-          "text": "Nhớ cập nhật app mới, che"
+          "text": "Nhớ re"
         },
         {
-          "key": "c",
-          "text": "Nhớ cập nhật app mới, chec"
+          "key": "s",
+          "text": "Nhớ ré"
         },
         {
-          "key": "k",
-          "text": "Nhớ cập nhật app mới, check"
+          "key": "e",
+          "text": "Nhớ rế"
+        },
+        {
+          "key": "t",
+          "text": "Nhớ rết"
         },
         {
           "commit": {
             "english": true,
-            "outcome": "kept",
-            "raw": "check",
-            "rule": "unchanged",
-            "text": "check"
+            "outcome": "restored",
+            "plain": "rết",
+            "raw": "reset",
+            "rule": "learned",
+            "text": "reset"
           },
           "key": " ",
-          "text": "Nhớ cập nhật app mới, check "
+          "text": "Nhớ reset "
         },
         {
           "key": "l",
-          "text": "Nhớ cập nhật app mới, check l"
+          "text": "Nhớ reset l"
         },
         {
           "key": "a",
-          "text": "Nhớ cập nhật app mới, check la"
+          "text": "Nhớ reset la"
         },
         {
           "key": "i",
-          "text": "Nhớ cập nhật app mới, check lai"
+          "text": "Nhớ reset lai"
         },
         {
           "key": "j",
-          "text": "Nhớ cập nhật app mới, check lại"
+          "text": "Nhớ reset lại"
         },
         {
           "commit": {
@@ -1569,58 +1831,335 @@
             "text": "lại"
           },
           "key": " ",
-          "text": "Nhớ cập nhật app mới, check lại "
+          "text": "Nhớ reset lại "
         },
         {
-          "key": "l",
-          "text": "Nhớ cập nhật app mới, check lại l"
+          "key": "m",
+          "text": "Nhớ reset lại m"
         },
         {
-          "key": "i",
-          "text": "Nhớ cập nhật app mới, check lại li"
+          "key": "a",
+          "text": "Nhớ reset lại ma"
         },
         {
-          "key": "n",
-          "text": "Nhớ cập nhật app mới, check lại lin"
-        },
-        {
-          "key": "k",
-          "text": "Nhớ cập nhật app mới, check lại link"
-        },
-        {
-          "commit": {
-            "english": true,
-            "outcome": "kept",
-            "raw": "link",
-            "rule": "unchanged",
-            "text": "link"
-          },
-          "key": " ",
-          "text": "Nhớ cập nhật app mới, check lại link "
-        },
-        {
-          "key": "n",
-          "text": "Nhớ cập nhật app mới, check lại link n"
-        },
-        {
-          "key": "h",
-          "text": "Nhớ cập nhật app mới, check lại link nh"
-        },
-        {
-          "key": "e",
-          "text": "Nhớ cập nhật app mới, check lại link nhe"
+          "key": "y",
+          "text": "Nhớ reset lại may"
         },
         {
           "key": "s",
-          "text": "Nhớ cập nhật app mới, check lại link nhé"
+          "text": "Nhớ reset lại máy"
+        },
+        {
+          "commit": {
+            "english": false,
+            "outcome": "kept",
+            "raw": "mays",
+            "rule": "notEnglish",
+            "text": "máy"
+          },
+          "key": " ",
+          "text": "Nhớ reset lại máy "
+        },
+        {
+          "key": "n",
+          "text": "Nhớ reset lại máy n"
+        },
+        {
+          "key": "h",
+          "text": "Nhớ reset lại máy nh"
+        },
+        {
+          "key": "a",
+          "text": "Nhớ reset lại máy nha"
         }
       ],
-      "keys": "Nhows caapj nhaatj app mowis, check laij link nhes",
+      "keys": "Nhows reset laij mays nha",
       "method": "telex",
-      "text": "Nhớ cập nhật app mới, check lại link nhé",
+      "teachKeys": "Nhows reset⎋ laij mays nha",
+      "teachPasses": [
+        {
+          "frames": [
+            {
+              "key": "N",
+              "text": "N"
+            },
+            {
+              "key": "h",
+              "text": "Nh"
+            },
+            {
+              "key": "o",
+              "text": "Nho"
+            },
+            {
+              "key": "w",
+              "text": "Nhơ"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "Nhows",
+                "rule": "notEnglish",
+                "text": "Nhớ"
+              },
+              "key": " ",
+              "text": "Nhớ "
+            },
+            {
+              "key": "r",
+              "text": "Nhớ r"
+            },
+            {
+              "key": "e",
+              "text": "Nhớ re"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ ré"
+            },
+            {
+              "key": "e",
+              "text": "Nhớ rế"
+            },
+            {
+              "key": "t",
+              "text": "Nhớ rết"
+            },
+            {
+              "key": "⎋",
+              "text": "Nhớ reset",
+              "toggle": true
+            },
+            {
+              "commit": {
+                "english": true,
+                "outcome": "restored",
+                "plain": "rết",
+                "raw": "reset",
+                "rule": "userChoice",
+                "text": "reset"
+              },
+              "key": " ",
+              "text": "Nhớ reset "
+            },
+            {
+              "key": "l",
+              "text": "Nhớ reset l"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset la"
+            },
+            {
+              "key": "i",
+              "text": "Nhớ reset lai"
+            },
+            {
+              "key": "j",
+              "text": "Nhớ reset lại"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "laij",
+                "rule": "notEnglish",
+                "text": "lại"
+              },
+              "key": " ",
+              "text": "Nhớ reset lại "
+            },
+            {
+              "key": "m",
+              "text": "Nhớ reset lại m"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset lại ma"
+            },
+            {
+              "key": "y",
+              "text": "Nhớ reset lại may"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ reset lại máy"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "mays",
+                "rule": "notEnglish",
+                "text": "máy"
+              },
+              "key": " ",
+              "text": "Nhớ reset lại máy "
+            },
+            {
+              "key": "n",
+              "text": "Nhớ reset lại máy n"
+            },
+            {
+              "key": "h",
+              "text": "Nhớ reset lại máy nh"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset lại máy nha"
+            }
+          ],
+          "text": "Nhớ reset lại máy nha"
+        },
+        {
+          "frames": [
+            {
+              "key": "N",
+              "text": "N"
+            },
+            {
+              "key": "h",
+              "text": "Nh"
+            },
+            {
+              "key": "o",
+              "text": "Nho"
+            },
+            {
+              "key": "w",
+              "text": "Nhơ"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "Nhows",
+                "rule": "notEnglish",
+                "text": "Nhớ"
+              },
+              "key": " ",
+              "text": "Nhớ "
+            },
+            {
+              "key": "r",
+              "text": "Nhớ r"
+            },
+            {
+              "key": "e",
+              "text": "Nhớ re"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ ré"
+            },
+            {
+              "key": "e",
+              "text": "Nhớ rế"
+            },
+            {
+              "key": "t",
+              "text": "Nhớ rết"
+            },
+            {
+              "key": "⎋",
+              "text": "Nhớ reset",
+              "toggle": true
+            },
+            {
+              "commit": {
+                "english": true,
+                "outcome": "restored",
+                "plain": "rết",
+                "raw": "reset",
+                "rule": "userChoice",
+                "text": "reset"
+              },
+              "key": " ",
+              "text": "Nhớ reset "
+            },
+            {
+              "key": "l",
+              "text": "Nhớ reset l"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset la"
+            },
+            {
+              "key": "i",
+              "text": "Nhớ reset lai"
+            },
+            {
+              "key": "j",
+              "text": "Nhớ reset lại"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "laij",
+                "rule": "notEnglish",
+                "text": "lại"
+              },
+              "key": " ",
+              "text": "Nhớ reset lại "
+            },
+            {
+              "key": "m",
+              "text": "Nhớ reset lại m"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset lại ma"
+            },
+            {
+              "key": "y",
+              "text": "Nhớ reset lại may"
+            },
+            {
+              "key": "s",
+              "text": "Nhớ reset lại máy"
+            },
+            {
+              "commit": {
+                "english": false,
+                "outcome": "kept",
+                "raw": "mays",
+                "rule": "notEnglish",
+                "text": "máy"
+              },
+              "key": " ",
+              "text": "Nhớ reset lại máy "
+            },
+            {
+              "key": "n",
+              "text": "Nhớ reset lại máy n"
+            },
+            {
+              "key": "h",
+              "text": "Nhớ reset lại máy nh"
+            },
+            {
+              "key": "a",
+              "text": "Nhớ reset lại máy nha"
+            }
+          ],
+          "text": "Nhớ reset lại máy nha"
+        }
+      ],
+      "text": "Nhớ reset lại máy nha",
       "toneStyle": "traditional"
     }
   },
   "generator": "site-demo-frames",
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

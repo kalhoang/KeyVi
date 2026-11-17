@@ -7,7 +7,7 @@ export default {
   notice: { label: "Notice", link: "Details" },
   skipLink: "Skip to content",
   navLabel: "Main navigation",
-  nav: { features: "Features", compat: "Compatibility", support: "Support", downloadCta: "Download", privacy: "Privacy", changelog: "Changelog" },
+  nav: { features: "Features", support: "Support", downloadCta: "Download", privacy: "Privacy", changelog: "Changelog" },
   langSwitch: { text: "Tiếng Việt", title: "Xem trang này bằng tiếng Việt", lang: "vi" },
   footer: {
     promise: "No cookies, no tracking, no third-party fonts or scripts.",
@@ -30,7 +30,7 @@ export default {
   descriptions: {
     home: "{{AppNameTM}} is a Vietnamese input method for macOS: sensible defaults, English words stay as typed, no data collection, free.",
     download: "Download {{AppNameTM}} for macOS: stable and beta builds, SHA-256 checksums, system requirements and Homebrew.",
-    compat: "Apps tested with {{AppNameTM}}, with status, notes and the date of the last check.",
+    compat: "The compatibility status of each app with {{AppNameTM}}, updated as checks are done.",
     changelog: "User-visible changes in every {{AppNameTM}} release.",
     privacy: "Everything {{AppNameTM}} stores and sends, what diagnostics contain, and the website analytics policy.",
     support: "FAQ, troubleshooting by symptom, how to report a bug, and guides for moving from another input method to {{AppNameTM}}.",

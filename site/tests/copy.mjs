@@ -29,13 +29,39 @@ export async function runCopyChecks(check, fixtures) {
     assert.equal(vi.h1, "Gõ tiếng Việt lẫn tiếng Anh, không cần chuyển.");
     assert.equal(en.h1, "Type Vietnamese and English without switching.");
     // The section headings of design 7.3 and the ids the renderers and frames.json share (plan Task 4).
-    assert.deepEqual([vi.behaviours.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
-      ["Một câu, hai thứ tiếng", "Gõ theo cách của bạn", "Chạy trong app bạn dùng hằng ngày", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+    assert.deepEqual([vi.behaviours.heading, vi.learning.heading, vi.cards.heading, vi.apps.heading, vi.proofHeading, vi.install.heading],
+      ["Một câu, hai thứ tiếng", "Càng gõ càng hợp với bạn", "Gõ theo cách của bạn", "Chạy trong mọi ứng dụng phổ biến", "Ba điều bạn có thể kiểm chứng", "Cài trong một phút"]);
+    // Design 9 item 2: the apps section names categories and apps, with no status and no link to the compatibility page.
+    assert.equal(en.apps.heading, "Works in all the popular apps");
+    // The intro lists the kinds of apps only: nothing is verified yet, so it promises no app in particular (design 9 item 2).
+    assert.equal(vi.apps.intro, "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã.");
+    assert.equal(en.apps.intro, "Browsers, chat, office apps, notes, Spotlight, Terminal and code editors.");
+    // The unlisted compatibility page stays for the app's "Tìm hiểu thêm" link; its description claims no check either.
+    for (const lang of LANGS) {
+      const ui = (await import(pathToFileURL(join(SITE_DIR, "content", lang, "ui.mjs")).href)).default;
+      assert.ok(!/kiểm tra với|ngày kiểm tra|tested with|last check/i.test(ui.descriptions.compat), `${lang}: the compatibility description claims no check: ${ui.descriptions.compat}`);
+    }
+    for (const retired of ["verifiedOn", "link"]) assert.ok(!(retired in vi.apps) && !(retired in en.apps), `apps.${retired} is retired`);
     assert.deepEqual(vi.behaviours.items.map((item) => item.id), ["punctuation", "revision", "escape"]);
-    assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "macros", "layouts", "perApp"]);
+    assert.deepEqual(vi.cards.items.map((item) => item.id), ["anywhere", "slang", "method", "layouts"]);
+    assert.deepEqual(vi.learning.cards.map((item) => item.id), ["learned", "perApp", "macros", "wordLists"]);
     assert.ok(!("categories" in vi.apps) && !("categories" in en.apps), "the hub takes its category names from ui.categories, as the compatibility page does");
     assert.deepEqual(vi.cards.items.flatMap((item) => item.demos ?? []), ["card-anywhere", "card-slang", "card-telex", "card-vni", "card-traditional", "card-modern"]);
+    // Design 9 item 4, with the English of the review of 17/11/2026.
+    assert.equal(en.learning.heading, "The more you type, the better it fits");
+    assert.equal(vi.learning.intro, "{{AppNameTM}} học từ chính những lần bạn sửa. Chữ nào bạn sửa hai lần, lần sau {{AppName}} tự gõ đúng ý bạn. Mọi thứ học được chỉ lưu trên máy này, và bạn xem, xóa được trong Cài đặt.");
+    assert.equal(en.learning.intro, "{{AppNameTM}} learns from the corrections you make. Correct a word twice and {{AppName}} types it your way from then on. Everything it learns stays on this Mac, and you can see and remove it in Settings.");
+    assert.deepEqual([vi.learning.rows, en.learning.rows], [["Lần 1", "Lần 2", "Từ lần sau"], ["1st time", "2nd time", "From then on"]]);
+    assert.deepEqual([vi.learning.learned, en.learning.learned], ["Đã nhớ", "Learned"]);
+    assert.equal(vi.learning.caption, "Gõ {{raw}} ra {{viHtml}}? Bấm Escape để lấy lại {{raw}}. Sửa hai lần, {{AppName}} nhớ luôn.");
+    assert.equal(en.learning.caption, "Typed {{raw}} and got {{viHtml}}? Press Escape to get {{raw}} back. After two corrections, {{AppName}} remembers.");
     assert.ok(vi.hero.keepTag.includes("{{word}}") && en.hero.keepTag.includes("{{word}}"), "keepTag names the word");
+    // Design 9 item 1: a kept word's tag names what plain Telex would have typed; the caption says so; the peer's message
+    // is Vietnamese on both pages.
+    assert.deepEqual([vi.hero.plainTag, en.hero.plainTag], ["{{word}}, không thành {{plain}}", "{{word}}, not {{plain}}"]);
+    assert.equal(vi.hero.caption, "Ví dụ gõ Telex một mạch, không chuyển chế độ. Từ tiếng Anh giữ nguyên, kể cả những từ mà Telex thông thường biến thành chữ khác:");
+    assert.equal(en.hero.caption, "Example typed in Telex in one go, with no mode switch. English words stay as typed, even the ones plain Telex would turn into other words:");
+    assert.deepEqual([vi.hero.peerMessage, en.hero.peerMessage], ["Kế hoạch tuần này sao rồi?", "Kế hoạch tuần này sao rồi?"]);
     assert.equal(vi.install.steps.length, 3);
     // Step 2 names the permission as the download page does, with its VERIFY marker (design 7.3 item 6).
     const download = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href)).download;

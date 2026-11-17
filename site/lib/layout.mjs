@@ -10,12 +10,13 @@ import { esc } from "./util.mjs";
 import { routePath } from "./routes.mjs";
 
 // Header navigation after the features anchor of the home page; privacy and changelog live in the footer (design 7.3).
-const NAV_ORDER = ["compat", "support"];
+// The compatibility page is unlisted (routes.mjs, design 9 item 2), so no navigation links to it.
+const NAV_ORDER = ["support"];
 // The home section that lists the features: the header links to it from every page.
 export const FEATURES_ANCHOR = Object.freeze({ vi: "tinh-nang", en: "features" });
 
-// The KV mark of site/static/favicon.svg (Pa's artwork, CLR-R7), as a symbol that the header, the hero menu bar and the
-// compatibility hub reuse. Attributes only: the letters take `color` and the dot takes `fill` from the referencing
+// The KV mark of site/static/favicon.svg (Pa's artwork, CLR-R7), as a symbol that the header, the footer, the hero menu
+// bar and the apps hub reuse. Attributes only: the letters take `color` and the dot takes `fill` from the referencing
 // element, so CSS decides both (the dot is green when the input method is on).
 const MARK_SYMBOL = `<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
     <symbol id="mark" viewBox="1.3 1.9 19.2 17.1">

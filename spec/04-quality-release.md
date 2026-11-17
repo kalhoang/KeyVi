@@ -309,7 +309,7 @@ QA-R66 Required documents and owners:
 |---|---|---|
 | `README.md` (English) and `README.vi.md` | Everyone | Repo root: what it is, install, privacy summary, links |
 | User guide, FAQ, troubleshooting by symptom, migration guides | Users | Website `/ho-tro` (Vietnamese and English) |
-| Compatibility matrix | Users | Website `/tuong-thich`, generated |
+| Compatibility matrix | Users | Website `/tuong-thich`, generated; unlisted since 17/11/2026 (no link from the site, `noindex`), opened from the app's menu |
 | Privacy policy | Users | Website `/rieng-tu`, versioned in repo |
 | `CHANGELOG.md` | Users, contributors | Repo root, Keep a Changelog format, user-visible language, app names called out |
 | `CONTRIBUTING.md` | Contributors | Build, test commands, PR rules, sign-off, clean-room rule |

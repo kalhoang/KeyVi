@@ -203,13 +203,18 @@ export function fakeBehaviour(demo, buttonAttributes) {
   return { figure, demoWindow, input, keys, replay };
 }
 
+/** The tag templates of fakeHero and what a tag of each says (fakeTagText). */
+export const FAKE_TAGS = Object.freeze({ keep: ["", "word", ": kept"], plain: ["", "word", ", not ", "plain", ""] });
+export const fakeTagText = ({ text, plain }) => (plain ? `${text}, not ${plain}` : `${text}: kept`);
+
 /** The hero as lib/pages/home/hero.mjs renders it: one sent bubble per sentence inside [data-sent]. */
 export function fakeHero(demos) {
   const section = fakeElement("section", { "data-section": "hero" });
   const windowEl = fakeElement("div", { "data-hero": "", "data-demo-frames": JSON.stringify(demos) });
   const input = fakeElement("p", { "data-input": "" });
   const keys = fakeElement("span", { "data-keys": "" });
-  const tags = fakeElement("p", { "data-tags": "", "data-tag-before": "", "data-tag-after": ": kept" });
+  // The tag templates as lib/pages/home/hero.mjs writes them: literal text at even indexes, a slot at odd ones.
+  const tags = fakeElement("p", { "data-tags": "", "data-tag-keep": JSON.stringify(FAKE_TAGS.keep), "data-tag-plain": JSON.stringify(FAKE_TAGS.plain) });
   const sent = fakeElement("div", { "data-sent": "" });
   const bubbles = demos.map((demo) => {
     const bubble = fakeElement("p");
@@ -222,4 +227,26 @@ export function fakeHero(demos) {
   windowEl.found = new Map([["[data-tags]", tags], ["[data-sent]", sent], ["[data-input]", input], ["[data-keys]", keys]]);
   section.found = new Map([["[data-motion-toggle]", toggle]]);
   return { section, windowEl, input, keys, tags, sent, bubbles, toggle };
+}
+
+/** The learning demo as lib/pages/home/learning.mjs renders it: one row per pass, each with its field and keys strip,
+ * and the learned badge in the last row's field, which home.js moves along as that row types. */
+export function fakeLearning(demo, buttonAttributes) {
+  const figure = fakeElement("figure", { "data-demo": demo.id, "data-demo-frames": JSON.stringify(demo) });
+  const demoWindow = fakeElement("div", { class: "demo-window" });
+  const replay = fakeElement("button", { "data-replay": "", ...buttonAttributes });
+  replay.textContent = buttonAttributes["data-label-replay"] ?? "";
+  const badge = fakeElement("span", { class: "learned-badge" });
+  badge.textContent = "Learned";
+  const rows = [...(demo.teachPasses ?? []), demo].map((pass, index, all) => {
+    const row = fakeElement("li", { "data-run": "" });
+    const input = fakeElement("p", { "data-input": "" });
+    const keys = fakeElement("p", { "data-keys": "" });
+    row.found = new Map([["[data-input]", input], ["[data-keys]", keys], ...(index === all.length - 1 ? [[".learned-badge", badge]] : [])]);
+    return { row, input, keys };
+  });
+  rows.at(-1).input.append(badge);
+  figure.found = new Map([[".demo-window", demoWindow], ["[data-replay]", replay]]);
+  figure.foundAll = new Map([["[data-run]", rows.map(({ row }) => row)]]);
+  return { figure, demoWindow, replay, badge, rows };
 }

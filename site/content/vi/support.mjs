@@ -77,7 +77,7 @@ export const support = {
       h: "Chỉ lỗi ở một ứng dụng",
       html: `
 <ol class="steps">
-  <li>Xem ứng dụng đó trong <a href="{{hrefCompat}}">danh sách tương thích</a>: có thể đã có ghi chú hoặc cách xử lý.</li>
+  <li>Tìm tên ứng dụng đó trong <a href="{{repo}}/issues" rel="noopener">GitHub Issues</a>: có thể đã có người báo và có cách xử lý.</li>
   <li>Thử gõ trong ô gõ thử của {{AppName}} (nút <em>Thử trong ô gõ thử</em> khi báo lỗi) để biết lỗi chỉ xảy ra ở ứng dụng đó hay ở mọi nơi.</li>
   <li>Trong menu {{AppName}}, mục <em>Với tên ứng dụng</em> có thể đặt <em>Luôn tiếng Anh</em> hoặc <em>Bỏ qua ứng dụng này</em> nếu bạn cần làm việc ngay.</li>
   <li>Báo lỗi bằng <em>Báo lỗi với ứng dụng này...</em>: báo cáo tự điền sẵn ứng dụng, phiên bản và quy tắc đang áp dụng.</li>

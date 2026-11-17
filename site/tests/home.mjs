@@ -4,13 +4,23 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { loadBrand } from "../lib/brand.mjs";
+import { keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { keycapsHtml, wordsHtml } from "../lib/pages/home/markup.mjs";
+import { learnedRowHtml } from "../lib/pages/home/cards.mjs";
 import { HUB_CATEGORIES, HUB_NODES, HUB_VIEWBOX, renderApps } from "../lib/pages/home/apps.mjs";
 import { LANGS, routePath } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, attrs, section, mainOf, textOf, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, stripKeys, keysEndOf, typedOnAfterEscape, learnedVietnamese, LEARNED_BADGE, learningRows } from "./helpers.mjs";
 
-/** Home page sections, compat hub and demo data. */
+/** No status, date or "verified" wording in the apps section (design 9 item 2), whatever the matrix says. */
+function assertNoStatus(label, html) {
+  const list = html.match(/<ul class="hub-list">[\s\S]*?<\/ul>/)?.[0] ?? "";
+  assert.ok(list.length > 0 && !/kiểm tra|verif|hoạt động|works|hạn chế|limitation/i.test(textOf(list)), `${label}: no status or verified wording in the hub`);
+  assert.ok(!/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}|<time\b|data-status/.test(html), `${label}: no date or status`);
+}
+
+/** Home page sections, apps hub and demo data. */
 export async function runHomeChecks(check, fixtures) {
   const { tmp, read, framesPath, frames, homeCopy, homePages, emptyHome } = fixtures;
 
@@ -29,7 +39,8 @@ export async function runHomeChecks(check, fixtures) {
       }
       assert.match(hero, /<code class="cmd">brew install --cask [^<\s]+\/[a-z0-9-]+<\/code>/, `${label}: brew line in the hero`);
       assert.equal((section(html, "proof").match(/<li\b/g) ?? []).length, 3, `${label}: three proof points`);
-      assert.ok(main.includes(`href="${routePath("compat", lang)}"`), `${label}: a link to the compatibility page in the page body`);
+      // Design 9 item 2: the landing page no longer links to the compatibility page (PRD-R73 amended 17/11/2026).
+      assert.ok(!main.includes(`href="${routePath("compat", lang)}"`), `${label}: no link to the compatibility page`);
       assert.ok(!/<video\b/i.test(html), `${label}: no video (design 6)`);
     }
   });
@@ -45,7 +56,7 @@ export async function runHomeChecks(check, fixtures) {
         assert.ok(text.includes(esc(final)), `${label}: ${id} "${final}" is not in the page text`);
       }
       // The visible demo areas themselves hold the final state, not only the visually hidden list (Review Focus 3).
-      const keycaps = (demo) => demo.frames.slice(-8).map((frame) => `<kbd class="keycap">${esc(keyLabel(frame.key))}</kbd>`).join("");
+      const keycaps = (demo) => stripKeys(demo.frames).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join("");
       const heroWindow = html.match(/<div class="mac-window" data-hero[\s\S]*?<div class="keys-strip">[\s\S]*?<\/div>/)?.[0] ?? "";
       const chat = frames.demos["hero-chat"];
       assert.equal(unescapeHtml(textOf(heroWindow.match(/<p data-input[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "")), chat.text, `${label}: the hero field holds the first sentence`);
@@ -61,10 +72,10 @@ export async function runHomeChecks(check, fixtures) {
   await check("home: motion controls hold their place without JavaScript and show only once home.js is ready (design 7.8)", async () => {
     for (const [label, html] of homePages) {
       const controls = html.match(/<button\b[^>]*\sdata-(?:motion-toggle|replay)\b[^>]*>/g) ?? [];
-      assert.equal(controls.length, 4, `${label}: the pause control and three replay buttons`);
+      assert.equal(controls.length, 5, `${label}: the pause control, three behaviour replay buttons and the learning demo's`);
       // A hidden attribute would take the button out of the flow and move the page when home.js reveals it.
       for (const tag of controls) assert.ok(!/\shidden\b/.test(tag), `${label}: ${tag} is in the flow`);
-      for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
+      for (const figure of html.match(/<figure class="(?:behaviour|learning-demo)"[\s\S]*?<\/figure>/g) ?? []) {
         assert.match(figure, /<\/figcaption>\s*<\/figure>$/, `${label}: the figcaption is the last child of its figure`);
       }
     }
@@ -78,11 +89,15 @@ export async function runHomeChecks(check, fixtures) {
       const h = homeCopy[lang];
       const expected = [
         ...h.behaviours.items.filter((item) => item.note).map((item) => item.noteReq),
+        h.learning.req,
+        ...h.learning.cards.map((item) => item.req),
         ...h.cards.items.map((item) => item.req),
         h.apps.secureInput.req,
       ];
+      // Design 9 item 4: the learning demo cites D28 and ENG-R863, its cards PRD-R78, PRD-R2 twice and ENG-R860.
+      assert.deepEqual([h.learning.req, ...h.learning.cards.map((item) => item.req)], ["D28, ENG-R863", "PRD-R78", "PRD-R2", "PRD-R2", "ENG-R860"], `${label}: learning requirements`);
       const main = mainOf(html);
-      assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, every card and the Secure Input card carry their requirement`);
+      assert.deepEqual(attrs(main, "data-req"), expected.map(esc), `${label}: the Return note, the learning demo, every card and the Secure Input card carry their requirement`);
       assert.ok(!/class="[^"]*\breq\b/.test(main), `${label}: no visible requirement line`);
       const visible = unescapeHtml(textOf(main));
       for (const id of new Set(expected.flatMap((req) => req.split(/,\s*/)))) {
@@ -91,6 +106,130 @@ export async function runHomeChecks(check, fixtures) {
     }
     const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
     assert.ok(!/\.req\b/.test(css), "home.css has no rule left for the removed requirement line");
+  });
+
+  await check("home: eight sections in order, learning third (design 9 item 4)", () => {
+    for (const [label, html] of homePages) {
+      const order = attrs(mainOf(html), "data-section");
+      assert.deepEqual(order, ["hero", "behaviours", "learning", "cards", "apps", "proof", "install", "closing"], `${label}: sections`);
+    }
+  });
+
+  await check("home: the learning section shows the generated demo in three rows, final without JavaScript (design 9 item 4)", () => {
+    const demo = frames.demos["learning-reset"];
+    const passes = [...demo.teachPasses, demo];
+    assert.equal(passes.length, 3, "two teaching passes and the pass the engine took from memory");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].learning;
+      const part = section(html, "learning");
+      assert.match(part, /^<section class="home-section" data-section="learning" aria-labelledby="learning-title">/, `${label}: the section`);
+      assert.ok(part.includes(`<h2 id="learning-title">${esc(copy.heading)}</h2>`), `${label}: heading`);
+      const figure = part.match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      assert.equal(attrs(figure, "data-demo")[0], "learning-reset", `${label}: the demo of frames.json`);
+      assert.deepEqual(framesAttr(figure.match(/<figure[^>]*>/)?.[0] ?? ""), demo, `${label}: its frames, teaching passes included`);
+      assert.equal(attrs(figure, "data-req")[0], esc("D28, ENG-R863"), `${label}: data-req`);
+      const rows = learningRows(figure);
+      assert.deepEqual(rows.map((row) => unescapeHtml(row.label)), copy.rows, `${label}: the row labels`);
+      rows.forEach((row, index) => {
+        // Each row holds its pass finished, the badge aside, and its keys strip ends at the key the pass is about.
+        assert.equal(unescapeHtml(textOf(row.field.replace(LEARNED_BADGE, ""))), passes[index].text, `${label}: row ${index + 1} text`);
+        assert.equal(row.keys, stripKeys(passes[index].frames, keysEndOf(passes[index].frames)).map((key) => `<kbd class="keycap">${esc(keyLabel(key))}</kbd>`).join(""), `${label}: row ${index + 1} keys`);
+      });
+      // The Escape keycap shows in each teaching row and closes its strip; the last row's strip ends at the learned word.
+      for (const row of rows.slice(0, -1)) assert.match(row.keys, /<kbd class="keycap">esc<\/kbd>$/, `${label}: the teaching row shows Escape`);
+      assert.ok(!rows.at(-1).keys.includes(">esc<"), `${label}: no Escape in the last row`);
+    }
+  });
+
+  await check("home: the learned badge marks the word the engine kept by rule learned, in the last row only (L9c)", () => {
+    const demo = frames.demos["learning-reset"];
+    const learned = demo.frames.find((frame) => frame.commit?.rule === "learned")?.commit;
+    assert.ok(learned, "frames.json: the final pass keeps a word by rule learned");
+    for (const [label, html, lang] of homePages) {
+      const rows = learningRows(section(html, "learning"));
+      assert.deepEqual(rows.map((row) => [...row.field.matchAll(LEARNED_BADGE)].length), [0, 0, 1], `${label}: one badge, in the last row`);
+      assert.equal([...section(html, "learning").matchAll(LEARNED_BADGE)][0]?.[1], esc(homeCopy[lang].learning.learned), `${label}: the badge says ${homeCopy[lang].learning.learned}`);
+      const before = rows.at(-1).field.split(LEARNED_BADGE)[0];
+      assert.ok(before.endsWith(`<mark>${esc(learned.text)}</mark>`), `${label}: the badge follows ${learned.text}: ${before}`);
+      assert.match(rows.at(-1).field, lang === "vi" ? /<span class="learned-badge">/ : /<span class="learned-badge" lang="en">/, `${label}: the badge is in the page language`);
+    }
+  });
+
+  await check("home: a demo outside the learning section ends its keys strip on its last key, even after Escape", () => {
+    // keysEnd is the learning rows' focus only (design 9 item 4); a correction that types on keeps its later keys.
+    const demo = typedOnAfterEscape(frames.demos["behaviour-escape"]);
+    assert.match(keycapsHtml(demo), /<kbd class="keycap">a<\/kbd>$/, "the static strip ends on the last key");
+    assert.match(keycapsHtml(demo, { upTo: keysEnd(demo.frames) }), /<kbd class="keycap">esc<\/kbd>$/, "a learning row's strip ends on Escape");
+  });
+
+  await check("home: the learned badge follows the learned word on either side the engine kept it (L9c)", () => {
+    const demo = learnedVietnamese(frames.demos["learning-reset"]);
+    const learned = wordsOf(demo).find((piece) => piece.learned);
+    assert.ok(learned && !learned.english, "the learned word is Vietnamese in this copy");
+    assert.ok(wordsHtml(demo, "<b>badge</b>").includes(`${esc(learned.text)}<b>badge</b>`), "the badge follows the Vietnamese learned word");
+  });
+
+  await check("home: the learned-words card shows the learned word's keys, then what it became (PRD-R78, L9c)", () => {
+    // The engine may keep the Vietnamese side of the learned word: the sheet's row then reads keys -> Vietnamese word.
+    const demo = frames.demos["learning-reset"];
+    const commit = demo.frames.find((frame) => frame.commit?.rule === "learned").commit;
+    assert.ok(commit.plain && commit.plain !== commit.raw, "the learned word has a Vietnamese reading");
+    const viSide = {
+      ...demo,
+      text: demo.text.replace(commit.text, commit.plain),
+      frames: demo.frames.map((frame) => (frame.commit?.rule === "learned" ? { ...frame, commit: { ...frame.commit, text: commit.plain, english: false } } : frame)),
+    };
+    assert.equal(wordsOf(viSide).find((piece) => piece.learned)?.raw, commit.raw, "the learned piece carries its keys");
+    assert.match(learnedRowHtml(viSide, "ctx"), new RegExp(`^<p class="illustration learned-row"><code>${esc(commit.raw)}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${esc(commit.plain)}</span><small>ctx</small>`));
+  });
+
+  await check("home: the learning caption takes its words from the frames (design 9 item 4)", async () => {
+    const brand = await loadBrand(join(ROOT_DIR, "scripts", "brand.env"));
+    const demo = frames.demos["learning-reset"];
+    const trailing = (text) => text.match(/[\p{L}\p{M}\p{N}]+$/u)?.[0];
+    // What the engine showed before the restore toggle and what the toggle gave back, the same in every teaching pass.
+    const corrections = demo.teachPasses.map((pass) => {
+      const at = pass.frames.findIndex((frame) => frame.toggle === true);
+      assert.ok(at > 0 && pass.frames[at].key === "⎋", "the correction is the Escape key");
+      return { raw: trailing(pass.frames[at].text), vi: trailing(pass.frames[at - 1].text) };
+    });
+    assert.ok(corrections.every((c) => c.raw === corrections[0].raw && c.vi === corrections[0].vi && c.raw !== c.vi), JSON.stringify(corrections));
+    const { raw, vi } = corrections[0];
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].learning;
+      const figure = section(html, "learning").match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      const caption = figure.match(/<figcaption><p id="learning-caption">([\s\S]*?)<\/p><\/figcaption>/)?.[1];
+      const expected = copy.caption.replaceAll("{{raw}}", raw).replaceAll("{{viHtml}}", vi).replaceAll("{{AppName}}", brand.name);
+      assert.equal(unescapeHtml(textOf(caption ?? "")), expected, `${label}: the caption`);
+      // The caption describes the replay button: on the English page the Vietnamese word is read as Vietnamese.
+      assert.equal((caption ?? "").includes(`<span lang="vi">${esc(vi)}</span>`), lang !== "vi", `${label}: ${vi} carries lang="vi" off the vi page`);
+    }
+  });
+
+  await check("home: learning cards name the app's own panes, buttons and lists, and section 4 keeps four cards", async () => {
+    const catalog = JSON.parse(await readFile(join(ROOT_DIR, "App", "Resources", "Localization", "Settings.xcstrings"), "utf8"));
+    const string = (key, lang) => catalog.strings[key]?.localizations?.[lang]?.stringUnit?.value ?? `missing ${key}`;
+    const demo = frames.demos["learning-reset"];
+    const at = demo.frames.findIndex((frame) => frame.commit?.rule === "learned");
+    const previous = demo.frames.slice(0, at).findLast((frame) => frame.commit)?.commit;
+    // The sample row of the learned-words sheet (PRD-R78): the learned word after a Vietnamese word, as in the demo.
+    assert.ok(previous && previous.english === false, "the learned word follows a Vietnamese word in the demo");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang];
+      const cards = [...section(html, "learning").matchAll(/<li class="card feature" data-card="([^"]+)" data-static data-req="[^"]*">([\s\S]*?)<\/li>\s*(?=<li class="card|<\/ul>)/g)];
+      assert.deepEqual(cards.map((m) => m[1]), ["learned", "perApp", "macros", "wordLists"], `${label}: the four static learning cards`);
+      const learned = copy.learning.cards.find((card) => card.id === "learned");
+      assert.ok(learned.body.includes(`<em>${string("settings.typing.learnedChoices.show", lang)}</em>`), `${label}: the button label of Settings.xcstrings`);
+      assert.ok(learned.body.includes(string("settings.pane.typing", lang)), `${label}: the Typing pane`);
+      assert.equal(learned.illustration.context, string("settings.typing.learnedChoices.context.afterVietnamese", lang), `${label}: the context words of the sheet`);
+      const sample = cards[0][2].match(/<p class="illustration learned-row">([\s\S]*?)<\/p>/)?.[1] ?? "";
+      assert.match(sample, new RegExp(`^<code>${demo.frames[at].commit.raw}</code><span class="arrow" aria-hidden="true">→</span><span class="out">${demo.frames[at].commit.text}</span><small>${esc(learned.illustration.context)}</small>`), `${label}: the sample row ${sample}`);
+      const lists = copy.learning.cards.find((card) => card.id === "wordLists");
+      assert.deepEqual(lists.illustration.lists, [string("settings.typing.keepAsTyped.title", lang), string("settings.typing.keepVietnamese.title", lang)], `${label}: the two user lists (ENG-R860)`);
+      assert.ok(lists.body.includes(string("settings.pane.typing", lang)), `${label}: the lists live in the Typing pane`);
+      const typeYourWay = [...section(html, "cards").matchAll(/<li class="card feature" data-card="([^"]+)"/g)].map((m) => m[1]);
+      assert.deepEqual(typeYourWay, ["anywhere", "slang", "method", "layouts"], `${label}: section 4 keeps four cards`);
+    }
   });
 
   await check("home: the apps intro goes through the token filler like every other intro", async () => {
@@ -123,13 +262,65 @@ export async function runHomeChecks(check, fixtures) {
     const english = words.filter((word) => word.english).map((word) => word.raw);
     assert.ok(english.length > 0, "the hero sentence has English words");
     for (const [label, html, lang] of homePages) {
-      const tags = html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/(?:p|div)>/)?.[1] ?? "";
-      const shown = [...tags.matchAll(/<span class="tag">([^<]*)<\/span>/g)].map((m) => m[1]);
-      assert.deepEqual(shown, english.map((word) => esc(homeCopy[lang].hero.keepTag.replace("{{word}}", word))), label);
+      const row = html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "";
+      const shown = tagsOf(row);
+      assert.deepEqual(shown.map((tag) => unescapeHtml(textOf(tag))), english.map((raw) => tagText(homeCopy[lang].hero, words.find((word) => word.raw === raw))), label);
     }
   });
 
-  await check("home: compat hub shows categories and app names without verified wording while entries are notVerified", async () => {
+  await check("home: a kept word's tag names its plain Telex form, struck through, in words too (design 9 item 1, ENG-R802)", async () => {
+    const chat = wordsOf(frames.demos["hero-chat"]).filter((piece) => piece.english);
+    assert.ok(chat.length > 0 && chat.every((piece) => piece.plain), "every kept word of hero-chat has a plain form");
+    for (const [label, html, lang] of homePages) {
+      const copy = homeCopy[lang].hero;
+      const shown = tagsOf(html.match(/\sdata-tags[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? "");
+      chat.forEach((piece, index) => {
+        const tag = shown[index] ?? "";
+        // "test, không thành tét" (en "test, not tét"): the word strong, the plain form struck through by CSS.
+        assert.ok(tag.includes(`<strong>${esc(piece.text)}</strong>`), `${label}: ${piece.text} is strong in ${tag}`);
+        assert.ok(tag.includes(`<span class="tag-plain">${esc(piece.plain)}</span>`), `${label}: ${piece.plain} is the struck-through plain form in ${tag}`);
+        assert.equal(unescapeHtml(textOf(tag)), copy.plainTag.replace("{{word}}", piece.text).replace("{{plain}}", piece.plain), `${label}: ${piece.text}`);
+      });
+      // Screen readers never meet the strike alone: the scene is aria-hidden, and the hidden list says each tag in words.
+      const hidden = section(html, "hero").match(/<div class="visually-hidden">([\s\S]*?)<\/div>/)?.[1] ?? "";
+      for (const id of ["hero-chat", "hero-email", "hero-note"]) {
+        const item = [...hidden.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => unescapeHtml(textOf(m[1]))).find((text) => text.startsWith(frames.demos[id].text));
+        assert.ok(item, `${label}: ${id} is in the hidden list`);
+        for (const piece of wordsOf(frames.demos[id]).filter((p) => p.english)) assert.ok(item.includes(tagText(copy, piece)), `${label}: ${id} says "${tagText(copy, piece)}" in words`);
+        // Off the vi page the plain forms are Vietnamese inside English text, so screen readers need lang="vi" on them.
+        const raw = [...hidden.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]).find((html) => unescapeHtml(textOf(html)).startsWith(frames.demos[id].text));
+        for (const piece of wordsOf(frames.demos[id]).filter((p) => p.plain)) {
+          assert.equal(raw.includes(`<span lang="vi">${esc(piece.plain)}</span>`), lang !== "vi", `${label}: ${id} marks ${piece.plain} as Vietnamese off the vi page`);
+        }
+      }
+    }
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(css, /\.tag-plain\s*\{[^}]*text-decoration:\s*line-through/, "home.css strikes the plain form through");
+    assert.match(css, /\.tags \.tag\s*\{[^}]*color:\s*var\(--muted\)/, "the rest of the tag is muted");
+    assert.match(css, /\.tags \.tag strong\s*\{[^}]*color:\s*var\(--green-text\)/, "the word stands out");
+    // .tag is an inline flex box elsewhere; in a hero tag its gap would open before the comma ("test , không thành").
+    assert.match(css, /\.tags \.tag\s*\{[^}]*display:\s*inline-block/, "a hero tag is not a flex container");
+  });
+
+  await check("home: four-card grids fill whole rows and the learning demo uses the full width (preview pass, 17/11/2026)", async () => {
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    // Both card lists hold four cards; at most two columns gives 2 x 2 instead of three cards and one alone.
+    for (const [label, html] of homePages) {
+      for (const name of ["learning", "cards"]) {
+        const grid = section(html, name).match(/<ul class="feature-grid">([\s\S]*?)<\/ul>\s*<\/section>/)?.[1] ?? "";
+        assert.equal((grid.match(/<li class="card feature"/g) ?? []).length, 4, `${label}: ${name} lists four cards`);
+      }
+    }
+    const grid = css.match(/\.feature-grid\s*\{([^}]*)\}/)?.[1] ?? "";
+    assert.match(grid, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(min\(100%,\s*max\(19rem,\s*calc\(\(100% - 1\.25rem\) \/ 2\)\)\),\s*1fr\)\)/, `the feature grid caps at two columns: ${grid}`);
+    assert.match(grid, /gap:\s*1\.25rem/, "the cap uses the grid gap");
+    // On a wide screen the rows sit beside the caption and the replay button instead of leaving half the row empty.
+    const wide = css.match(/@media \(min-width: 60rem\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    assert.match(wide, /\.learning-demo\s*\{[^}]*display:\s*grid[^}]*max-width:\s*none/, `the learning demo is a full-width grid when wide: ${wide}`);
+    assert.match(wide, /\.learning-demo \.demo-window\s*\{[^}]*grid-row:\s*1 \/ span 2/, "the rows span the caption and the button");
+  });
+
+  await check("home: the apps hub shows categories and app names, never a status, a date, verified wording or a link (design 9 item 2)", async () => {
     const hub = (html) => section(html, "apps");
     const nodes = (html) => [...hub(html).matchAll(/<li class="hub-node[^"]*" data-category="([^"]+)">([\s\S]*?)<\/li>/g)].map(([, category, inner]) => ({ category, inner }));
     const sample = JSON.parse(await readFile(join(SITE_DIR, "fixtures", "matrix.json"), "utf8")).entries;
@@ -154,20 +345,16 @@ export async function runHomeChecks(check, fixtures) {
         const tierOne = inCategory.filter((entry) => entry.tier === 1).map((entry) => base(entry.displayName));
         if (names.length > 0 && tierOne.length > 0) assert.ok(tierOne.includes(names[0]), `${label}: ${category} lists tier 1 first`);
       }
-      if (entries.every((entry) => entry.status === "notVerified")) {
-        const text = textOf(hub(html));
-        assert.ok(!/kiểm tra|verif/i.test(text), `${label}: no verified wording while every entry is notVerified`);
-        assert.ok(!/\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}|<time\b/.test(hub(html)), `${label}: no date`);
-      }
-      assert.ok(hub(html).includes(`href="${routePath("compat", lang)}"`), `${label}: link to the compatibility page`);
+      assertNoStatus(label, hub(html));
+      assert.ok(!/<a\b/.test(hub(html)), `${label}: no link in the apps section`);
       assert.match(hub(html), /class="card secure-input"/, `${label}: the Secure Input card below the hub`);
     }
     assert.ok(nodes(homePages[0][1]).find((node) => node.category === "browser").inner.includes("Safari"), "the real matrix lists Safari first among browsers");
-    // fixtures/populated: Safari verified on 2026-12-01 shows its date; iTerm2 (2026-06-01) is stale, so it shows none.
-    const populatedHub = { vi: hub(read("index.html")), en: hub(read("en", "index.html")) };
-    assert.match(populatedHub.vi, /Safari \(kiểm tra <time datetime="2026-12-01">01\/12\/2026<\/time>\)/);
-    assert.match(populatedHub.en, /Safari \(verified <time datetime="2026-12-01">1 Dec 2026<\/time>\)/);
-    assert.ok(!populatedHub.vi.includes("2026-06-01"), "a stale result shows no date");
+    // fixtures/populated: Safari has a current result (2026-12-01); the hub still names it alone, with no date.
+    for (const [label, html] of [["populated vi", read("index.html")], ["populated en", read("en", "index.html")]]) {
+      assertNoStatus(label, hub(html));
+      assert.match(nodes(html).find((node) => node.category === "browser").inner, /<span class="hub-apps">Safari(?:, |<)/, `${label}: Safari, by name only`);
+    }
   });
 
   await check("home: home.css places every hub node where its thread ends (design 7.3 item 4)", async () => {
@@ -199,10 +386,85 @@ export async function runHomeChecks(check, fixtures) {
     const bad = structuredClone(frames);
     bad.demos["card-telex"].text = "viet";
     await assert.rejects(async () => loadDemos(await write(bad)), /site\/demo\/frames\.json: card-telex: the last frame/);
-    await assert.rejects(async () => loadDemos(await write({ ...frames, schemaVersion: 2 })), /site\/demo\/frames\.json: .*schemaVersion/);
+    await assert.rejects(async () => loadDemos(await write({ ...frames, schemaVersion: 1 })), /site\/demo\/frames\.json: .*schemaVersion/, "version 1 had no teaching passes");
     const keyless = structuredClone(frames);
     delete keyless.demos["card-vni"].frames[0].key;
     await assert.rejects(async () => loadDemos(await write(keyless)), /site\/demo\/frames\.json: card-vni: /);
+  });
+
+  await check("demos: loadDemos validates the plain forms (ENG-R802) and the teaching passes (design 9)", async () => {
+    const write = async (data) => { const path = join(tmp, "frames-bad.json"); await writeFile(path, JSON.stringify(data)); return path; };
+    const rejects = async (message, pattern, mutate) => {
+      const bad = structuredClone(frames);
+      mutate(bad);
+      await assert.rejects(async () => loadDemos(await write(bad)), pattern, message);
+    };
+    const kept = (data) => data.demos["hero-chat"].frames.find((frame) => frame.commit?.plain).commit;
+    const vietnamese = (data) => data.demos["hero-chat"].frames.find((frame) => frame.commit && !frame.commit.english).commit;
+    const revised = (data) => data.demos["behaviour-revision"].frames.find((frame) => frame.revised).revised;
+    const learning = (data) => Object.values(data.demos).find((demo) => demo.teachPasses);
+    assert.ok(kept(frames), "a hero commit names its plain form");
+    assert.ok(learning(frames), "frames.json has a learning demo (design 9 item 4)");
+    await rejects("plain equal to the text", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = kept(data).text; });
+    await rejects("empty plain", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = ""; });
+    await rejects("plain not a string", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = 3; });
+    await rejects("plain on a word that is not English", /hero-chat: frame \d+: commit plain/, (data) => { vietnamese(data).plain = "x"; });
+    await rejects("plain of a revised word", /behaviour-revision: frame \d+: revised plain/, (data) => { revised(data).plain = revised(data).text; });
+    await rejects("teachPasses empty", /learning-reset: teachPasses/, (data) => { learning(data).teachPasses = []; });
+    await rejects("teachPasses not an array", /learning-reset: teachPasses/, (data) => { learning(data).teachPasses = {}; });
+    await rejects("teaching passes without their keys", /learning-reset: teachKeys/, (data) => { delete learning(data).teachKeys; });
+    await rejects("teaching keys without the restore toggle", /learning-reset: teachKeys/, (data) => { learning(data).teachKeys = "reset"; });
+    await rejects("teaching keys without passes", /learning-reset: teachKeys/, (data) => { delete learning(data).teachPasses; });
+    await rejects("a pass's text differs from its last frame", /learning-reset: teaching pass 1: the last frame/, (data) => { learning(data).teachPasses[0].text = "x"; });
+    await rejects("a pass without frames", /learning-reset: teaching pass 2: has no frames/, (data) => { learning(data).teachPasses[1].frames = []; });
+    await rejects("a pass that is not an object", /learning-reset: teaching pass 1: is not an object/, (data) => { learning(data).teachPasses[0] = "x"; });
+    await rejects("a pass frame without a key", /learning-reset: teaching pass 1: frame 0 needs/, (data) => { delete learning(data).teachPasses[0].frames[0].key; });
+    // L9c: the page claims a learning only when the engine did it and every pass corrected with the restore toggle.
+    await rejects("a final pass that keeps no word by rule learned", /learning-reset: .*rule learned/, (data) => {
+      for (const frame of learning(data).frames) if (frame.commit?.rule === "learned") frame.commit.rule = "userChoice";
+    });
+    await rejects("a teaching pass without the restore toggle", /learning-reset: teaching pass 2: .*restore toggle/, (data) => {
+      for (const frame of learning(data).teachPasses[1].frames) delete frame.toggle;
+    });
+    await rejects("a pass commit with a bad plain", /learning-reset: teaching pass 1: frame \d+: commit plain/, (data) => {
+      learning(data).teachPasses[0].frames.find((frame) => frame.commit?.plain).commit.plain = "";
+    });
+  });
+
+  await check("demos: wordsOf names the plain form of each kept English word; a teaching pass reads like a demo", async () => {
+    const { byId } = await loadDemos(framesPath);
+    // The latest state of each token, from frames.json: a commit adds one, a revision replaces the one before it.
+    const latest = (demo) => demo.frames.reduce((list, frame) => {
+      const revisedList = frame.revised && list.length > 0 ? [...list.slice(0, -1), frame.revised] : list;
+      return frame.commit ? [...revisedList, frame.commit] : revisedList;
+    }, []);
+    for (const [id, demo] of byId) {
+      const pieces = wordsOf(demo);
+      const english = pieces.filter((piece) => piece.english).map(({ text, plain }) => ({ text, plain }));
+      assert.deepEqual(english, latest(demo).filter((token) => token.english).map(({ text, plain }) => ({ text, plain })), `${id}: the plain forms of frames.json`);
+      assert.ok(pieces.filter((piece) => !piece.english).every((piece) => !("plain" in piece)), `${id}: only an English word names a plain form`);
+    }
+    // Design 9 item 1: every kept English word of the hero sentences is one plain Telex would have changed.
+    for (const id of ["hero-chat", "hero-email", "hero-note"]) {
+      const english = wordsOf(byId.get(id)).filter((piece) => piece.english);
+      assert.ok(english.length > 0 && english.every((piece) => piece.plain && piece.plain !== piece.text), `${id}: each English word has a plain form`);
+    }
+    const learners = [...byId.values()].filter((demo) => demo.teachPasses);
+    assert.ok(learners.length > 0, "a learning demo");
+    for (const demo of learners) {
+      assert.ok(demo.teachPasses.length >= 1 && demo.teachKeys.includes("⎋"), "taught with the restore toggle");
+      for (const pass of demo.teachPasses) {
+        assert.equal(wordsOf(pass).map((piece) => piece.text).join(""), pass.text, "a pass goes through wordsOf like a demo");
+        assert.ok(pass.frames.some((frame) => frame.toggle), "each pass corrects with Escape");
+      }
+      assert.ok(demo.frames.some((frame) => frame.commit?.rule === "learned"), "the final pass keeps a word by rule L9c");
+      // The "remembered" mark comes from the engine (rule learned), never from the word itself.
+      const learned = wordsOf(demo).filter((piece) => piece.learned);
+      assert.equal(learned.length, 1, "exactly one word of the final pass is learned");
+      assert.ok(learned.every((piece) => piece.learned === true && piece.english), "the learned word is kept as English");
+      for (const pass of demo.teachPasses) assert.ok(wordsOf(pass).every((piece) => !("learned" in piece)), "a teaching pass learns nothing yet");
+      assert.ok(Object.isFrozen(demo.teachPasses[0].frames[0]), "the passes are frozen like the demo");
+    }
   });
 
   await check("demos: wordsOf marks the latest state of each word (a revision replaces the earlier commit)", async () => {

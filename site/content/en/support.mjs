@@ -75,7 +75,7 @@ export const support = {
       h: "It fails in one app only",
       html: `
 <ol class="steps">
-  <li>Look the app up in the <a href="{{hrefCompat}}">compatibility list</a>: it may already have a note or a workaround.</li>
+  <li>Search for the app in <a href="{{repo}}/issues" rel="noopener">GitHub Issues</a>: someone may already have reported it, with a workaround.</li>
   <li>Try typing in {{AppName}}'s practice field (the <em>Test in the practice field</em> button in the report flow) to see whether the problem is specific to that app or happens everywhere.</li>
   <li>In the {{AppName}} menu, the <em>With app name</em> submenu can set <em>Always English</em> or <em>Ignore this app</em> if you need to keep working right now.</li>
   <li>Report it with <em>Report a problem with this app...</em>: the report is pre-filled with the app, its version and the active rule.</li>

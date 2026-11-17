@@ -5,11 +5,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
-import { englishWords, keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
+import { keyLabel, keysEnd, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
-import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeLearning, fakeTagText, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
+import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag, tagsOf, tagText, textOf, stripKeys, keysEndOf, typedOnAfterEscape, learnedVietnamese } from "./helpers.mjs";
 
 // deploy/site/nginx.conf compresses at this level; the 60 KB budget of design 7.8 is measured at it.
 const GZIP_LEVEL = 6;
@@ -42,8 +42,9 @@ export async function runMotionChecks(check, fixtures) {
     assert.notDeepEqual(schedule(chat, 1), schedule(chat, 2), "the seed varies the jitter");
   });
 
-  await check("motion: keyLabel and tagsFor", async () => {
-    const { keyLabel: motionKeyLabel, tagsFor } = siteMotion();
+  await check("motion: keyLabel and finalTags", async () => {
+    const { keyLabel: motionKeyLabel, finalTags } = siteMotion();
+    const tagsFor = (frames) => finalTags(frames).map((tag) => tag.raw);
     for (const lang of LANGS) {
       assert.deepEqual([" ", "⏎", "⎋", "a", "6"].map((key) => motionKeyLabel(key, lang)), ["space", "return", "esc", "a", "6"], lang);
       // The animated keys strip ends as the static one: the legend of lib/demos.mjs for every key of frames.json.
@@ -53,9 +54,12 @@ export async function runMotionChecks(check, fixtures) {
     const english = chat.filter((frame) => frame.commit?.english).map((frame) => frame.commit.raw);
     assert.ok(english.length > 0, "the hero sentence has English words");
     assert.deepEqual(tagsFor(chat), english, "hero-chat: its English commits, in order");
-    // Every demo's tags end as the static page's (englishWords, the words in <mark> and the hero tags).
+    // Every demo's tags end as the static page's: the English pieces of wordsOf, which the hero renders, plain forms too.
     const { byId } = await loadDemos(framesPath);
-    for (const [id, demo] of byId) assert.deepEqual(tagsFor(demo.frames), englishWords(demo), id);
+    for (const [id, demo] of byId) {
+      const kept = wordsOf(demo).filter((piece) => piece.english);
+      assert.deepEqual(finalTags(demo.frames).map(({ raw, plain }) => ({ raw, plain })), kept.map(({ text, plain }) => ({ raw: text, plain })), id);
+    }
     assert.deepEqual(tagsFor(byId.get("behaviour-revision").frames), ["tricky", "as", "hell"], "a revision that restores adds its word");
     // RV4: the next word gives a restored word back to Vietnamese, so its tag goes.
     const back = [
@@ -90,6 +94,24 @@ export async function runMotionChecks(check, fixtures) {
     for (const [id, demo] of byId) {
       demo.frames.forEach((frame, index) => assert.equal(fieldPieces(demo.frames, index).map((piece) => piece.text).join(""), frame.text, `${id} frame ${index}`));
     }
+  });
+
+  await check("motion: the animated keys strip ends as the static one (stripKeys and keysEnd)", async () => {
+    const { stripKeys: motionStripKeys } = siteMotion();
+    const { byId } = await loadDemos(framesPath);
+    for (const [id, demo] of byId) {
+      // A learning row ends at the key it is about (keysEnd, design 9 item 4); every other demo on its last key.
+      const runs = demo.teachPasses ? [...demo.teachPasses, demo].map((run) => [run, keysEnd(run.frames)]) : [[demo, demo.frames.length - 1]];
+      for (const [index, [run, end]] of runs.entries()) {
+        assert.deepEqual(motionStripKeys(run.frames, end), run.frames.slice(0, end + 1).slice(-8).map((frame) => frame.key), `${id} run ${index + 1}`);
+      }
+    }
+    assert.deepEqual(motionStripKeys(frames.demos["hero-chat"].frames), frames.demos["hero-chat"].frames.slice(-8).map((frame) => frame.key));
+    const teaching = frames.demos["learning-reset"].teachPasses[0].frames;
+    assert.equal(motionStripKeys(teaching, keysEnd(teaching)).at(-1), "⎋", "a teaching row ends on Escape");
+    // A correction that types on after Escape keeps its later keys outside the learning section.
+    const typedOn = typedOnAfterEscape(frames.demos["behaviour-escape"]).frames;
+    assert.equal(motionStripKeys(typedOn).at(-1), "a", "the default strip ends on the last key");
   });
 
   await check("motion: first-party scripts never write markup or style attributes", async () => {
@@ -130,8 +152,8 @@ export async function runMotionChecks(check, fixtures) {
       assert.ok(!/\shidden[\s>]/.test(sent), `${label}: the sent bubbles keep their place in the flow`);
       // The tags row reserves the most rows any sentence needs: an invisible copy of each sentence's tags shares its cell.
       const cell = hero.match(/<div class="tags-cell">([\s\S]*?)<\/div>/)?.[1] ?? "";
-      const sizers = [...cell.matchAll(/<p class="tags tags-sizer">([\s\S]*?)<\/p>/g)].map((m) => [...m[1].matchAll(/<span class="tag">([^<]*)<\/span>/g)].map((t) => unescapeHtml(t[1])));
-      const expected = (framesAttr(heroTag(html)) ?? []).map((demo) => englishWords(demo).map((word) => copy.keepTag.replace("{{word}}", word)));
+      const sizers = [...cell.matchAll(/<p class="tags tags-sizer">([\s\S]*?)<\/p>/g)].map((m) => tagsOf(m[1]).map((tag) => unescapeHtml(textOf(tag))));
+      const expected = (framesAttr(heroTag(html)) ?? []).map((demo) => wordsOf(demo).filter((piece) => piece.english).map((piece) => tagText(copy, piece)));
       assert.deepEqual(sizers, expected, `${label}: a tag sizer for each hero sentence`);
       assert.match(cell, /<p class="tags" data-tags\b/, `${label}: the live tags share the sizers' cell`);
       const toggle = hero.match(/<button\b[^>]*\sdata-motion-toggle\b[^>]*>/)?.[0] ?? "";
@@ -141,10 +163,14 @@ export async function runMotionChecks(check, fixtures) {
       assert.ok(!/\saria-pressed=/.test(toggle), `${label}: the pause button has no aria-pressed`);
       const describedBy = attrs(toggle, "aria-describedby")[0] ?? "";
       assert.match(hero, new RegExp(`<div class="visually-hidden"><p id="${describedBy}">${esc(copy.caption)}</p>`), `${label}: the pause button is described by the hero caption`);
-      // The tag template around the word, so a tag home.js writes reads like a static one.
+      // The two tag templates as parts, literal text at even indexes and a slot at odd ones, so a tag home.js writes reads
+      // like a static one (design 9 item 1).
       const tags = hero.match(/<p class="tags" data-tags[^>]*>/)?.[0] ?? "";
-      const [before, after] = ["data-tag-before", "data-tag-after"].map((name) => unescapeHtml(attrs(tags, name)[0] ?? "\u0000"));
-      assert.equal(`${before}online${after}`, copy.keepTag.replace("{{word}}", "online"), `${label}: data-tag-before and data-tag-after`);
+      const [keep, plain] = ["data-tag-keep", "data-tag-plain"].map((name) => JSON.parse(unescapeHtml(attrs(tags, name)[0] ?? "null")));
+      const fill = (parts, values) => (parts ?? []).map((part, index) => (index % 2 === 0 ? part : values[part])).join("");
+      assert.equal(fill(keep, { word: "online" }), copy.keepTag.replace("{{word}}", "online"), `${label}: data-tag-keep`);
+      assert.equal(fill(plain, { word: "test", plain: "tét" }), copy.plainTag.replace("{{word}}", "test").replace("{{plain}}", "tét"), `${label}: data-tag-plain`);
+      assert.deepEqual([keep.filter((part, index) => index % 2 === 1), plain.filter((part, index) => index % 2 === 1)], [["word"], ["word", "plain"]], `${label}: the slots of each template`);
       for (const figure of html.match(/<figure class="behaviour"[\s\S]*?<\/figure>/g) ?? []) {
         for (const hook of ["data-input", "data-keys", "data-replay"]) assert.match(figure, new RegExp(`\\s${hook}[\\s>]`), `${label}: ${figure.slice(0, 60)} ${hook}`);
         // The button is the demo's stop control while it plays and its replay button at rest (WCAG 2.2.2).
@@ -158,6 +184,19 @@ export async function runMotionChecks(check, fixtures) {
         assert.match(figure, /<div class="demo-window">/, `${label}: ${figure.slice(0, 60)} the demo window`);
       }
       assert.match(section(html, "apps"), /<svg class="hub-threads"[^>]*>(?:<path data-thread d="[^"]+"\/>){7}<\/svg>/, `${label}: the hub threads`);
+      // The learning demo (design 9 item 4) reuses the behaviour player: a figure with data-demo, one data-run row per
+      // pass, a replay button described by the caption and the demo window home.js hides while it types.
+      const learning = section(html, "learning").match(/<figure class="learning-demo"[\s\S]*?<\/figure>/)?.[0] ?? "";
+      assert.match(learning, /^<figure class="learning-demo" data-demo="learning-reset" data-demo-frames="/, `${label}: the learning figure`);
+      assert.equal((learning.match(/<li class="learning-row" data-run>/g) ?? []).length, 3, `${label}: three rows`);
+      assert.equal((learning.match(/\sdata-input[\s>]/g) ?? []).length, 3, `${label}: a field per row`);
+      assert.equal((learning.match(/\sdata-keys[\s>]/g) ?? []).length, 3, `${label}: a keys strip per row`);
+      assert.match(learning, /<div class="demo-window">/, `${label}: the learning demo window`);
+      const replay = learning.match(/<button\b[^>]*\sdata-replay\b[^>]*>/)?.[0] ?? "";
+      const labels = homeCopy[lang].behaviours;
+      assert.deepEqual([attrs(replay, "data-label-replay")[0], attrs(replay, "data-label-stop")[0]], [esc(labels.replay), esc(labels.stop)], `${label}: learning replay and stop labels`);
+      const captionId = attrs(replay, "aria-describedby")[0];
+      assert.ok(captionId && learning.includes(`<p id="${captionId}">`), `${label}: the learning button is described by the demo's caption`);
     }
   });
 
@@ -207,6 +246,96 @@ export async function runMotionChecks(check, fixtures) {
       assert.equal(parts.replay.textContent, "Replay", `${id}: Replay once it has played`);
       assert.ok(parts.figure.hasAttribute("data-motion-ready"), `${id}: the control stays`);
     }
+  });
+
+  await check("motion: the learning demo types its rows one after the other, then rests on the final rows (design 9 item 4)", () => {
+    const demo = { id: "learning-reset", ...frames.demos["learning-reset"] };
+    const passes = [...demo.teachPasses, demo];
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    const text = (row) => row.input.children.filter((child) => child !== parts.badge).map(fakeTextOf).join("");
+    const keys = (row) => row.keys.children.map(fakeTextOf);
+    const finalKeys = (pass) => stripKeys(pass.frames, keysEndOf(pass.frames)).map(keyLabel);
+    win.show(parts.figure, 1);
+    assert.equal(anime.timelines.length, 1, "plays once when it scrolls into view");
+    assert.ok(parts.figure.hasAttribute("data-motion-ready"), "the control shows as the demo starts");
+    assert.equal(parts.replay.textContent, "Stop", "Stop while it plays");
+    assert.equal(parts.demoWindow.getAttribute("aria-hidden"), "true", "the demo window is hidden from screen readers while it types");
+    assert.deepEqual(parts.rows.map(text), ["", "", ""], "every row starts empty");
+    const timeline = anime.timelines[0];
+    timeline.run(passes[0].frames.length);
+    assert.equal(text(parts.rows[0]), passes[0].text, "the first row types its pass");
+    assert.deepEqual(keys(parts.rows[0]), finalKeys(passes[0]), "its keys strip stops on Escape");
+    assert.equal(keys(parts.rows[0]).at(-1), "esc", "the Escape keycap shows in a teaching row");
+    assert.deepEqual([text(parts.rows[1]), text(parts.rows[2])], ["", ""], "the next rows wait");
+    // The last row: the badge comes with the commit the engine took from memory, not before.
+    const learnedAt = passes[2].frames.findIndex((frame) => frame.commit?.rule === "learned");
+    const lastStart = timeline.calls.length - passes[2].frames.length;
+    timeline.run(lastStart + learnedAt);
+    assert.notEqual(parts.badge.parent, parts.rows[2].input, "no badge before the learned commit");
+    assert.equal(text(parts.rows[1]), passes[1].text, "the second row typed before the last");
+    timeline.run(lastStart + learnedAt + 1);
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge shows with the learned commit");
+    timeline.run();
+    passes.forEach((pass, index) => {
+      assert.equal(text(parts.rows[index]), pass.text, `row ${index + 1} ends on its text`);
+      assert.deepEqual(keys(parts.rows[index]), finalKeys(pass), `row ${index + 1} ends on its static keys`);
+      assert.ok(!parts.rows[index].input.children.some((child) => child.className === "caret"), `row ${index + 1} has no caret left`);
+    });
+    const learnedWord = parts.rows[2].input.children[parts.rows[2].input.children.indexOf(parts.badge) - 1];
+    assert.equal(learnedWord?.tagName === "MARK" && learnedWord.textContent, wordsOf(demo).find((piece) => piece.learned).text, "the badge follows the learned word");
+    assert.ok(!parts.demoWindow.hasAttribute("aria-hidden"), "readable once it rests");
+    assert.equal(parts.replay.textContent, "Replay", "then the button replays");
+    parts.replay.dispatch("click");
+    assert.equal(anime.timelines.length, 2, "Replay plays it again");
+    assert.deepEqual(parts.rows.map(text), ["", "", ""], "from empty rows");
+    anime.timelines[1].run(3);
+    parts.replay.dispatch("click");
+    assert.ok(anime.timelines[1].cancelled, "Stop cancels the typing");
+    assert.deepEqual(parts.rows.map(text), passes.map((pass) => pass.text), "Stop leaves every row finished");
+    assert.equal(parts.badge.parent, parts.rows[2].input, "with the badge");
+  });
+
+  await check("motion: a behaviour demo that types on after Escape keeps adding keycaps to its last key", () => {
+    const demo = { id: "behaviour-escape", ...typedOnAfterEscape(frames.demos["behaviour-escape"]) };
+    const parts = fakeBehaviour(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    const toggleAt = demo.frames.findIndex((frame) => frame.toggle === true);
+    anime.timelines[0].run(toggleAt + 3);
+    assert.equal(parts.keys.children.map(fakeTextOf).at(-1), keyLabel(demo.frames[toggleAt + 2].key), "the strip follows the keys after Escape");
+    anime.timelines[0].run();
+    assert.equal(parts.input.children.map(fakeTextOf).join(""), demo.text, "ends on the finished text");
+    assert.deepEqual(parts.keys.children.map(fakeTextOf), stripKeys(demo.frames).map(keyLabel), "and on its last eight keys");
+  });
+
+  await check("motion: the learned badge follows a learned word the engine kept Vietnamese (L9c)", () => {
+    const demo = { id: "learning-reset", ...learnedVietnamese(frames.demos["learning-reset"]) };
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    anime.timelines[0].run();
+    const children = parts.rows[2].input.children;
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge shows in the last row");
+    const learned = wordsOf(demo).find((piece) => piece.learned);
+    assert.ok(fakeTextOf(children[children.indexOf(parts.badge) - 1]).endsWith(learned.text), `the badge follows ${learned.text}`);
+  });
+
+  await check("motion: reduced motion turned on while the learning demo plays shows all three rows final", () => {
+    const demo = { id: "learning-reset", ...frames.demos["learning-reset"] };
+    const passes = [...demo.teachPasses, demo];
+    const parts = fakeLearning(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    anime.timelines[0].run(passes[0].frames.length + 4);
+    win.reduceMotion();
+    assert.ok(anime.timelines[0].cancelled, "the typing stops");
+    assert.deepEqual(parts.rows.map((row) => row.input.children.filter((child) => child !== parts.badge).map(fakeTextOf).join("")), passes.map((pass) => pass.text), "every row final");
+    assert.equal(parts.badge.parent, parts.rows[2].input, "the badge in the last row");
+    assert.ok(!parts.figure.hasAttribute("data-motion-ready"), "the control goes");
+    win.show(parts.figure, 0);
+    win.show(parts.figure, 1);
+    assert.equal(anime.timelines.length, 1, "nothing starts again");
   });
 
   await check("motion: Replay in a hidden tab waits until the tab shows again (design 7.2)", () => {
@@ -275,7 +404,13 @@ export async function runMotionChecks(check, fixtures) {
     assert.ok(live.every((animation) => animation.completed), "stop() completes every live animation, so each element ends in its final state");
     const second = demos[1];
     assert.equal(parts.input.children.map(fakeTextOf).join(""), second.text.replace(/\n+$/, ""), "the field shows the finished sentence");
-    assert.deepEqual(parts.tags.children.map(fakeTextOf), englishWords(second).map((word) => `${word}: kept`), "the tags name the sentence's English words");
+    assert.deepEqual(parts.tags.children.map(fakeTextOf), wordsOf(second).filter((piece) => piece.english).map(fakeTagText), "the tags name the sentence's English words and their plain forms");
+    // Design 9 item 1: the word strong, the plain form in its own struck-through span, as the static tags.
+    for (const [index, piece] of wordsOf(second).filter((p) => p.english).entries()) {
+      const tag = parts.tags.children[index];
+      assert.equal(tag.children.find((child) => child.tagName === "STRONG")?.textContent, piece.text, `${piece.text} is strong`);
+      assert.equal(tag.children.find((child) => child.className === "tag-plain")?.textContent, piece.plain, `${piece.plain} is the plain form`);
+    }
     assert.ok(!parts.section.hasAttribute("data-motion-ready"), "the pause button goes, nothing moves any more");
   });
 
@@ -283,7 +418,7 @@ export async function runMotionChecks(check, fixtures) {
     const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
     const parts = fakeHero(demos);
     // The static tags of the first sentence, as lib/pages/home/hero.mjs renders them.
-    const staticTags = englishWords(demos[0]).map((word) => Object.assign(fakeElement("span", { class: "tag" }), { textContent: `${word}: kept` }));
+    const staticTags = wordsOf(demos[0]).filter((piece) => piece.english).map((piece) => Object.assign(fakeElement("span", { class: "tag" }), { textContent: fakeTagText(piece) }));
     parts.tags.append(...staticTags);
     const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
     win.show(parts.windowEl, 1);

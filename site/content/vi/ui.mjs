@@ -8,7 +8,7 @@ export default {
   skipLink: "Chuyển đến nội dung",
   notice: { label: "Thông báo", link: "Xem chi tiết" },
   navLabel: "Điều hướng chính",
-  nav: { features: "Tính năng", compat: "Tương thích", support: "Hỗ trợ", downloadCta: "Tải về", privacy: "Riêng tư", changelog: "Nhật ký thay đổi" },
+  nav: { features: "Tính năng", support: "Hỗ trợ", downloadCta: "Tải về", privacy: "Riêng tư", changelog: "Nhật ký thay đổi" },
   langSwitch: { text: "English", title: "Read this page in English", lang: "en" },
   footer: {
     promise: "Không cookie, không theo dõi, không phông chữ hay mã từ bên thứ ba.",
@@ -31,7 +31,7 @@ export default {
   descriptions: {
     home: "{{AppNameTM}} là bộ gõ tiếng Việt cho macOS: mặc định hợp lý, từ tiếng Anh tự giữ nguyên, không thu thập dữ liệu, miễn phí.",
     download: "Tải {{AppNameTM}} cho macOS: bản ổn định, bản beta, mã SHA-256, yêu cầu hệ thống và cài bằng Homebrew.",
-    compat: "Danh sách ứng dụng đã kiểm tra với {{AppNameTM}}, kèm trạng thái, ghi chú và ngày kiểm tra gần nhất.",
+    compat: "Trạng thái tương thích của từng ứng dụng với {{AppNameTM}}, cập nhật khi có kết quả kiểm tra.",
     changelog: "Những thay đổi người dùng nhìn thấy trong từng bản phát hành của {{AppNameTM}}.",
     privacy: "Mọi thứ {{AppNameTM}} lưu và gửi đi, dữ liệu chẩn đoán gồm gì, và chính sách phân tích của trang web.",
     support: "Câu hỏi thường gặp, cách xử lý theo triệu chứng, cách báo lỗi và hướng dẫn chuyển từ bộ gõ khác sang {{AppNameTM}}.",

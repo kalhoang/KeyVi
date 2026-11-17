@@ -30,13 +30,14 @@ export async function runShellChecks(check, fixtures) {
     assert.deepEqual(problems, []);
   });
 
-  await check("shell: header links features, compatibility, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
+  await check("shell: header links features, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
     const part = (html, tag) => html.match(new RegExp(`<${tag} class="site-${tag}"[\\s\\S]*?</${tag}>`))?.[0] ?? "";
     const links = (html) => attrs(html, "href").filter((href) => !href.startsWith("#"));
     const features = { vi: "/#tinh-nang", en: "/en/#features" };
     for (const [label, html, lang, other] of [["vi home", read("index.html"), "vi", "/en/"], ["en home", read("en", "index.html"), "en", "/"], ["vi support", read("ho-tro", "index.html"), "vi", "/en/support/"]]) {
       const header = part(html, "header");
-      assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("compat", lang), routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
+      // The compatibility page is unlisted (design 9 item 2): the header no longer links to it.
+      assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
       assert.match(header, /<a class="btn" href="[^"]+"[^>]*>[^<]+<\/a>/, `${label}: the download link is a button`);
       assert.match(header, /<svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, `${label}: the mark beside the name`);
       assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), shipped.githubRepo, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
@@ -79,6 +80,15 @@ export async function runShellChecks(check, fixtures) {
     }
   });
 
+  await check("styles: the mark beside the name is raised so its letters centre on the capitals (design 9 item 3)", async () => {
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    // translate moves the painted mark only, so nothing around it shifts; the header and the footer alike.
+    for (const selector of [".brand .mark", ".footer-name .mark"]) {
+      const rule = css.match(new RegExp(`${selector.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      assert.match(rule, /(?:^|;)\s*translate:\s*0 -12%;/, `${selector} { translate: 0 -12% }: ${rule}`);
+    }
+  });
+
   await check("tokens: text colours meet WCAG AA in light and dark (design 7.7)", async () => {
     const css = await readFile(join(SITE_DIR, "static", "assets", "style.css"), "utf8");
     const block = (text) => Object.fromEntries([...(text ?? "").matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]));
@@ -91,7 +101,7 @@ export async function runShellChecks(check, fixtures) {
     };
     // Text on its background: body, muted and link text on both surfaces, the tag, the button, the dark band.
     const pairs = [["--ink", "--paper"], ["--muted", "--paper"], ["--muted", "--paper-2"], ["--green-text", "--paper"], ["--green-text", "--paper-2"],
-      ["--green-text", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
+      ["--green-text", "--green-soft"], ["--muted", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
     const problems = [];
     for (const [scheme, tokens] of [["light", light], ["dark", dark]]) {
       for (const [text, background] of pairs) {
