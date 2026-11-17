@@ -15,8 +15,8 @@ refuses a stable `X.Y.Z` unless `site/data/releases.json` lists an `X.Y.Z-beta.N
 The state on 2026-11-17:
 
 - Two private betas, `0.0.1-beta.1` (build 101) and `0.0.1-beta.2` (build 102), were built, signed, notarised and
-  tested by Pa on 2026-11-14 ([0005](0005-pa-decisions-2026-11-13.md), "Manual test feedback, 14/11/2026"; the
-  findings were fixed in waves 8 to 17). They were handed over directly: neither is in an appcast, and
+  tested by Pa on 2026-11-14 ([0005](0005-pa-decisions-2026-11-13.md), "Manual test feedback, 14/11/2026", which
+  records the findings and their fixes). They were handed over directly: neither is in an appcast, and
   `site/data/releases.json` does not exist yet.
 - Pa used the Debug development builds, which carry the dev recorder ([0007](0007-dev-recorder.md)), every day from
   2026-11-14 to 2026-11-17. The last one, 20261116b, was built from commit `231ac7e9`.
@@ -40,8 +40,8 @@ The state on 2026-11-17:
 2. **Stage transition: from private testing straight to 1.0.** The project goes from pre-alpha with private betas
    (`0.0.1-beta.N`) to 1.0. The private alpha, closed beta and public beta of section 3.3 are not held as stages of
    their own: the private betas and Pa's daily use of the development builds stand in for the private alpha, and
-   there is no closed or public beta. The exit criteria of every skipped stage, and the entry criterion of 1.0, are
-   listed below with their evidence. A criterion that is not met is accepted by Pa's decision (marked "waived"); the
+   there is no closed or public beta. The entry and exit criteria of every skipped stage, and the entry criterion of
+   1.0, are listed under "Stage criteria evidence" with their evidence. A criterion that is not met is accepted by Pa's decision (marked "waived"); the
    list makes that acceptance explicit instead of implied.
 
 3. **QA-R29 is waived for 1.0.0 only.** Publication uses
@@ -66,15 +66,15 @@ The state on 2026-11-17:
    macOS 15 floor that [0315](0315-minimum-macos-12.md) replaced. It now declares `">= :monterey"`, the same floor as
    the deployment target (PRD-R8, PLT-R106); PLT-R1110 and the release runbook section 7 follow.
 
-## Exit criteria evidence
+## Stage criteria evidence
 
 "Local gate" is the integrator's verification of the `main` checkout (`tools/verify-all.sh` in the folder that holds
 the worktrees, outside the repository), run on 2026-11-17 at 19:19 to 19:27 (UTC+7) on `main` at `4ebe3bd9`: AppCore
 `swift test`, `xcodegen generate`, Debug builds of `App`, `TestHost` and `SpikeIMK`, the `UpdaterTests`,
 `scripts/lint.sh`, the contracts check, the engine `swift test`, the `site-demo-frames` check,
 `scripts/tests/run.sh`, `node site/test.mjs`, `node deploy/site/test.mjs` and `scripts/check-spdx.sh`, all
-passing. The engine's ENG-R873 Telex check records one known difference (Telex `ix` types `ĩ`,
-[0202](0202-data-integration-measurements.md)) as a known issue.
+passing. The engine's ENG-R873 prose check for Telex records one known difference as a known issue ("IX types ĩ",
+[0202](0202-data-integration-measurements.md)).
 
 | Stage | Criterion | Status | Evidence |
 |---|---|---|---|
@@ -93,7 +93,7 @@ passing. The engine's ENG-R873 Telex check records one known difference (Telex `
 | Public beta, exit | 4 weeks without a P0 | waived | The first private beta is three days old |
 | Public beta, exit | Compatibility matrix covers Tier 1 and Tier 2 with verified dates | waived | All entries are `notVerified` (`scripts/compat-stale-report.py --release` lists all 95 as never verified) |
 | Public beta, exit | Provenance review done (CLR-R13) | not waived | Separate report in [`docs/provenance/`](../provenance/) (decision 5) |
-| 1.0, entry | All PRD-R and QA-R MUST items met | waived where open | Not audited item by item for this record. Known open MUST items: QA-R12 (integration suite green on the newest macOS, see below), QA-R19 (Tier 1 rows verified within 90 days), QA-R29 (decision 3), QA-R30 step 1 (the `ci.yml` and `integration.yml` gate), QA-R39 (rollback rehearsed on the beta channel) and the upgrade test of QA-R40 (no previous stable exists to upgrade from) |
+| 1.0, entry | All PRD-R and QA-R MUST items met | waived where open | Not audited item by item for this record. Known open MUST items: QA-R12 (integration suite green on the newest macOS, see below), QA-R19 (Tier 1 rows verified within 90 days), QA-R29 (decision 3), QA-R30 step 1 (the `ci.yml` and `integration.yml` gate), QA-R39 (rollback rehearsed on the beta channel). The upgrade test of QA-R40 has no previous stable to start from |
 
 ## Release gates
 
@@ -107,7 +107,7 @@ disabled.
 | `nightly.yml` green within 24 hours | Dependency audit run locally on 2026-11-17: `scripts/dependency-audit.py` passes (Sparkle 2.10.1 ok). The sanitizer fuzz needs Linux and did not run | partly met; fuzz waived |
 | P0 tests pass (PRD-R0) | Local gate: engine and AppCore suites pass | met |
 | Tier 1 compatibility script done, rows at most 90 days old (QA-R19) | None: `compat/matrix.json` has no verified row | waived |
-| Upgrade test (section 5) | Not applicable to the first public release (there is no previous stable). Pa's installed private beta updating to 1.0.0 through Sparkle is the first real update to watch (runbook section 8) | not applicable |
+| Upgrade test (section 5) | Not applicable to the first public release (there is no previous stable). If Pa's installed private beta reads the production appcast, its update to 1.0.0 through Sparkle is the first real update to watch (runbook section 8) | not applicable |
 | Network egress test (spec/02-platform.md section 13.7) | Not run ([integration suite runbook](../runbooks/integration-suite.md) section 5) | waived |
 | No compatibility rule past `reviewBy` by more than 30 days | `scripts/check-rules.py --release` on 2026-11-17: 23 rules, 0 errors, 0 warnings; every `reviewBy` is in 2027 | met |
 | Provenance review (CLR-R13) | Separate report in [`docs/provenance/`](../provenance/) | not waived (decision 5) |
