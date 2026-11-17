@@ -7,6 +7,7 @@ Subcommands:
   release-notes-page write (or, with --check, only validate) the bilingual release-notes page the appcast
                      links to (PRD-R51, ADR 0304)
   beta-soak        check that a stable version has been on beta for at least 72 hours (QA-R29)
+  waiver-decision  check the decision record that waives QA-R29 for one stable version (ADR 0507)
   render-cask      render packaging/homebrew/Casks/cask.rb.template (QA-R36, PLT-R1110)
   render-zap       print the zap paths with brand values (PLT-R1012)
   changelog-notes  extract the notes of one version from a Keep a Changelog file
@@ -329,6 +330,32 @@ def cmd_beta_soak(args) -> int:
     return 0
 
 
+def cmd_waiver_decision(args) -> int:
+    """--skip-beta-soak (ADR 0507): a QA-R29 waiver is a decision record, docs/decisions/*.md under --root, that cites
+    the requirement and names the stable version it waives, so the waiver of one release never covers the next.
+    Prints the record's path relative to --root."""
+    if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
+        raise SystemExit(f"a {args.requirement} waiver applies to stable versions (X.Y.Z), not {args.version}")
+    root = os.path.realpath(args.root)
+    path = args.decision if os.path.isabs(args.decision) else os.path.join(root, args.decision)
+    resolved = os.path.realpath(path)
+    shown = os.path.relpath(resolved, root) if resolved.startswith(root + os.sep) else args.decision
+    decisions = os.path.join(root, "docs", "decisions") + os.sep
+    if not resolved.startswith(decisions) or not resolved.endswith(".md") or os.sep in resolved[len(decisions):]:
+        raise SystemExit(f"the {args.requirement} waiver must be a docs/decisions/*.md record: {args.decision}")
+    if not os.path.isfile(resolved):
+        raise SystemExit(f"the {args.requirement} waiver decision {shown} does not exist")
+    with open(resolved, encoding="utf-8") as handle:
+        record = handle.read()
+    if not re.search(r"(?<![\w-])%s(?!\d)" % re.escape(args.requirement), record):
+        raise SystemExit(f"{shown} does not mention {args.requirement}, so it is no waiver of it")
+    # 1.0.0 but not 1.0.0-beta.1, 1.0.01 or 11.0.0; a full stop after the version ends a sentence.
+    if not re.search(r"(?<![\w.])%s(?!\.?\d|[\w-])" % re.escape(args.version), record):
+        raise SystemExit(f"{shown} does not name version {args.version}: a waiver covers only the release it names")
+    print(shown)
+    return 0
+
+
 def zap_lines(path: str, folder: str, bundle_id: str) -> list[str]:
     out = []
     with open(path, encoding="utf-8") as handle:
@@ -473,6 +500,13 @@ def main(argv: list[str]) -> int:
     p.add_argument("--hours", type=int, default=72)
     p.add_argument("--today", default="", help="YYYY-MM-DD (default: today, UTC)")
     p.set_defaults(func=cmd_beta_soak)
+
+    p = sub.add_parser("waiver-decision")
+    p.add_argument("--root", required=True, help="the repository root")
+    p.add_argument("--decision", required=True, help="docs/decisions/<record>.md, relative to --root or absolute")
+    p.add_argument("--version", required=True, help="the stable version X.Y.Z the record waives the rule for")
+    p.add_argument("--requirement", default="QA-R29")
+    p.set_defaults(func=cmd_waiver_decision)
 
     p = sub.add_parser("changelog-notes")
     p.add_argument("--file", required=True)

@@ -39,7 +39,9 @@
 # next to sign_update); GitHub access through `gh` (gh auth login, or GH_TOKEN) for --from-github,
 # --github-release and the attestation check; BRAND_ENV (tests).
 # QA-R29: a stable release needs an X.Y.Z-beta.N of the same version on the beta channel for at least 72 hours
-# (site/data/releases.json); --p0-hotfix skips that and turns phased rollout off (QA-R35).
+# (site/data/releases.json); --p0-hotfix skips that and turns phased rollout off (QA-R35). --skip-beta-soak DECISION
+# skips only that check, for a stable release Pa decided to publish without a beta: DECISION is the decision record
+# (docs/decisions/*.md) that cites QA-R29 and names the version (ADR 0507); phased rollout stays as configured.
 #
 # Every output is first written into a temporary copy. The default dry run prints it and deletes it;
 # --apply copies the outputs into the repository only after every step succeeded, so a failure never
@@ -72,6 +74,9 @@ Behaviour:
   --download-base URL   base URL for the archive and DMG (default https://<site host>/download)
   --no-phasing          skip phased rollout (QA-R35)
   --p0-hotfix           stable release fixing a P0: skip the 72-hour beta period (QA-R29) and phasing
+  --skip-beta-soak DECISION   stable release published without a beta by Pa's decision: skip only the
+                        72-hour beta check (QA-R29); DECISION is docs/decisions/<record>.md, which must cite
+                        QA-R29 and name the version (ADR 0507); phased rollout is unchanged
   --critical            mark as critical update (security or data-loss fixes only, QA-R34)
   --minimum-autoupdate-version BUILD   force a manual install for older builds (PLT-R1109)
   --tap-dir DIR         Homebrew tap checkout; the rendered cask is written to DIR/Casks/
@@ -111,6 +116,7 @@ tap_commit=0
 sparkle_account=""
 rotating_from_key=""
 p0_hotfix=0
+skip_beta_soak=""
 sign_in_dry_run=0
 skip_attestation=0
 skip_gatekeeper=0
@@ -136,6 +142,7 @@ while [[ $# -gt 0 ]]; do
     --sparkle-account) sparkle_account="${2:?}"; shift 2 ;;
     --rotating-from-key) rotating_from_key="${2:?}"; shift 2 ;;
     --p0-hotfix) p0_hotfix=1; phasing=0; shift ;;
+    --skip-beta-soak) skip_beta_soak="${2:?}"; shift 2 ;;
     --sign-in-dry-run) sign_in_dry_run=1; shift ;;
     --skip-attestation) skip_attestation=1; shift ;;
     --skip-gatekeeper) skip_gatekeeper=1; shift ;;
@@ -152,6 +159,9 @@ if [[ "$version" != *-beta.* && $beta -eq 1 ]]; then die "--beta needs an X.Y.Z-
 channel="stable"
 [[ $beta -eq 1 ]] && channel="beta"
 [[ $p0_hotfix -eq 0 || "$channel" == "stable" ]] || die "--p0-hotfix applies to stable releases only"
+[[ -z "$skip_beta_soak" || "$channel" == "stable" ]] || die "--skip-beta-soak applies to stable releases only"
+[[ -z "$skip_beta_soak" || $p0_hotfix -eq 0 ]] \
+  || die "--skip-beta-soak and --p0-hotfix exclude each other: a P0 hotfix already skips the beta period"
 [[ -z "$rotating_from_key" || "$rotating_from_key" =~ ^[A-Za-z0-9+/]{43}=$ ]] \
   || die "--rotating-from-key takes the old base64 EdDSA public key (as printed by generate_keys -p)"
 if [[ $skip_gatekeeper -eq 1 && $apply -eq 1 ]]; then die "--skip-gatekeeper cannot be combined with --apply"; fi
@@ -194,14 +204,22 @@ notes_vi="${notes_vi:-$notes_en}"
 py scripts/lib/publish_helpers.py release-notes-page --check --app-name "$APP_DISPLAY_NAME" --version "$version" \
   --trademark-sign "$APP_TRADEMARK_SIGN" --notes-vi "$notes_vi" --notes-en "$notes_en" || die "the release notes for $version are not publishable"
 
-# QA-R29: a stable release has been on beta for at least 72 hours with no new P0/P1, except P0 hotfixes.
-# Checked before any download or keychain access; a dry run only warns.
+# QA-R29: a stable release has been on beta for at least 72 hours with no new P0/P1, except P0 hotfixes and a release
+# whose waiver is recorded as a decision (ADR 0507). Checked before any download or keychain access; a dry run only
+# warns about a missing beta, while a waiver that does not check out stops both modes.
 if [[ "$channel" == "stable" && $p0_hotfix -eq 1 ]]; then
   warn "P0 hotfix: QA-R29 beta period skipped, phased rollout off (QA-R35)"
+elif [[ "$channel" == "stable" && -n "$skip_beta_soak" ]]; then
+  waiver="$(py scripts/lib/publish_helpers.py waiver-decision --root "$REPO_ROOT" --decision "$skip_beta_soak" \
+    --version "$version" --requirement QA-R29)" || die "--skip-beta-soak: no valid QA-R29 waiver for $version"
+  phasing_note="phased rollout on"
+  [[ $phasing -eq 1 ]] || phasing_note="phased rollout off (--no-phasing)"
+  warn "QA-R29 waiver: the 72-hour beta period is skipped for $version as recorded in $waiver; $phasing_note"
 elif [[ "$channel" == "stable" ]]; then
   if ! soak="$(py scripts/lib/publish_helpers.py beta-soak --file site/data/releases.json --version "$version" \
     --hours 72 2>&1)"; then
-    soak_message="QA-R29: no $version-beta.N on the beta channel for at least 72 hours ($soak); a P0 fix may pass --p0-hotfix"
+    soak_message="QA-R29: no $version-beta.N on the beta channel for at least 72 hours ($soak); a P0 fix may pass"
+    soak_message+=" --p0-hotfix, a release Pa decided to publish without a beta --skip-beta-soak DECISION (ADR 0507)"
     [[ $apply -eq 0 ]] || die "$soak_message"
     warn "$soak_message"
   fi

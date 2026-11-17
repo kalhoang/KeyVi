@@ -668,6 +668,50 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertIn("no 1.2.3-beta.N listed", missing.stderr)
         self.assertNotEqual(soak("1.2.3-beta.3", "2026-11-13").returncode, 0, "only stable versions are checked")
 
+    def test_beta_soak_waiver_decision_qa_r29(self):
+        """--skip-beta-soak DECISION (ADR 0507): the waiver of QA-R29 is a decision record under docs/decisions/ that
+        cites QA-R29 and names the version it waives, so one waiver cannot be reused for a later stable release."""
+        decisions = self.tmp / "docs" / "decisions"
+        decisions.mkdir(parents=True)
+        valid = decisions / "0999-waiver.md"
+        valid.write_text("# 0999. Waiver\n\nPublish 1.2.3 without a public beta (QA-R29 waived once).\n", encoding="utf-8")
+
+        def waiver(decision, version="1.2.3"):
+            return self.helper("waiver-decision", "--root", str(self.tmp), "--decision", str(decision),
+                               "--version", version, "--requirement", "QA-R29")
+
+        accepted = waiver("docs/decisions/0999-waiver.md")
+        self.assertEqual(accepted.returncode, 0, accepted.stderr)
+        self.assertEqual(accepted.stdout.strip(), "docs/decisions/0999-waiver.md", "printed relative to the root")
+        self.assertEqual(waiver(valid).returncode, 0, "an absolute path inside docs/decisions/ is accepted")
+
+        missing = waiver("docs/decisions/0998-missing.md")
+        self.assertEqual(missing.returncode, 1)
+        self.assertIn("does not exist", missing.stderr)
+
+        (decisions / "0997-other.md").write_text("Publish 1.2.3 without waiting (QA-R30, QA-R290).\n", encoding="utf-8")
+        unrelated = waiver("docs/decisions/0997-other.md")
+        self.assertEqual(unrelated.returncode, 1, "QA-R290 is not QA-R29")
+        self.assertIn("does not mention QA-R29", unrelated.stderr)
+
+        later = waiver("docs/decisions/0999-waiver.md", version="1.2.4")
+        self.assertEqual(later.returncode, 1, "the waiver of 1.2.3 does not cover 1.2.4")
+        self.assertIn("does not name version 1.2.4", later.stderr)
+        (decisions / "0996-beta.md").write_text("QA-R29: 1.2.3-beta.1 and 1.2.30 only.\n", encoding="utf-8")
+        self.assertEqual(waiver("docs/decisions/0996-beta.md").returncode, 1, "1.2.3-beta.1 and 1.2.30 are not 1.2.3")
+
+        outside = self.tmp / "waiver.md"
+        outside.write_text(valid.read_text(encoding="utf-8"), encoding="utf-8")
+        for path in (outside, "docs/decisions/../../waiver.md"):
+            with self.subTest(path=str(path)):
+                result = waiver(path)
+                self.assertEqual(result.returncode, 1, "only a decision record is a waiver")
+                self.assertIn("docs/decisions/*.md", result.stderr)
+        (decisions / "0995-waiver.txt").write_text(valid.read_text(encoding="utf-8"), encoding="utf-8")
+        self.assertEqual(waiver("docs/decisions/0995-waiver.txt").returncode, 1, "a decision record is Markdown")
+        self.assertNotEqual(waiver("docs/decisions/0999-waiver.md", version="1.2.3-beta.1").returncode, 0,
+                            "the waiver applies to stable versions only")
+
     def test_release_notes_page_escapes_and_fills_tokens(self):
         out = self.tmp / "page.html"
         result = self.notes_page(out, "- <script>alert(1)</script> trong {{AppName}}",

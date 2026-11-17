@@ -1073,6 +1073,56 @@ EOF
   if grep -q 'QA-R29' "$T/out"; then ko "no QA-R29 warning after the beta period"; else ok "no QA-R29 warning after the beta period"; fi
   rm -f "$M/site/data/releases.json"
 
+  echo "== publish-release: a recorded QA-R29 waiver skips only the beta period (--skip-beta-soak, ADR 0507)"
+  mkdir -p "$M/docs/decisions"
+  printf '# 0999. First release\n\nPa publishes 1.2.3 without a public beta: QA-R29 is waived for 1.2.3 only.\n' \
+    >"$M/docs/decisions/0999-first-release.md"
+  printf '# 0998. Other\n\nPublish 1.2.3 without waiting.\n' >"$M/docs/decisions/0998-other.md"
+  waiver_warning="QA-R29 waiver: the 72-hour beta period is skipped for 1.2.3 as recorded in docs/decisions/0999-first-release.md"
+  expect 0 "a dry run with a recorded waiver is accepted" "$M/scripts/publish-release" 1.2.3 --skip-attestation \
+    --skip-gatekeeper --skip-beta-soak docs/decisions/0999-first-release.md
+  contains "the waiver names its decision" "$waiver_warning"
+  if grep -q 'QA-R29: no 1.2.3-beta.N' "$T/out"; then ko "the waiver replaces the beta check"; else ok "the waiver replaces the beta check"; fi
+  contains "phased rollout unchanged under the waiver" \
+    "<sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>"
+  rm -f "$T/sign-called"
+  expect 1 "a waiver whose decision does not exist is refused" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --skip-attestation --skip-gatekeeper --sign-in-dry-run \
+    --skip-beta-soak docs/decisions/0997-missing.md
+  contains "names the missing decision" "docs/decisions/0997-missing.md does not exist"
+  if [[ -e "$T/sign-called" ]]; then ko "a bad waiver fails before sign_update"; else ok "a bad waiver fails before sign_update"; fi
+  expect 1 "a waiver whose decision does not mention QA-R29 is refused" env SPARKLE_SIGN_UPDATE="$T/fake-sign-update" \
+    "$M/scripts/publish-release" 1.2.3 --apply --skip-attestation --notes-vi "$T/notes-vi.md" \
+    --skip-beta-soak docs/decisions/0998-other.md
+  contains "names the missing requirement" "docs/decisions/0998-other.md does not mention QA-R29"
+  if [[ -e "$T/sign-called" ]]; then ko "an unrelated decision fails before sign_update"; else ok "an unrelated decision fails before sign_update"; fi
+  expect 1 "a waiver outside docs/decisions is refused" "$M/scripts/publish-release" 1.2.3 --skip-attestation \
+    --skip-gatekeeper --skip-beta-soak "$T/notes-vi.md"
+  expect 1 "a waiver is refused for a beta" "$M/scripts/publish-release" 1.2.3-beta.1 --beta --skip-attestation \
+    --skip-gatekeeper --skip-beta-soak docs/decisions/0999-first-release.md
+  expect 1 "a waiver and --p0-hotfix exclude each other" "$M/scripts/publish-release" 1.2.3 --p0-hotfix \
+    --skip-attestation --skip-gatekeeper --skip-beta-soak docs/decisions/0999-first-release.md
+  expect 1 "--skip-beta-soak needs its decision" "$M/scripts/publish-release" 1.2.3 --skip-attestation \
+    --skip-gatekeeper --skip-beta-soak
+  # --apply end to end with fakes for stapler, Gatekeeper and Sparkle's tools: the waiver passes, the release is signed
+  # with the app's key and the appcast item keeps its phased rollout (QA-R35).
+  mkdir -p "$T/fake-gatekeeper"
+  printf '#!/bin/sh\nexit 0\n' >"$T/fake-gatekeeper/xcrun"
+  printf '#!/bin/sh\nexit 0\n' >"$T/fake-gatekeeper/spctl"
+  chmod +x "$T/fake-gatekeeper/xcrun" "$T/fake-gatekeeper/spctl"
+  : >"$K/log"
+  expect 0 "--apply accepts a recorded waiver" env PATH="$T/fake-gatekeeper:$PATH" SPARKLE_SIGN_UPDATE="$K/sign_update" \
+    FAKE_SPARKLE_LOG="$K/log" FAKE_KEYCHAIN_KEY="$app_key" "$M/scripts/publish-release" 1.2.3 --apply \
+    --skip-attestation --notes-vi "$T/notes-vi.md" --skip-beta-soak docs/decisions/0999-first-release.md
+  contains "the waiver is announced by --apply" "$waiver_warning"
+  if grep -q '<sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>' "$M/site/static/appcast.xml" 2>/dev/null; then
+    ok "the published item keeps its phased rollout"
+  else
+    ko "the published item keeps its phased rollout"
+  fi
+  if grep -q '^sign_update --verify ' "$K/log"; then ok "the waived release is signed and verified"; else ko "the waived release is signed and verified"; fi
+  rm -rf "$M/site/static/appcast.xml" "$M/site/data" "$M/site/static/release-notes" "$M/dist/homebrew" "$M/docs"
+
   expect 0 "build-release dry run" bash -c "cd '$M' && touch project.yml && scripts/build-release.sh 1.2.3 1020399 --dry-run"
   contains "archive command" "MARKETING_VERSION=1.2.3"
   contains "no base entitlements" "CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO"
