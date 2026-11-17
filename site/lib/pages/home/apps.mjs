@@ -30,19 +30,18 @@ const threadPath = ({ x, y }) => {
 // "Messenger (web, Chrome)" and "Messenger" are one app on the hub.
 const baseName = (name) => name.replace(/\s*\([^)]*\)$/, "");
 
-/** Up to four apps of a category, each with the entry that ranks first under its name: the apps the maintainers ranked
- * (tier 1, then 2) when the category has any, every app otherwise; then the order of the file. */
-export function hubApps(entries, category) {
+/** The names of up to four apps of a category: the apps the maintainers ranked (tier 1, then 2) when the category has
+ * any, every app otherwise; then the order of the file. */
+function hubApps(entries, category) {
   const inCategory = entries.filter((entry) => entry.category === category);
   const tiered = inCategory.filter((entry) => entry.tier > 0);
   const ranked = (tiered.length > 0 ? tiered : inCategory).sort((a, b) => (a.tier || 9) - (b.tier || 9) || a.order - b.order);
-  const names = [...new Set(ranked.map((entry) => baseName(entry.name)))].slice(0, MAX_APPS);
-  return names.map((name) => ({ name, entry: ranked.find((entry) => baseName(entry.name) === name) }));
+  return [...new Set(ranked.map((entry) => baseName(entry.name)))].slice(0, MAX_APPS);
 }
 
 function node(kt, category, index) {
   const label = `<strong>${esc(kt.ui.categories[category])}</strong>`;
-  const apps = hubApps(kt.ctx.data.matrix.entries, category).map(({ name }) => esc(name)).join(", ");
+  const apps = hubApps(kt.ctx.data.matrix.entries, category).map(esc).join(", ");
   return `<li class="hub-node hub-node-${index + 1}" data-category="${esc(category)}">${label}${apps ? `<span class="hub-apps">${apps}</span>` : ""}</li>`;
 }
 

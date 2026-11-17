@@ -3,9 +3,10 @@
 // generic chat window showing the first hero sentence finished, with the keys strip and a tag per English word, under a
 // mini menu bar whose mark stays in the Vietnamese state. A tag names what plain Telex would have typed when the engine
 // recorded a plain form (design 9 item 1, ENG-R802): "test, không thành tét", the word strong and the plain form struck
-// through by home.css; the hidden list says every tag in words, so no meaning rests on the strike. home.js (plan Task 6) types the three hero demos in rotation
-// from data-demo-frames, shows the sent bubble of each finished sentence and marks the section data-motion-ready to
-// show the pause button; without JavaScript, or under reduced motion, this final state is the whole demo (design 7.2).
+// through by home.css; the hidden list says every tag in words, so no meaning rests on the strike. home.js (plan Task
+// 6) types the three hero demos in rotation from data-demo-frames, shows the sent bubble of each finished sentence and
+// marks the section data-motion-ready to show the pause button; without JavaScript, or under reduced motion, this final
+// state is the whole demo (design 7.2).
 // The sent bubbles, one per sentence, share one cell and stay invisible until sent (home.css), so the chat reserves the
 // tallest at every width and sending one moves nothing (design 7.8). The window is aria-hidden; the sentences are also
 // in a visually hidden list (design 7.7).
