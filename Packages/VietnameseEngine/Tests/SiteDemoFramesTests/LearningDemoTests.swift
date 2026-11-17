@@ -75,7 +75,7 @@ import VietnameseEngine
     /// `teachExpect`, or when the final pass has no `learned` commit (L9c).
     @Test(arguments: [
         ("Vieetj⎋ nha", 1, "Vieetj nha", "vieetj nha", "việt nha", "no strong collision signal"),
-        (teachKeys, 2, "Nhớ rết lại máy nha", "Nhows reset laij mays nha", sentence, "teaching pass 1"),
+        (teachKeys, 2, "Nhớ rết lại máy nha", "Nhows reset laij mays nha", sentence, "teaching pass 1: expected"),
         (teachKeys, 1, sentence, "Nhows reset laij mays nha", "Nhớ rết lại máy nha", "rule learned"),
     ])
     func unprovenLearningFails(
