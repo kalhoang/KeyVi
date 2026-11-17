@@ -148,6 +148,14 @@
 }
 .learning-demo figcaption { margin: 0; color: var(--ink); font-size: 1rem; }
 .learning-demo figcaption p { margin: 0; }
+/* Wide screens: the rows take the left of the full-width card, the caption and the replay button the right, so the
+   card no longer leaves half the row empty. The button stays after the rows in the source and the tab order. */
+@media (min-width: 60rem) {
+  .learning-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 17rem); grid-template-rows: auto 1fr; gap: 0 clamp(1.5rem, 3vw, 2.5rem); max-width: none; }
+  .learning-demo .demo-window { grid-column: 1; grid-row: 1 / span 2; }
+  .learning-demo figcaption { grid-column: 2; grid-row: 1; align-self: start; padding-top: 0.9rem; font-size: 1.1rem; }
+  .learning-demo .replay { grid-column: 2; grid-row: 2; justify-self: start; margin-block: 1rem 0; }
+}
 /* The sample row of the learned-words sheet: keys, arrow, result, the context in words and the remove control, drawn. */
 .learned-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.6rem; margin: 0.25rem 0 0; padding: 0.55rem 0.75rem; border-radius: var(--radius-s); background: var(--paper-2); }
 .learned-row small { margin-left: auto; color: var(--muted); font-size: 0.85rem; }
@@ -162,7 +170,9 @@
 }
 
 /* 4. Cards: engine results and static illustrations. */
-.feature-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+/* At most two columns: each card list holds four cards, so a wide screen shows 2 x 2 instead of three cards and one
+   alone; below two 19rem columns the list is one column. */
+.feature-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, max(19rem, calc((100% - 1.25rem) / 2))), 1fr)); margin: 0; padding: 0; list-style: none; }
 .feature-grid > li { display: flex; flex-direction: column; margin: 0; }
 .feature h3 { margin: 0 0 0.4rem; }
 .demo-rows, .chips, .app-modes { display: grid; gap: 0.45rem; margin: 0.25rem 0 0; padding: 0; list-style: none; }

@@ -302,6 +302,24 @@ export async function runHomeChecks(check, fixtures) {
     assert.match(css, /\.tags \.tag\s*\{[^}]*display:\s*inline-block/, "a hero tag is not a flex container");
   });
 
+  await check("home: four-card grids fill whole rows and the learning demo uses the full width (preview pass, 17/11/2026)", async () => {
+    const css = (await readFile(join(SITE_DIR, "static", "assets", "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    // Both card lists hold four cards; at most two columns gives 2 x 2 instead of three cards and one alone.
+    for (const [label, html] of homePages) {
+      for (const name of ["learning", "cards"]) {
+        const grid = section(html, name).match(/<ul class="feature-grid">([\s\S]*?)<\/ul>\s*<\/section>/)?.[1] ?? "";
+        assert.equal((grid.match(/<li class="card feature"/g) ?? []).length, 4, `${label}: ${name} lists four cards`);
+      }
+    }
+    const grid = css.match(/\.feature-grid\s*\{([^}]*)\}/)?.[1] ?? "";
+    assert.match(grid, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(min\(100%,\s*max\(19rem,\s*calc\(\(100% - 1\.25rem\) \/ 2\)\)\),\s*1fr\)\)/, `the feature grid caps at two columns: ${grid}`);
+    assert.match(grid, /gap:\s*1\.25rem/, "the cap uses the grid gap");
+    // On a wide screen the rows sit beside the caption and the replay button instead of leaving half the row empty.
+    const wide = css.match(/@media \(min-width: 60rem\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    assert.match(wide, /\.learning-demo\s*\{[^}]*display:\s*grid[^}]*max-width:\s*none/, `the learning demo is a full-width grid when wide: ${wide}`);
+    assert.match(wide, /\.learning-demo \.demo-window\s*\{[^}]*grid-row:\s*1 \/ span 2/, "the rows span the caption and the button");
+  });
+
   await check("home: the apps hub shows categories and app names, never a status, a date, verified wording or a link (design 9 item 2)", async () => {
     const hub = (html) => section(html, "apps");
     const nodes = (html) => [...hub(html).matchAll(/<li class="hub-node[^"]*" data-category="([^"]+)">([\s\S]*?)<\/li>/g)].map(([, category, inner]) => ({ category, inner }));
