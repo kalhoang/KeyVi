@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Sparkle feed. One stable URL that never moves (PRD-R73, PLT-R1101): https://{{host}}/appcast.xml
-  This is the initial, empty feed. scripts/publish-release rewrites it on Pa's Mac with signed items;
-  beta builds are items tagged <sparkle:channel>beta</sparkle:channel> in this same feed.
-  The build replaces {{AppName}} and {{host}} when copying it, so the file itself carries no brand literal.
--->
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
   <channel>
     <title>{{AppName}}</title>
     <link>https://{{host}}/appcast.xml</link>
     <description>Most recent updates</description>
     <language>en</language>
+    <item>
+      <title>KeyVi 1.0.0</title>
+      <pubDate>Tue, 17 Nov 2026 22:11:21 +0000</pubDate>
+      <sparkle:version>1000099</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://keyvi.kal.vn/release-notes/1.0.0/</sparkle:releaseNotesLink>
+      <sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>
+      <enclosure url="https://keyvi.kal.vn/download/keyvi-1.0.0.zip" length="8568943" type="application/octet-stream" sparkle:edSignature="e6rYVcCIF6aPl6osCg3yeC0V6W3DZDqA2L4jU/eYr4XnufUjh+prnxAm4Hhf4S9HiPn0D2E43fCMgiIDlbOMBA==" />
+    </item>
   </channel>
 </rss>
