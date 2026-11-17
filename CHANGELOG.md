@@ -10,7 +10,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-17
+## [1.0.0] - 2026-11-18
 
 - First public release of KeyVi: write Vietnamese (Telex or VNI) and English in the same sentence without switching. English words such as "file" and "server" stay as you typed them, whichever key ends the word, and words that can be either, such as as or á, follow the words around them.
 - Escape right after a word gives back the keys you typed, and a second Escape works as usual. KeyVi leaves Escape alone in terminals, code editors, games, remote desktop apps and launchers such as Spotlight, Raycast and Alfred.

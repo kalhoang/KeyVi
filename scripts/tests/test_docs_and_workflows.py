@@ -414,7 +414,7 @@ class FrontDoorBrandTests(unittest.TestCase):
 
     def test_both_readmes_state_the_current_facts(self):
         """The name is final (2026-11-13), the floor is macOS 12 (ADR 0315), the licences are decided (ADR 0006), and
-        1.0.0 of 2026-11-17 is the first public release (ADR 0507), so no pre-release status is left."""
+        1.0.0 of 2026-11-18 is the first public release (ADR 0507), so no pre-release status is left."""
         for rel, current, stale in (
             ("README.md", ("macOS 12 Monterey or later", "Apple silicon or Intel", "GNU General Public License",
                            "Mozilla Public License 2.0 (MPL-2.0)", "Config/Brand.xcconfig", "scripts/brand.env",
@@ -1284,7 +1284,7 @@ class ChangelogTests(unittest.TestCase):
 
     FILES = {"en": REPO / "CHANGELOG.md", "vi": REPO / "CHANGELOG.vi.md"}
     RELEASE = "1.0.0"
-    RELEASE_HEADING = "[1.0.0] - 2026-11-17"
+    RELEASE_HEADING = "[1.0.0] - 2026-11-18"
     RELEASE_FORM = re.compile(r"^\[(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?\] - \d{4}-\d{2}-\d{2}$")
 
     @classmethod

@@ -8,7 +8,7 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-17
+## [1.0.0] - 2026-11-18
 
 - Bản phát hành công khai đầu tiên của KeyVi: gõ tiếng Việt (Telex hoặc VNI) và tiếng Anh trong cùng một câu mà không cần chuyển chế độ. Từ tiếng Anh như "file" hay "server" giữ đúng như bạn gõ, dù từ kết thúc bằng phím nào, còn những từ có thể là cả hai, như as hay á, được chọn theo các từ xung quanh.
 - Nhấn Escape ngay sau một từ để lấy lại đúng các phím bạn đã gõ; nhấn thêm lần nữa thì Escape hoạt động như bình thường. KeyVi không dùng Escape trong cửa sổ dòng lệnh, trình soạn mã, trò chơi, ứng dụng điều khiển máy tính từ xa và các trình khởi chạy như Spotlight, Raycast và Alfred.

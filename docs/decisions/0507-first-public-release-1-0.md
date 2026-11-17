@@ -33,8 +33,9 @@ The state on 2026-11-17:
 1. **Pa's decision of 2026-11-17, verbatim:** "Bản v1.0.0 production trên web. App đã tạm ổn, không còn beta nữa."
    (English: "Version 1.0.0 goes to production on the website. The app is in good enough shape now; no more
    betas.") The first public release is **1.0.0**, build **1000099** (`scripts/build-number.sh 1.0.0`), on the stable
-   channel, dated 2026-11-17, published on the website (download page and appcast) and in Pa's Homebrew tap, the
-   repository `kalhoang/homebrew-tap` (`brew install --cask kalhoang/tap/{{app-slug}}`). Signing, notarisation,
+   channel, dated 2026-11-18 (built the day after the decision, once the escape fix of rule L4 was merged),
+   published on the website (download page and appcast) and in Pa's Homebrew tap, the repository
+   `kalhoang/homebrew-tap` (`brew install --cask kalhoang/tap/{{app-slug}}`). Signing, notarisation,
    the EdDSA signature, the GitHub Release, the tap and the site deployment run on Pa's Mac as the release runbook
    describes (sections 4 and 7).
 
