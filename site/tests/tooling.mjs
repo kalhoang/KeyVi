@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { request as httpRequest } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseHeaders } from "../lib/headers.mjs";
@@ -63,6 +63,26 @@ export async function runToolingChecks(check, fixtures) {
       assert.equal((await raw("/%2e%2e%2fconfig-no-analytics.json")).statusCode, 404, "an encoded-slash path stays inside the site");
     } finally {
       await preview.close();
+    }
+  });
+
+  await check("preview: a symlink in the served folder never reaches a file outside it", async () => {
+    const { startPreview } = await import(pathToFileURL(join(SITE_DIR, "preview.mjs")).href);
+    const outside = join(fallback, "outside-link.json");
+    const inside = join(fallback, "inside-link.css");
+    await symlink(join(fallback, "..", "config-no-analytics.json"), outside);
+    await symlink(join(fallback, "assets", "style.css"), inside);
+    const preview = await startPreview({ dir: fallback, port: 0 });
+    try {
+      const escaped = await fetch(`${preview.url}/outside-link.json`);
+      assert.equal(escaped.status, 404, "a link to a file outside the folder is refused");
+      assert.match(await escaped.text(), /<html lang="vi">/, "with the 404 page");
+      const kept = await fetch(`${preview.url}/inside-link.css`);
+      assert.equal(kept.status, 200, "a link that stays inside the folder is served");
+    } finally {
+      await preview.close();
+      await rm(outside, { force: true });
+      await rm(inside, { force: true });
     }
   });
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // A small stand-in for the browser, so site/test.mjs can run the DOM wiring of site/static/assets/home.js in Node: the
 // elements home.js queries (found by selector from a table, not parsed), a recording anime.js whose timelines the test
-// runs by hand, an IntersectionObserver the test triggers and a matchMedia that never asks for reduced motion. Only
-// what home.js uses is here; a call to anything else throws, so a new dependency shows up as a failing check.
+// runs by hand, an IntersectionObserver the test triggers and a matchMedia that asks for reduced motion only once the
+// test turns it on. Only what home.js uses is here; a call to anything else throws, so a new dependency shows up as a
+// failing check.
 
 const TEXT_NODE = 3;
 
@@ -148,23 +149,43 @@ export function fakeWindow(anime) {
     createTextNode: (data) => textNode(data),
   });
   class IntersectionObserver {
-    constructor(callback) {
+    constructor(callback, options = {}) {
       this.callback = callback;
+      this.options = options;
       observers.push(this);
     }
     observe(el) {
       this.el = el;
     }
   }
+  const reducedListeners = [];
+  const reduced = {
+    matches: false,
+    addEventListener: (type, listener) => reducedListeners.push(listener),
+  };
   const win = {
     document: doc,
     anime,
+    innerHeight: 800,
     IntersectionObserver,
-    matchMedia: () => ({ matches: false, addEventListener() {} }),
+    matchMedia: () => reduced,
     console: { error: (...args) => { throw new Error(`home.js reported an error: ${args.join(" ")}`); } },
+    /** The observers watching `el`, with the options home.js gave them. */
+    observersOf: (el) => observers.filter((observer) => observer.el === el),
     /** Tells every observer of `el` that it shows, with `ratio` of it on screen. */
     show(el, ratio = 1) {
-      observers.filter((observer) => observer.el === el).forEach((observer) => observer.callback([{ isIntersecting: ratio > 0, intersectionRatio: ratio }]));
+      const entry = { isIntersecting: ratio > 0, intersectionRatio: ratio, boundingClientRect: el.getBoundingClientRect() };
+      win.observersOf(el).forEach((observer) => observer.callback([entry]));
+    },
+    /** Hides or shows the tab, as the browser does: document.hidden, then visibilitychange. */
+    setHidden(hidden) {
+      doc.hidden = hidden;
+      doc.dispatch("visibilitychange");
+    },
+    /** The visitor turns on reduced motion while the page is open. */
+    reduceMotion() {
+      reduced.matches = true;
+      reducedListeners.forEach((listener) => listener({ type: "change", matches: true }));
     },
   };
   return win;
@@ -173,12 +194,13 @@ export function fakeWindow(anime) {
 /** A behaviour figure as lib/pages/home/behaviours.mjs renders it, with the given replay button attributes. */
 export function fakeBehaviour(demo, buttonAttributes) {
   const figure = fakeElement("figure", { "data-demo": demo.id, "data-demo-frames": JSON.stringify(demo) });
+  const demoWindow = fakeElement("div", { class: "demo-window" });
   const input = fakeElement("p", { "data-input": "" });
   const keys = fakeElement("p", { "data-keys": "" });
   const replay = fakeElement("button", { "data-replay": "", ...buttonAttributes });
   replay.textContent = buttonAttributes["data-label-replay"] ?? "";
-  figure.found = new Map([["[data-input]", input], ["[data-keys]", keys], ["[data-replay]", replay]]);
-  return { figure, input, keys, replay };
+  figure.found = new Map([[".demo-window", demoWindow], ["[data-input]", input], ["[data-keys]", keys], ["[data-replay]", replay]]);
+  return { figure, demoWindow, input, keys, replay };
 }
 
 /** The hero as lib/pages/home/hero.mjs renders it: one sent bubble per sentence inside [data-sent]. */

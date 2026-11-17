@@ -21,7 +21,13 @@
 /* The caret home.js puts at the end of a field while it types. It does not blink (WCAG 2.2.2), and its negative
    margin cancels its width, so the text wraps where the finished text does. */
 .caret { display: inline-block; width: 2px; height: 1.15em; margin-right: -2px; vertical-align: text-bottom; background: var(--green); }
-.keys { display: flex; justify-content: flex-end; gap: 0.3rem; min-width: 0; height: 2rem; margin: 0; overflow: hidden; }
+/* The strip keeps the newest keys at the right and clips the oldest at the left edge; the fade there (clear for the
+   first 0.75rem, opaque from 2rem) turns a cut keycap into a soft edge instead of a sliver. */
+.keys {
+  display: flex; justify-content: flex-end; gap: 0.3rem; min-width: 0; height: 2rem; margin: 0; overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0.75rem, #000 2rem);
+  mask-image: linear-gradient(to right, transparent 0.75rem, #000 2rem);
+}
 .keys .keycap { flex: none; min-width: 2rem; height: 2rem; padding: 0 0.5rem; font-size: 0.78rem; }
 
 /* 1. Hero: headline and download on the left, the chat window on the right from 1024 px. */

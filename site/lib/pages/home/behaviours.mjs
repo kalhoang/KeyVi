@@ -5,7 +5,9 @@
 // demo once when it scrolls into view and marks its figure data-motion-ready as the demo starts, which shows the button:
 // it reads data-label-stop while the demo plays, since the punctuation demo types for more than 5 s (design 4, WCAG
 // 2.2.2), and data-label-replay at rest. The button keeps its place in the flow until then (home.css, design 7.8) and
-// comes before the figcaption, which stays the last child of the figure (plan Task 6).
+// comes before the figcaption, which stays the last child of the figure (plan Task 6). The three buttons share their
+// label, so each is described by its figure's title; home.js hides the demo window from screen readers while it types
+// (design 7.7), so a half-typed sentence is never read.
 import { FEATURES_ANCHOR } from "../../layout.mjs";
 import { esc } from "../../util.mjs";
 import { demoById, framesAttr, keycapsHtml, viLang, wordsHtml } from "./markup.mjs";
@@ -13,6 +15,7 @@ import { demoById, framesAttr, keycapsHtml, viLang, wordsHtml } from "./markup.m
 function figure(kt, item, labels) {
   const { ctx, f, lang } = kt;
   const id = `behaviour-${item.id}`;
+  const titleId = `${id}-title`;
   const demo = demoById(ctx, id);
   const note = item.note ? `<p class="behaviour-note">${f(item.note)} <small class="req">${esc(item.noteReq)}</small></p>` : "";
   return `<figure class="behaviour" data-demo="${esc(id)}" data-demo-frames="${framesAttr(demo)}">
@@ -20,8 +23,8 @@ function figure(kt, item, labels) {
             <p class="demo-field" data-input${viLang(lang)}>${wordsHtml(demo)}</p>
             <p class="keys" data-keys aria-hidden="true">${keycapsHtml(demo)}</p>
           </div>
-          <button type="button" class="btn btn-ghost replay" data-replay data-label-replay="${esc(labels.replay)}" data-label-stop="${esc(labels.stop)}">${esc(labels.replay)}</button>
-          <figcaption><h3>${esc(item.title)}</h3><p>${f(item.body)}</p>${note}</figcaption>
+          <button type="button" class="btn btn-ghost replay" data-replay data-label-replay="${esc(labels.replay)}" data-label-stop="${esc(labels.stop)}" aria-describedby="${titleId}">${esc(labels.replay)}</button>
+          <figcaption><h3 id="${titleId}">${esc(item.title)}</h3><p>${f(item.body)}</p>${note}</figcaption>
         </figure>`;
 }
 

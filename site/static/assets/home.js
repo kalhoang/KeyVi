@@ -6,12 +6,15 @@
 //   the field follows each frame, the keys strip keeps the last eight keys, a tag pops in when an English word is
 //   committed, and the finished message shows as sent (its bubble, reserved in the layout) before the next sentence
 //   starts;
-// - each behaviour demo of section 2 plays once when it scrolls into view; its button shows as the demo starts, stops it
-//   while it plays (WCAG 2.2.2: the punctuation demo types for more than five seconds) and replays it at rest;
+// - each behaviour demo of section 2 plays once when it scrolls into view (60 % of it, or most of what a short viewport
+//   can show); its button shows as the demo starts, stops it while it plays (WCAG 2.2.2: the punctuation demo types for
+//   more than five seconds) and replays it at rest; while it types, its window is hidden from screen readers (design
+//   7.7), so a half-typed sentence is never read;
 // - the hub threads of section 4 draw in when the hub comes into view, and a dot travels along each thread, for less
 //   than five seconds per visit (WCAG 2.2.2: the hub has no pause control).
 // Rules: nothing autoplays under prefers-reduced-motion and the final states stay; motion pauses off-screen and while
-// the tab is hidden; the hero's button pauses and resumes it; a control shows when its owner gets data-motion-ready
+// the tab is hidden; the hero's button pauses and resumes it and its label says what pressing does next (a plain action
+// button, no pressed state); a control shows when its owner gets data-motion-ready
 // (home.css), so showing it moves nothing (design 7.8). Under the production CSP (design 4) the DOM is written with
 // createElement, textContent and replaceChildren only, and styles change only through element.style (anime.js).
 // The pure functions are SiteMotion, on window and for CommonJS (site/test.mjs loads them with createRequire).
@@ -38,7 +41,12 @@
   // Hero rhythm in ms: the static first sentence stays readable before it is sent; then each sentence is typed, held,
   // sent, and the next one starts.
   const HERO = Object.freeze({ firstHold: 2200, startGap: 300, endHold: 1500, afterSend: 1100 });
-  const BEHAVIOUR = Object.freeze({ startRatio: 0.6, startGap: 400 });
+  // A behaviour demo starts once 60 % of it shows, or, in a viewport too short for that, once 80 % of what the viewport
+  // can show of it does (behaviourStartRatio).
+  const BEHAVIOUR = Object.freeze({ startRatio: 0.6, viewportShare: 0.8, startGap: 400 });
+  // The ratios the behaviour observer reports: each is at most 1.2 times the next smaller one, so the window between a
+  // start ratio and the most of the figure that can show (1.25 times the start ratio) always holds one.
+  const BEHAVIOUR_THRESHOLDS = Object.freeze(geometricThresholds(BEHAVIOUR.startRatio, 1.2, 0.01));
   // One visit to the hub: threads draw in, then a dot runs each thread twice; the last dot lands after about 3.5 s.
   const HUB = Object.freeze({ startRatio: 0.3, draw: 600, drawStagger: 80, dotDelay: 700, dot: 600, dotStagger: 150, dotPause: 400 });
   // UI transitions stay within 200 to 600 ms (design 7.2).
@@ -82,6 +90,20 @@
    * of the plan's interface (keyLabel(key, lang)) changes nothing and is not read. */
   function keyLabel(key) {
     return KEY_LABELS.has(key) ? KEY_LABELS.get(key) : key;
+  }
+
+  /** The share of a behaviour figure that starts its demo: 60 %, or less when the viewport cannot show that much of a
+   * tall figure, so it still starts once mostly visible (80 % of the most that can show). */
+  function behaviourStartRatio(viewportHeight, figureHeight) {
+    if (!(figureHeight > 0) || !(viewportHeight > 0)) return BEHAVIOUR.startRatio;
+    return Math.min(BEHAVIOUR.startRatio, (BEHAVIOUR.viewportShare * viewportHeight) / figureHeight);
+  }
+
+  /** 0 and the ratios from `top` down, each `step` times smaller than the one before, while at least `floor`. */
+  function geometricThresholds(top, step, floor) {
+    const ratios = [];
+    for (let ratio = top; ratio >= floor; ratio /= step) ratios.push(ratio);
+    return [0].concat(ratios.reverse());
   }
 
   /** Motion runs only for a visitor who did not ask for reduced motion, in a shown tab, on a part that is on screen. */
@@ -265,11 +287,12 @@
     };
   }
 
-  /** Reports whether `el` is on screen (any part) and how much of it shows. */
-  function watch(ctx, el, ratio, onChange) {
+  /** Reports whether `el` is on screen (any part), how much of it shows and the observer's entry, whenever the share
+   * that shows crosses one of `thresholds`. */
+  function watch(ctx, el, thresholds, onChange) {
     const observer = new ctx.win.IntersectionObserver((entries) => {
-      entries.forEach((entry) => onChange(entry.isIntersecting, entry.intersectionRatio));
-    }, { threshold: ratio > 0 ? [0, ratio] : [0] });
+      entries.forEach((entry) => onChange(entry.isIntersecting, entry.intersectionRatio, entry));
+    }, { threshold: thresholds });
     observer.observe(el);
   }
 
@@ -371,7 +394,6 @@
   function wireToggle(hero, toggle, env) {
     toggle.addEventListener("click", () => {
       hero.userPaused = !hero.userPaused;
-      toggle.setAttribute("aria-pressed", String(hero.userPaused));
       toggle.textContent = toggle.getAttribute(hero.userPaused ? "data-label-play" : "data-label-pause");
       heroUpdate(hero, env);
     });
@@ -403,7 +425,7 @@
     };
     const toggle = section.querySelector("[data-motion-toggle]");
     if (toggle) wireToggle(hero, toggle, ctx.env);
-    watch(ctx, windowEl, 0, (isIntersecting) => {
+    watch(ctx, windowEl, [0], (isIntersecting) => {
       hero.visible = isIntersecting;
       heroUpdate(hero, ctx.env);
     });
@@ -421,12 +443,13 @@
     if (label) demo.control.textContent = label;
   }
 
-  /** The finished demo as on the static page; the field gets its own height back. */
+  /** The finished demo as on the static page; the field gets its own height back and screen readers read it again. */
   function behaviourRest(demo) {
     demo.playing = false;
     showFinal(demo.view, demo.frames);
     demo.view.input.style.minHeight = "";
     demo.view.input.removeAttribute("aria-busy");
+    if (demo.window) demo.window.removeAttribute("aria-hidden");
     behaviourLabel(demo);
   }
 
@@ -441,6 +464,8 @@
     // height, since offsetHeight rounds.
     view.input.style.minHeight = `${view.input.getBoundingClientRect().height}px`;
     view.input.setAttribute("aria-busy", "true");
+    // A screen reader never reads the half-typed sentence; the figcaption stays readable (design 7.7).
+    if (demo.window) demo.window.setAttribute("aria-hidden", "true");
     view.input.replaceChildren(view.caret);
     view.keys.replaceChildren();
     player.timeline({ onComplete: () => behaviourEnd(demo) }, (timeline) => {
@@ -464,16 +489,15 @@
     behaviourRest(demo);
   }
 
+  /** The player always mirrors the environment, playing or at rest, so a demo started later (Replay) never runs in a
+   * hidden tab or off screen; the first visit that shows enough of the figure starts it. */
   function behaviourUpdate(demo, env) {
     if (demo.stopped) return;
-    const may = mayRun(env, demo.visible);
-    if (demo.playing) {
-      if (may) demo.player.resume();
-      else demo.player.pause();
+    if (!mayRun(env, demo.visible)) {
+      demo.player.pause();
       return;
     }
-    if (demo.played || !may || demo.ratio < BEHAVIOUR.startRatio - RATIO_SLACK) return;
-    behaviourPlay(demo);
+    if (!demo.playing && !demo.played && demo.ratio >= demo.startRatio - RATIO_SLACK) behaviourPlay(demo);
     demo.player.resume();
   }
 
@@ -487,7 +511,7 @@
     demo.player.stop();
     behaviourRest(demo);
     behaviourPlay(demo);
-    if (mayRun(env, demo.visible)) demo.player.resume();
+    behaviourUpdate(demo, env);
   }
 
   function behaviourSettle(demo) {
@@ -501,20 +525,23 @@
     const demo = {
       figure,
       control: figure.querySelector("[data-replay]"),
+      window: figure.querySelector(".demo-window"),
       frames: readFrames(figure).frames,
       view: { doc: ctx.doc, input: figure.querySelector("[data-input]"), keys: figure.querySelector("[data-keys]"), caret: caretElement(ctx.doc) },
       player: createPlayer(ctx.anime),
       cycle: 0,
       visible: false,
       ratio: 0,
+      startRatio: BEHAVIOUR.startRatio,
       played: false,
       playing: false,
       stopped: false,
     };
     if (demo.control) demo.control.addEventListener("click", () => behaviourPress(demo, ctx.env));
-    watch(ctx, figure, BEHAVIOUR.startRatio, (isIntersecting, ratio) => {
+    watch(ctx, figure, BEHAVIOUR_THRESHOLDS, (isIntersecting, ratio, entry) => {
       demo.visible = isIntersecting;
       demo.ratio = ratio;
+      demo.startRatio = behaviourStartRatio(ctx.win.innerHeight, entry.boundingClientRect.height);
       behaviourUpdate(demo, ctx.env);
     });
     return { update: (env) => behaviourUpdate(demo, env), settle: () => behaviourSettle(demo) };
@@ -599,7 +626,7 @@
       stopped: false,
     };
     // Below 900 px the drawing is not displayed (home.css), so it never comes into view and stays still.
-    watch(ctx, svg, HUB.startRatio, (isIntersecting, ratio) => {
+    watch(ctx, svg, [0, HUB.startRatio], (isIntersecting, ratio) => {
       if (isIntersecting && !hub.visible) hub.visits += 1;
       hub.visible = isIntersecting;
       hub.ratio = ratio;
@@ -643,5 +670,5 @@
     });
   }
 
-  return Object.freeze({ schedule, keyLabel, shouldAnimate, tagsFor, fieldPieces, boot });
+  return Object.freeze({ schedule, keyLabel, shouldAnimate, tagsFor, fieldPieces, behaviourStartRatio, boot });
 });

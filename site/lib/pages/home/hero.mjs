@@ -54,12 +54,17 @@ function scene(kt, demos) {
         </div>`;
 }
 
+// The visually hidden caption of the demo, which also describes the pause button.
+const CAPTION_ID = "hero-caption";
+
 /** The pause and play control (WCAG 2.2.2). It keeps its place in the flow, invisible (home.css) until home.js animates
- * and marks the hero data-motion-ready, so it never shows where nothing moves and showing it shifts nothing (design 7.8);
- * the data attributes carry both labels for its toggle. */
+ * and marks the hero data-motion-ready, so it never shows where nothing moves and showing it shifts nothing (design 7.8).
+ * A plain action button: home.js swaps its label between the two in the data attributes, so the label always says what
+ * pressing does, and it has no pressed state that could contradict the label. The hidden caption describes it, so it
+ * also says what it pauses. */
 function motionToggle({ pause, play }) {
   const labels = `data-label-pause="${esc(pause)}" data-label-play="${esc(play)}"`;
-  return `<button type="button" class="btn btn-ghost motion-toggle" data-motion-toggle aria-pressed="false" ${labels}>${esc(pause)}</button>`;
+  return `<button type="button" class="btn btn-ghost motion-toggle" data-motion-toggle aria-describedby="${CAPTION_ID}" ${labels}>${esc(pause)}</button>`;
 }
 
 export function renderHero(kt) {
@@ -77,7 +82,7 @@ export function renderHero(kt) {
       <div class="hero-demo">
         ${scene(kt, demos)}
         ${motionToggle(h.hero)}
-        <div class="visually-hidden"><p>${esc(h.hero.caption)}</p><ul${viLang(lang)}>${sentences}</ul></div>
+        <div class="visually-hidden"><p id="${CAPTION_ID}">${esc(h.hero.caption)}</p><ul${viLang(lang)}>${sentences}</ul></div>
       </div>
     </section>`;
 }

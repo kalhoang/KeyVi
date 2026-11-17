@@ -8,8 +8,11 @@ import { gzipSync } from "node:zlib";
 import { englishWords, keyLabel, loadDemos, wordsOf } from "../lib/demos.mjs";
 import { LANGS } from "../lib/routes.mjs";
 import { esc } from "../lib/util.mjs";
-import { fakeAnime, fakeBehaviour, fakeHero, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
-import { SITE_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+import { fakeAnime, fakeBehaviour, fakeElement, fakeHero, fakeWindow, textOf as fakeTextOf } from "../testing/fake-home.mjs";
+import { SITE_DIR, ROOT_DIR, ASSETS_DIR, siteMotion, walk, attrs, section, unescapeHtml, framesAttr, heroTag } from "./helpers.mjs";
+
+// deploy/site/nginx.conf compresses at this level; the 60 KB budget of design 7.8 is measured at it.
+const GZIP_LEVEL = 6;
 
 /** Motion checks (plan Task 6, design 7.8). */
 export async function runMotionChecks(check, fixtures) {
@@ -133,6 +136,11 @@ export async function runMotionChecks(check, fixtures) {
       assert.match(cell, /<p class="tags" data-tags\b/, `${label}: the live tags share the sizers' cell`);
       const toggle = hero.match(/<button\b[^>]*\sdata-motion-toggle\b[^>]*>/)?.[0] ?? "";
       assert.deepEqual([attrs(toggle, "data-label-pause")[0], attrs(toggle, "data-label-play")[0]], [esc(copy.pause), esc(copy.play)], `${label}: the toggle carries both labels`);
+      // A plain action button: its label says what pressing does, so a pressed state would contradict it (WCAG 4.1.2);
+      // it is described by the hidden caption, so it says what it pauses.
+      assert.ok(!/\saria-pressed=/.test(toggle), `${label}: the pause button has no aria-pressed`);
+      const describedBy = attrs(toggle, "aria-describedby")[0] ?? "";
+      assert.match(hero, new RegExp(`<div class="visually-hidden"><p id="${describedBy}">${esc(copy.caption)}</p>`), `${label}: the pause button is described by the hero caption`);
       // The tag template around the word, so a tag home.js writes reads like a static one.
       const tags = hero.match(/<p class="tags" data-tags[^>]*>/)?.[0] ?? "";
       const [before, after] = ["data-tag-before", "data-tag-after"].map((name) => unescapeHtml(attrs(tags, name)[0] ?? "\u0000"));
@@ -143,6 +151,11 @@ export async function runMotionChecks(check, fixtures) {
         const button = figure.match(/<button\b[^>]*\sdata-replay\b[^>]*>/)?.[0] ?? "";
         const behaviours = homeCopy[lang].behaviours;
         assert.deepEqual([attrs(button, "data-label-replay")[0], attrs(button, "data-label-stop")[0]], [esc(behaviours.replay), esc(behaviours.stop)], `${label}: ${figure.slice(0, 60)} replay and stop labels`);
+        // The three buttons share their label; each is described by its figure's title, so they read apart.
+        const titleId = figure.match(/<h3 id="([^"]+)">/)?.[1];
+        assert.ok(titleId && attrs(button, "aria-describedby")[0] === titleId, `${label}: ${figure.slice(0, 60)} the button is described by its title`);
+        // home.js hides the demo window from screen readers while it types (design 7.7).
+        assert.match(figure, /<div class="demo-window">/, `${label}: ${figure.slice(0, 60)} the demo window`);
       }
       assert.match(section(html, "apps"), /<svg class="hub-threads"[^>]*>(?:<path data-thread d="[^"]+"\/>){7}<\/svg>/, `${label}: the hub threads`);
     }
@@ -174,9 +187,12 @@ export async function runMotionChecks(check, fixtures) {
       assert.equal(parts.replay.textContent, "Stop", `${id}: and it reads Stop while the demo plays`);
       anime.timelines[0].run(2);
       assert.notEqual(parts.input.children.map(fakeTextOf).join(""), final, `${id}: typing`);
+      // Design 7.7: a screen reader never reads the half-typed sentence; the figcaption stays readable.
+      assert.equal(parts.demoWindow.getAttribute("aria-hidden"), "true", `${id}: the demo window is hidden from screen readers while it types`);
       parts.replay.dispatch("click");
       assert.ok(anime.timelines[0].cancelled, `${id}: Stop cancels the typing`);
       assert.equal(parts.input.children.map(fakeTextOf).join(""), final, `${id}: Stop leaves the finished text`);
+      assert.ok(!parts.demoWindow.hasAttribute("aria-hidden"), `${id}: the finished text is readable again`);
       assert.equal(parts.replay.textContent, "Replay", `${id}: then the button replays`);
       win.show(parts.figure, 0);
       win.show(parts.figure, 1);
@@ -184,22 +200,101 @@ export async function runMotionChecks(check, fixtures) {
       parts.replay.dispatch("click");
       assert.equal(anime.timelines.length, 2, `${id}: Replay plays it again`);
       assert.equal(parts.replay.textContent, "Stop", `${id}: Stop while it replays`);
+      assert.equal(parts.demoWindow.getAttribute("aria-hidden"), "true", `${id}: hidden again while it replays`);
       anime.timelines[1].run();
       assert.equal(parts.input.children.map(fakeTextOf).join(""), final, `${id}: ends on the finished text`);
+      assert.ok(!parts.demoWindow.hasAttribute("aria-hidden"), `${id}: readable once it rests`);
       assert.equal(parts.replay.textContent, "Replay", `${id}: Replay once it has played`);
       assert.ok(parts.figure.hasAttribute("data-motion-ready"), `${id}: the control stays`);
     }
   });
 
+  await check("motion: Replay in a hidden tab waits until the tab shows again (design 7.2)", () => {
+    const demo = { id: "behaviour-revision", ...frames.demos["behaviour-revision"] };
+    const parts = fakeBehaviour(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    win.show(parts.figure, 1);
+    anime.timelines[0].run();
+    assert.equal(parts.replay.textContent, "Replay", "the demo played and rests");
+    win.setHidden(true);
+    parts.replay.dispatch("click");
+    assert.equal(anime.timelines.length, 2, "Replay makes a new timeline");
+    assert.equal(anime.timelines[1].playing, false, "it does not play while the tab is hidden");
+    win.setHidden(false);
+    assert.equal(anime.timelines[1].playing, true, "it plays once the tab shows again");
+    win.show(parts.figure, 0);
+    assert.equal(anime.timelines[1].playing, false, "and pauses off screen");
+  });
+
+  await check("motion: a behaviour demo taller than the viewport still starts once mostly visible", () => {
+    const { behaviourStartRatio } = siteMotion();
+    assert.equal(behaviourStartRatio(800, 300), 0.6, "a figure that fits starts at 60 % visible");
+    assert.equal(behaviourStartRatio(800, 0), 0.6, "an unmeasured figure keeps 60 %");
+    const demo = { id: "behaviour-escape", ...frames.demos["behaviour-escape"] };
+    const parts = fakeBehaviour(demo, { "data-label-replay": "Replay", "data-label-stop": "Stop" });
+    // 800 px of viewport over a 2000 px figure: at most 40 % of it ever shows, so it starts at 0.8 * 0.4 = 32 %.
+    parts.figure.getBoundingClientRect = () => ({ height: 2000, width: 300, top: 0, left: 0 });
+    const { anime, win } = bootFake((w) => w.document.foundAll.set("figure[data-demo][data-demo-frames]", [parts.figure]));
+    const thresholds = win.observersOf(parts.figure).flatMap((observer) => observer.options.threshold ?? []);
+    assert.ok(thresholds.some((t) => t >= 0.32 && t <= 0.4), `the observer reports a ratio between 32 % and 40 %: ${thresholds.join(", ")}`);
+    win.show(parts.figure, 0.3);
+    assert.equal(anime.timelines.length, 0, "not yet at 30 %");
+    win.show(parts.figure, 0.35);
+    assert.equal(anime.timelines.length, 1, "starts at 35 % of a figure that never shows more than 40 %");
+    assert.equal(anime.timelines[0].playing, true, "and plays");
+  });
+
+  await check("motion: the hero pause button swaps its label, has no pressed state and names what it pauses", () => {
+    const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
+    const parts = fakeHero(demos);
+    const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
+    win.show(parts.windowEl, 1);
+    assert.equal(anime.timelines.at(-1).playing, true, "the hero plays");
+    parts.toggle.dispatch("click");
+    assert.equal(parts.toggle.textContent, "Play", "paused: the label says what pressing does next");
+    assert.ok(!parts.toggle.hasAttribute("aria-pressed"), "no pressed state to contradict the label");
+    assert.equal(anime.timelines.at(-1).playing, false, "the hero pauses");
+    parts.toggle.dispatch("click");
+    assert.equal(parts.toggle.textContent, "Pause", "playing again: Pause");
+    assert.ok(!parts.toggle.hasAttribute("aria-pressed"), "still no pressed state");
+    assert.equal(anime.timelines.at(-1).playing, true, "the hero resumes");
+  });
+
+  await check("motion: reduced motion turned on mid-sentence settles the hero on the finished sentence (design 7.2)", () => {
+    const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
+    const parts = fakeHero(demos);
+    const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
+    win.show(parts.windowEl, 1);
+    anime.timelines.at(-1).run();
+    const typing = anime.timelines.at(-1);
+    typing.run(Math.floor(typing.calls.length / 2));
+    const live = anime.animations.filter((animation) => !animation.completed);
+    assert.ok(live.length > 0, "animations are under way mid-sentence");
+    win.reduceMotion();
+    assert.ok(typing.cancelled, "the typing stops");
+    assert.ok(live.every((animation) => animation.completed), "stop() completes every live animation, so each element ends in its final state");
+    const second = demos[1];
+    assert.equal(parts.input.children.map(fakeTextOf).join(""), second.text.replace(/\n+$/, ""), "the field shows the finished sentence");
+    assert.deepEqual(parts.tags.children.map(fakeTextOf), englishWords(second).map((word) => `${word}: kept`), "the tags name the sentence's English words");
+    assert.ok(!parts.section.hasAttribute("data-motion-ready"), "the pause button goes, nothing moves any more");
+  });
+
   await check("motion: sending a hero message shows a reserved bubble and moves nothing (design 7.8)", async () => {
     const demos = ["hero-chat", "hero-email", "hero-note"].map((id) => ({ id, ...frames.demos[id] }));
     const parts = fakeHero(demos);
+    // The static tags of the first sentence, as lib/pages/home/hero.mjs renders them.
+    const staticTags = englishWords(demos[0]).map((word) => Object.assign(fakeElement("span", { class: "tag" }), { textContent: `${word}: kept` }));
+    parts.tags.append(...staticTags);
     const { anime, win } = bootFake((w) => w.document.found.set("[data-hero]", parts.windowEl));
     win.show(parts.windowEl, 1);
     const shown = () => parts.bubbles.map((bubble) => bubble.style.visibility === "visible");
     assert.deepEqual(shown(), [false, false, false], "nothing sent before the first send");
     anime.timelines.at(-1).run();
     assert.deepEqual(shown(), [true, false, false], "the first sentence is sent");
+    assert.ok(staticTags.length > 0 && staticTags.every((tag) => tag.parent === parts.tags), "the first sentence's tags fade out first");
+    anime.animations.filter((animation) => !animation.completed).forEach((animation) => animation.complete());
+    assert.ok(staticTags.every((tag) => tag.parent === null), "the faded tags are removed once their fade completes");
+    assert.deepEqual(parts.tags.children, [], "the next sentence starts with no tag");
     anime.timelines.at(-1).run();
     anime.timelines.at(-1).run();
     assert.deepEqual(shown(), [false, true, false], "the second sentence replaces it in the same place");
@@ -214,15 +309,27 @@ export async function runMotionChecks(check, fixtures) {
     assert.match(css, /\.tags-sizer\s*\{[^}]*visibility:\s*hidden;/, "the sizers reserve space without showing");
   });
 
+  await check("motion: the keys strip fades its clipped left edge, so a cut keycap never shows as a sliver", async () => {
+    const css = (await readFile(join(ASSETS_DIR, "home.css"), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+    const keys = css.match(/(?:^|\})\s*\.keys\s*\{([^}]*)\}/)?.[1] ?? "";
+    assert.match(keys, /justify-content:\s*flex-end;[^]*overflow:\s*hidden;/, "the strip keeps the newest keys and clips the oldest at the left");
+    for (const property of ["-webkit-mask-image", "mask-image"]) {
+      assert.match(keys, new RegExp(`(?:^|;)\\s*${property}:\\s*linear-gradient\\(to right, transparent( [0-9.]+rem)?, #000 [0-9.]+rem\\);`), `.keys ${property}: a fade from the left edge`);
+    }
+  });
+
   await check("motion: home page JavaScript is at most 60 KB gzipped (design 7.8)", async () => {
     // The fallback build, whose config has no analytics; the Umami tag of site/config.json is not part of the page.
+    // Measured at the gzip_comp_level of deploy/site/nginx.conf, the level the container serves.
+    const nginx = await readFile(join(ROOT_DIR, "deploy", "site", "nginx.conf"), "utf8");
+    assert.match(nginx, new RegExp(`^\\s*gzip_comp_level ${GZIP_LEVEL};`, "m"), `nginx compresses at level ${GZIP_LEVEL}`);
     for (const page of ["index.html", join("en", "index.html")]) {
       const html = await readFile(join(fallback, page), "utf8");
       const tags = html.match(/<script\b[^>]*>/g) ?? [];
       const sources = tags.map((tag) => attrs(tag, "src")[0] ?? "");
       assert.deepEqual(sources.map((src) => src.split("?")[0]), ["/assets/vendor/anime.umd.min.js", "/assets/home.js"], `${page}: anime.js, then home.js`);
       for (const tag of tags) assert.match(tag, /\sdefer[\s>]/, `${page}: ${tag} is deferred`);
-      const sizes = await Promise.all(sources.map(async (src) => gzipSync(await readFile(join(fallback, src.split("?")[0])), { level: 9 }).length));
+      const sizes = await Promise.all(sources.map(async (src) => gzipSync(await readFile(join(fallback, src.split("?")[0])), { level: GZIP_LEVEL }).length));
       const total = sizes.reduce((sum, size) => sum + size, 0);
       assert.ok(total <= 61440, `${page}: ${total} bytes gzipped (${sizes.join(" + ")})`);
     }

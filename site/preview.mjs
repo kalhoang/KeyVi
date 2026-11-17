@@ -5,9 +5,10 @@
 // A static file server bound to 127.0.0.1 only. Every response carries the headers that dist/_headers gives its path
 // (lib/headers.mjs reads the file deploy/site turns into the container's nginx configuration, ADR 0602), so a browser
 // sees the production CSP. As in the container: a folder without its trailing slash redirects relatively, a missing
-// file gets /404.html with that page's headers, and a Content-Type of _headers replaces the default one. Local use
-// only: GET and HEAD, no TLS, no compression. No dependencies.
-import { readFile, stat } from "node:fs/promises";
+// file gets /404.html with that page's headers, and a Content-Type of _headers replaces the default one. A path or a
+// symbolic link that leads outside the folder gets the 404 page. Local use only: GET and HEAD, no TLS, no
+// compression. No dependencies.
+import { readFile, realpath, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,18 +41,25 @@ function responseHeaders(rules, urlPath, file) {
   return headers;
 }
 
-/** The file a decoded URL path names inside `root`: `{ file }`, `{ redirect: true }` for a folder without its slash,
- * or `{}` when there is none (a path that leaves `root` included). */
+/** Whether `file`, its symbolic links followed, is `root` (a real path) or inside it. */
+async function within(root, file) {
+  const real = await realpath(file).catch(() => null);
+  return real !== null && (real === root || real.startsWith(root + sep));
+}
+
+/** The file a decoded URL path names inside `root` (a real path): `{ file }`, `{ redirect: true }` for a folder without
+ * its slash, or `{}` when there is none (a path that leaves `root`, or a link inside it to anything outside, included). */
 async function resolveTarget(root, path) {
   if (!path.startsWith("/") || path.includes("\0")) return {};
   const full = resolve(root, `.${path}`);
   if (full !== root && !full.startsWith(root + sep)) return {};
   const info = await stat(full).catch(() => null);
-  if (info?.isFile()) return { file: full };
-  if (!info?.isDirectory()) return {};
+  if (!info || !(await within(root, full))) return {};
+  if (info.isFile()) return { file: full };
+  if (!info.isDirectory()) return {};
   if (!path.endsWith("/")) return { redirect: true };
   const index = join(full, "index.html");
-  return (await stat(index).catch(() => null))?.isFile() ? { file: index } : {};
+  return (await stat(index).catch(() => null))?.isFile() && (await within(root, index)) ? { file: index } : {};
 }
 
 async function send(req, res, status, headers, file) {
@@ -103,8 +111,8 @@ async function loadRules(root) {
  *   function that also ends idle keep-alive connections
  */
 export async function startPreview({ dir = DEFAULT_DIR, port = DEFAULT_PORT } = {}) {
-  const root = resolve(dir);
-  const rules = await loadRules(root);
+  const rules = await loadRules(resolve(dir));
+  const root = await realpath(resolve(dir));
   const server = createServer((req, res) => {
     respond(root, rules, req, res).catch((error) => {
       console.error(`preview: ${req.method} ${req.url}: ${error.message}`);
