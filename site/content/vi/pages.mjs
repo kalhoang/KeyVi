@@ -26,6 +26,7 @@ export const home = {
   behaviours: {
     heading: "Một câu, hai thứ tiếng",
     intro: "Bạn gõ tiếng Việt như bình thường. Từ tiếng Anh tự giữ nguyên, nên bạn không phải dừng lại để chuyển chế độ.",
+    replay: "Xem lại",
     items: [
       {
         id: "punctuation",
@@ -100,7 +101,7 @@ export const home = {
     heading: "Chạy trong app bạn dùng hằng ngày",
     intro: "Trình duyệt, ứng dụng trò chuyện, văn phòng, ghi chú, Spotlight, Terminal và trình soạn mã. Danh sách tương thích ghi rõ tình trạng của từng ứng dụng.",
     categories: { browser: "Trình duyệt", chat: "Trò chuyện", office: "Văn phòng", notes: "Ghi chú", launcher: "Gọi nhanh", terminal: "Terminal", developer: "Soạn mã" },
-    verifiedOn: "kiểm tra {{date}}",
+    verifiedOn: "kiểm tra {{dateHtml}}",
     link: "Xem danh sách ứng dụng tương thích",
     secureInput: {
       title: "Khi macOS chặn mọi bộ gõ",

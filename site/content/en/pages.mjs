@@ -22,7 +22,8 @@ export const home = {
   },
   behaviours: {
     heading: "One sentence, two languages",
-    intro: "A Vietnamese keyboard turns some letters into marks: in Telex, a letter after a vowel can add a tone and a doubled vowel adds a circumflex, so English words would come out with marks they should not have. {{AppNameTM}} recognises English words and leaves them exactly as you typed them, while the Vietnamese words around them get their marks.",
+    intro: "A Vietnamese keyboard turns some letters into marks: in Telex, a letter after a vowel can add a tone and a doubled vowel adds a circumflex, so English words would come out with marks they should not have. {{AppNameTM}} recognizes English words and leaves them exactly as you typed them, while the Vietnamese words around them get their marks.",
+    replay: "Replay",
     items: [
       {
         id: "punctuation",
@@ -96,7 +97,7 @@ export const home = {
     heading: "Works in the apps you use every day",
     intro: "Browsers, chat, office apps, notes, Spotlight, terminals and code editors. The compatibility list shows the status of each app.",
     categories: { browser: "Browsers", chat: "Chat", office: "Office", notes: "Notes", launcher: "Launchers", terminal: "Terminals", developer: "Code editors" },
-    verifiedOn: "verified {{date}}",
+    verifiedOn: "verified {{dateHtml}}",
     link: "See the compatibility list",
     secureInput: {
       title: "When macOS blocks every input method",
