@@ -2,7 +2,7 @@
 
 Owner: Pa. Specification: PRD-R73 to PRD-R76, PLT-R1101, QA-R38, QA-R54. Decisions: [ADR 0601](../decisions/0601-static-site-generator.md) (generator), [ADR 0602](../decisions/0602-site-hosting-kalera-swarm.md) (this hosting). Pa's answers of 2026-11-13: S9 and Q11 (Kalera Swarm), Q7 (cookieless analytics), Q10 (updates and DMGs on the site host only).
 
-The website, the Sparkle appcast, the release-notes pages, the update archives and the DMGs are served by one container image, `ghcr.io/<owner>/{{app-slug}}-site`, running as two replicas on the Kalera Docker Swarm (Portainer environment `F3D`, id 7) behind the shared Traefik (`traefik2` stack, network `traefik_public`, TLS through the Cloudflare DNS challenge). The host name is the site host, `APP_SITE_HOST` in `scripts/brand.env` (`{{app-slug}}.kal.vn`). Images are built and deployed by `.github/workflows/site-image.yml` from the branch `prod` only, never from `main` (Kalera rule). Until the first public release the deployed site is a preview: `SITE_STRICT=false`, so VERIFY badges stay visible and every response carries `X-Robots-Tag: noindex`.
+The website, the Sparkle appcast, the release-notes pages, the update archives and the DMGs are served by one container image, `ghcr.io/<owner>/{{app-slug}}-site`, running as two replicas on the Kalera Docker Swarm (Portainer environment `F3D`, id 7) behind the shared Traefik (`traefik2` stack, network `traefik_public`, TLS through the Cloudflare DNS challenge). The host name is the site host, `APP_SITE_HOST` in `scripts/brand.env` (`{{app-slug}}.kal.vn`). Images are built and deployed by `.github/workflows/site-image.yml` from the branch `prod` only, never from `main` (Kalera rule). Until the first public release (1.0.0, section 8) the deployed site is a preview: `SITE_STRICT=false`, so the build accepts VERIFY badges and placeholders and every response carries `X-Robots-Tag: noindex`.
 
 Brand values never appear in the stack file or the workflow. `deploy/site/stack-env.sh` prints them from `scripts/brand.env`:
 
@@ -12,7 +12,7 @@ deploy/site/stack-env.sh --owner <github owner>    # SITE_HOST, SITE_SLUG, IMAGE
 
 ## 0. Current deployment (2026-11-14)
 
-The preview is live at the site host. State on 2026-11-15, after the repository became public, so the next maintainer does not redo it:
+The preview is live at the site host. State on 2026-11-15, after the repository became public, so the next maintainer does not redo it, with the release gate of 2026-11-17 (Pa: 1.0.0 is the first production release on the website, no more betas):
 
 | Item | State |
 |---|---|
@@ -22,6 +22,8 @@ The preview is live at the site host. State on 2026-11-15, after the repository 
 | Variables and secrets | Repository variable `SITE_STRICT=false`; `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod`. Still to do by Pa on github.com, because neither value can be copied from the earlier repository: add the environment secret `PORTAINER_WEBHOOK_URL` (the service webhook from Portainer), and in the settings of the GHCR package `{{app-slug}}-site` under "Manage Actions access" give this repository write access; then `gh workflow enable "Site image"` |
 | Portainer | Stack `{{app-slug}}-site`, id 73, environment 7 (Swarm). Stack variables: `SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER=kalhoang`, `IMAGE_NAME`, `IMAGE_TAG=prod`. Service `{{app-slug}}-site_site`, 2 replicas |
 | Redeploy | A push to `prod` runs `site-image.yml`, which builds and pushes the image and calls the service webhook; verified end to end on 2026-11-14 |
+| Release gate | The site content passes `node site/build.mjs --strict` (branch `release/w21s-site`, 2026-11-17): no VERIFY badge is left, `site/config.json` names the tap `kalhoang/tap` and takes the repository from `APP_REPOSITORY_URL` of `scripts/brand.env` (an empty or missing `githubRepo` means that one), `sponsorsUrl` is empty (no sponsor card, not a placeholder). The check `release gate` of `node site/test.mjs` builds the shipped config strictly with no `site/data/releases.json` and with a 1.0.0 entry shaped as `scripts/publish-release` writes it. The deployed site is still the preview: `SITE_STRICT=false` and `noindex` stay until section 8 is done |
+| 1.0.0 | Not published: no `site/data/releases.json`, no GitHub Release `v1.0.0`, the website shows "no release yet". Section 8 lists what the release needs |
 
 ## 1. What is where
 
@@ -132,13 +134,27 @@ The website counts page views with Umami, self-hosted on the Kalera Swarm at `ht
 3. To stop: remove `analytics` from `site/config.json` (or empty its three values) and deploy (section 6).
 4. To move Umami to another host: add the host on a `site:` line of `scripts/url-hosts.allow` with a decision record, change `scriptUrl`, and deploy; the CSP follows the config.
 
-## 8. Preview until the first public release
+## 8. First public release (1.0.0)
 
-`SITE_STRICT=false` builds the preview: the build accepts VERIFY markers and placeholder values (`OWNER` in `site/config.json`) and every response sends `X-Robots-Tag: noindex`. At the first public release:
+Until 1.0.0 is published the deployed site is a preview: `SITE_STRICT=false` builds it, the build accepts VERIFY markers and placeholder values (`OWNER` in `site/config.json`), and every response sends `X-Robots-Tag: noindex`. 1.0.0 is the first production release on the website (Pa, 2026-11-17: "Bản v1.0.0 production trên web"); version 1.0.0, build 1000099 (`scripts/build-number.sh 1.0.0`). In order:
 
-1. Resolve every VERIFY badge and placeholder (`node site/build.mjs --strict` must pass).
-2. Set the repository variable `SITE_STRICT` to `true` (or delete it) and deploy. The image build now fails if a marker comes back.
-3. Check that `curl -sSI "https://$APP_SITE_HOST/"` no longer shows `x-robots-tag`.
+1. **Content gate.** `node site/build.mjs --strict --out /tmp/site-strict` passes, and `node site/test.mjs` passes its `release gate` checks (strict builds before and after the release). Re-run both after any site change; a new VERIFY badge or placeholder fails the image build once step 5 is done.
+2. **Build, notarize and publish 1.0.0** with the [release runbook](release.md) (sections 4 to 7). `scripts/publish-release 1.0.0` writes `site/data/releases.json` (the 1.0.0 entry: version, build, channel `stable`, date, `dmgUrl` `https://<site host>/download/{{app-slug}}-1.0.0.dmg`, SHA-256, size, `minimumSystemVersion` from the app's `LSMinimumSystemVersion`, notes), the appcast item and the release-notes page, and renders the cask. Two things to settle before `--apply`:
+   - QA-R29 beta period: `publish-release` refuses a stable `X.Y.Z` without an `X.Y.Z-beta.N` in `site/data/releases.json` dated at least three days earlier. The 0.0.1 betas were private and are not in that file, so 1.0.0 passes only with `--p0-hotfix` (which also turns phased rollout off) or after a published `1.0.0-beta.N` has soaked. Pa's call.
+   - The cask template (`packaging/homebrew/Casks/cask.rb.template`) still says `depends_on macos: ">= :sequoia"`, while the app runs on macOS 12 (ADR 0315). Fix it to `:monterey` before rendering, or the brew line on the website refuses macOS 12 to 14.
+3. **Release files.** Attach the DMG and the update archive to the GitHub Release `v1.0.0` and publish it (not a draft): `fetch-downloads.py` fetches every file `releases.json` and the appcast name and checks the DMG against its SHA-256 (section 9). Push the tap commit to `kalhoang/homebrew-tap` so that `brew install --cask kalhoang/tap/{{app-slug}}` works.
+4. **Commit and check locally.** Commit `site/static/appcast.xml`, `site/data/releases.json` and the release-notes page. `node site/build.mjs --strict` must still pass; the home hero and closing call now link the DMG with "1.0.0" and "macOS 12 Monterey", and the download page lists version, build, date, SHA-256 and the brew line.
+5. **Turn the preview off.** Set the repository variable `SITE_STRICT` to `true`, or delete it (`gh variable delete SITE_STRICT`; anything but `false` builds strictly). `deploy/site/build.mjs` then sends no `X-Robots-Tag` (`--noindex auto` follows strict), and the image build fails if a marker or placeholder comes back.
+6. **Deploy** (section 6 step 2, `prod` fast-forwarded to the `main` commit that holds the release files), then check:
+
+   ```sh
+   source scripts/brand.env
+   curl -sSI "https://$APP_SITE_HOST/" | grep -i '^x-robots-tag:'                       # no output
+   curl -sSI "https://$APP_SITE_HOST/download/$APP_SLUG-1.0.0.dmg" | head -1             # status 200
+   curl -sS "https://$APP_SITE_HOST/appcast.xml" | grep -c '<item>'                      # 1
+   ```
+
+None of these steps is done on 2026-11-17; section 0 records the state.
 
 ## 9. Releases and incidents
 
@@ -156,7 +172,7 @@ The website counts page views with Umami, self-hosted on the Kalera Swarm at `ht
 | Tasks exit with code 1, `mkdir() "/tmp/client_temp" failed (30: Read-only file system)` | `/tmp` is not a tmpfs mount: use the long `volumes` form (section 4, second trap) |
 | Certificate error | Resolver name (`TRAEFIK_CERT_RESOLVER`) or the DNS challenge token's zones |
 | Image pull fails on the nodes | GHCR package private without a Portainer registry entry (section 2) |
-| Image build fails with `--strict` | VERIFY markers or placeholders remain; for the preview keep `SITE_STRICT=false` |
+| Image build fails with `--strict` | A VERIFY marker or a placeholder came back: `node site/build.mjs --strict` names them; verify or rewrite the statement, or fill the value. `SITE_STRICT=false` is for the preview before 1.0.0 only |
 | `check-live-headers` fails in the workflow | The container does not send a header of `_headers`. Never add headers to `nginx.conf`; change `site/static/_headers` and let the build generate the locations |
 | A release file is missing | `fetch-downloads.py` failed: the GitHub Release is still a draft, or its asset does not match `releases.json` |
 
