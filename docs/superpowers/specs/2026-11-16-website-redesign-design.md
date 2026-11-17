@@ -279,3 +279,61 @@ documents the build, and the traceability files where requirements move.
 File names and module layout, CSS architecture inside the token and component rule, the exact animation curves
 and timings, the rotating sentences after the first (each one checked through the generator), how the generator
 drives the engine, the hub geometry, breakpoints, and the order of work (home page first, then the other pages).
+
+## 9. Amendment of 17/11/2026: the product owner's review of the preview
+
+The product owner reviewed the merged redesign on the preview and asked for four changes. Where this section and
+section 7 disagree, this section wins. Calls marked *(integrator's call)* are open to the product owner's review on
+the preview before `prod`.
+
+1. **Hero sentences that show the hard cases.** The first sentences had no English word that Telex turns into
+   something else (`online`, `file`, `slide`), so any input method would type them. The hero now uses English words
+   that plain Telex changes, each checked through the generator (keys, then what the engine gives):
+   - `hero-chat`: `Chieeuf nay meeting treen Zoom, nhows test laij banr mowis nha` gives
+     "Chiều nay meeting trên Zoom, nhớ test lại bản mới nha" (plain Telex: `mêting`, `Zôm`, `tét`).
+   - `hero-email`: `Em gwir anh list task tuaanf nayf, anh sort laij giusp em nhes` gives
+     "Em gửi anh list task tuần này, anh sort lại giúp em nhé" (plain Telex: `lít`, `ták`, `sỏt`).
+   - `hero-note`: `Best case thif thuws Saus choots, boss duyeetj xong laf post luoon` gives
+     "Best case thì thứ Sáu chốt, boss duyệt xong là post luôn" (plain Telex: `Bét`, `cáe`, `bos`, `pót`).
+   - The previous message of the other person becomes "Kế hoạch tuần này sao rồi?" (both languages; the chat is
+     Vietnamese on both pages).
+   - Each tag of a kept English word also names what plain Telex would have typed, e.g. "test, không thành tét"
+     (English page: "test, not tét"), the plain form struck through. The plain form is generated, never written by
+     hand: the generator types the word's raw keys into an engine with auto restore and the revision off (ENG-R802),
+     same method and tone placement, and records the display in the commit as `plain` when it differs from the kept
+     word. "Plain Telex" names Telex without English restore; no other input method is named or implied.
+   - The caption says that English words stay as typed, including the ones plain Telex would turn into other words.
+2. **No compatibility list on the site.** Every matrix entry is still `notVerified`, so the list told visitors that
+   nothing had been checked. The home section becomes "Chạy trong mọi ứng dụng phổ biến" / "Works in all the
+   popular apps": the hub keeps the categories and app names from `compat/matrix.json`, without any status, date or
+   link; the Secure Input card stays. The header, the footer, the home page and the sitemap no longer link to the
+   compatibility page, which carries `noindex`. *(integrator's call)* The page itself stays at its URL because the
+   app's menu opens it from the "Tìm hiểu thêm" link of a known-limitation app (`CompatibilityPage` in
+   `Packages/AppCore/Sources/ShellCore/StatusPresentation.swift`); removing it means changing that link in the app.
+   PRD-R73 is amended (the landing page no longer links to it; `/tuong-thich` is unlisted).
+3. **Logo alignment.** Next to the name the KV mark sat low: the flex box centres the whole mark, dot included, so
+   the letters hung about 5 px below the name's baseline at the header size. The mark moves up so that its letters
+   centre on the name's capital letters (about 12 % of the mark's height), in the header and the footer.
+4. **"Càng gõ càng hợp với bạn": a section for learning, after section 2.** What makes {{AppName}} fit its user is
+   that it learns from the user's corrections. New section 3 (sections 3 to 7 become 4 to 8):
+   - Heading "Càng gõ càng hợp với bạn" / "The more you type, the better it fits". Intro (vi): "{{AppNameTM}} học từ
+     chính những lần bạn sửa. Chữ nào bạn sửa hai lần, lần sau {{AppName}} tự gõ đúng ý bạn. Mọi thứ học được chỉ
+     lưu trên máy này, và bạn xem, xóa được trong Cài đặt." Two corrections is the threshold of both mechanisms:
+     the learned memory for words that are both English and Vietnamese (D28, ENG-R863: a score of 2, one per
+     correction, in the same context; per user, across apps) and the per-app learned words (ENG-R862: the same
+     signal twice in one app).
+   - The demo, generated: `learning-reset` types `Nhows reset⎋ laij mays nha` twice (the engine gives "rết", Escape
+     gives back "reset"), then `Nhows reset laij mays nha`, which the engine now commits as "reset" by rule L9c
+     (`learned`). The generator feeds the collision signals of each teaching pass to `ReferenceCollisionMemory`
+     (VietnameseEngineTesting, the oracle the app's store must agree with, ENG-R863) and rebuilds the engine with
+     the new snapshot between passes (ENG-R865). It fails when a teaching pass gives no strong signal or the final
+     pass has no `learned` commit, so the page can never claim a learning the engine did not do. On the page: three
+     rows, "Lần 1", "Lần 2" and "Từ lần sau" ("1st time", "2nd time", "From then on"), played one after the other
+     when the section scrolls into view, with a replay button as in section 2; the last row marks the learned word
+     "Đã nhớ" ("Learned"). Without JavaScript and under reduced motion all three rows show their final text.
+   - Four small cards under the demo, all static illustrations: the learned words are visible and removable
+     (`Xem từ đã học...` in the Typing pane, PRD-R78; only on this Mac); per-app language memory and rules (moved
+     from section 4, PRD-R2); your own macros (moved from section 4, PRD-R2); your own lists of words to keep as
+     typed or always in Vietnamese (ENG-R860).
+   - Section 4 "Gõ theo cách của bạn" keeps four cards: tone keys anywhere, slang onsets, Telex or VNI with tone
+     placement, keyboard layouts.
