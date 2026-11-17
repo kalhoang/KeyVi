@@ -33,17 +33,47 @@ import VietnameseEngineData
 
     // MARK: Recording through the engine
 
-    /// The hero sentence is fixed by the product owner (design 7.3): the keys, the text and the English words the
-    /// page tags as kept (online, file, slide, deadline) all come from the engine.
-    /// The keys are inlined so that the package tests stand alone; `committedFramesFileIsCurrent` pins the script.
-    @Test func heroSentenceTypesAsScripted() throws {
-        let hero = Self.demo(
-            "Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha", id: "hero-chat",
-            expect: "Chiều nay họp online, nhớ gửi file slide trước deadline nha")
-        let demo = try Self.recorder().record(hero)
+    /// The hero sentences are fixed by the product owner (design section 9 item 1): English words that plain Telex
+    /// turns into something else. The keys, the text, the words the page tags as kept and what plain Telex would
+    /// have typed (`plain`, ENG-R802) all come from the engine. The keys are inlined so that the package tests stand
+    /// alone; `committedFramesFileIsCurrent` pins the script.
+    @Test(arguments: [
+        (
+            "hero-chat", "Chieeuf nay meeting treen Zoom, nhows test laij banr mowis nha",
+            "Chiều nay meeting trên Zoom, nhớ test lại bản mới nha",
+            [["meeting", "mêting"], ["Zoom", "Zôm"], ["test", "tét"]]
+        ),
+        (
+            "hero-email", "Em gwir anh list task tuaanf nayf, anh sort laij giusp em nhes",
+            "Em gửi anh list task tuần này, anh sort lại giúp em nhé",
+            [["list", "lít"], ["task", "ták"], ["sort", "sỏt"]]
+        ),
+        (
+            "hero-note", "Best case thif thuws Saus choots, boss duyeetj xong laf post luoon",
+            "Best case thì thứ Sáu chốt, boss duyệt xong là post luôn",
+            [["Best", "Bét"], ["case", "cáe"], ["boss", "bos"], ["post", "pót"]]
+        ),
+    ])
+    func heroSentenceTypesAsScripted(id: String, keys: String, expect: String, english: [[String]]) throws {
+        let demo = try Self.recorder().record(Self.demo(keys, id: id, expect: expect))
+        #expect(demo.text == expect)
+        let commits = demo.frames.compactMap(\.commit)
+        #expect(commits.filter(\.english).map { [$0.raw, $0.plain ?? ""] } == english)
+        // Only a kept English word names its plain form.
+        #expect(commits.filter { !$0.english }.allSatisfy { $0.plain == nil })
+        #expect(demo.frames.allSatisfy { $0.revised == nil })
+        #expect(demo.teachKeys == nil)
+        #expect(demo.teachPasses.isEmpty)
+    }
+
+    /// ENG-R802: a kept English word that plain Telex types the same (`online`, `file`) carries no plain form.
+    @Test func englishWordsThatTypeThemselvesHaveNoPlainForm() throws {
+        let demo = try Self.recorder().record(
+            Self.demo("Chieeuf nay hojp online, nhows guwir file slide truwowcs deadline nha"))
         #expect(demo.text == "Chiều nay họp online, nhớ gửi file slide trước deadline nha")
         let commits = demo.frames.compactMap(\.commit)
         #expect(commits.filter(\.english).map(\.raw) == ["online", "file", "slide", "deadline"])
+        #expect(commits.allSatisfy { $0.plain == nil })
         #expect(commits.first?.raw == "Chieeuf")
         #expect(commits.first?.text == "Chiều")
         #expect(commits.first?.outcome == "kept")
@@ -73,8 +103,9 @@ import VietnameseEngineData
         #expect(revising.count == 1)
         let frame = try #require(revising.first)
         #expect(frame.commit?.raw == "hell")
-        // The frame names the word it changed and what that word became, so the page can tag "as" (ENG-R828).
-        #expect(frame.revised == RecordedDemo.Revised(raw: "as", text: "as", english: true))
+        // The frame names the word it changed, what that word became and what plain Telex would have typed, so the
+        // page can tag "as" (ENG-R828, ENG-R802).
+        #expect(frame.revised == RecordedDemo.Revised(raw: "as", text: "as", english: true, plain: "á"))
         #expect(demo.frames.filter { $0.revised != nil }.count == 1)
     }
 
@@ -88,7 +119,7 @@ import VietnameseEngineData
         #expect(earlier.english)
         let frame = try #require(demo.frames.first { $0.revision })
         #expect(frame.commit?.raw == "nhaf")
-        #expect(frame.revised == RecordedDemo.Revised(raw: "car", text: "cả", english: false))
+        #expect(frame.revised == RecordedDemo.Revised(raw: "car", text: "cả", english: false, plain: nil))
     }
 
     /// Every frame's text is the whole field after its key; the keys and settings are carried over.
@@ -148,7 +179,7 @@ import VietnameseEngineData
         #expect(!text.contains("\\/"))
         #expect(text.contains("\"generator\": \"site-demo-frames\""))
         let root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
-        #expect(root["schemaVersion"] as? Int == 1)
+        #expect(root["schemaVersion"] as? Int == 2)
         let all = try #require(root["demos"] as? [String: [String: Any]])
         #expect(all.keys.sorted() == ["escape", "revision", "slash"])
         let escape = try #require(all["escape"])
@@ -165,8 +196,9 @@ import VietnameseEngineData
         let revisionFrames = try #require(all["revision"]?["frames"] as? [[String: Any]])
         let revising = try #require(revisionFrames.first { $0["revision"] as? Bool == true })
         let revised = try #require(revising["revised"] as? [String: Any])
-        #expect(Set(revised.keys) == ["raw", "text", "english"])
+        #expect(Set(revised.keys) == ["raw", "text", "english", "plain"])
         #expect(revised["raw"] as? String == "as")
+        #expect(revised["plain"] as? String == "á")
         #expect(revised["text"] as? String == "as")
         #expect(revised["english"] as? Bool == true)
         #expect(revisionFrames.filter { $0["revised"] != nil }.count == 1)
@@ -230,12 +262,20 @@ import VietnameseEngineData
         let missing = directory.url.appendingPathComponent("missing.json")
         let cases: [String] = [
             "not json",
-            #"{"schemaVersion": 2, "demos": []}"#,
             #"{"schemaVersion": 1, "demos": []}"#,
-            #"{"schemaVersion": 1, "demos": [{"id": "a", "method": "qwerty", "toneStyle": "traditional", "keys": "a", "expect": "a"}]}"#,
+            #"{"schemaVersion": 2, "demos": []}"#,
+            #"{"schemaVersion": 2, "demos": [{"id": "a", "method": "qwerty", "toneStyle": "traditional", "keys": "a", "expect": "a"}]}"#,
             Self.script([("same", "a", "a"), ("same", "b", "b")]),
             Self.script([("", "a", "a")]),
             Self.script([("empty-keys", "", "")]),
+            // A learning demo names its teaching keys, its number of passes and their text together.
+            Self.learningScript(teachKeys: "a⎋", teach: nil, teachExpect: "a"),
+            Self.learningScript(teachKeys: nil, teach: 2, teachExpect: "a"),
+            Self.learningScript(teachKeys: "a⎋", teach: 2, teachExpect: nil),
+            Self.learningScript(teachKeys: "a⎋", teach: 0, teachExpect: "a"),
+            Self.learningScript(teachKeys: "", teach: 1, teachExpect: ""),
+            // A teaching pass is a correction: without the restore toggle it teaches nothing (ENG-R863).
+            Self.learningScript(teachKeys: "reset ", teach: 2, teachExpect: "reset "),
         ]
         let output = directory.url.appendingPathComponent("frames.json").path
         #expect(Self.run(["--script", missing.path, "--out", output], in: directory.url) == 2)
@@ -272,7 +312,24 @@ import VietnameseEngineData
         let entries = demos.map { id, keys, expect in
             #"{"id": "\#(id)", "method": "telex", "toneStyle": "traditional", "keys": "\#(keys)", "expect": "\#(expect)"}"#
         }
-        return #"{"schemaVersion": 1, "demos": [\#(entries.joined(separator: ", "))]}"#
+        return #"{"schemaVersion": 2, "demos": [\#(entries.joined(separator: ", "))]}"#
+    }
+
+    /// A script of one Telex traditional learning demo; a nil field is left out.
+    static func learningScript(
+        id: String = "learning", teachKeys: String?, teach: Int?, teachExpect: String?,
+        keys: String = "Nhows reset laij mays nha", expect: String = "Nhớ reset lại máy nha"
+    ) -> String {
+        let teaching = [
+            teachKeys.map { #""teachKeys": "\#($0)""# }, teach.map { #""teach": \#($0)"# },
+            teachExpect.map { #""teachExpect": "\#($0)""# },
+        ].compactMap { $0 }
+        let required = [
+            #""id": "\#(id)""#, #""method": "telex""#, #""toneStyle": "traditional""#, #""keys": "\#(keys)""#,
+            #""expect": "\#(expect)""#,
+        ]
+        let fields = (required + teaching).joined(separator: ", ")
+        return #"{"schemaVersion": 2, "demos": [{\#(fields)}]}"#
     }
 }
 

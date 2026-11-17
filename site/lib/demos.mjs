@@ -2,9 +2,17 @@
 // The home page demos (design 7.4): site/demo/frames.json, written by the engine's site-demo-frames tool from
 // site/demo/script.json and committed. The site never invents a demo: the build validates the file, renders each final
 // state from it and hands the frames to home.js through data-demo-frames. Never edit the file by hand; regenerate it.
+//
+// Schema version 2 (the generator's renderFramesFile documents it): `{ schemaVersion, generator, demos: { <id>: demo } }`.
+// A demo is `{ keys, method, toneStyle, text, frames, teachKeys?, teachPasses? }`; a frame `{ key, text, commit?,
+// revision?, revised?, toggle? }`; a commit `{ raw, text, outcome, rule?, english, plain? }`; a revised token `{ raw,
+// text, english, plain? }`. `plain`, on an English token only and never equal to its text, is what plain Telex would
+// have typed for the raw keys (auto restore off, ENG-R802): the hero tags name it (design 9 item 1). A learning demo
+// (design 9 item 4) adds `teachKeys`, the keys of one teaching pass with the restore toggle, and `teachPasses`, one
+// `{ text, frames }` per pass in order, typed before `keys`; its final frames keep a word by rule `learned` (L9c).
 import { readFile } from "node:fs/promises";
 
-export const FRAMES_SCHEMA_VERSION = 1;
+export const FRAMES_SCHEMA_VERSION = 2;
 const LABEL = "site/demo/frames.json";
 
 function fail(id, reason) {
@@ -19,17 +27,47 @@ function deepFreeze(value) {
   return value;
 }
 
-function validateDemo(id, demo) {
-  if (!demo || typeof demo !== "object" || Array.isArray(demo)) fail(id, "is not an object");
-  if (typeof demo.text !== "string") fail(id, "text is not a string");
-  if (!Array.isArray(demo.frames) || demo.frames.length === 0) fail(id, "has no frames");
-  demo.frames.forEach((frame, index) => {
-    if (typeof frame?.key !== "string" || typeof frame?.text !== "string") fail(id, `frame ${index} needs a string key and a string text`);
-  });
-  if (demo.frames.at(-1).text !== demo.text) fail(id, "the last frame's text differs from the demo's text");
+const isObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+/** ENG-R802: a plain form belongs to an English token and names what plain typing would have shown instead of it. */
+function validatePlain(id, index, name, token) {
+  if (!isObject(token) || !("plain" in token)) return;
+  const { plain, text, english } = token;
+  if (typeof plain !== "string" || plain === "" || plain === text || english !== true) {
+    fail(id, `frame ${index}: ${name} plain must be a non-empty string other than the text, on an English token`);
+  }
 }
 
-/** Reads and validates the frames file: `{ byId }`, a map from demo id to its frozen demo. Throws on any problem. */
+/** `{ text, frames }`: the frames in order, the last one showing `text`. A demo and a teaching pass share it. */
+function validateFrames(id, run) {
+  if (!isObject(run)) fail(id, "is not an object");
+  if (typeof run.text !== "string") fail(id, "text is not a string");
+  if (!Array.isArray(run.frames) || run.frames.length === 0) fail(id, "has no frames");
+  run.frames.forEach((frame, index) => {
+    if (typeof frame?.key !== "string" || typeof frame?.text !== "string") fail(id, `frame ${index} needs a string key and a string text`);
+    validatePlain(id, index, "commit", frame.commit);
+    validatePlain(id, index, "revised", frame.revised);
+  });
+  if (run.frames.at(-1).text !== run.text) fail(id, "the last frame's text differs from the demo's text");
+}
+
+/** A learning demo's teaching keys (with the restore toggle ⎋, a correction) and passes come together. */
+function validateTeaching(id, demo) {
+  if (!("teachKeys" in demo) && !("teachPasses" in demo)) return;
+  if (typeof demo.teachKeys !== "string" || !demo.teachKeys.includes("⎋") || !("teachPasses" in demo)) {
+    fail(id, "teachKeys must hold the restore toggle ⎋ and come with teachPasses");
+  }
+  if (!Array.isArray(demo.teachPasses) || demo.teachPasses.length === 0) fail(id, "teachPasses must be a non-empty array");
+  demo.teachPasses.forEach((pass, index) => validateFrames(`${id}: teaching pass ${index + 1}`, pass));
+}
+
+function validateDemo(id, demo) {
+  validateFrames(id, demo);
+  validateTeaching(id, demo);
+}
+
+/** Reads and validates the frames file: `{ byId }`, a map from demo id to its frozen demo (with its teaching passes, if
+ * any). Throws on any problem. */
 export async function loadDemos(path) {
   let data;
   try {
@@ -62,9 +100,10 @@ function findWord(text, word, from) {
 const plainPieces = (text) => (text.match(/[\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+/gu) ?? []).map((piece) => ({ text: piece, english: false }));
 
 /**
- * The final text split into words and separators, in order, each `{ text, english }`. A word is English when its latest
- * state is: a commit says what a token became, and a later frame's `revised` replaces the commit of the token before it
- * (the next word fixed it, D29). Joining the pieces gives the demo's text back.
+ * The final text split into words and separators, in order, each `{ text, english }`, and `plain` on an English word
+ * that plain Telex would have typed otherwise (ENG-R802). A word is English when its latest state is: a commit says what
+ * a token became, and a later frame's `revised` replaces the commit of the token before it (the next word fixed it,
+ * D29). Joining the pieces gives the demo's text back. A teaching pass (`{ text, frames }`) is read the same way.
  */
 export function wordsOf(demo) {
   const tokens = demo.frames.reduce((list, frame) => {
@@ -74,13 +113,13 @@ export function wordsOf(demo) {
   const { pieces, cursor } = tokens.reduce((state, token) => {
     const at = token.text ? findWord(demo.text, token.text, state.cursor) : -1;
     if (at < 0) return state;
-    const piece = { text: token.text, english: token.english === true };
+    const piece = { text: token.text, english: token.english === true, ...(token.plain ? { plain: token.plain } : {}) };
     return { pieces: [...state.pieces, ...plainPieces(demo.text.slice(state.cursor, at)), piece], cursor: at + token.text.length };
   }, { pieces: [], cursor: 0 });
   return [...pieces, ...plainPieces(demo.text.slice(cursor))];
 }
 
-/** The English words of the final text, in order: the words the hero tags as kept. */
+/** The English words of the final text, in order: the words the hero tags as kept (their plain forms: wordsOf). */
 export function englishWords(demo) {
   return wordsOf(demo).filter((piece) => piece.english).map((piece) => piece.text);
 }

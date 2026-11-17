@@ -38,7 +38,9 @@ export async function runHomeChecks(check, fixtures) {
     for (const [label, html] of homePages) {
       const heroIds = (framesAttr(heroTag(html)) ?? []).map((demo) => demo.id);
       const used = new Set([...heroIds, ...attrs(html, "data-demo")]);
-      assert.deepEqual([...used].sort(), Object.keys(frames.demos).sort(), `${label}: the page uses every demo of frames.json`);
+      // The learning demos (design 9 item 4, those with teaching passes) wait for their home section.
+      const placed = Object.keys(frames.demos).filter((id) => !frames.demos[id].teachPasses);
+      assert.deepEqual([...used].sort(), placed.sort(), `${label}: the page uses every demo of frames.json`);
       const text = textOf(mainOf(html));
       for (const id of used) {
         const final = frames.demos[id].text.replace(/\n/g, "").trim();
@@ -199,10 +201,73 @@ export async function runHomeChecks(check, fixtures) {
     const bad = structuredClone(frames);
     bad.demos["card-telex"].text = "viet";
     await assert.rejects(async () => loadDemos(await write(bad)), /site\/demo\/frames\.json: card-telex: the last frame/);
-    await assert.rejects(async () => loadDemos(await write({ ...frames, schemaVersion: 2 })), /site\/demo\/frames\.json: .*schemaVersion/);
+    await assert.rejects(async () => loadDemos(await write({ ...frames, schemaVersion: 1 })), /site\/demo\/frames\.json: .*schemaVersion/, "version 1 had no teaching passes");
     const keyless = structuredClone(frames);
     delete keyless.demos["card-vni"].frames[0].key;
     await assert.rejects(async () => loadDemos(await write(keyless)), /site\/demo\/frames\.json: card-vni: /);
+  });
+
+  await check("demos: loadDemos validates the plain forms (ENG-R802) and the teaching passes (design 9)", async () => {
+    const write = async (data) => { const path = join(tmp, "frames-bad.json"); await writeFile(path, JSON.stringify(data)); return path; };
+    const rejects = async (message, pattern, mutate) => {
+      const bad = structuredClone(frames);
+      mutate(bad);
+      await assert.rejects(async () => loadDemos(await write(bad)), pattern, message);
+    };
+    const kept = (data) => data.demos["hero-chat"].frames.find((frame) => frame.commit?.plain).commit;
+    const vietnamese = (data) => data.demos["hero-chat"].frames.find((frame) => frame.commit && !frame.commit.english).commit;
+    const revised = (data) => data.demos["behaviour-revision"].frames.find((frame) => frame.revised).revised;
+    const learning = (data) => Object.values(data.demos).find((demo) => demo.teachPasses);
+    assert.ok(kept(frames), "a hero commit names its plain form");
+    assert.ok(learning(frames), "frames.json has a learning demo (design 9 item 4)");
+    await rejects("plain equal to the text", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = kept(data).text; });
+    await rejects("empty plain", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = ""; });
+    await rejects("plain not a string", /hero-chat: frame \d+: commit plain/, (data) => { kept(data).plain = 3; });
+    await rejects("plain on a word that is not English", /hero-chat: frame \d+: commit plain/, (data) => { vietnamese(data).plain = "x"; });
+    await rejects("plain of a revised word", /behaviour-revision: frame \d+: revised plain/, (data) => { revised(data).plain = revised(data).text; });
+    await rejects("teachPasses empty", /learning-reset: teachPasses/, (data) => { learning(data).teachPasses = []; });
+    await rejects("teachPasses not an array", /learning-reset: teachPasses/, (data) => { learning(data).teachPasses = {}; });
+    await rejects("teaching passes without their keys", /learning-reset: teachKeys/, (data) => { delete learning(data).teachKeys; });
+    await rejects("teaching keys without the restore toggle", /learning-reset: teachKeys/, (data) => { learning(data).teachKeys = "reset"; });
+    await rejects("teaching keys without passes", /learning-reset: teachKeys/, (data) => { delete learning(data).teachPasses; });
+    await rejects("a pass's text differs from its last frame", /learning-reset: teaching pass 1: the last frame/, (data) => { learning(data).teachPasses[0].text = "x"; });
+    await rejects("a pass without frames", /learning-reset: teaching pass 2: has no frames/, (data) => { learning(data).teachPasses[1].frames = []; });
+    await rejects("a pass that is not an object", /learning-reset: teaching pass 1: is not an object/, (data) => { learning(data).teachPasses[0] = "x"; });
+    await rejects("a pass frame without a key", /learning-reset: teaching pass 1: frame 0 needs/, (data) => { delete learning(data).teachPasses[0].frames[0].key; });
+    await rejects("a pass commit with a bad plain", /learning-reset: teaching pass 1: frame \d+: commit plain/, (data) => {
+      learning(data).teachPasses[0].frames.find((frame) => frame.commit?.plain).commit.plain = "";
+    });
+  });
+
+  await check("demos: wordsOf names the plain form of each kept English word; a teaching pass reads like a demo", async () => {
+    const { byId } = await loadDemos(framesPath);
+    // The latest state of each token, from frames.json: a commit adds one, a revision replaces the one before it.
+    const latest = (demo) => demo.frames.reduce((list, frame) => {
+      const revisedList = frame.revised && list.length > 0 ? [...list.slice(0, -1), frame.revised] : list;
+      return frame.commit ? [...revisedList, frame.commit] : revisedList;
+    }, []);
+    for (const [id, demo] of byId) {
+      const pieces = wordsOf(demo);
+      const english = pieces.filter((piece) => piece.english).map(({ text, plain }) => ({ text, plain }));
+      assert.deepEqual(english, latest(demo).filter((token) => token.english).map(({ text, plain }) => ({ text, plain })), `${id}: the plain forms of frames.json`);
+      assert.ok(pieces.filter((piece) => !piece.english).every((piece) => !("plain" in piece)), `${id}: only an English word names a plain form`);
+    }
+    // Design 9 item 1: every kept English word of the hero sentences is one plain Telex would have changed.
+    for (const id of ["hero-chat", "hero-email", "hero-note"]) {
+      const english = wordsOf(byId.get(id)).filter((piece) => piece.english);
+      assert.ok(english.length > 0 && english.every((piece) => piece.plain && piece.plain !== piece.text), `${id}: each English word has a plain form`);
+    }
+    const learners = [...byId.values()].filter((demo) => demo.teachPasses);
+    assert.ok(learners.length > 0, "a learning demo");
+    for (const demo of learners) {
+      assert.ok(demo.teachPasses.length >= 1 && demo.teachKeys.includes("⎋"), "taught with the restore toggle");
+      for (const pass of demo.teachPasses) {
+        assert.equal(wordsOf(pass).map((piece) => piece.text).join(""), pass.text, "a pass goes through wordsOf like a demo");
+        assert.ok(pass.frames.some((frame) => frame.toggle), "each pass corrects with Escape");
+      }
+      assert.ok(demo.frames.some((frame) => frame.commit?.rule === "learned"), "the final pass keeps a word by rule L9c");
+      assert.ok(Object.isFrozen(demo.teachPasses[0].frames[0]), "the passes are frozen like the demo");
+    }
   });
 
   await check("demos: wordsOf marks the latest state of each word (a revision replaces the earlier commit)", async () => {

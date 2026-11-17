@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The demo script, site/demo/script.json: the sentences the website types, with their keys, typing method, tone
-// placement and the text they must give (website redesign design of 16/11/2026, section 7.4).
+// placement and the text they must give (website redesign design of 16/11/2026, section 7.4), and for a learning demo
+// the corrections that teach the engine first (section 9 item 4).
 
 import Foundation
 import VietnameseEngine
 
-/// `site/demo/script.json`, schema version 1.
+/// `site/demo/script.json`, schema version 2. Version 2 added the learning demo (`teachKeys`, `teach`, `teachExpect`);
+/// a version 1 reader would drop the teaching silently, so the version changed and an older tool refuses the script.
 struct DemoScript: Decodable, Sendable {
     /// Telex or VNI (D1).
     enum Method: String, Decodable, Sendable, Hashable, CaseIterable {
@@ -20,12 +22,48 @@ struct DemoScript: Decodable, Sendable {
         case modern
     }
 
-    /// One demo: the keys typed in order (in the notation of ``DemoKey``) and the field text they must give.
+    /// One demo: the keys typed in order (in the notation of ``DemoKey``) and the field text they must give. A learning
+    /// demo also names the keys of one teaching pass (a correction with the restore toggle), how many passes teach
+    /// the engine before `keys` are typed, and the field text after each pass (design 9 item 4, ENG-R863).
     struct Demo: Decodable, Sendable, Hashable {
         let id: String
         let method: Method
         let toneStyle: ToneStyle
         let keys: String
+        let expect: String
+        /// The keys of one teaching pass; they must contain the restore toggle `⎋`.
+        let teachKeys: String?
+        /// The number of teaching passes, at least 1.
+        let teach: Int?
+        /// The field text after each teaching pass.
+        let teachExpect: String?
+
+        init(
+            id: String, method: Method, toneStyle: ToneStyle, keys: String, expect: String, teachKeys: String? = nil,
+            teach: Int? = nil, teachExpect: String? = nil
+        ) {
+            self.id = id
+            self.method = method
+            self.toneStyle = toneStyle
+            self.keys = keys
+            self.expect = expect
+            self.teachKeys = teachKeys
+            self.teach = teach
+            self.teachExpect = teachExpect
+        }
+
+        /// The teaching of a learning demo; nil for any other demo or when its fields are incomplete.
+        var teaching: Teaching? {
+            guard let teachKeys, let teach, let teachExpect else { return nil }
+            return Teaching(keys: teachKeys, passes: teach, expect: teachExpect)
+        }
+    }
+
+    /// What teaches the engine before a learning demo's keys: `passes` times `keys` in a fresh field, each giving
+    /// `expect`, their collision signals counted in the learned memory (ENG-R863, ENG-R865).
+    struct Teaching: Sendable, Hashable {
+        let keys: String
+        let passes: Int
         let expect: String
     }
 
@@ -35,7 +73,7 @@ struct DemoScript: Decodable, Sendable {
         init(_ description: String) { self.description = description }
     }
 
-    static let supportedSchemaVersion = 1
+    static let supportedSchemaVersion = 2
 
     let schemaVersion: Int
     let demos: [Demo]
@@ -73,6 +111,21 @@ struct DemoScript: Decodable, Sendable {
             guard !demo.id.isEmpty else { throw Problem("\(name): a demo has an empty id") }
             guard !demo.keys.isEmpty else { throw Problem("\(name): \(demo.id): no keys") }
             guard seen.insert(demo.id).inserted else { throw Problem("\(name): duplicate demo id \(demo.id)") }
+            try validateTeaching(of: demo, name)
+        }
+    }
+
+    /// A learning demo names its teaching keys, passes and text together; a pass is a correction, so its keys hold
+    /// the restore toggle (ENG-R863: a correction is the toggle against the rules).
+    private func validateTeaching(of demo: Demo, _ name: String) throws {
+        let fields = [demo.teachKeys != nil, demo.teach != nil, demo.teachExpect != nil]
+        guard fields.contains(true) else { return }
+        guard let teaching = demo.teaching else {
+            throw Problem("\(name): \(demo.id): teachKeys, teach and teachExpect go together")
+        }
+        guard teaching.passes >= 1 else { throw Problem("\(name): \(demo.id): teach must be at least 1") }
+        guard DemoKey.parse(teaching.keys).contains(where: \.isToggle) else {
+            throw Problem("\(name): \(demo.id): teachKeys must contain the restore toggle ⎋")
         }
     }
 }

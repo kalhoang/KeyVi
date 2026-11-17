@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // site-demo-frames: types the website's demo sentences (site/demo/script.json) through the real engine and writes
-// site/demo/frames.json (PRD-R73; website redesign design of 16/11/2026, section 7.4). With --check it writes
+// site/demo/frames.json (PRD-R73; website redesign design of 16/11/2026, sections 7.4 and 9). With --check it writes
 // nothing and fails when the committed file differs from what this engine produces (CI and the local gate).
 
 import Foundation
@@ -20,8 +20,8 @@ enum SiteDemoFrames {
           --script PATH  the demo script (default: \(defaultScript))
           --out PATH     the frames file (default: \(defaultOutput))
 
-        exit codes: 0 success; 1 a demo's text differs from its expect, or --check found a stale file;
-        2 bad arguments, or an unreadable or invalid script
+        exit codes: 0 success; 1 a demo's text differs from its expect, a learning demo's teaching does not
+        teach the engine, or --check found a stale file; 2 bad arguments, or an unreadable or invalid script
         """
 
     static let defaultScript = "site/demo/script.json"
@@ -72,7 +72,8 @@ enum SiteDemoFrames {
             : write(data, to: target, named: options.output, count: demos.count, log: log, output: output)
     }
 
-    /// Records every demo of `script` with the bundled resources, loaded once (no user lists, no macros).
+    /// Records every demo of `script` with the bundled resources, loaded once (no user lists, no macros, no learned
+    /// memory; a learning demo builds its own from its teaching passes).
     static func record(_ script: DemoScript) throws -> [RecordedDemo] {
         let resources = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
         let recorder = FrameRecorder(resources: resources)
@@ -155,9 +156,17 @@ struct Options {
 
 // MARK: - The frames file
 
-/// The frames file, schema version 1: sorted keys, two-space indentation, `/` not escaped, absent keys omitted and a
-/// final newline. Written by hand rather than with JSONEncoder so that the bytes are the same on macOS and on Linux,
-/// where CI runs the check.
+/// The frames file, schema version 2 (the script's version): sorted keys, two-space indentation, `/` not escaped,
+/// absent keys omitted and a final newline. Written by hand rather than with JSONEncoder so that the bytes are the same
+/// on macOS and on Linux, where CI runs the check.
+///
+/// `{ schemaVersion, generator, demos: { <id>: demo } }`, where a demo is `{ keys, method, toneStyle, text, frames,
+/// teachKeys?, teachPasses? }`. A frame is `{ key, text, commit?, revision?, revised?, toggle? }`; a commit
+/// `{ raw, text, outcome, rule?, english, plain? }`; a revised token `{ raw, text, english, plain? }`. `plain` (an
+/// English token only, when it differs from `text`) is what plain typing shows for the raw keys (ENG-R802). A learning
+/// demo adds `teachKeys` and `teachPasses`, one `{ text, frames }` per teaching pass in order, typed before `keys`
+/// (design 9 item 4). Version 2 added `plain`, `teachKeys` and `teachPasses`: a reader that ignored the teaching would
+/// show a learned word without the corrections that taught it.
 func renderFramesFile(_ demos: [RecordedDemo]) -> Data {
     let root = JSONValue.object([
         "schemaVersion": .number(DemoScript.supportedSchemaVersion),
@@ -169,10 +178,19 @@ func renderFramesFile(_ demos: [RecordedDemo]) -> Data {
 
 extension RecordedDemo {
     var json: JSONValue {
-        .object([
-            "keys": .string(keys), "method": .string(method.rawValue), "toneStyle": .string(toneStyle.rawValue),
-            "text": .string(text), "frames": .array(frames.map(\.json)),
-        ])
+        let members: [(String, JSONValue)?] = [
+            ("keys", .string(keys)), ("method", .string(method.rawValue)), ("toneStyle", .string(toneStyle.rawValue)),
+            ("text", .string(text)), ("frames", .array(frames.map(\.json))),
+            teachKeys.map { ("teachKeys", .string($0)) },
+            teachPasses.isEmpty ? nil : ("teachPasses", .array(teachPasses.map(\.json))),
+        ]
+        return .object(Dictionary(uniqueKeysWithValues: members.compactMap { $0 }))
+    }
+}
+
+extension RecordedDemo.TeachingPass {
+    var json: JSONValue {
+        .object(["text": .string(text), "frames": .array(frames.map(\.json))])
     }
 }
 
@@ -191,7 +209,7 @@ extension RecordedDemo.Commit {
     var json: JSONValue {
         let members: [(String, JSONValue)?] = [
             ("raw", .string(raw)), ("text", .string(text)), ("outcome", .string(outcome)),
-            rule.map { ("rule", .string($0)) }, ("english", .bool(english)),
+            rule.map { ("rule", .string($0)) }, ("english", .bool(english)), plain.map { ("plain", .string($0)) },
         ]
         return .object(Dictionary(uniqueKeysWithValues: members.compactMap { $0 }))
     }
@@ -199,7 +217,11 @@ extension RecordedDemo.Commit {
 
 extension RecordedDemo.Revised {
     var json: JSONValue {
-        .object(["raw": .string(raw), "text": .string(text), "english": .bool(english)])
+        let members: [(String, JSONValue)?] = [
+            ("raw", .string(raw)), ("text", .string(text)), ("english", .bool(english)),
+            plain.map { ("plain", .string($0)) },
+        ]
+        return .object(Dictionary(uniqueKeysWithValues: members.compactMap { $0 }))
     }
 }
 
