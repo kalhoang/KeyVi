@@ -33,9 +33,10 @@ export function renderPrivacy(ctx, lang) {
   // The website section states the analytics this build really ships (site/config.json `analytics`, ADR 0602).
   const analytics = ctx.config.analytics;
   const analyticsHtml = analytics.enabled ? f(m.analytics.umami, { analyticsOrigin: analytics.origin }) : m.analytics.off;
+  const servedHtml = analytics.enabled ? m.served.umami : m.served.off;
   const body = `
     ${pageHead(esc(m.h1), esc(m.lede), `<p class="muted">${esc(m.updated)}</p>`)}
-    <div class="prose">${f(m.html, { analyticsHtml })}</div>`;
+    <div class="prose">${f(m.html, { analyticsHtml, servedHtml })}</div>`;
   return { routeId: "privacy", navId: "privacy", title: p(ui.titles.privacy), description: p(ui.descriptions.privacy), body };
 }
 

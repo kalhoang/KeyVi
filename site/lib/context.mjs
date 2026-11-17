@@ -41,7 +41,7 @@ export async function createContext(options) {
   const warn = (message) => warnings.push(message);
   const brand = await loadBrand(join(rootDir, "scripts", "brand.env"));
   const analyticsHosts = await loadAnalyticsHosts(join(rootDir, "scripts", "url-hosts.allow"));
-  const config = await loadConfig(options.configPath ?? join(siteDir, "config.json"), { analyticsHosts });
+  const config = await loadConfig(options.configPath ?? join(siteDir, "config.json"), { analyticsHosts, repositoryUrl: brand.repositoryUrl });
   const fixturesDir = join(siteDir, "fixtures");
   const dataDir = options.dataDir ?? join(siteDir, "data");
   const matrixPath = options.dataDir ? join(options.dataDir, "matrix.json") : join(rootDir, "compat", "matrix.json");

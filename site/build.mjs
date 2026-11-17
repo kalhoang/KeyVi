@@ -51,6 +51,11 @@ function resolveToday(option) {
   return Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date();
 }
 
+/** The release gate's count (--strict): every VERIFY badge (lib/layout.mjs verifyBadge) left in the built pages. */
+export function countVerifyMarkers(pages) {
+  return pages.reduce((sum, page) => sum + (page.html.match(/class="verify"/g) ?? []).length, 0);
+}
+
 /** Build the whole site. Returns a summary used by the CLI and by test.mjs. */
 export async function build(options = {}) {
   const outDir = resolve(options.outDir ?? join(SITE_DIR, "dist"));
@@ -79,7 +84,7 @@ export async function build(options = {}) {
   await writeFileDeep(join(outDir, "sitemap.xml"), renderSitemap(ctx.brand, isoDay(today)));
   await writeFileDeep(join(outDir, "robots.txt"), renderRobots(ctx.brand));
 
-  const verifyCount = pages.reduce((sum, page) => sum + (page.html.match(/class="verify"/g) ?? []).length, 0);
+  const verifyCount = countVerifyMarkers(pages);
   const summary = { outDir, pageCount: pages.length, verifyCount, placeholders: ctx.config.placeholders, warnings: ctx.warnings, files: (await readdir(outDir)).length };
   if (options.strict && (verifyCount > 0 || summary.placeholders.length > 0)) {
     throw new Error(`--strict: ${verifyCount} VERIFY marker(s) and placeholder config value(s) [${summary.placeholders.join(", ")}] remain`);

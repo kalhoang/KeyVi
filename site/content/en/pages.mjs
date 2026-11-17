@@ -141,7 +141,7 @@ export const home = {
     heading: "Install in a minute",
     steps: [
       "Open the DMG and drag {{AppName}} into the Applications folder.",
-      "Open {{AppName}} and grant its one permission: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}}",
+      "Open {{AppName}} and turn on the permission its setup screen asks for: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. If the screen also lists <strong>Input Monitoring</strong>, turn that on too.",
       "Type a few words in the practice field to see the result right away.",
     ],
     brewLabel: "Or install with Homebrew",
@@ -177,7 +177,7 @@ export const download = {
   reqMacos: "{{macosRequirement}}",
   reqArch: "A Mac with Apple silicon or Intel (one build runs on both). macOS 27 runs on Apple silicon only.",
   reqExcluded: "Macs that cannot run macOS 12 Monterey are not supported. macOS 13 and 14 are supported but not tested separately.",
-  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27. {{verifyHtml}} The pane names must be checked on each macOS version.",
+  reqPermission: "Permission needed: <strong>Accessibility</strong> on macOS 12 to 26 (in System Preferences on macOS 12), <strong>Device Control and Data Access</strong> on macOS 27, and <strong>Input Monitoring</strong> on a Mac where macOS also requires it to receive keystrokes (the setup screen lists it only then).",
   reqNoOthers: "{{AppNameTM}} asks for no other permission (no Screen Recording, no Full Disk Access).",
   trustHeading: "Signature and notarization",
   trustBody: "Every DMG is signed with Kal's Developer ID certificate, notarized by Apple and stapled with the notarization ticket, so macOS opens it without a warning. Automatic updates use Sparkle 2 and are signed with EdDSA; the app rejects an update with a wrong signature.",
@@ -245,9 +245,14 @@ export const donate = {
 export const privacy = {
   h1: "Privacy",
   lede: "The principle: what you type never leaves your Mac and is never written to disk, except in one case you start yourself (a typing trace for a bug report, described below). The only automatic network traffic is the update check.",
-  updated: "Last updated: 13 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
+  updated: "Last updated: 17 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
   // The "This website" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
+  // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
+  served: {
+    off: "Fonts are the ones already on your device; code, images, updates and the installer (DMG) are all served from this site's own server.",
+    umami: "Fonts are the ones already on your device; apart from the Umami script named above, code, images, updates and the installer (DMG) are all served from this site's own server.",
+  },
   analytics: {
     off: "<strong>Visitor analytics: none.</strong> No Google Analytics, no third-party measurement, no tracking pixels.",
     umami: "<strong>Visitor analytics: Umami, self-hosted by the project.</strong> The pages of this website (not the app, not the release-notes pages) load Umami's script from <code>{{analyticsOrigin}}</code>, a server the project runs itself, and send it page views: the page address, the page title, the referring page, the screen size and the browser language. Umami uses no cookies and nothing is stored in your browser; it collects no personal data and keeps no user profiles. To count visitors, the server derives a visit identifier from a one-way hash of your IP address and browser with a value that changes every month; the IP address is not stored, only the approximate country and city derived from it and the browser, operating system and device type. If your browser sends Do Not Track, nothing is sent at all. Only aggregated page views are looked at (per page, referrer and country); the data is not shared with anyone and there is no advertising.",
@@ -256,9 +261,9 @@ export const privacy = {
 <h2 id="summary">Summary</h2>
 <ul>
   <li>No telemetry, no analytics service, no crash-reporting SDK, no remotely loaded configuration or rules.</li>
-  <li>No web view that loads remote content. Release notes are shown without loading external resources.</li>
+  <li>No web view that loads third-party content. When an update is offered, the update window shows its release notes page from this website, and that page loads nothing else.</li>
   <li>Password fields and the macOS secure input mode are always skipped. This is not a setting.</li>
-  <li>One permission is needed: Accessibility (macOS 12 to 26) or Device Control and Data Access (macOS 27). If macOS asks for more, the app says why. There is no Screen Recording, Automation or Full Disk Access.</li>
+  <li>The permission the app needs is Accessibility (macOS 12 to 26) or Device Control and Data Access (macOS 27). On a Mac where macOS also requires Input Monitoring to receive keystrokes, the setup screen lists it and says why. There is no Screen Recording, Automation or Full Disk Access.</li>
   <li>When permission is missing, your keyboard keeps typing normally (the app lets keys through and holds nothing back).</li>
 </ul>
 
@@ -275,9 +280,9 @@ export const privacy = {
 <p>Files are written atomically (write a temporary file, then rename) so an update or power loss does not corrupt your settings. The full list of paths to delete is in "Delete your data" below.</p>
 
 <h2 id="sent">What the app sends</h2>
-<p>One thing only: the <strong>update check</strong>, every 24 hours (you can turn it off in Settings).</p>
+<p>One thing only: the <strong>update check</strong>, every 24 hours (you can turn it off in Settings &gt; About).</p>
 <ul>
-  <li>The app fetches <code>https://{{host}}/appcast.xml</code> over HTTPS, then downloads the update from the same server when you agree or when automatic updates are on. {{verifyHtml}} If update archives are also hosted on GitHub Releases, this page will say so.</li>
+  <li>The app fetches <code>https://{{host}}/appcast.xml</code> over HTTPS. The release notes page in the update window and the update itself come from the same server; the update is downloaded when you agree or when automatic updates are on. The same files are also attached to each version's release on GitHub for anyone who prefers to get them there; the app never downloads anything from GitHub.</li>
   <li>As with any web request, the server sees your IP address and the app name and version. The app does not send a system profile (that Sparkle feature is disabled).</li>
   <li>An update must carry a valid EdDSA signature or the app refuses to install it.</li>
   <li>There is no other network request. The release pipeline includes an automated check that the shipped binary contains only the declared server addresses.</li>
@@ -312,22 +317,22 @@ export const privacy = {
 </ul>
 
 <h2 id="clipboard">Clipboard</h2>
-<p>The app writes to your clipboard only when you press <em>Open GitHub</em> in the report sheet (so you can paste the report into GitHub), and the sheet says so before it does. The only other case is the "paste" compatibility mode that you turn on yourself for one specific app; it saves and restores the clipboard around each paste and is explained when you enable it.</p>
+<p>The app writes to your clipboard only when you ask it to: when you press <em>Open GitHub</em> in the report sheet (so you can paste the report into GitHub; the sheet says so before it does), and when you press a copy button of the donation block in Settings &gt; About. The only other case is the "paste" compatibility mode that you turn on yourself for one specific app; it saves and restores the clipboard around each paste and is explained when you enable it.</p>
 
 <h2 id="website">This website</h2>
 <ul>
   <li>{{analyticsHtml}}</li>
-  <li>No cookies and no tracking storage. Fonts are the ones already on your device; code, images, updates and the installer (DMG) are all served from this site's own server.</li>
-  <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. From this log we count, each day, the requests to <code>appcast.xml</code> to estimate how many Macs run the app, and the downloads of each file; only the daily totals are kept.</li>
-  <li>Connections pass through Cloudflare and the server's router before they reach the web server; like on any website, these layers see your IP address while they handle the request. {{verifyHtml}} Check how long these two layers keep their logs before publishing.</li>
-  <li>Homebrew install counts come from Homebrew's public counter.</li>
+  <li>No cookies and no tracking storage. {{servedHtml}}</li>
+  <li>The web server logs each request with only the time, method, path (without the query part), result code and size; it does not log IP addresses, browsers or referring pages. This log is the only source from which the project could count, per day, the requests to <code>appcast.xml</code> (to estimate how many Macs run the app) and the downloads of each file.</li>
+  <li>Connections pass through Cloudflare and the server's router before they reach the web server; like on any website, these layers see your IP address while they handle the request. Cloudflare handles it under its own privacy policy.</li>
+  <li>If you install with Homebrew, Homebrew's own anonymous analytics apply, under Homebrew's policy; <code>brew analytics off</code> turns them off.</li>
 </ul>
 
 <h2 id="feedback">Bug reports and support</h2>
 <p>When you open a GitHub issue or send an email, what you write is your choice and is covered by the policy of GitHub or your email provider. {{AppNameTM}} never sends what you typed on its own.</p>
 
 <h2 id="donations">Donations</h2>
-<p>The app does not store or send donor information. The money moves between you and your bank or GitHub, under their own policies.</p>
+<p>The app does not store or send donor information. The money moves between you and your bank, under its own policy.</p>
 
 <h2 id="delete">Delete your data</h2>
 <p>Quit {{AppName}}, drag the app to the Trash, then delete the folders listed in the table above. If you installed with Homebrew, one command does it all:</p>

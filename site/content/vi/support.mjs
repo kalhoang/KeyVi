@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Vietnamese support copy: FAQ, troubleshooting by symptom, bug reporting, response targets (QA-R52),
-// and the migration guides (PRD-R71). Migration steps describe only what a user sees in the other app's
-// own window; every such step is marked VERIFY until checked on a real install (CLR-R5).
+// and the migration guides (PRD-R71). macOS names follow App/Resources/SystemPanes.json and Apple's vi-vn support pages
+// per macOS version; the app's own names follow its String Catalogs. The migration guides use only steps in macOS and
+// in the app, never another input method's own window (clean-room rule, CLR-R5).
 // "file", never "tệp", as the app says it (Nhập từ file..., Lưu file...); the URL slug tep-van-ban stays, links to it
 // exist. {{AppNameTM}} as in content/vi/pages.mjs: the first prose mention of a block, never headings, FAQ questions,
 // on-screen steps (open, quit, its menu, a list or folder), paths or identifiers.
@@ -36,13 +37,13 @@ export const support = {
 <ul>
   <li>macOS 12: Tùy chọn Hệ thống &gt; Bảo mật &amp; Quyền riêng tư &gt; Quyền riêng tư &gt; <strong>Trợ năng</strong> (bấm vào ổ khóa để thay đổi).</li>
   <li>macOS 13 tới 26: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Trợ năng</strong>.</li>
-  <li>macOS 27: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> (tên tiếng Anh: <em>Device Control and Data Access</em>; trước đây là Accessibility). {{verifyHtml}}</li>
+  <li>macOS 27: Cài đặt hệ thống &gt; Quyền riêng tư &amp; Bảo mật &gt; <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> (tên tiếng Anh: <em>Device Control and Data Access</em>; trước đây là Trợ năng).</li>
 </ul>
 <ol class="steps">
   <li>Bảo đảm {{AppName}} nằm trong thư mục <code>/Applications</code> (hoặc <code>~/Applications</code>), không chạy từ DMG.</li>
   <li>Bật công tắc của {{AppName}} trong mục trên. Ứng dụng tự nhận ra trong vòng vài giây.</li>
   <li>Công tắc đã bật nhưng không có tác dụng (thường xảy ra sau khi cập nhật macOS): chọn {{AppName}} trong danh sách, bấm nút trừ (-) để xóa, rồi thêm lại. Hoặc dùng nút <em>Đặt lại quyền</em> trong ứng dụng, chỉ đặt lại quyền của riêng {{AppName}}.</li>
-  <li>Muốn tự làm trong Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>. Luôn ghi kèm mã định danh ứng dụng. Đừng chạy <code>sudo tccutil reset Accessibility</code> không kèm mã định danh, vì lệnh đó xóa quyền của mọi ứng dụng. {{verifyHtml}} Tên dịch vụ có thể khác trên macOS 27.</li>
+  <li>Muốn tự làm trong Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>, trên macOS 27 cũng là lệnh này. Luôn ghi kèm mã định danh ứng dụng. Đừng chạy <code>sudo tccutil reset Accessibility</code> không kèm mã định danh, vì lệnh đó xóa quyền của mọi ứng dụng.</li>
 </ol>
 <p>Trong lúc thiếu quyền, bàn phím vẫn gõ bình thường; {{AppName}} chỉ tạm dừng và không chặn phím.</p>`,
     },
@@ -67,7 +68,7 @@ export const support = {
 <p>Hai bộ gõ chạy cùng lúc sẽ làm lặp hoặc mất chữ. Bạn nên thoát bộ gõ kia và tắt nó khi đăng nhập. {{AppNameTM}} sẽ báo khi phát hiện, nhưng không tự thoát hay chỉnh ứng dụng khác.</p>
 <ol class="steps">
   <li>Thoát bộ gõ cũ (XKey, OpenKey, EVKey, Gõ Nhanh, PHTV hoặc tương tự) từ biểu tượng trên thanh menu.</li>
-  <li>Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng: xóa bộ gõ cũ khỏi danh sách mở khi đăng nhập. {{verifyHtml}}</li>
+  <li>Xóa bộ gõ cũ khỏi danh sách mở khi đăng nhập: Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng trên macOS 15 trở lên (Mục đăng nhập trên macOS 13 và 14), hoặc Tùy chọn Hệ thống &gt; Người dùng &amp; Nhóm &gt; Mục Đăng nhập trên macOS 12. Chọn bộ gõ đó trong danh sách rồi bấm nút trừ (-).</li>
   <li>Nếu bạn đang bật bộ gõ <em>Tiếng Việt</em> có sẵn của macOS, hãy chọn bàn phím ABC hoặc U.S. khi dùng {{AppName}}.</li>
 </ol>
 <p>Hướng dẫn riêng cho từng ứng dụng nằm ở mục <a href="#chuyen-tu">chuyển từ bộ gõ khác</a>.</p>`,
@@ -89,13 +90,13 @@ export const support = {
       html: `
 <p>Nếu bạn chọn một tổ hợp phím mà macOS đang dùng, {{AppNameTM}} vẫn lưu lựa chọn và hiện cảnh báo nêu tính năng của macOS dùng tổ hợp đó. Để tổ hợp chỉ dành cho {{AppName}}, hãy tắt hoặc đổi phím tắt đó trong macOS:</p>
 <ol class="steps">
-  <li>Mở Cài đặt hệ thống &gt; Bàn phím, bấm <em>Phím tắt bàn phím...</em>. {{verifyHtml}} Tên mục tiếng Việt trên từng phiên bản macOS.</li>
+  <li>Mở Cài đặt hệ thống &gt; Bàn phím, bấm <em>Phím tắt...</em> (trên macOS 12: Tùy chọn Hệ thống &gt; Bàn phím &gt; <em>Phím tắt</em>).</li>
   <li>Chọn nhóm ở cột bên trái (xem danh sách dưới đây), rồi bỏ chọn ô của phím tắt để tắt nó, hoặc bấm đúp vào tổ hợp phím để gán tổ hợp khác.</li>
 </ol>
 <ul>
-  <li><kbd>Command</kbd> + <kbd>Space</kbd>: nhóm <em>Spotlight</em>, mục hiện tìm kiếm Spotlight.</li>
-  <li><kbd>Control</kbd> + <kbd>Space</kbd> và <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: nhóm <em>Nguồn nhập</em>, mục chọn nguồn nhập trước đó và mục chọn nguồn tiếp theo. {{verifyHtml}} Tên nhóm tiếng Việt.</li>
-  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: mở bảng Emoji và ký hiệu. Phím tắt này nằm trong menu Sửa của từng ứng dụng, không có trong các nhóm trên; bạn có thể gán tổ hợp khác cho mục menu đó ở nhóm <em>Phím tắt ứng dụng</em>. {{verifyHtml}} Tên mục menu và nhóm trên từng phiên bản macOS.</li>
+  <li><kbd>Command</kbd> + <kbd>Space</kbd>: nhóm <em>Spotlight</em>, mục hiển thị tìm kiếm trong Spotlight.</li>
+  <li><kbd>Control</kbd> + <kbd>Space</kbd> và <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: nhóm <em>Nguồn Nhập liệu</em> (tiếng Anh: <em>Input Sources</em>), hai mục chọn nguồn nhập liệu trước đó và chọn nguồn tiếp theo.</li>
+  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: mở Trình xem ký tự, giống mục <em>Sửa &gt; Biểu tượng &amp; Ký hiệu</em> trong hầu hết ứng dụng. Phím tắt này không nằm trong các nhóm trên: muốn dùng nó cho việc khác, hãy gán tổ hợp khác cho mục menu <em>Biểu tượng &amp; Ký hiệu</em> ở nhóm <em>Phím tắt ứng dụng</em>, cho tất cả ứng dụng.</li>
   <li><kbd>Command</kbd> + <kbd>Tab</kbd> (chuyển ứng dụng), <kbd>Command</kbd> + <kbd>Q</kbd> (thoát ứng dụng) và <kbd>Command</kbd> + <kbd>W</kbd> (đóng cửa sổ): macOS không cho tắt các phím tắt này. Bạn nên chọn tổ hợp khác cho {{AppName}}.</li>
 </ul>
 <p>{{AppName}} không đọc cài đặt phím tắt của macOS, nên cảnh báo trong Cài đặt vẫn hiện sau khi bạn đã tắt phím tắt đó. Khi đó bạn có thể bỏ qua cảnh báo.</p>`,
@@ -115,7 +116,7 @@ export const support = {
   channels: [
     "<a href=\"{{repo}}/issues/new/choose\" rel=\"noopener\">GitHub Issues</a>: báo lỗi và tương thích ứng dụng.",
     "<a href=\"{{repo}}/discussions\" rel=\"noopener\">GitHub Discussions</a>: câu hỏi và ý tưởng.",
-    "Email <a href=\"mailto:{{email}}\">{{email}}</a> {{verifyHtml}} dành cho bạn nào không dùng GitHub.",
+    "Email <a href=\"mailto:{{email}}\">{{email}}</a> dành cho bạn nào không dùng GitHub.",
   ],
   noDm: "Xin lỗi, chúng tôi không hỗ trợ qua tin nhắn riêng trên mạng xã hội. Dùng các kênh trên giúp mọi người cùng thấy câu trả lời.",
   targetsHeading: "Thời gian phản hồi",
@@ -132,6 +133,21 @@ export const support = {
   migrateLede: "Hướng dẫn chuyển danh sách viết tắt từ bộ gõ bạn đang dùng. Hiện {{AppNameTM}} nhập danh sách viết tắt từ file văn bản (phân tách bằng Tab hoặc CSV), từ file Thay thế văn bản của macOS và từ file xuất của chính nó; chưa đọc file xuất của bộ gõ khác. {{AppName}} chỉ nhập file bạn tự chọn, và chỉ sau khi bạn bấm nhập. Ứng dụng không tự đọc dữ liệu của ứng dụng khác.",
 };
 
+// The guides for another input method: what to do in macOS and in {{AppName}}, in order. They name nothing inside the
+// other app (its menus, settings or files), so nothing on them depends on a version of that app.
+const fromOtherInputMethod = {
+  intro: "{{AppNameTM}} không đọc file hay cài đặt của {{Other}}. Bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, chọn lại thói quen gõ trong {{AppName}}, rồi thoát {{Other}} để chỉ còn một bộ gõ chạy.",
+  steps: [
+    "Trong một trình soạn văn bản thuần, viết mỗi mục viết tắt muốn giữ trên một dòng: chữ viết tắt, một ký tự Tab, rồi nội dung đầy đủ, như <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>. File CSV hai cột, ví dụ lưu từ bảng tính, cũng dùng được.",
+    "Lưu file với mã hóa UTF-8.",
+  ],
+  habits: [
+    "Trong Cài đặt của {{AppName}}, mục Kiểu gõ, chọn <em>Kiểu gõ</em> (Telex hoặc VNI) và <em>Kiểu đặt dấu</em> (<em>hòa</em> truyền thống hoặc <em>hoà</em> kiểu mới) mà bạn quen dùng.",
+    "Để chuyển giữa tiếng Việt và tiếng Anh, nhấn rồi thả <kbd>Control</kbd> + <kbd>Shift</kbd>. Muốn dùng tổ hợp khác, đổi mục <em>Phím chuyển Việt/Anh</em> trong Cài đặt, mục Chung.",
+    "Với ứng dụng bạn không bao giờ muốn thêm dấu, bấm biểu tượng {{AppName}} trên thanh menu trong lúc đang dùng ứng dụng đó, rồi chọn <em>Bỏ qua ứng dụng này</em> hoặc <em>Luôn tiếng Anh</em> trong mục <em>Với tên ứng dụng</em>.",
+  ],
+};
+
 export const migrate = {
   title: "Chuyển từ {{Other}} sang {{AppName}}",
   // [name in the card list, what moves, name inside a sentence ({{Other}}) when it is not a proper name]
@@ -145,74 +161,42 @@ export const migrate = {
     plaintext: ["File văn bản hoặc CSV", "Viết tắt, định dạng chung cho mọi nguồn", "file văn bản hoặc CSV"],
   },
   back: "Quay lại phần Hỗ trợ",
-  stepsHeading: "Lấy danh sách viết tắt từ {{Other}}",
+  stepsHeading: "Đưa danh sách viết tắt vào một file văn bản",
   importHeading: "Nhập vào {{AppName}}",
   importSteps: [
     "Mở {{AppName}}, vào Cài đặt &gt; Viết tắt &gt; <em>Nhập từ file...</em> (hoặc chọn <em>Chọn file...</em> ở bước nhập trong lúc làm quen).",
     "Xem bảng xem trước: số dòng mới, trùng lặp và không hợp lệ. Với dòng trùng, chọn giữ bản của bạn hoặc dùng bản nhập vào.",
     "Dòng không hợp lệ được bỏ qua kèm lý do; một dòng lỗi không làm hỏng cả lần nhập.",
   ],
+  habitsHeading: "Gõ theo thói quen của bạn",
   quitHeading: "Thoát {{Other}} và tắt tự mở khi đăng nhập",
   quitIntro: "Hai bộ gõ cùng lúc sẽ làm lặp hoặc mất chữ. Bạn nên thoát {{Other}} và tắt nó khi đăng nhập.",
   quitSteps: [
-    "Bấm biểu tượng {{Other}} trên thanh menu và chọn thoát. {{verifyHtml}} Tên mục trong bản hiện tại.",
-    "Mở Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng. Trong danh sách <em>Mở khi đăng nhập</em>, chọn {{Other}} rồi bấm nút trừ (-). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
-    "Nếu {{Other}} có tùy chọn tự khởi động riêng trong cài đặt của nó, hãy tắt luôn. {{verifyHtml}}",
+    "Thoát {{Other}} từ biểu tượng của nó trên thanh menu. Nếu không thấy cách thoát ở đó, mở Giám sát hoạt động (trong thư mục Tiện ích của Ứng dụng), chọn {{Other}} trong danh sách, bấm nút Dừng ở góc trên bên trái cửa sổ, rồi bấm Thoát.",
+    "Tắt tự mở khi đăng nhập: Cài đặt hệ thống &gt; Cài đặt chung &gt; Mục đăng nhập &amp; Phần mở rộng trên macOS 15 trở lên (Mục đăng nhập trên macOS 13 và 14), hoặc Tùy chọn Hệ thống &gt; Người dùng &amp; Nhóm &gt; Mục Đăng nhập trên macOS 12. Chọn {{Other}} trong danh sách rồi bấm nút trừ (-) bên dưới.",
+    "Nếu {{Other}} có thêm nguồn đầu vào riêng, hãy gỡ nó: mở Cài đặt hệ thống &gt; Bàn phím, bấm <em>Sửa...</em> ở mục Nhập văn bản, chọn nguồn đầu vào đó rồi bấm nút trừ (-). Trên macOS 12, danh sách này nằm ở Tùy chọn Hệ thống &gt; Bàn phím &gt; Nguồn đầu vào.",
+    "Nếu không dùng {{Other}} nữa, kéo nó từ thư mục Ứng dụng vào Thùng rác.",
   ],
-  screenshotHolder: "Ảnh chụp màn hình sẽ được thêm sau khi từng bước được kiểm tra trên bản cài thật",
-  screenshotAlt: "Ảnh minh họa (giữ chỗ): các bước xuất dữ liệu từ {{Other}}",
-  verifyNote: "Các bước trên mô tả những gì bạn thấy trên màn hình của ứng dụng đó và chưa được kiểm tra trên bản mới nhất. Nếu tên mục khác, hãy làm theo mục gần nghĩa nhất và cho chúng tôi biết để sửa trang này.",
   pages: {
-    xkey: {
-      intro: "{{AppNameTM}} chưa đọc được file xuất của {{Other}}. Hiện tại bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, rồi chọn lại kiểu gõ, kiểu đặt dấu và các ứng dụng cần bỏ qua trong {{AppName}}. Việc nhập thẳng file xuất của {{Other}} (danh sách viết tắt và các cài đặt đó) đang được lên kế hoạch, sau khi định dạng file được kiểm tra từ một file xuất thật.",
-      steps: [
-        "Mở cài đặt của {{Other}} từ biểu tượng trên thanh menu và tìm danh sách viết tắt (macro). {{verifyHtml}} Tên mục.",
-        "Nếu {{Other}} có nút xuất danh sách viết tắt, lưu file ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Có nút xuất hay không, và định dạng file.",
-        "Chép từng dòng (chữ viết tắt, nội dung) sang một file văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, lưu với mã hóa UTF-8.",
-        "Ghi lại kiểu gõ, kiểu đặt dấu và các ứng dụng bạn loại trừ trong {{Other}}. Chọn lại kiểu gõ và kiểu đặt dấu trong Cài đặt của {{AppName}}, mục Kiểu gõ; với mỗi ứng dụng cần loại trừ, dùng mục <em>Bỏ qua ứng dụng này</em> trong menu {{AppName}}.",
-      ],
-    },
-    openkey: {
-      intro: "{{AppNameTM}} chưa đọc được file xuất của {{Other}}. Hiện tại bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>. Việc nhập thẳng file xuất của {{Other}} đang được lên kế hoạch, sau khi định dạng file được kiểm tra từ một file xuất thật.",
-      steps: [
-        "Mở danh sách viết tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
-        "Nếu có nút xuất, lưu file ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên nút và định dạng file.",
-        "Chép từng dòng (chữ viết tắt, nội dung) sang một file văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, lưu với mã hóa UTF-8.",
-      ],
-    },
-    evkey: {
-      intro: "{{Other}} (bản cũ cho macOS hoặc bản viết lại) có thể chỉ giữ danh sách viết tắt bên trong ứng dụng, và {{AppNameTM}} chưa đọc được file xuất của {{Other}}. Bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>.",
-      steps: [
-        "Mở danh sách viết tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
-        "Nếu có nút xuất, lưu file ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Nút xuất có tồn tại trong bản của bạn hay không.",
-        "Chép từng dòng (chữ viết tắt, nội dung) sang một file văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, lưu với mã hóa UTF-8.",
-      ],
-    },
-    gonhanh: {
-      intro: "Khả năng xuất dữ liệu của {{Other}} cần được xác minh, và {{AppNameTM}} chưa đọc được file xuất của {{Other}}. Bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, rồi đặt lại chế độ cho từng ứng dụng trong menu {{AppName}}.",
-      steps: [
-        "Mở cài đặt của {{Other}} và tìm danh sách viết tắt, hoặc chức năng xuất hay sao lưu. {{verifyHtml}} Chức năng này có tồn tại hay không.",
-        "Chép từng dòng (chữ viết tắt, nội dung) sang một file văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, lưu với mã hóa UTF-8.",
-      ],
-    },
-    phtv: {
-      intro: "{{AppNameTM}} chưa đọc được file xuất của {{Other}}. Hiện tại bạn mang danh sách viết tắt sang bằng <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>. Việc nhập thẳng file xuất của {{Other}} đang được lên kế hoạch, sau khi định dạng file được kiểm tra từ một file xuất thật.",
-      steps: [
-        "Mở danh sách viết tắt trong cài đặt của {{Other}}. {{verifyHtml}}",
-        "Nếu có nút xuất, lưu file ra Desktop và mở bằng TextEdit để chép nội dung. {{verifyHtml}} Tên mục, nút và định dạng file.",
-        "Chép từng dòng (chữ viết tắt, nội dung) sang một file văn bản theo <a href=\"{{hrefMigratePlaintext}}\">mẫu file văn bản</a>, lưu với mã hóa UTF-8.",
-      ],
-    },
+    xkey: fromOtherInputMethod,
+    openkey: fromOtherInputMethod,
+    evkey: fromOtherInputMethod,
+    gonhanh: fromOtherInputMethod,
+    phtv: fromOtherInputMethod,
     macos: {
       intro: "Bộ gõ Tiếng Việt có sẵn của macOS không có gì để nhập. Thứ bạn có thể mang theo là danh sách Thay thế văn bản (Text Replacements). Bạn có thể giữ hoặc gỡ bộ gõ Tiếng Việt của macOS. Khi dùng {{AppNameTM}}, hãy chọn bàn phím ABC hoặc U.S.",
+      stepsHeading: "Xuất danh sách Thay thế văn bản",
       steps: [
-        "Mở Cài đặt hệ thống &gt; Bàn phím &gt; <em>Thay thế văn bản</em>. {{verifyHtml}} Tên mục tiếng Việt trên từng phiên bản macOS.",
-        "Chọn các dòng muốn mang theo (<kbd>Command</kbd> + <kbd>A</kbd> để chọn hết) rồi kéo ra Desktop. macOS tạo một file <code>.plist</code>. {{verifyHtml}}",
-        "Nhập file <code>.plist</code> đó vào {{AppName}} theo hướng dẫn ở trên.",
+        "Mở Cài đặt hệ thống &gt; Bàn phím, bấm <em>Thay thế văn bản...</em> (trên macOS 12: Tùy chọn Hệ thống &gt; Bàn phím &gt; <em>Văn bản</em>).",
+        "Chọn các dòng muốn mang theo (<kbd>Command</kbd> + <kbd>A</kbd> để chọn hết) rồi kéo ra màn hình nền. macOS tạo một file <code>.plist</code> ở đó.",
+        "Nhập file <code>.plist</code> đó vào {{AppName}} theo hướng dẫn bên dưới.",
       ],
+      // The built-in source is not an app: nothing to quit or to remove from the login items.
+      quitHeading: "Chọn bàn phím ABC hoặc U.S.",
+      quitIntro: "Hai bộ gõ cùng lúc sẽ làm lặp hoặc mất chữ, nên khi dùng {{AppName}}, bạn hãy gõ bằng bàn phím ABC hoặc U.S. thay vì nguồn Tiếng Việt có sẵn.",
       quitSteps: [
-        "Mở Cài đặt hệ thống &gt; Bàn phím &gt; Nguồn nhập (hoặc Phương thức nhập). {{verifyHtml}} Tên mục trên từng phiên bản macOS.",
-        "Bấm Sửa, thêm bàn phím <em>ABC</em> hoặc <em>U.S.</em> nếu chưa có.",
+        "Mở danh sách nguồn đầu vào: Cài đặt hệ thống &gt; Bàn phím, rồi bấm <em>Sửa...</em> ở mục Nhập văn bản (trên macOS 12: Tùy chọn Hệ thống &gt; Bàn phím &gt; Nguồn đầu vào).",
+        "Bấm nút cộng (+) để thêm bàn phím <em>ABC</em> hoặc <em>U.S.</em> nếu chưa có.",
         "Chọn nguồn <em>Tiếng Việt</em> có sẵn và bấm nút trừ (-) để gỡ nếu bạn không dùng nữa. Việc gỡ là tùy bạn; giữ lại không gây lỗi, miễn bạn chọn ABC hoặc U.S. khi gõ với {{AppName}}.",
       ],
     },

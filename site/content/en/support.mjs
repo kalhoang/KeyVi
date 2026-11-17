@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// English support copy (mirrors content/vi/support.mjs). Migration steps describe only what a user sees in
-// the other app's own window; every such step is marked VERIFY until checked on a real install (CLR-R5).
+// English support copy (mirrors content/vi/support.mjs). macOS names follow App/Resources/SystemPanes.json and Apple's
+// support pages per macOS version; the app's own names follow its String Catalogs. The migration guides use only steps
+// in macOS and in the app, never another input method's own window (clean-room rule, CLR-R5).
 // {{AppNameTM}} as in content/en/pages.mjs: the first prose mention of a block, never headings, FAQ questions,
 // on-screen steps (open, quit, its menu, a list or folder), paths or identifiers.
 export const support = {
@@ -34,13 +35,13 @@ export const support = {
 <ul>
   <li>macOS 12: System Preferences &gt; Security &amp; Privacy &gt; Privacy &gt; <strong>Accessibility</strong> (click the lock to make changes).</li>
   <li>macOS 13 to 26: System Settings &gt; Privacy &amp; Security &gt; <strong>Accessibility</strong>.</li>
-  <li>macOS 27: System Settings &gt; Privacy &amp; Security &gt; <strong>Device Control and Data Access</strong> (previously Accessibility). {{verifyHtml}}</li>
+  <li>macOS 27: System Settings &gt; Privacy &amp; Security &gt; <strong>Device Control and Data Access</strong> (previously Accessibility).</li>
 </ul>
 <ol class="steps">
   <li>Make sure {{AppName}} is in <code>/Applications</code> (or <code>~/Applications</code>), not running from the DMG.</li>
   <li>Turn on the switch for {{AppName}} in that pane. The app notices within a few seconds.</li>
   <li>If the switch is already on but nothing works (common after a macOS update): select {{AppName}} in the list, press the minus (-) button to remove it, then add it again. Or use the <em>Reset permission</em> button in the app, which resets only {{AppName}}'s own entry.</li>
-  <li>To do it yourself in Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>. Always include the bundle identifier. Never run <code>sudo tccutil reset Accessibility</code> without one, because that clears every app's permission. {{verifyHtml}} The service name may differ on macOS 27.</li>
+  <li>To do it yourself in Terminal: <code>tccutil reset Accessibility {{bundleId}}</code>, the same command on macOS 27. Always include the bundle identifier. Never run <code>sudo tccutil reset Accessibility</code> without one, because that clears every app's permission.</li>
 </ol>
 <p>While permission is missing your keyboard keeps typing normally; {{AppName}} just pauses and never blocks keys.</p>`,
     },
@@ -65,7 +66,7 @@ export const support = {
 <p>Two input methods running at once make letters double or disappear. Quit the other one and stop it from starting at login. {{AppNameTM}} warns you when it detects one, but never quits or changes other apps itself.</p>
 <ol class="steps">
   <li>Quit the old input method (XKey, OpenKey, EVKey, Gõ Nhanh, PHTV or similar) from its menu bar icon.</li>
-  <li>System Settings &gt; General &gt; Login Items &amp; Extensions: remove the old input method from the open-at-login list. {{verifyHtml}}</li>
+  <li>Remove the old input method from the items that open at login: System Settings &gt; General &gt; Login Items &amp; Extensions on macOS 15 or later (Login Items on macOS 13 and 14), or System Preferences &gt; Users &amp; Groups &gt; Login Items on macOS 12. Select it in the list and click the minus (-) button.</li>
   <li>If the built-in macOS <em>Vietnamese</em> input source is enabled, choose the ABC or U.S. keyboard while you use {{AppName}}.</li>
 </ol>
 <p>App-specific guides are in the <a href="#migrate">moving from another input method</a> section.</p>`,
@@ -76,8 +77,8 @@ export const support = {
       html: `
 <ol class="steps">
   <li>Search for the app in <a href="{{repo}}/issues" rel="noopener">GitHub Issues</a>: someone may already have reported it, with a workaround.</li>
-  <li>Try typing in {{AppName}}'s practice field (the <em>Test in the practice field</em> button in the report flow) to see whether the problem is specific to that app or happens everywhere.</li>
-  <li>In the {{AppName}} menu, the <em>With app name</em> submenu can set <em>Always English</em> or <em>Ignore this app</em> if you need to keep working right now.</li>
+  <li>Try typing in {{AppName}}'s practice field (the <em>Try in the practice field</em> button in the report flow) to see whether the problem is specific to that app or happens everywhere.</li>
+  <li>In the {{AppName}} menu, the <em>In app name</em> submenu can set <em>Always English</em> or <em>Ignore this app</em> if you need to keep working right now.</li>
   <li>Report it with <em>Report a problem with this app...</em>: the report is pre-filled with the app, its version and the active rule.</li>
 </ol>`,
     },
@@ -87,13 +88,13 @@ export const support = {
       html: `
 <p>If you pick a combination macOS already uses, {{AppNameTM}} still saves your choice and shows a warning that names the macOS feature using it. To keep the combination for {{AppName}} alone, turn that shortcut off or change it in macOS:</p>
 <ol class="steps">
-  <li>Open System Settings &gt; Keyboard and click <em>Keyboard Shortcuts...</em>. {{verifyHtml}} The item names on each macOS version.</li>
+  <li>Open System Settings &gt; Keyboard and click <em>Keyboard Shortcuts...</em> (on macOS 12: System Preferences &gt; Keyboard &gt; <em>Shortcuts</em>).</li>
   <li>Choose the group in the left column (see the list below), then untick the shortcut to turn it off, or double-click its key combination to assign another one.</li>
 </ol>
 <ul>
-  <li><kbd>Command</kbd> + <kbd>Space</kbd>: the <em>Spotlight</em> group, Show Spotlight search.</li>
-  <li><kbd>Control</kbd> + <kbd>Space</kbd> and <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: the <em>Input Sources</em> group, select the previous input source and select the next source.</li>
-  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: opens the Emoji &amp; Symbols viewer. This shortcut lives in each app's Edit menu, not in the groups above; you can assign another combination to that menu item in the <em>App Shortcuts</em> group. {{verifyHtml}} The menu item and group names on each macOS version.</li>
+  <li><kbd>Command</kbd> + <kbd>Space</kbd>: the <em>Spotlight</em> group, <em>Show Spotlight search</em>.</li>
+  <li><kbd>Control</kbd> + <kbd>Space</kbd> and <kbd>Control</kbd> + <kbd>Option</kbd> + <kbd>Space</kbd>: the <em>Input Sources</em> group, <em>Select the previous input source</em> and <em>Select next source in Input menu</em>.</li>
+  <li><kbd>Control</kbd> + <kbd>Command</kbd> + <kbd>Space</kbd>: opens the Character Viewer, like <em>Edit &gt; Emoji &amp; Symbols</em> in most apps. It is not in the groups above: to free it, give the <em>Emoji &amp; Symbols</em> menu item another combination in the <em>App Shortcuts</em> group, for all applications.</li>
   <li><kbd>Command</kbd> + <kbd>Tab</kbd> (switching apps), <kbd>Command</kbd> + <kbd>Q</kbd> (quitting apps) and <kbd>Command</kbd> + <kbd>W</kbd> (closing windows): macOS does not let you turn these off. Choose another combination for {{AppName}}.</li>
 </ul>
 <p>{{AppName}} does not read the macOS shortcut settings, so the warning in Settings stays after you have turned the shortcut off. You can ignore it then.</p>`,
@@ -105,7 +106,7 @@ export const support = {
     "Pick the app where the problem happened (your last app is preselected).",
     "Pick what happened: missing letters, doubled letters, wrong tone, cannot type Vietnamese, slow or laggy, other.",
     "Type again the example you typed and the result you expected. {{AppNameTM}} never sends what you typed on its own.",
-    "Open <em>Preview what will be sent</em> to see the exact report. Then choose <em>Open GitHub</em> (the report is copied to your clipboard for you to paste), <em>Send by email</em>, or <em>Save file...</em>.",
+    "Open <em>Preview the data that will be sent</em> to see the exact report. Then choose <em>Open GitHub</em> (the report is copied to your clipboard for you to paste), <em>Send by email</em>, or <em>Save file...</em>.",
   ],
   reportNoGithub: "You do not need a GitHub account: the email path always works.",
   reportNever: "{{AppNameTM}} will never ask you for verbose logs or for what you typed. Only when really needed will a maintainer invite you to record a short typing trace (60 seconds), which you review yourself before sharing.",
@@ -113,7 +114,7 @@ export const support = {
   channels: [
     "<a href=\"{{repo}}/issues/new/choose\" rel=\"noopener\">GitHub Issues</a>: bugs and app compatibility.",
     "<a href=\"{{repo}}/discussions\" rel=\"noopener\">GitHub Discussions</a>: questions and ideas.",
-    "Email <a href=\"mailto:{{email}}\">{{email}}</a> {{verifyHtml}} for anyone who does not use GitHub.",
+    "Email <a href=\"mailto:{{email}}\">{{email}}</a> for anyone who does not use GitHub.",
   ],
   noDm: "Sorry, we do not offer support through private messages on social networks. Using the channels above lets everyone see the answer.",
   targetsHeading: "Response targets",
@@ -130,6 +131,21 @@ export const support = {
   migrateLede: "Guides for moving your macro list from the input method you use now. Today {{AppNameTM}} imports macros from a text file (tab-separated or CSV), from a macOS Text Replacements file and from its own export; it does not read other input methods' export files yet. {{AppName}} imports only a file you choose yourself, and only after you press import. The app never reads another app's data on its own.",
 };
 
+// The guides for another input method: what to do in macOS and in {{AppName}}, in order. They name nothing inside the
+// other app (its menus, settings or files), so nothing on them depends on a version of that app.
+const fromOtherInputMethod = {
+  intro: "{{AppNameTM}} does not read {{Other}}'s files or settings. Bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, choose your typing habits again in {{AppName}}, then quit {{Other}} so that only one input method types.",
+  steps: [
+    "In a plain text editor, write each macro you want to keep on its own line: the shortcut, a Tab, then the full text, as the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a> shows. A two-column CSV file, for example saved from a spreadsheet, works too.",
+    "Save the file as UTF-8.",
+  ],
+  habits: [
+    "In {{AppName}}'s Settings &gt; Typing, choose the <em>Typing method</em> (Telex or VNI) and the <em>Tone placement</em> (<em>hòa</em>, traditional, or <em>hoà</em>, modern) you are used to.",
+    "To switch between Vietnamese and English, press and release <kbd>Control</kbd> + <kbd>Shift</kbd>. To use another combination, change <em>VI/EN toggle hotkey</em> in Settings &gt; General.",
+    "For an app where you never want Vietnamese marks, click the {{AppName}} icon in the menu bar while you work in that app and choose <em>Ignore this app</em> or <em>Always English</em> in the <em>In app name</em> submenu.",
+  ],
+};
+
 export const migrate = {
   title: "Moving from {{Other}} to {{AppName}}",
   // [name in the card list, what moves, name inside a sentence ({{Other}}) when it is not a proper name]
@@ -143,74 +159,42 @@ export const migrate = {
     plaintext: ["Plain text or CSV file", "Macros, the common format for any source", "a plain text or CSV file"],
   },
   back: "Back to Support",
-  stepsHeading: "Get your macros out of {{Other}}",
+  stepsHeading: "Put your macros in a text file",
   importHeading: "Import into {{AppName}}",
   importSteps: [
-    "Open {{AppName}}, go to Settings &gt; Macros &gt; <em>Import from file...</em> (or choose <em>Choose file...</em> at the import step during setup).",
+    "Open {{AppName}}, go to Settings &gt; Macros &gt; <em>Import from File...</em> (or choose <em>Choose file...</em> at the import step during setup).",
     "Read the preview: counts of new, duplicate and invalid rows. For duplicates, choose to keep yours or use the imported one.",
     "Invalid rows are skipped with a reason; one bad row never ruins the whole import.",
   ],
+  habitsHeading: "Type the way you are used to",
   quitHeading: "Quit {{Other}} and stop it from opening at login",
   quitIntro: "Two input methods at once make letters double or vanish. Quit {{Other}} and stop it from starting at login.",
   quitSteps: [
-    "Click the {{Other}} icon in the menu bar and choose quit. {{verifyHtml}} The menu item name in the current version.",
-    "Open System Settings &gt; General &gt; Login Items &amp; Extensions. In the <em>Open at Login</em> list, select {{Other}} and press the minus (-) button. {{verifyHtml}} The item names on each macOS version.",
-    "If {{Other}} has its own start-at-login option in its settings, turn that off too. {{verifyHtml}}",
+    "Quit {{Other}} from its icon in the menu bar. If you cannot find how to quit it there, open Activity Monitor (in the Utilities folder of Applications), select {{Other}} in the list, click the Stop button in the upper-left corner of the window, then click Quit.",
+    "Stop it from opening at login: System Settings &gt; General &gt; Login Items &amp; Extensions on macOS 15 or later (Login Items on macOS 13 and 14), or System Preferences &gt; Users &amp; Groups &gt; Login Items on macOS 12. Select {{Other}} in the list and click the minus (-) button below it.",
+    "If {{Other}} added an input source of its own, remove it: open System Settings &gt; Keyboard, click <em>Edit...</em> under Text Input, select that input source and click the minus (-) button. On macOS 12 the list is in System Preferences &gt; Keyboard &gt; Input Sources.",
+    "If you no longer use {{Other}}, drag it from the Applications folder to the Trash.",
   ],
-  screenshotHolder: "Screenshots will be added once each step has been checked on a real install",
-  screenshotAlt: "Illustration (placeholder): the steps to export data from {{Other}}",
-  verifyNote: "The steps above describe what you see in that app's own window and have not yet been checked against the latest version. If a label differs, follow the closest one and tell us so we can fix this page.",
   pages: {
-    xkey: {
-      intro: "{{AppNameTM}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, then choose your typing method, tone style and the apps to ignore again in {{AppName}}. Importing {{Other}}'s export files directly (macros and those settings) is planned, once the file format has been checked against a real export.",
-      steps: [
-        "Open {{Other}}'s settings from its menu bar icon and find the macro list. {{verifyHtml}} The section name.",
-        "If {{Other}} can export the macro list, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} Whether there is an export button, and the file format.",
-        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
-        "Note the typing method, tone style and excluded apps you use in {{Other}}. Choose the typing method and tone style again in {{AppName}}'s Settings, Typing; for each app to exclude, use <em>Ignore this app</em> in the {{AppName}} menu.",
-      ],
-    },
-    openkey: {
-      intro: "{{AppNameTM}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>. Importing {{Other}}'s export files directly is planned, once the file format has been checked against a real export.",
-      steps: [
-        "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
-        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} The button name and file format.",
-        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
-      ],
-    },
-    evkey: {
-      intro: "{{Other}} (the legacy Mac build or a rewrite) may keep macros only inside the app, and {{AppNameTM}} cannot read {{Other}}'s export files yet. Bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>.",
-      steps: [
-        "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
-        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} Whether your build has an export button.",
-        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
-      ],
-    },
-    gonhanh: {
-      intro: "Whether {{Other}} can export data still needs to be checked, and {{AppNameTM}} cannot read {{Other}}'s export files yet. Bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, then set the mode for each app again from the {{AppName}} menu.",
-      steps: [
-        "Open {{Other}}'s settings and find the macro list, or an export or backup feature. {{verifyHtml}} Whether this feature exists.",
-        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
-      ],
-    },
-    phtv: {
-      intro: "{{AppNameTM}} cannot read {{Other}}'s export files yet. For now, bring your macros over with the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>. Importing {{Other}}'s export files directly is planned, once the file format has been checked against a real export.",
-      steps: [
-        "Open the macro list in {{Other}}'s settings. {{verifyHtml}}",
-        "If there is an export button, save the file to the Desktop and open it in TextEdit to copy its contents. {{verifyHtml}} The section, button and file format.",
-        "Copy each row (shortcut, expansion) into a text file using the <a href=\"{{hrefMigratePlaintext}}\">plain text template</a>, saved as UTF-8.",
-      ],
-    },
+    xkey: fromOtherInputMethod,
+    openkey: fromOtherInputMethod,
+    evkey: fromOtherInputMethod,
+    gonhanh: fromOtherInputMethod,
+    phtv: fromOtherInputMethod,
     macos: {
       intro: "The built-in macOS Vietnamese input source has nothing to import. What you can bring along is your Text Replacements list. You can keep or remove the built-in Vietnamese source. While you use {{AppNameTM}}, choose the ABC or U.S. keyboard.",
+      stepsHeading: "Export your Text Replacements",
       steps: [
-        "Open System Settings &gt; Keyboard &gt; <em>Text Replacements</em>. {{verifyHtml}} The item name on each macOS version.",
-        "Select the rows to bring (<kbd>Command</kbd> + <kbd>A</kbd> selects all) and drag them to the Desktop. macOS creates a <code>.plist</code> file. {{verifyHtml}}",
-        "Import that <code>.plist</code> file into {{AppName}} as described above.",
+        "Open System Settings &gt; Keyboard and click <em>Text Replacements...</em> (on macOS 12: System Preferences &gt; Keyboard &gt; <em>Text</em>).",
+        "Select the rows to bring (<kbd>Command</kbd> + <kbd>A</kbd> selects all) and drag them to the desktop. macOS creates a <code>.plist</code> file there.",
+        "Import that <code>.plist</code> file into {{AppName}} as described below.",
       ],
+      // The built-in source is not an app: nothing to quit or to remove from the login items.
+      quitHeading: "Choose the ABC or U.S. keyboard",
+      quitIntro: "Two input methods at once make letters double or vanish, so while you use {{AppName}}, type with the ABC or U.S. keyboard rather than the built-in Vietnamese source.",
       quitSteps: [
-        "Open System Settings &gt; Keyboard &gt; Input Sources (or Text Input). {{verifyHtml}} The item name on each macOS version.",
-        "Click Edit, and add the <em>ABC</em> or <em>U.S.</em> keyboard if it is not there.",
+        "Open the list of input sources: System Settings &gt; Keyboard, then click <em>Edit...</em> under Text Input (on macOS 12: System Preferences &gt; Keyboard &gt; Input Sources).",
+        "Add the <em>ABC</em> or <em>U.S.</em> keyboard with the plus (+) button if it is not in the list.",
         "Select the built-in <em>Vietnamese</em> source and press the minus (-) button to remove it if you no longer use it. Removing it is optional; keeping it is harmless as long as you choose ABC or U.S. when typing with {{AppName}}.",
       ],
     },

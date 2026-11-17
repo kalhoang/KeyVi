@@ -168,6 +168,10 @@ export async function runDataChecks(check, fixtures) {
     for (const id of ["luu-tren-may", "gui-di", "chan-doan", "ban-ghi", "trang-web", "xoa-du-lieu"]) assert.ok(p.includes(`id="${id}"`), id);
     assert.match(p, /Phân tích truy cập: không có/);
     assert.match(read("en", "privacy", "index.html"), /Visitor analytics: none/);
+    // Without analytics every script comes from the site itself, and the page says so without exception.
+    assert.match(p, /mã, hình ảnh, bản cập nhật và file cài đặt \(DMG\) đều phục vụ từ chính máy chủ của trang này/);
+    assert.ok(!p.includes("Umami"), "vi privacy: no Umami without analytics");
+    assert.match(read("en", "privacy", "index.html"), /Fonts are the ones already on your device; code, images, updates and the installer \(DMG\) are all served from this site's own server/);
   });
 
   await check("populated: the iTerm2 Secure Input line is the app's one sentence of Q38 (no VERIFY left)", async () => {

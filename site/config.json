@@ -1,7 +1,6 @@
 {
-  "githubRepo": "https://github.com/OWNER/REPO",
   "sponsorsUrl": "",
-  "homebrewTap": "OWNER/tap",
+  "homebrewTap": "kalhoang/tap",
   "supportEmail": "keyvi@kal.vn",
   "securityEmail": "keyvi@kal.vn",
   "banner": {

@@ -63,9 +63,14 @@ export async function runCopyChecks(check, fixtures) {
     assert.equal(en.hero.caption, "Example typed in Telex in one go, with no mode switch. English words stay as typed, even the ones plain Telex would turn into other words:");
     assert.deepEqual([vi.hero.peerMessage, en.hero.peerMessage], ["Kế hoạch tuần này sao rồi?", "Kế hoạch tuần này sao rồi?"]);
     assert.equal(vi.install.steps.length, 3);
-    // Step 2 names the permission as the download page does, with its VERIFY marker (design 7.3 item 6).
-    const download = (await import(pathToFileURL(join(SITE_DIR, "content", "vi", "pages.mjs")).href)).download;
-    for (const name of [...download.reqPermission.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]).concat("{{verifyHtml}}")) assert.ok(vi.install.steps[1].includes(name), `install step 2: ${name}`);
+    // Step 2 names the permissions as the download page does (design 7.3 item 6), checked names with no VERIFY marker left.
+    for (const [lang, home] of [["vi", vi], ["en", en]]) {
+      const download = (await import(pathToFileURL(join(SITE_DIR, "content", lang, "pages.mjs")).href)).download;
+      const names = [...download.reqPermission.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+      assert.ok(names.length >= 3, `${lang}: the download page names the permissions`);
+      for (const name of names) assert.ok(home.install.steps[1].includes(name), `${lang} install step 2: ${name}`);
+      for (const text of [download.reqPermission, home.install.steps[1]]) assert.ok(!text.includes("{{verifyHtml}}"), `${lang}: ${text}`);
+    }
     for (const retired of ["demoPlaceholder", "demoCaption", "demoAlt", "typed", "why"]) assert.ok(!(retired in vi) && !(retired in en), `${retired} is retired`);
   });
 

@@ -3,10 +3,11 @@
 import assert from "node:assert/strict";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { build } from "../build.mjs";
+import { build, countVerifyMarkers } from "../build.mjs";
 import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAnalytics } from "../lib/analytics.mjs";
 import { loadBrand } from "../lib/brand.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "../lib/headers.mjs";
+import { verifyBadge } from "../lib/layout.mjs";
 import { changelogHeadingId } from "../lib/pages/simple.mjs";
 import { LANGS, ROUTES, routePath } from "../lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "../lib/tone.mjs";
@@ -31,6 +32,9 @@ export async function runShellChecks(check, fixtures) {
   });
 
   await check("shell: header links features, support, download and the other language; footer links privacy, changelog, repository, appcast, donate", async () => {
+    // The repository is the brand's (APP_REPOSITORY_URL) unless site/config.json names another one (lib/config.mjs).
+    const repository = shipped.githubRepo || (await loadBrand(join(ROOT_DIR, "scripts", "brand.env"))).repositoryUrl;
+    assert.match(repository, /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+$/, "the footer links a GitHub repository");
     const part = (html, tag) => html.match(new RegExp(`<${tag} class="site-${tag}"[\\s\\S]*?</${tag}>`))?.[0] ?? "";
     const links = (html) => attrs(html, "href").filter((href) => !href.startsWith("#"));
     const features = { vi: "/#tinh-nang", en: "/en/#features" };
@@ -40,7 +44,7 @@ export async function runShellChecks(check, fixtures) {
       assert.deepEqual(links(header), [routePath("home", lang), features[lang], routePath("support", lang), routePath("download", lang), other], `${label}: header links in order`);
       assert.match(header, /<a class="btn" href="[^"]+"[^>]*>[^<]+<\/a>/, `${label}: the download link is a button`);
       assert.match(header, /<svg class="mark"[^>]*><use href="#mark"><\/use><\/svg>/, `${label}: the mark beside the name`);
-      assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), shipped.githubRepo, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
+      assert.deepEqual(links(part(html, "footer")), [routePath("privacy", lang), routePath("changelog", lang), repository, "/appcast.xml", routePath("donate", lang), other], `${label}: footer links in order`);
     }
     // Review Focus 4: without a stable release the header shows the disabled state, never a download button.
     const header = part(fallbackPages.get(join(fallback, "index.html")), "header");
@@ -171,6 +175,8 @@ export async function runShellChecks(check, fixtures) {
     assert.match(en, /macOS 12 Monterey or later/);
     assert.match(page("rieng-tu", "index.html"), /Trợ năng \(macOS 12 tới 26\)/);
     assert.match(page("en", "privacy", "index.html"), /Accessibility \(macOS 12 to 26\)/);
+    // App/Resources/SystemPanes.json: macOS 12 capitalises the Vietnamese pane name, macOS 27 does not.
+    assert.ok(page("tai-ve", "index.html").includes("<strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>)"), "vi download: both spellings of Input Monitoring");
   });
 
   await check("fallback: changelog fills {{AppName}} from brand.env", () => {
@@ -306,6 +312,9 @@ export async function runShellChecks(check, fixtures) {
     for (const needle of ["Umami", "self-hosted", "no cookies", "nothing is stored in your browser", "no personal data", "IP address is not stored", "Do Not Track", "page views", "the page title", `<code>${origin}</code>`]) assert.ok(privacyEn.includes(needle), `en privacy: ${needle}`);
     assert.ok(!/PostHog/.test(privacyVi + privacyEn), "PostHog is gone");
     assert.ok(!/Phân tích truy cập: không có/.test(privacyVi) && !/Visitor analytics: none/.test(privacyEn), "the privacy page states what ships");
+    // The sentence on where code comes from must not deny the Umami script the page just disclosed.
+    assert.ok(privacyVi.includes("ngoài mã Umami nêu ở trên, mã, hình ảnh"), "vi privacy: the served-from line excepts Umami");
+    assert.ok(privacyEn.includes("apart from the Umami script named above, code, images"), "en privacy: the served-from line excepts Umami");
   });
 
   await check("analytics config is validated (provider, https URL on an allowed host, UUID shape, no stray keys)", async () => {
@@ -369,7 +378,14 @@ export async function runShellChecks(check, fixtures) {
   });
 
   await check("strict mode refuses to ship VERIFY markers and placeholder config", async () => {
-    await assert.rejects(() => build({ outDir: join(tmp, "strict"), today: "2026-12-10", strict: true }), /--strict/);
+    // The site has no marker left (tests/release.mjs builds it strictly), so the gate is checked on its two inputs:
+    // the count of badges in built pages, and a config that still holds placeholder values.
+    assert.equal(countVerifyMarkers([{ html: `<p>${verifyBadge("vi")} a ${verifyBadge("en")}</p>` }, { html: "<p>b</p>" }]), 2);
+    assert.equal(countVerifyMarkers([{ html: '<p class="verified">c</p>' }]), 0);
+    const placeholderConfig = join(tmp, "strict-placeholders.json");
+    await writeFile(placeholderConfig, JSON.stringify({ ...shipped, githubRepo: "https://github.com/OWNER/REPO", homebrewTap: "OWNER/tap" }));
+    await assert.rejects(() => build({ outDir: join(tmp, "strict"), today: "2026-12-10", strict: true, configPath: placeholderConfig }),
+      /--strict: \d+ VERIFY marker\(s\) and placeholder config value\(s\) \[githubRepo, homebrewTap\] remain/);
   });
 
   await check("brand name is never hard-coded in site sources (CLAUDE.md)", async () => {

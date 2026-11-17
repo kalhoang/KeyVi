@@ -151,7 +151,7 @@ export const home = {
     heading: "Cài trong một phút",
     steps: [
       "Mở file DMG và kéo {{AppName}} vào thư mục Applications.",
-      "Mở {{AppName}} và cấp một quyền duy nhất: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}}",
+      "Mở {{AppName}} và bật quyền mà màn hình thiết lập yêu cầu: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. Nếu màn hình có thêm <strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>), hãy bật luôn.",
       "Gõ vài chữ vào ô gõ thử để thấy kết quả ngay.",
     ],
     brewLabel: "Hoặc cài bằng Homebrew",
@@ -187,7 +187,7 @@ export const download = {
   reqMacos: "{{macosRequirement}}",
   reqArch: "Máy Mac dùng chip Apple silicon hoặc Intel (một bản chạy cho cả hai). macOS 27 chỉ chạy trên Apple silicon.",
   reqExcluded: "Máy Mac không cài được macOS 12 Monterey chưa được hỗ trợ. macOS 13 và 14 vẫn được hỗ trợ nhưng không được kiểm thử riêng.",
-  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27. {{verifyHtml}} Tên mục trong macOS tiếng Việt cần được xác minh trên từng phiên bản.",
+  reqPermission: "Quyền cần cấp: <strong>Trợ năng</strong> trên macOS 12 tới 26 (trong Tùy chọn Hệ thống trên macOS 12), <strong>Điều khiển thiết bị và truy cập dữ liệu</strong> trên macOS 27, và <strong>Giám sát đầu vào</strong> (trên macOS 12: <strong>Giám sát Đầu vào</strong>) trên máy mà macOS đòi thêm quyền này để nhận phím gõ (màn hình thiết lập chỉ hiện quyền này khi đó).",
   reqNoOthers: "{{AppNameTM}} không xin quyền nào khác (không Ghi màn hình, không Toàn quyền truy cập ổ đĩa).",
   trustHeading: "Chữ ký và công chứng",
   trustBody: "Mỗi bản DMG được ký bằng chứng chỉ Developer ID của Kal, được Apple công chứng (notarize) và đính kèm vé công chứng (staple), nên macOS mở được mà không cảnh báo. Cập nhật tự động dùng Sparkle 2 và được ký EdDSA; ứng dụng từ chối bản cập nhật sai chữ ký.",
@@ -256,9 +256,14 @@ export const donate = {
 export const privacy = {
   h1: "Riêng tư",
   lede: "Nguyên tắc: nội dung bạn gõ không rời khỏi máy và không được ghi xuống ổ đĩa, trừ một trường hợp do chính bạn bắt đầu (bản ghi thao tác gõ để báo lỗi, mô tả bên dưới). Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật.",
-  updated: "Cập nhật lần cuối: 13/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
+  updated: "Cập nhật lần cuối: 17/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
   // The "Trang web" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
+  // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
+  served: {
+    off: "Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.",
+    umami: "Phông chữ là phông có sẵn trên máy bạn; ngoài mã Umami nêu ở trên, mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.",
+  },
   analytics: {
     off: "<strong>Phân tích truy cập: không có.</strong> Không Google Analytics, không công cụ đo lường của bên thứ ba, không pixel theo dõi.",
     umami: "<strong>Phân tích truy cập: Umami, do dự án tự vận hành.</strong> Các trang của trang web này (không phải ứng dụng, không phải trang ghi chú phát hành) tải mã của Umami từ <code>{{analyticsOrigin}}</code>, một máy chủ do chính dự án vận hành, và gửi tới đó lượt xem trang: địa chỉ trang, tiêu đề trang, trang dẫn tới, kích thước màn hình và ngôn ngữ của trình duyệt. Umami không dùng cookie và không lưu gì trong trình duyệt của bạn; dự án không thu thập dữ liệu cá nhân và không lập hồ sơ người dùng. Để đếm số người xem, máy chủ tạo một mã lượt truy cập bằng cách băm một chiều địa chỉ IP và trình duyệt của bạn cùng một giá trị đổi mỗi tháng; địa chỉ IP không được lưu, chỉ lưu quốc gia và thành phố ước tính từ địa chỉ đó cùng loại trình duyệt, hệ điều hành và thiết bị. Nếu trình duyệt của bạn bật Do Not Track, không có gì được gửi đi. Dự án chỉ xem số liệu tổng hợp (theo trang, nguồn truy cập và quốc gia); dữ liệu không được chia sẻ với ai và không có quảng cáo.",
@@ -267,9 +272,9 @@ export const privacy = {
 <h2 id="tom-tat">Tóm tắt</h2>
 <ul>
   <li>Không telemetry, không dịch vụ phân tích, không SDK báo cáo sự cố, không cấu hình hay quy tắc tải từ xa.</li>
-  <li>Không có cửa sổ web tải nội dung từ xa. Ghi chú phát hành hiện mà không tải tài nguyên ngoài.</li>
+  <li>Không có cửa sổ web tải nội dung của bên thứ ba. Khi có bản cập nhật, cửa sổ cập nhật hiện trang ghi chú phát hành từ trang web này, và trang đó không tải thêm gì khác.</li>
   <li>Ô mật khẩu và chế độ nhập bảo mật của macOS luôn được bỏ qua. Đây không phải là cài đặt.</li>
-  <li>Chỉ cần một quyền: Trợ năng (macOS 12 tới 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Nếu macOS đòi thêm, ứng dụng nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
+  <li>Quyền ứng dụng cần là Trợ năng (macOS 12 tới 26) hoặc Điều khiển thiết bị và truy cập dữ liệu (macOS 27). Trên máy mà macOS đòi thêm quyền Giám sát đầu vào để nhận phím gõ, màn hình thiết lập hiện quyền này và nói rõ lý do. Không có quyền Ghi màn hình, Automation hay Toàn quyền truy cập ổ đĩa.</li>
   <li>Khi thiếu quyền, bàn phím của bạn vẫn gõ bình thường (ứng dụng nhả phím ra, không giữ lại).</li>
 </ul>
 
@@ -286,9 +291,9 @@ export const privacy = {
 <p>Mọi file ghi bằng cách ghi an toàn (ghi file tạm rồi đổi tên) để cập nhật hay mất điện không làm hỏng cài đặt. Đường dẫn đầy đủ để xóa nằm ở mục "Xóa dữ liệu" bên dưới.</p>
 
 <h2 id="gui-di">Ứng dụng gửi gì đi</h2>
-<p>Chỉ một thứ: <strong>kiểm tra cập nhật</strong>, mỗi 24 giờ (bạn tắt được trong Cài đặt).</p>
+<p>Chỉ một thứ: <strong>kiểm tra cập nhật</strong>, mỗi 24 giờ (bạn tắt được trong Cài đặt &gt; Giới thiệu).</p>
 <ul>
-  <li>Ứng dụng tải <code>https://{{host}}/appcast.xml</code> qua HTTPS, rồi tải bản cập nhật từ cùng máy chủ khi bạn đồng ý hoặc khi cập nhật tự động đang bật. {{verifyHtml}} Nếu bản cập nhật cũng được lưu ở GitHub Releases, trang này sẽ ghi rõ.</li>
+  <li>Ứng dụng tải <code>https://{{host}}/appcast.xml</code> qua HTTPS. Trang ghi chú phát hành trong cửa sổ cập nhật và chính bản cập nhật đều lấy từ cùng máy chủ đó; bản cập nhật được tải khi bạn đồng ý hoặc khi cập nhật tự động đang bật. Các file này cũng được đính kèm vào trang phát hành của từng phiên bản trên GitHub cho bạn nào muốn tải ở đó; ứng dụng không tải gì từ GitHub.</li>
   <li>Như mọi yêu cầu web, máy chủ thấy địa chỉ IP của bạn và tên cùng phiên bản ứng dụng. Ứng dụng không gửi hồ sơ cấu hình hệ thống (tính năng này của Sparkle bị tắt).</li>
   <li>Bản cập nhật phải mang chữ ký EdDSA hợp lệ, nếu không ứng dụng từ chối cài.</li>
   <li>Ngoài ra không có yêu cầu mạng nào khác. Có kiểm tra tự động trong quy trình phát hành để bảo đảm file chạy chỉ chứa các địa chỉ máy chủ đã khai báo.</li>
@@ -323,22 +328,22 @@ export const privacy = {
 </ul>
 
 <h2 id="clipboard">Bảng nhớ tạm (clipboard)</h2>
-<p>Ứng dụng chỉ ghi vào bảng nhớ tạm khi bạn bấm <em>Mở GitHub</em> trong cửa sổ báo lỗi (để dán báo cáo vào GitHub), và cửa sổ nói rõ điều đó trước khi ghi. Ngoại lệ còn lại là chế độ tương thích "dán" mà bạn tự bật cho một ứng dụng cụ thể; chế độ này lưu rồi khôi phục bảng nhớ tạm quanh mỗi lần dán và được giải thích khi bạn bật.</p>
+<p>Ứng dụng chỉ ghi vào bảng nhớ tạm khi bạn yêu cầu: khi bạn bấm <em>Mở GitHub</em> trong cửa sổ báo lỗi (để dán báo cáo vào GitHub; cửa sổ nói rõ điều đó trước khi ghi), và khi bạn bấm một nút sao chép trong phần ủng hộ ở Cài đặt &gt; Giới thiệu. Ngoại lệ còn lại là chế độ tương thích "dán" mà bạn tự bật cho một ứng dụng cụ thể; chế độ này lưu rồi khôi phục bảng nhớ tạm quanh mỗi lần dán và được giải thích khi bạn bật.</p>
 
 <h2 id="trang-web">Trang web</h2>
 <ul>
   <li>{{analyticsHtml}}</li>
-  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. Phông chữ là phông có sẵn trên máy bạn; mã, hình ảnh, bản cập nhật và file cài đặt (DMG) đều phục vụ từ chính máy chủ của trang này.</li>
-  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Từ nhật ký này, mỗi ngày chúng tôi đếm số yêu cầu tới <code>appcast.xml</code> để ước lượng số máy đang dùng, và số lượt tải từng file; chỉ giữ con số tổng theo ngày.</li>
-  <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. {{verifyHtml}} Xác minh thời gian lưu nhật ký của hai lớp này trước khi công bố.</li>
-  <li>Số lượt cài qua Homebrew lấy từ bộ đếm công khai của Homebrew.</li>
+  <li>Không cookie, không bộ nhớ cục bộ để theo dõi. {{servedHtml}}</li>
+  <li>Máy chủ web ghi mỗi yêu cầu chỉ với thời điểm, phương thức, đường dẫn (không có phần truy vấn), mã kết quả và kích thước; không ghi địa chỉ IP, trình duyệt hay trang dẫn tới. Nhật ký này là nguồn duy nhất mà dự án có thể dùng để đếm theo ngày số yêu cầu tới <code>appcast.xml</code> (để ước lượng số máy đang dùng) và số lượt tải từng file.</li>
+  <li>Kết nối đi qua Cloudflare và bộ định tuyến của máy chủ trước khi tới máy chủ web; như mọi trang web, các lớp này thấy địa chỉ IP của bạn trong lúc xử lý yêu cầu. Cloudflare xử lý dữ liệu đó theo chính sách quyền riêng tư của Cloudflare.</li>
+  <li>Nếu bạn cài bằng Homebrew, cơ chế thống kê ẩn danh của Homebrew được áp dụng theo chính sách của Homebrew; lệnh <code>brew analytics off</code> tắt cơ chế này.</li>
 </ul>
 
 <h2 id="gop-y">Báo lỗi và hỗ trợ</h2>
 <p>Khi bạn mở một issue trên GitHub hoặc gửi email, nội dung bạn viết do bạn quyết định và tuân theo chính sách của GitHub hoặc nhà cung cấp email của bạn. {{AppNameTM}} không tự gửi những gì bạn đã gõ.</p>
 
 <h2 id="ung-ho">Ủng hộ</h2>
-<p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng của bạn hoặc GitHub, theo chính sách riêng của họ.</p>
+<p>Ứng dụng không lưu hay gửi thông tin người ủng hộ. Việc chuyển tiền diễn ra giữa bạn và ngân hàng của bạn, theo chính sách riêng của ngân hàng.</p>
 
 <h2 id="xoa-du-lieu">Xóa dữ liệu</h2>
 <p>Thoát {{AppName}}, kéo ứng dụng vào Thùng rác, rồi xóa các thư mục trong bảng ở trên. Nếu cài bằng Homebrew, một lệnh làm hết:</p>

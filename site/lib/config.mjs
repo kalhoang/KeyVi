@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Site settings that are not brand values (repository URL, support addresses, Homebrew tap, sponsor link).
+// Site settings that are not brand values (support addresses, Homebrew tap, sponsor link), and the repository URL.
 // Values still containing a placeholder marker are reported so a release build can refuse to ship them.
+// `githubRepo` is a brand value (APP_REPOSITORY_URL in scripts/brand.env, CLAUDE.md "Name"): missing or empty here
+// means that one, so the shipped config never repeats the product name; set it only to link another repository.
 // `sponsorsUrl` is optional: empty (the default) means there is no sponsor page, so the donation page shows no
 // GitHub Sponsors card and nothing is left to fill in (PRD-R57, PRD-R59).
 // `banner` is the website notice of the rollback and absence runbooks (QA-R38 step 2, QA-R54): when enabled,
@@ -41,13 +43,23 @@ function parseBanner(raw) {
   return Object.freeze({ enabled: true, vi, en, link });
 }
 
-/** @param {object} options { analyticsHosts: hosts allowed for the analytics script (loadAnalyticsHosts) } */
+/** The repository of scripts/brand.env when it is an https URL, else the placeholder default. */
+function defaultsFor(repositoryUrl) {
+  const repo = typeof repositoryUrl === "string" ? repositoryUrl.trim() : "";
+  return /^https:\/\/[^\s"'<>]+$/.test(repo) ? { ...DEFAULTS, githubRepo: repo.replace(/\/+$/, "") } : DEFAULTS;
+}
+
+/**
+ * @param {object} options { analyticsHosts: hosts allowed for the analytics script (loadAnalyticsHosts),
+ *   repositoryUrl: APP_REPOSITORY_URL of scripts/brand.env (lib/brand.mjs), the default of `githubRepo` }
+ */
 export async function loadConfig(configPath, options = {}) {
   const fromFile = (await readJsonIfExists(configPath)) ?? {};
+  const defaults = defaultsFor(options.repositoryUrl);
   const values = {};
-  for (const key of Object.keys(DEFAULTS)) {
+  for (const key of Object.keys(defaults)) {
     const candidate = fromFile[key];
-    values[key] = typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : DEFAULTS[key];
+    values[key] = typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : defaults[key];
   }
   const sponsorsUrl = parseSponsorsUrl(fromFile.sponsorsUrl);
   const placeholders = Object.entries({ ...values, sponsorsUrl })

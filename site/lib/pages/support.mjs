@@ -70,11 +70,6 @@ export function renderSupport(ctx, lang) {
   return { routeId: "support", navId: "support", title: p(ui.titles.support), description: p(ui.descriptions.support), body };
 }
 
-function screenshotSlot(kt, other) {
-  const m = kt.c.migrate;
-  return `<figure><div class="demo-slot" role="img" aria-label="${esc(m.screenshotAlt.replace("{{Other}}", other))}"><p>${esc(m.screenshotHolder)} ${kt.f("{{verifyHtml}}")}</p></div></figure>`;
-}
-
 export function renderMigration(ctx, lang, sourceId) {
   const kt = kit(ctx, lang);
   const { c, f, p, ui } = kt;
@@ -88,10 +83,11 @@ export function renderMigration(ctx, lang, sourceId) {
 
   const importBlock = `<h2 id="import">${f(m.importHeading, extra)}</h2>${list(m.importSteps)}`;
   const quitSteps = page.quitSteps ?? m.quitSteps;
-  const quitBlock = page.noQuit ? "" : `<h2 id="quit">${f(m.quitHeading, extra)}</h2><p>${f(m.quitIntro, extra)}</p>${list(quitSteps)}`;
-  const exportBlock = page.steps
-    ? `<h2 id="export">${f(m.stepsHeading, extra)}</h2>${list(page.steps)}${screenshotSlot(kt, other)}<div class="callout warn"><p>${f("{{verifyHtml}}")} ${f(m.verifyNote)}</p></div>`
-    : "";
+  const quitBlock = page.noQuit ? "" : `<h2 id="quit">${f(page.quitHeading ?? m.quitHeading, extra)}</h2><p>${f(page.quitIntro ?? m.quitIntro, extra)}</p>${list(quitSteps)}`;
+  // Every step happens in macOS or in the app, never in the other app's window (clean-room rule, CLR-R5), so there is
+  // nothing to check against that app and no screenshot of it to wait for.
+  const exportBlock = page.steps ? `<h2 id="export">${f(page.stepsHeading ?? m.stepsHeading, extra)}</h2>${list(page.steps)}` : "";
+  const habitsBlock = page.habits ? `<h2 id="habits">${f(m.habitsHeading, extra)}</h2>${list(page.habits)}` : "";
   const body = `
     <p class="back-link"><a href="${esc(routePath("support", lang))}#${esc(c.support.toc[4][0])}">&larr; ${esc(m.back)}</a></p>
     ${pageHead(esc(heading), f(page.intro, extra))}
@@ -99,6 +95,7 @@ export function renderMigration(ctx, lang, sourceId) {
       ${page.html ? f(page.html, extra) : ""}
       ${exportBlock}
       ${importBlock}
+      ${habitsBlock}
       ${quitBlock}
     </div>`;
   return {
