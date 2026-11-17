@@ -245,7 +245,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R1107 | Rollback procedure | runbooks | M (drill) | docs/release tracks; Pa | **Pa** |
 | PLT-R1108 | Update tests before publication | self-hosted runner (13.5) | I, M | W2-E2; Pa | **Pa** |
 | PLT-R1109 | minimumSystemVersion and minimumAutoupdateVersion | appcast scripts | R | release track |  |
-| PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew` | R | release track |  |
+| PLT-R1110 | Homebrew cask auto_updates, depends_on, zap | `packaging/homebrew`; `depends_on macos: ">= :monterey"` since 2026-11-17 (ADR 0315, ADR 0507), tap `kalhoang/homebrew-tap` | R | release track |  |
 | PLT-R1201 | Diagnostics window contents and buttons; health notices under the state line | `DiagnosticsWindowController`, `DiagnosticsWindowView` (`HealthNoticeView`), `DiagnosticsCopy.notices` | U (view model, `DiagnosticsCatalogTests`), M | W2-C, W14-P; Pa | **Pa** |
 | PLT-R1202 | Environment report contents | `DiagnosticsReport` (`FocusSection.appSource`; `SettingsSection.learnCollisionChoices`, `.lookaheadRevision`, `.learnedCollisionEntries`), `ReportAssembler`; the copied block writes them as `focus.appSource` and `settings.*` keys (ADR 0501) | U (`FocusedAppSourceReportTests`, `LearnedCollisionEntriesReportTests`, `ReportAssemblerTests`, `IssueBlockTests`) | W1-A, W1-G, W14-P, W16-A |  |
 | PLT-R1203 | Report exclusions (no content) | `DiagnosticsReport` type | U (canary) | W1-A; W1-G (`reportedOverride` projection, ADR 0312) |  |
@@ -280,7 +280,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | PRD-R1 | Tier 1 top jobs checked every release | `compat/matrix.json`, `compat/SCRIPT.md` | M | Pa; W2-E2 | **Pa** |
 | PRD-R2 | v1.0 scope | whole product | D | all |  |
 | PRD-R3 | v1.0 non-goals | whole product | D | all |  |
-| PRD-R4 | Stage transitions recorded as decisions | `docs/decisions/` | D | Pa |  |
+| PRD-R4 | Stage transitions recorded as decisions | `docs/decisions/`; first public release, private testing straight to 1.0.0: ADR 0507 (2026-11-17) | D | Pa |  |
 | PRD-R5 | Ship exactly the listed defaults | `DefaultSettings.v1` | U | W1-B |  |
 | PRD-R6 | Unset follows defaults; set preserved forever | `Setting`, `UserSettings` | U | W1-B |  |
 | PRD-R7 | "Not a setting" items absent from UI | Settings UI | U (view model), M | W2-B |  |
@@ -389,7 +389,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R26 | SemVer and integer build | release scripts, `project.yml` | R | release track |  |
 | QA-R27 | Engine versioned separately | engine package | D | engine track |  |
 | QA-R28 | Stable and beta channels | `UpdaterController`, appcast | U, R | W2-D; release track |  |
-| QA-R29 | Release cadence, 72 h on beta | process | D | Pa |  |
+| QA-R29 | Release cadence, 72 h on beta | process; `scripts/publish-release` beta check, `--p0-hotfix`, `--skip-beta-soak DECISION` (a decision record that cites QA-R29 and names the version); waived for 1.0.0 only, ADR 0507 | D, R (`scripts/tests/run.sh`, `test_scripts.py`) | Pa; release track |  |
 | QA-R30 | Release workflow steps | `scripts/build-release.sh`, `notarize.sh`, `verify-release.sh` | R | release track |  |
 | QA-R31 | Signing only in the protected release environment | workflows | M | CI/release tracks; Pa approves | **Pa** |
 | QA-R32 | EdDSA signing on Pa's Mac | `scripts/publish-release` | M | release track; Pa | **Pa** |

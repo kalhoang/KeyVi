@@ -15,7 +15,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True  # keep scripts/tests free of __pycache__
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from support import IMAGE_SUFFIXES, REPO, changelog_group, py, run  # noqa: E402
+from support import IMAGE_SUFFIXES, REPO, py, run  # noqa: E402
 
 
 class LicenceTests(unittest.TestCase):
@@ -242,12 +242,6 @@ class LicenceTests(unittest.TestCase):
         self.assertNotIn("paths=(Packages/VietnameseEngine Packages/VietnameseEngineFuzz)", script)
         self.assertIn("ADR 0006", script)
 
-    def test_the_changelog_announces_the_engine_licence(self):
-        changed = changelog_group("Changed")
-        self.assertIn("The typing engine packages, the word-list pipeline and the reference model are now under the "
-                      "Mozilla Public License 2.0 instead of MIT; the app stays GPL-3.0-or-later.", changed)
-        self.assertNotIn("the typing engine stays MIT", changed)
-
 
 class EngineLicenceWordingTests(unittest.TestCase):
     """No document calls the project's own code MIT after the amendment of 2026-11-15 (ADR 0006): the engine
@@ -258,7 +252,7 @@ class EngineLicenceWordingTests(unittest.TestCase):
     follows."""
 
     FILES = ("README.md", "README.vi.md", "CONTRIBUTING.md", "THIRD_PARTY_NOTICES.md", "ARCHITECTURE.md", "SECURITY.md",
-             "CHANGELOG.md", ".github/pull_request_template.md", "data/README.md", "data/NOTICES.md",
+             "CHANGELOG.md", "CHANGELOG.vi.md", ".github/pull_request_template.md", "data/README.md", "data/NOTICES.md",
              "data/licenses/bundled-notices.txt", "data/inputs/tech-always.txt", "data/inputs/tech-code-only.txt",
              "data/inputs/tech-code-capitalized.txt",
              "Packages/VietnameseEngine/README.md", "Packages/VietnameseEngine/CHANGELOG.md",

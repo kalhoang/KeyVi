@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Blank issues are disabled (QA-R43). Questions go to Discussions; security reports go private.
-# VERIFY: replace OWNER/REPO with the real repository path before the repository becomes public.
+# Front door (ADR 0400 decision 1): the repository path is APP_REPOSITORY_URL of scripts/brand.env, written literally
+# because GitHub accepts no relative link here, as SECURITY.md does.
 blank_issues_enabled: false
 contact_links:
   - name: Question or idea (GitHub Discussions)
-    url: https://github.com/OWNER/REPO/discussions
+    url: https://github.com/kalhoang/KeyVi/discussions
     about: Ask how something works, or discuss an idea, before opening a bug or a feature request.
   - name: Security vulnerability (private)
-    url: https://github.com/OWNER/REPO/security/advisories/new
+    url: https://github.com/kalhoang/KeyVi/security/advisories/new
     about: Report vulnerabilities privately. Do not open a public issue. See SECURITY.md for the process and timelines.

@@ -10,13 +10,13 @@ KeyVi™ handles keystrokes, so security reports are taken seriously. This polic
 | Latest beta release | Yes |
 | Older releases | No. Update to the latest stable or beta |
 
-The project is pre-alpha and has no public release yet. Until the first stable release, only the latest build from `main` and the latest alpha or beta build are supported.
+1.0.0, of 17 November 2026, is the first public release. The private test builds made before it are not supported.
 
 ## Reporting a vulnerability
 
 Please report privately. Do not open a public issue, a Discussion or a pull request for a vulnerability.
 
-1. **GitHub private vulnerability reporting (preferred).** Use the "Report a vulnerability" button on the repository's Security tab, or go to `https://github.com/OWNER/REPO/security/advisories/new` (repository path: VERIFY; private vulnerability reporting must be enabled in the repository settings before the repository becomes public).
+1. **GitHub private vulnerability reporting (preferred).** Use the "Report a vulnerability" button on the repository's Security tab, or go to `https://github.com/kalhoang/KeyVi/security/advisories/new`.
 2. **Email.** `keyvi@kal.vn` (the project mailbox, confirmed by the maintainer on 2026-11-13; put "Security" in the subject). Encrypt only if the maintainer has published a key; otherwise send a short description and ask for a secure channel.
 
 Please include:

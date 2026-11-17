@@ -18,7 +18,7 @@
     { "bundleId": "com.apple.Safari", "displayName": "Google Docs (Safari)", "scope": "webApp", "category": "office", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.google.Chrome", "displayName": "Google Sheets (Chrome)", "scope": "webApp", "category": "office", "tier": 1, "ruleId": "web.googleSheets.cellEditor", "status": "notVerified", "note": { "vi": "Khi cột có gợi ý tự động, phần chữ được gợi ý có thể còn lại trong ô sau khi bạn gõ dấu (ví dụ ra DĐức thay vì Đức). Nếu gặp, hãy xóa phần chữ thừa.", "en": "When the column offers autocomplete, the suggested text can stay in the cell after you type a tone mark (for example DĐức instead of Đức). Delete the extra text if this happens." }, "issues": [] },
     { "bundleId": "com.apple.Safari", "displayName": "Google Sheets (Safari)", "scope": "webApp", "category": "office", "tier": 1, "ruleId": "web.googleSheets.cellEditor.webkit", "status": "notVerified", "issues": [] },
-    { "bundleId": "com.vng.zalo", "displayName": "Zalo", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
+    { "bundleId": "com.vng.zalo", "displayName": "Zalo", "category": "chat", "tier": 1, "ruleId": "electron.default", "status": "notVerified", "issues": [] },
     { "bundleId": "com.facebook.archon", "displayName": "Messenger", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "com.google.Chrome", "displayName": "Messenger (web, Chrome)", "scope": "webApp", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },
     { "bundleId": "ru.keepcoder.Telegram", "displayName": "Telegram", "category": "chat", "tier": 1, "status": "notVerified", "issues": [] },

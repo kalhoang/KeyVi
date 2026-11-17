@@ -4,7 +4,7 @@ This file lists every third-party dependency, data list and asset that ships wit
 
 The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages, the `data/` pipeline and the reference model in `spec/reference-model/` are under the Mozilla Public License 2.0 (each has its own `LICENSE` with the verbatim MPL-2.0 text; the copyright lines are in the `NOTICE` files and in the reference model's README; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
 
-The project is pre-alpha. Sections marked **placeholder** are filled in by the track or person that owns the item; do not remove them.
+1.0.0, of 17 November 2026, is the first public release. `scripts/make-dmg.sh` copies this file into every disk image as it is, so it holds no placeholder: an asset added later gets its entry in the same change.
 
 ## 1. Runtime dependencies of the app
 
@@ -229,9 +229,9 @@ Every asset is original work created for this project unless a row below says ot
 
 ### Other assets
 
-- **DMG background**: not added yet (placeholder). Record the author, date and source file when it is added.
-- **Fonts**: none bundled by the app. The website's fonts, if any, are listed by the site track (placeholder).
-- **Illustrations and screen recordings** on the website and in onboarding: created for this project (placeholder; list each item).
+- **DMG background**: none. The disk image has no background image: `scripts/make-dmg.sh` adds one only if `packaging/dmg/background.png` exists, and it does not. Record the author, date and source file here when one is added.
+- **Fonts**: none. The app uses the system fonts of macOS, and the website's stylesheets name system font stacks only (`system-ui`, `ui-monospace` and their fallbacks), with no web font downloaded or bundled.
+- **Illustrations and screen recordings**: none. Onboarding shows text, SF Symbols requested by name from the operating system and the images listed above. The home page demos are text frames that the engine's `site-demo-frames` tool writes to `site/demo/frames.json` and the page animates; they contain no recording or illustration.
 
 ## 5. Website
 

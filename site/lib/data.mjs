@@ -142,18 +142,22 @@ export async function loadMatrix(matrixPath, fixturesDir, today, warn) {
   return { entries, usingFixture };
 }
 
+// The first directory (the data directory, then the repository) that holds CHANGELOG.md, with its text.
+async function firstChangelog(dirs) {
+  for (const dir of dirs) {
+    const text = await readTextIfExists(join(dir, "CHANGELOG.md"));
+    if (text !== undefined) return { dir, text };
+  }
+  return undefined;
+}
+
+// CHANGELOG.vi.md is read next to the CHANGELOG.md that was found, so a data directory with only CHANGELOG.md (tests,
+// previews) never pairs its English text with the repository's Vietnamese one.
 export async function loadChangelog(rootDir, dataDirOverride, fixturesDir, warn) {
-  const candidates = (name) => [dataDirOverride, rootDir].filter(Boolean).map((dir) => join(dir, name));
-  const firstExisting = async (name) => {
-    for (const path of candidates(name)) {
-      const text = await readTextIfExists(path);
-      if (text !== undefined) return text;
-    }
-    return undefined;
-  };
-  const base = await firstExisting("CHANGELOG.md");
-  const vi = (await firstExisting("CHANGELOG.vi.md")) ?? base;
-  if (base === undefined) warn("CHANGELOG.md not found: using the fixture");
-  const fallback = base === undefined ? await readTextIfExists(join(fixturesDir, "CHANGELOG.md")) : undefined;
-  return { vi: vi ?? fallback ?? "", en: base ?? fallback ?? "", usingFixture: base === undefined };
+  const found = await firstChangelog([dataDirOverride, rootDir].filter(Boolean));
+  if (found === undefined) warn("CHANGELOG.md not found: using the fixture");
+  const base = found?.text;
+  const vi = found === undefined ? undefined : await readTextIfExists(join(found.dir, "CHANGELOG.vi.md"));
+  const fallback = found === undefined ? await readTextIfExists(join(fixturesDir, "CHANGELOG.md")) : undefined;
+  return { vi: vi ?? base ?? fallback ?? "", en: base ?? fallback ?? "", usingFixture: found === undefined };
 }

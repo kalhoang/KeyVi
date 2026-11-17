@@ -28,7 +28,7 @@
 | Ordering | Physical keyboard events are held and replayed behind in-flight edits. Event conservation invariant | 3.4 |
 | Default injection | Synthetic backspace plus Unicode insertion, one grapheme per event, no pacing | 4.2 |
 | App differences | Typed, data-driven rules (JSON) with provenance and one test per rule. No per-app code branches | 5 |
-| Minimum macOS | 15.0 Sequoia (open question: 14) | 1 |
+| Minimum macOS | 12.0 Monterey, Apple silicon and Intel (PLT-R106, amended 13/11/2026) | 1 |
 | Permissions | Accessibility (macOS 27 label: "Device Control and Data Access") required. Input Monitoring only if the OS demands it | 7 |
 | Privacy | No keystroke content in logs. Time-boxed capture with on-screen indicator. Network egress = update checks only | 9 |
 | Updates | Sparkle 2, EdDSA, appcast on `{{app-slug}}.kal.vn`, signing keys off CI by default | 11 |
@@ -802,7 +802,7 @@ This table is the single source for platform performance gates; `04-quality-rele
 - **PLT-R1107** Rollback: Sparkle does not downgrade. Procedure: (1) remove the bad item from the appcast immediately; (2) publish a new build from the last known-good source with a higher `CFBundleVersion`. Every published DMG stays downloadable from the archive page (QA-R38) and the signed update archives of the last 3 releases are kept for rebuilding. The rollback drill cadence is owned by QA-R39.
 - **PLT-R1108** Every release candidate passes the update tests in section 13.5 before publication. Rationale: a prior-art auto-update left users unable to type until they reset settings and reinstalled.
 - **PLT-R1109** Appcast items set `sparkle:minimumSystemVersion`; when a migration path is unsupported, `sparkle:minimumAutoupdateVersion` forces a manual install with an explanation.
-- **PLT-R1110** Homebrew cask: `auto_updates true`, `depends_on macos: ">= :sequoia"`, `zap` paths per PLT-R1012.
+- **PLT-R1110** Homebrew cask: `auto_updates true`, `depends_on macos: ">= :monterey"` (the PLT-R106 floor; *amended 17/11/2026*, docs/decisions/0507-first-public-release-1-0.md), `zap` paths per PLT-R1012.
 
 ## 12. Diagnostics
 

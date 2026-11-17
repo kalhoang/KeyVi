@@ -29,9 +29,3 @@ def py(script: str, *args: str, env: dict | None = None) -> subprocess.Completed
 # File suffixes of tracked images: binary content that text scans skip.
 IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".icns", ".heic", ".tif", ".tiff"}
 
-
-def changelog_group(name: str) -> str:
-    """The whitespace-normalised text of one group (### Added, ### Changed, ...) of CHANGELOG.md [Unreleased]."""
-    text = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
-    unreleased = text.split("## [Unreleased]", 1)[1].split("\n## [", 1)[0]
-    return " ".join(unreleased.split(f"### {name}\n", 1)[1].split("\n### ", 1)[0].split())

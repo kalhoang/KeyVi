@@ -90,6 +90,21 @@ export async function runDataChecks(check, fixtures) {
     assert.match(c, /href="\/ung-ho\/"/);
   });
 
+  await check("changelog pages: the Vietnamese page renders CHANGELOG.vi.md, the English one CHANGELOG.md, never mixed", async () => {
+    // The fixture data directory holds only CHANGELOG.md, so both populated pages show it (checked above); the
+    // repository build pairs each language with its own file (lib/data.mjs, loadChangelog).
+    const viSource = await readFile(join(ROOT_DIR, "CHANGELOG.vi.md"), "utf8").catch(() => undefined);
+    if (viSource === undefined) return;
+    const firstItem = (md) => md.split("\n").find((line) => line.startsWith("- ")).slice(2).split(/[":(]/)[0].trim();
+    const viItem = firstItem(viSource);
+    const enItem = firstItem(await readFile(join(ROOT_DIR, "CHANGELOG.md"), "utf8"));
+    const viPage = fallbackPages.get(join(fallback, "nhat-ky-thay-doi", "index.html"));
+    const enPage = fallbackPages.get(join(fallback, "en", "changelog", "index.html"));
+    assert.ok(viPage.includes(viItem) && !viPage.includes(enItem), `the Vietnamese page shows "${viItem}" only`);
+    assert.ok(enPage.includes(enItem) && !enPage.includes(viItem), `the English page shows "${enItem}" only`);
+    assert.ok(!read("nhat-ky-thay-doi", "index.html").includes(viItem), "a data directory's CHANGELOG.md is not paired with the repository's Vietnamese file");
+  });
+
   await check("populated: donate block per PRD-R59 and S8 (bank VietQR only, bank and account number, no holder name)", async () => {
     // The wording of the block is checked against spec/03-product.md and the app's catalog further down ("donate: ...").
     for (const [lang, path, bankLabel, accountLabel] of [["vi", ["ung-ho", "index.html"], "Ngân hàng", "Số tài khoản"], ["en", ["en", "donate", "index.html"], "Bank", "Account number"]]) {

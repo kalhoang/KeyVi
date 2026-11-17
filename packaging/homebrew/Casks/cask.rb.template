@@ -2,7 +2,8 @@
 # TEMPLATE: rendered by scripts/publish-release (python3 -I scripts/lib/publish_helpers.py render-cask).
 # TEMPLATE: Placeholders come from scripts/brand.env and the release; do not edit rendered casks by hand.
 # TEMPLATE: Lines starting with "# TEMPLATE:" are dropped from the rendered cask.
-# TEMPLATE: QA-R36, PLT-R1110: auto_updates true, minimum macOS Sequoia, zap paths per PLT-R1012.
+# TEMPLATE: QA-R36, PLT-R1110: auto_updates true, minimum macOS 12 Monterey (the deployment target, PRD-R8,
+# TEMPLATE: PLT-R106, docs/decisions/0315-minimum-macos-12.md), zap paths per PLT-R1012.
 cask "{{app-slug}}" do
   version "{{version}}"
   sha256 "{{sha256}}"
@@ -20,7 +21,7 @@ cask "{{app-slug}}" do
   end
 
   auto_updates true
-  depends_on macos: ">= :sequoia"
+  depends_on macos: ">= :monterey"
 
   app "{{AppName}}.app"
 
