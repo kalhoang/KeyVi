@@ -346,14 +346,46 @@ def cmd_waiver_decision(args) -> int:
     if not os.path.isfile(resolved):
         raise SystemExit(f"the {args.requirement} waiver decision {shown} does not exist")
     with open(resolved, encoding="utf-8") as handle:
-        record = handle.read()
-    if not re.search(r"(?<![\w-])%s(?!\d)" % re.escape(args.requirement), record):
+        units = prose_units(handle.read())
+    requirement = re.compile(r"(?<![\w-])%s(?!\d)" % re.escape(args.requirement))
+    # 1.0.0 or the tag form v1.0.0, but not 1.0.0-beta.1, 1.0.01 or 11.0.0; a full stop after it ends a sentence.
+    version = re.compile(r"(?<![\w.])v?%s(?!\.?\d|[\w-])" % re.escape(args.version))
+    citing = [unit for unit in units if requirement.search(unit)]
+    if not citing:
         raise SystemExit(f"{shown} does not mention {args.requirement}, so it is no waiver of it")
-    # 1.0.0 but not 1.0.0-beta.1, 1.0.01 or 11.0.0; a full stop after the version ends a sentence.
-    if not re.search(r"(?<![\w.])%s(?!\.?\d|[\w-])" % re.escape(args.version), record):
-        raise SystemExit(f"{shown} does not name version {args.version}: a waiver covers only the release it names")
+    if not any(version.search(unit) for unit in citing):
+        raise SystemExit(f"{shown} does not name version {args.version} in a paragraph that cites {args.requirement}: "
+                         "a waiver covers only the release it names")
     print(shown)
     return 0
+
+
+def prose_units(markdown: str) -> list[str]:
+    """The prose of a Markdown record, one string per paragraph, list item block, heading or table row, without fenced
+    code blocks or inline code spans: a command line or a quoted flag decides nothing (waiver-decision)."""
+    units: list[str] = []
+    current: list[str] = []
+    fence = None
+    for line in markdown.splitlines():
+        marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if fence:
+            if marker and marker.group(1)[0] == fence[0] and len(marker.group(1)) >= len(fence):
+                fence = None
+            continue
+        if marker:
+            fence = marker.group(1)
+            continue
+        text = re.sub(r"(`+)(?:(?!\1).)+?\1", " ", line)
+        if not text.strip():
+            units.append(" ".join(current))
+            current = []
+        elif re.match(r"^\s{0,3}(#|\|)", text):
+            units.extend((" ".join(current), text))
+            current = []
+        else:
+            current.append(text)
+    units.append(" ".join(current))
+    return [unit for unit in units if unit.strip()]
 
 
 def zap_lines(path: str, folder: str, bundle_id: str) -> list[str]:

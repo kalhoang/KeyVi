@@ -712,6 +712,30 @@ class PublishHelpersTests(TempDirTestCase):
         self.assertNotEqual(waiver("docs/decisions/0999-waiver.md", version="1.2.3-beta.1").returncode, 0,
                             "the waiver applies to stable versions only")
 
+        # The requirement and the version have to stand in the same prose paragraph: code is no decision, and two
+        # mentions in unrelated places are no waiver of that version.
+        (decisions / "0994-code.md").write_text(
+            "# 0994. Not a waiver\n\nDo not run `publish-release 1.2.3 --skip-beta-soak` (QA-R29 stays).\n\n"
+            "```sh\nscripts/publish-release 1.2.3 --skip-beta-soak docs/decisions/0994-code.md  # QA-R29\n```\n",
+            encoding="utf-8")
+        code = waiver("docs/decisions/0994-code.md")
+        self.assertEqual(code.returncode, 1, "a version inside code, inline or fenced, names nothing")
+        self.assertIn("does not name version 1.2.3 in a paragraph that cites QA-R29", code.stderr)
+        (decisions / "0993-apart.md").write_text(
+            "# 0993. Apart\n\nQA-R29 keeps its 72-hour beta period.\n\nVersion 1.2.3 adds a setting.\n",
+            encoding="utf-8")
+        self.assertEqual(waiver("docs/decisions/0993-apart.md").returncode, 1,
+                         "the requirement and the version in different paragraphs are no waiver")
+        (decisions / "0992-table.md").write_text(
+            "# 0992. Table\n\n| Requirement | Release |\n|---|---|\n| QA-R29 | kept |\n| QA-R30 | 1.2.3 |\n",
+            encoding="utf-8")
+        self.assertEqual(waiver("docs/decisions/0992-table.md").returncode, 1, "each table row stands alone")
+        (decisions / "0991-tag.md").write_text(
+            "# 0991. Tag\n\n1. **QA-R29 is waived for v1.2.3 only.** Pa decided\n   it on 2026-11-17.\n",
+            encoding="utf-8")
+        tagged = waiver("docs/decisions/0991-tag.md")
+        self.assertEqual(tagged.returncode, 0, "the tag form v1.2.3 names the version too: " + tagged.stderr)
+
     def test_release_notes_page_escapes_and_fills_tokens(self):
         out = self.tmp / "page.html"
         result = self.notes_page(out, "- <script>alert(1)</script> trong {{AppName}}",

@@ -41,7 +41,8 @@
 # QA-R29: a stable release needs an X.Y.Z-beta.N of the same version on the beta channel for at least 72 hours
 # (site/data/releases.json); --p0-hotfix skips that and turns phased rollout off (QA-R35). --skip-beta-soak DECISION
 # skips only that check, for a stable release Pa decided to publish without a beta: DECISION is the decision record
-# (docs/decisions/*.md) that cites QA-R29 and names the version (ADR 0507); phased rollout stays as configured.
+# (docs/decisions/*.md) that cites QA-R29 and names the version in the same prose paragraph, code excluded (ADR
+# 0507); phased rollout stays as configured.
 #
 # Every output is first written into a temporary copy. The default dry run prints it and deletes it;
 # --apply copies the outputs into the repository only after every step succeeded, so a failure never
@@ -75,8 +76,9 @@ Behaviour:
   --no-phasing          skip phased rollout (QA-R35)
   --p0-hotfix           stable release fixing a P0: skip the 72-hour beta period (QA-R29) and phasing
   --skip-beta-soak DECISION   stable release published without a beta by Pa's decision: skip only the
-                        72-hour beta check (QA-R29); DECISION is docs/decisions/<record>.md, which must cite
-                        QA-R29 and name the version (ADR 0507); phased rollout is unchanged
+                        72-hour beta check (QA-R29); DECISION is docs/decisions/<record>.md, one prose
+                        paragraph of which (code excluded) must cite QA-R29 and name the version (ADR 0507);
+                        phased rollout is unchanged
   --critical            mark as critical update (security or data-loss fixes only, QA-R34)
   --minimum-autoupdate-version BUILD   force a manual install for older builds (PLT-R1109)
   --tap-dir DIR         Homebrew tap checkout; the rendered cask is written to DIR/Casks/

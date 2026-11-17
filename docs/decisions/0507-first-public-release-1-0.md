@@ -49,8 +49,8 @@ The state on 2026-11-17:
    `scripts/publish-release 1.0.0 --skip-beta-soak docs/decisions/0507-first-public-release-1-0.md`. The option skips
    only the 72-hour check; the release-notes check (PRD-R51), the signature and key checks and the rest of the run are
    unchanged, and phased rollout stays on (QA-R35; it changes nothing for 1.0.0, which no installed public copy
-   updates to, and keeps later releases configured the same way). The script accepts a record only if it cites
-   QA-R29 and names the version, so this record cannot waive the rule for any later version. Every later stable
+   updates to, and keeps later releases configured the same way). The script accepts a record only if one prose
+   paragraph of it (code excluded) cites QA-R29 and names the version, so this record cannot waive the rule for any later version. Every later stable
    release ships first as `X.Y.Z-beta.N` on the beta channel for at least 72 hours; another waiver needs a new
    decision by Pa.
 
