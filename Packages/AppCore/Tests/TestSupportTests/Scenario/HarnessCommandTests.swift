@@ -92,7 +92,9 @@ private let rulesJSON = """
         let live = RecordingLiveServices(clock: ManualClock())
         let fileSystem = try makeCheckout(scenarios: [
             "a.json": scenarioJSON(id: "a", target: HarnessTargets.testHostAlias),
-            "b.json": scenarioJSON(id: "b", setup: #"[{"action":"openURL","value":"{pages}/fields.html"}]"#),
+            "b.json": scenarioJSON(
+                id: "b", extra: #","readbackOptions":{"excludesSelectedCompletion":true}"#,
+                setup: #"[{"action":"openURL","value":"{pages}/fields.html"}]"#),
         ])
         let (harness, console) = try harness(
             ["run", "--dry-run", "--profile", "fast"], fileSystem: fileSystem, live: live)
@@ -100,6 +102,9 @@ private let rulesJSON = """
         let text = console.output.joined(separator: "\n")
         #expect(text.contains("2 scenario(s)"))
         #expect(text.contains("- a\n    target org.example.product.dev.testhost"))
+        // PLT-R530: the plan shows a declared history completion beside the readback.
+        #expect(text.contains("timing fast, readback ax\n"))
+        #expect(text.contains("timing fast, readback ax (a selected completion at the end left out)\n"))
         #expect(text.contains("timing fast"))
         #expect(text.contains("openURL file:///repo/TestHost/Resources/Pages/fields.html"))
         #expect(text.contains("keys: 3 keystroke(s), 6 event(s)"))

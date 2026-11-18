@@ -360,6 +360,24 @@ private let targets = HarnessTargets(
         }
     }
 
+    /// testhost.sheetCell.columnAutocomplete (run of 19/11/2026): the cell completes "Đ" to "Đức" with "ức"
+    /// selected, and that deterministic completion is part of the expected field text (PLT-R530, QA-R21).
+    @Test func axReadbackKeepsADeterministicSelectedCompletionPltR530() async throws {
+        let cell = FixedAXReader(text: "Đức", selection: .init(location: 1, length: 2))
+        #expect(try await router(ax: cell).currentText(of: makeScenario()) == "Đức")
+    }
+
+    /// launcher.spotlight: a completion from user history ("TextEdit" for "text") is left out only when the scenario
+    /// declares it (`readbackOptions.excludesSelectedCompletion`, PLT-R530).
+    @Test func axReadbackLeavesOutAHistoryCompletionOnlyWhenTheScenarioDeclaresItPltR530() async throws {
+        let spotlight = FixedAXReader(text: "TextEdit", selection: .init(location: 4, length: 4))
+        let declared = makeScenario(readbackOptions: .init(excludesSelectedCompletion: true))
+        #expect(try await router(ax: spotlight).currentText(of: declared) == "Text")
+        let undeclared = makeScenario(readbackOptions: .init(excludesSelectedCompletion: false))
+        #expect(try await router(ax: spotlight).currentText(of: undeclared) == "TextEdit")
+        #expect(try await router(ax: spotlight).currentText(of: makeScenario()) == "TextEdit")
+    }
+
     @Test func terminalCaptureReadsTheLastLine() async throws {
         let fileSystem = InMemoryFileSystem()
         let scenario = makeScenario(readback: .terminalCapture)

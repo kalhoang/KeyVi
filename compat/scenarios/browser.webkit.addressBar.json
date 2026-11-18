@@ -28,5 +28,8 @@
   "expect": {
     "text": "câu"
   },
-  "readback": "ax"
+  "readback": "ax",
+  "readbackOptions": {
+    "excludesSelectedCompletion": true
+  }
 }

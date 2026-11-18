@@ -29,6 +29,9 @@
     "noPlaceholderResidue": true
   },
   "readback": "ax",
+  "readbackOptions": {
+    "excludesSelectedCompletion": true
+  },
   "repeat": {
     "words": 1000,
     "seed": 2,

@@ -188,6 +188,30 @@ private func scenarioFiles() throws -> [URL] {
         #expect(gated == ["browser.chromium.addressBar", "browser.gecko.urlBar"])
     }
 
+    /// QA-R21, PLT-R530: TestHost completes deterministically, so its completion is part of the expected field text
+    /// and no TestHost scenario leaves a selected completion out (testhost.sheetCell.columnAutocomplete expects "Đức"
+    /// with "ức" selected; it read back "Đ" in the run of 19/11/2026 while every ax readback left it out).
+    @Test func noTestHostScenarioExcludesASelectedCompletionQaR21() throws {
+        for scenario in try ScenarioRunner.load(directory: scenariosDirectory)
+        where scenario.targetBundleId.rawValue == HarnessTargets.testHostAlias {
+            #expect(scenario.readbackOptions?.excludesSelectedCompletion != true, "\(scenario.id)")
+        }
+    }
+
+    /// PLT-R530: the scenarios whose field completes from user history and whose `expect.text` is the typed text:
+    /// Spotlight in both bundles (`com.apple.campo` since macOS 27.2) and the address bars whose history the setup
+    /// seeds. Declaring another one is a decision, not a side effect.
+    @Test func historyCompletionsAreDeclaredByTheLaunchersAndAddressBarsPltR530() throws {
+        let declared = try ScenarioRunner.load(directory: scenariosDirectory)
+            .filter { $0.readbackOptions?.excludesSelectedCompletion == true }
+        #expect(
+            Set(declared.map(\.id)) == [
+                "launcher.spotlight", "launcher.spotlight.reopen", "launcher.spotlight.campo",
+                "launcher.spotlight.campo.reopen", "launcher.spotlight.campo.suggestion", "browser.chromium.addressBar",
+                "browser.gecko.urlBar", "browser.webkit.addressBar",
+            ])
+    }
+
     /// TestHost scenarios use the alias and real TestHost field identifiers.
     @Test func testHostScenariosUseKnownFields() throws {
         let source = try String(

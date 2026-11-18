@@ -249,6 +249,10 @@ public struct ReadbackRouter: ScenarioReadback {
         case .ax:
             guard let ax else { throw HarnessReadbackError.unavailable(.ax) }
             let state = try await ax.field(identifier: field, in: target)
+            // PLT-R530: the whole value, a selected completion included (testhost.sheetCell.columnAutocomplete
+            // expects "Đức" with "ức" selected), unless the scenario declares a selection at the end the app's own
+            // completion from user history (launcher.spotlight).
+            guard scenario.readbackOptions?.excludesSelectedCompletion == true else { return state.value }
             return AXReadbackText.typed(value: state.value, selection: state.selection)
         case .webdriver:
             return try await webDrivers.client(for: target).fieldText(selector: field)

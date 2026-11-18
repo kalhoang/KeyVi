@@ -68,7 +68,9 @@ enum HarnessPlans {
             "- " + scenario.id,
             "    target " + target + ", method " + scenario.method.rawValue + ", layout "
                 + (scenario.layout?.rawValue ?? "current") + ", timing " + scenario.timing.rawValue + ", readback "
-                + scenario.readback.rawValue,
+                + scenario.readback.rawValue
+                + (scenario.readbackOptions?.excludesSelectedCompletion == true
+                    ? " (a selected completion at the end left out)" : ""),
             "    setup: " + (setup.isEmpty ? "none" : setup.joined(separator: "; ")),
             "    keys: \(scenario.keys.count) keystroke(s), \(events) event(s), " + seconds(duration),
             "    expect: " + expectation(scenario.expect),
