@@ -238,8 +238,8 @@ Safe mode (four choices), move failed, conflict warning, update failed.
   hotkey recorder box while recording (also the text "Nhấn tổ hợp phím mới, rồi thả ra."), the illustration's
   switch (decorative, labelled).
 - Contrast: secondary text uses the system secondary label colour on system backgrounds; WCAG AA for these is met
-  by macOS in its standard and Increase Contrast modes. The placeholder status glyph and the dimmed paused glyph
-  (alpha 0.4) need a designer's check before 1.0.
+  by macOS in its standard and Increase Contrast modes. The dimmed paused glyph (alpha 0.4) is checked under
+  Increase Contrast in section 3.1 step 3.
 - Focus rings: standard controls draw the system focus ring when keyboard navigation is on; the only plain-style
   buttons (the onboarding method cards) draw the focus-ring colour themselves.
 

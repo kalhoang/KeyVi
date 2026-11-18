@@ -372,7 +372,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R9 | Fuzz seed corpus stored and minimised | engine package | E | engine track |  |
 | QA-R10 | Test host app with listed fields | `TestHost/**` | I | W2-E1 |  |
 | QA-R11 | Integration tests through the real pipeline | `compat/scenarios/testhost.*` (with `profiles/qa-r11.json`), `compat-harness` (`scripts/run-integration.sh tests`), the hooks test build (`scripts/run-integration.sh build`), [integration-suite.md](../runbooks/integration-suite.md) sections 3 and 6 | U (`ScenarioOracleTests`, `HostHookActionsTests`), I | W2-E2; W3-A |  |
-| QA-R12 | Integration tests on a self-hosted runner | self-hosted runner | I, M | W2-E2; CI track; Pa (runner) | **Pa** |
+| QA-R12 | Integration tests on a self-hosted runner (the tart VM on Pa's Mac, confirmed 2026-11-18, run by hand while the workflows stay disabled; runner registration pending) | self-hosted runner | I, M | W2-E2; CI track; Pa (runner) | **Pa** |
 | QA-R13 | Self-hosted runner only for main and tags | workflows | L | CI track |  |
 | QA-R14 | Performance gates and baselines | CI, pipeline benchmark | L | CI track; W1-F1; W2-E2 |  |
 | QA-R15 | perf-baseline label | process | D | CI track |  |
@@ -385,7 +385,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R22 | Workflows | `.github/workflows` | L | CI track |  |
 | QA-R23 | Pinned Xcode, newest macOS tested | CI | L, M | CI track; Pa (self-hosted) | **Pa** |
 | QA-R24 | Supply-chain hygiene | `Config/Package.resolved`, workflows | L | skeleton; CI track |  |
-| QA-R25 | Branch protection on main | GitHub settings | M | Pa | **Pa** |
+| QA-R25 | Branch protection on `main` and `prod`: merge commits (`--no-ff`, no squash), no force push or deletion; required checks once `ci.yml` runs; signed commits recommended (amended 2026-11-18) | GitHub settings | M | Pa | **Pa** |
 | QA-R26 | SemVer and integer build | release scripts, `project.yml` | R | release track |  |
 | QA-R27 | Engine versioned separately | engine package | D | engine track |  |
 | QA-R28 | Stable and beta channels | `UpdaterController`, appcast | U, R | W2-D; release track |  |
@@ -446,5 +446,5 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | CLR-R10 | Clean-room notice in agent instructions | `CLAUDE.md`, `AGENTS.md` | D | done |  |
 | CLR-R11 | SPDX header on every source file | all sources | L | all; CI track (lint) |  |
 | CLR-R12 | Keep git history intact | process | D | all |  |
-| CLR-R13 | Similarity review before first public release and 1.0 | `docs/provenance/` | M | Pa (reviewer allowed to see other code) | **Pa** |
+| CLR-R13 | Similarity review before first public release and 1.0 (1.0.0 shipped before it; commissioned 2026-11-18: full run on `9d63a360`, then per-release deltas, amended 2026-11-18) | `docs/provenance/`, [similarity-review.md](../runbooks/similarity-review.md) | M | Pa (reviewer allowed to see other code) | **Pa** |
 | CLR-R14 | Contributors confirm clean-room rules | `CONTRIBUTING.md`, PR template | D | docs track |  |

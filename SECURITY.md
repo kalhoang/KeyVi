@@ -10,7 +10,7 @@ KeyVi™ handles keystrokes, so security reports are taken seriously. This polic
 | Latest beta release | Yes |
 | Older releases | No. Update to the latest stable or beta |
 
-1.0.0, of 17 November 2026, is the first public release. The private test builds made before it are not supported.
+1.0.0, of 18 November 2026, is the first public release. The private test builds made before it are not supported.
 
 ## Reporting a vulnerability
 
