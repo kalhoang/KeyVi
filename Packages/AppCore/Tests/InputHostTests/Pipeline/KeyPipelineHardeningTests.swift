@@ -229,18 +229,21 @@ struct RepeatingComboFactory: CompositionEngineFactory, Sendable {
 }
 
 @Suite struct FieldTokenHardeningTests {
-    private func focusWithoutToken(_ generation: UInt64) -> FocusSnapshot {
-        var focus = PipelineFixtures.focus(generation: generation)
+    private func focusWithoutToken(_ generation: UInt64, changedAt: MonotonicInstant = .zero) -> FocusSnapshot {
+        var focus = PipelineFixtures.focus(generation: generation, changedAt: changedAt)
         focus.fieldHandle = nil
         return focus
     }
 
     /// PLT-R210, ENG-R1010: without a field token (AX unavailable or timed out) the pipeline cannot tell a
-    /// republication from a new element of the same app, so every new focus generation resets.
+    /// republication from a new element of the same app, so a new focus generation resets, unless it came within
+    /// 500 ms of the word's last key (PLT-R340 amendment of 19/11/2026: a snapshot of the same process without a
+    /// readable element keeps the word, `LateFocusIdentityTests`).
     @Test func newGenerationWithoutAFieldTokenResets() {
         let fixture = PipelineFixture(focus: focusWithoutToken(1))
         fixture.press(Key.a)
-        fixture.publish(focus: focusWithoutToken(2))
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.publish(focus: focusWithoutToken(2, changedAt: fixture.clock.now()))
         fixture.press(Key.a)
         #expect(fixture.log.resets == [.focusChanged])
         #expect(fixture.popJobs().isEmpty)

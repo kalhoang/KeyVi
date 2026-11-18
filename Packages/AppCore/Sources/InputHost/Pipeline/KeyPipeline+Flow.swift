@@ -161,7 +161,7 @@ extension KeyPipeline {
         keyState.deadKeyPending = false  // PLT-R354: the click moved the caret
         let generation = context.snapshots.focus.read { $0.generation }
         hardBoundary(.pointerClicked, job: .mouseDown, generation: generation)
-        notePointerDownForRevalidation()  // PLT-R389
+        notePointerDownForRevalidation(now: now)  // PLT-R389
     }
 
     // MARK: Steps 4 to 6
@@ -317,28 +317,33 @@ extension KeyPipeline {
 
     /// `continuing`: a kept late focus change into a variant that differs only in `lookaheadRevision` moves the
     /// word to the new variant's engine without a reset (ENG-R1211 amendment of 19/11/2026); every other variant
-    /// change builds a fresh engine.
+    /// change builds a fresh engine. The verdict is `judgeFocusChange` (PLT-R340, KeyPipeline+LateFocus.swift).
     private func reconcileFocus(
         _ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool, continuing: inout Bool,
         now: MonotonicInstant
     ) {
         guard focus.generation != seen.focus.generation else { return }
         let identity = FocusIdentity(focus)
-        var kept = false
-        if !identity.sameOwner(as: seen.focus) {
-            if keepsCompositionAcrossLateFocusChange(focus, identity: identity, at: now) {
-                kept = true
-                keyState.lateFocusCheckPending = true  // PLT-R340 amendment: the next job verifies
-            } else {
-                change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)
-            }
-        } else if identity.decision != seen.focus.decision {
-            change.note(.configurationChanged, job: .ruleChanged)
+        let verdict = judgeFocusChange(focus, identity: identity, at: now)
+        switch verdict {
+        case .sameElement(let decision):
+            if identity.decision != decision { change.note(.configurationChanged, job: .ruleChanged) }
+        case .kept(let checked):
+            if checked { keyState.lateFocusCheckPending = true }  // PLT-R340 amendment: the next job verifies
+        case .boundary:
+            change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)
         }
         if focus.decision.variant != seen.engineVariant {
-            if kept && engineCanContinue(into: focus.decision.variant) { continuing = true } else { rebuild = true }
+            if verdict.keepsWord && change.reset == nil && engineCanContinue(into: focus.decision.variant) {
+                continuing = true
+            } else {
+                rebuild = true
+                // A fresh engine drops the word: never without the boundary that says so (the element found again
+                // after a snapshot whose variant the engine took, PLT-R340).
+                if change.reset == nil { change.note(.configurationChanged, job: .ruleChanged) }
+            }
         }
-        seen.focus = identity
+        remember(identity, verdict: verdict)
     }
 
 }

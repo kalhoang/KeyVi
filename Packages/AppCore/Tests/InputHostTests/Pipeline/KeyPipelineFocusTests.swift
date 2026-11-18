@@ -189,10 +189,13 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         let records = lateFocusRecords(fixture)
         #expect(records.map(\.code) == [.lateFocusKept])
         #expect(records.first?.a == 50_000 && records.first?.b == 90_000)
+        #expect(records.first?.detail == LateFocusReason.window.rawValue)
+        #expect(records.first?.at == fixture.clock.now())  // the key that found the change
     }
 
-    /// A change refused by the window leaves a record too, so a VM run shows how far outside the window it was;
-    /// other boundaries (another process, no active word) leave none.
+    /// A change refused by the window leaves a record too, so a VM run shows how far outside the window it was and
+    /// which window refused it; another process records its reason (amendment of 19/11/2026), and a change without
+    /// an active word leaves nothing.
     @Test func aChangeOutsideTheWindowIsRecordedAndOtherBoundariesAreNotPLTR340() {
         let fixture = PipelineFixture()
         for key in [Key.d, Key.u, Key.w, Key.s] {
@@ -205,6 +208,7 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         let records = lateFocusRecords(fixture)
         #expect(records.map(\.code) == [.lateFocusRefused])
         #expect(records.first?.a == 300_000 && records.first?.b == 660_000)
+        #expect(records.first?.detail == LateFocusReason.firstKeyWindow.rawValue)
 
         let other = PipelineFixture()
         other.press(Key.a)
@@ -214,7 +218,8 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         committed.typeKeys([Key.a, Key.space])
         publishNewElement(committed)
         committed.press(Key.a)
-        #expect(lateFocusRecords(other).isEmpty && lateFocusRecords(committed).isEmpty)
+        #expect(lateFocusRecords(other).map(\.detail) == [LateFocusReason.otherProcess.rawValue])
+        #expect(lateFocusRecords(committed).isEmpty)
     }
 
     /// The key that discovers the change may produce no edit: a job without an edit carries the check and the key
@@ -455,21 +460,6 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(fixture.log.resets.isEmpty)
         let check = try #require(fixture.popJobs().compactMap(\.edit).first)
         #expect(check.verifyLateFocus && check.replacedText == "dứ")
-    }
-
-    /// The worker could not read the new element (no AX element, AX unavailable or timed out): hard boundary.
-    @Test func anUnreadableElementIsAHardBoundaryPLTR340() {
-        let changes: [(inout FocusSnapshot) -> Void] = [
-            { $0.fieldHandle = nil }, { $0.field.axAvailability = .unavailable },
-            { $0.field.axAvailability = .timedOut },
-        ]
-        for change in changes {
-            let fixture = PipelineFixture()
-            fixture.press(Key.a)
-            publishNewElement(fixture, change: change)
-            fixture.press(Key.a)
-            #expect(fixture.log.resets == [.focusChanged])
-        }
     }
 
     /// No word in progress (a separator committed it), a new engine variant or a focus pause: hard boundary.

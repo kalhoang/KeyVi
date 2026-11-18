@@ -110,6 +110,7 @@ extension KeyPipeline {
         if case .key = input, replaced.isEmpty {  // a new word (or a separator after a committed one)
             keyState.wordStartedAt = key.now
             keyState.reopenedWord = false
+            keyState.wordReference = nil  // PLT-R340: a new word begins in the focus as it is now
         }
         let output = engine.handle(input)
         engineDirty = true
@@ -400,6 +401,7 @@ extension KeyPipeline {
         context.queue.breakCaretContinuity()
         resetEngineIfDirty(reason)
         keyState.wordStartedAt = nil
+        keyState.wordReference = nil
         keyState.reopenedWord = false
         guard let job, !lastPushWasBoundary, context.queue.inFlight > 0 else { return }
         let boundary = BoundaryJob(sequence: context.queue.nextSequence(), reason: job, generation: generation)

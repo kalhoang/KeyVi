@@ -92,7 +92,8 @@ final class ConsumedKeyTable {
 
 /// The parts of a focus snapshot whose change is a hard boundary (PLT-R340): the focus owner and element
 /// (focus change), and the resolved decision (rule or strategy change). Republication with the same owner and
-/// decision (for example after the ax thread applied a toggle) is not a boundary.
+/// decision (for example after the ax thread applied a toggle) is not a boundary. Also what the late focus rule
+/// compares with: when the element was observed and whether the worker can read it.
 struct FocusIdentity: Equatable {
     struct Decision: Equatable {
         var strategy: InjectionStrategy
@@ -109,6 +110,10 @@ struct FocusIdentity: Equatable {
     /// No app, because the system-wide focus read timed out (not because AX named none): the app is unknown, not
     /// changed (PLT-R340 late focus change, amendment of 2026-11-15).
     var appUnknownAfterTimeout: Bool
+    /// When the ax thread observed the element (`FocusSnapshot.changedAt`).
+    var changedAt: MonotonicInstant
+    /// A field handle and AX available: the worker can read the element (the late focus check, PLT-R340).
+    var readable: Bool
 
     init(_ focus: FocusSnapshot) {
         generation = focus.generation
@@ -119,14 +124,34 @@ struct FocusIdentity: Equatable {
             strategy: focus.decision.plan.strategy, parameters: focus.decision.plan.parameters,
             variant: focus.decision.variant, requireTextFocus: focus.decision.requireTextFocus,
             pause: focus.pause?.code)
+        changedAt = focus.changedAt
+        readable = focus.fieldHandle != nil && focus.field.axAvailability == .available
+    }
+}
+
+/// PLT-R340 amendment of 19/11/2026: a focus the late focus rule compares a new snapshot with. A token is the ax
+/// thread's element identity (contracts.md 10.4); without one the element is unknown.
+struct FocusReference: Equatable {
+    var pid: Int32
+    var token: UInt64?
+    var changedAt: MonotonicInstant
+    var appUnknownAfterTimeout: Bool
+    /// The decision resolved for it: the element found again is compared with this one, not with a snapshot
+    /// without its attributes in between (whose rules could not see the field).
+    var decision: FocusIdentity.Decision
+
+    init(_ identity: FocusIdentity) {
+        pid = identity.pid
+        token = identity.fieldToken
+        changedAt = identity.changedAt
+        appUnknownAfterTimeout = identity.appUnknownAfterTimeout
+        decision = identity.decision
     }
 
-    /// Same app and the same element token. A token is the ax thread's element identity; without one (AX
-    /// unavailable or timed out) the element is unknown, so a new generation counts as a focus change
-    /// (PLT-R210, ENG-R1010: the host cannot vouch for the text before the caret).
-    func sameOwner(as other: FocusIdentity) -> Bool {
-        guard let fieldToken, let otherToken = other.fieldToken else { return false }
-        return pid == other.pid && fieldToken == otherToken
+    /// Same process and the same element token.
+    func names(_ identity: FocusIdentity) -> Bool {
+        guard let token, let other = identity.fieldToken else { return false }
+        return pid == identity.pid && token == other
     }
 }
 
@@ -158,6 +183,10 @@ struct ObservedState {
     /// PLT-R398B: a secure-input release was seen (key evidence, or a new generation with the OS flag off) and the
     /// next key-down is the first one after it (`HostCounters`).
     var awaitingKeyAfterSecureRelease = false
+    /// PLT-R340 amendment of 19/11/2026: the last snapshot that carried a field token, kept across snapshots without
+    /// one that name its process or no process after a timed-out read (the ax thread keeps the token of an element
+    /// it finds again after such snapshots, `FocusCore.lastElement`). A snapshot with this token is the same element.
+    var lastElement: FocusReference?
 }
 
 /// Per-key bookkeeping that is not a snapshot generation.
@@ -170,6 +199,11 @@ struct KeyState {
     var reopenedWord = false
     /// First key of the current word (PLT-R408 `wordStartedNearFocusChange`).
     var wordStartedAt: MonotonicInstant?
+    /// PLT-R340 amendment of 19/11/2026: the element the active word began in, while snapshots of its process without
+    /// a readable element kept the word; the next snapshot is judged against it. Cleared with the word.
+    var wordReference: FocusReference?
+    /// PLT-R389: the last keyDown or click that can move the focus (the late focus rule's trigger, PLT-R340).
+    var lastFocusTriggerAt: MonotonicInstant?
     var lastPointerDownAt: MonotonicInstant?
     /// PLT-R382 idle revalidation.
     var lastKeyboardEventAt: MonotonicInstant?
