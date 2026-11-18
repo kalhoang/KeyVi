@@ -117,6 +117,24 @@ private func catchingUpRig(
         #expect(rig.clock.now() >= Fixture.start.advanced(byMicroseconds: 50_000))
     }
 
+    /// Review of 19/11/2026: in a busy app the first read can cost both bounded calls (the second one timing out)
+    /// and end after the 50 ms window. A read that started within the window and ended at most one call timeout
+    /// after it is read once more at once (worst case 50 + 30 + 60 = 140 ms after the key, PLT-R314); one that ended
+    /// later is not.
+    @Test(arguments: [(60_000 as UInt64, true), (90_000 as UInt64, false)])
+    func aSlowFirstReadStartedInTheWindowIsReadAgainPLTR340(cost: UInt64, readsAgain: Bool) {
+        let clock = Mutex<ManualClock?>(nil)
+        let rig = catchingUpRig(lagMilliseconds: 20, timesOut: [1]) { read in
+            if read == 1 { clock.withLock { $0?.advance(byMicroseconds: cost) } }
+        }
+        clock.withLock { $0 = rig.clock }
+        let edit = rig.pushEdit { lateFocusJob($0) }
+        rig.run()
+        #expect(rig.outcome(edit) == (readsAgain ? .executed : .passedThroughByFallback))
+        #expect(rig.feedback.compositionResetCount == (readsAgain ? 0 : 1))
+        #expect(rig.clock.now() >= Fixture.start.advanced(byMicroseconds: cost))
+    }
+
     /// Bounded: one more read only. An app still behind when the window ends fails the check (the key passes and
     /// the word is reset), and a first read that already ends after the window is not repeated.
     @Test func theSecondReadIsTheLastPLTR340() {
