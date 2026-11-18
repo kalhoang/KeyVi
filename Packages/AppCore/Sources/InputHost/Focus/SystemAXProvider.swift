@@ -147,6 +147,7 @@ final class SystemAXObservation: AXObservation {
     }
 
     var runLoopSource: CFRunLoopSource { AXObserverGetRunLoopSource(objects.observer) }
+    var notifications: Set<AXNotificationKind> { Set(names.compactMap(AXNotificationNames.kind(for:))) }
 
     func invalidate() {
         for name in names {

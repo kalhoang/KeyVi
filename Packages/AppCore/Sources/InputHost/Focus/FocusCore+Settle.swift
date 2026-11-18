@@ -11,6 +11,8 @@
 // - On a loaded guest (VM run of 19/11/2026) TestHost refused observers for about 5 s after its launch, and the
 //   retries ended before it accepted one: the owner is now asked every 2 s after the scheduled attempts while its
 //   observation is wanted, and a publication of its focus asks again once a chain is over (PLT-R380 amendment).
+//   An app still half up may take every name but AXFocusedUIElementChanged (probe of the control run of 18/11):
+//   such a best-effort observer is kept but does not end the chain.
 // Timers run on `Services.scheduler` (the utility queue in production, one-shot, 10 % leeway, PLT-R803) and hop to
 // the ax thread through the sink. Every item carries the epoch or attempt it belongs to, so a superseded timer
 // that already fired does nothing.
@@ -159,13 +161,14 @@ extension FocusCore {
     /// PLT-R380 amendment of 19/11/2026: an attempt that finds the app not wanted at the moment (another app owns
     /// the focus) skips its call and keeps the chain going through the scheduled attempts; the slow attempts after
     /// them run only while the observation is wanted. No call goes to an app whose breaker is open (PLT-R384): the
-    /// attempt passes and the chain goes on.
+    /// attempt passes and the chain goes on. A partial observer (`ObservedApplication.partial`) keeps the chain
+    /// going too.
     private func retryObserver(pid: Int32, attempt: Int) {
         deferred.retryTimers[pid] = nil
-        guard observed[pid] == nil else { return }
+        guard !observerInPlace(pid) else { return }
         guard let wanted = wantedObservation(of: pid) else {
             noteObserverAttempt(pid: pid, attempt: attempt, result: .notWanted)
-            if attempt < FocusSettle.observerRetryDelays.count { scheduleObserverRetry(pid: pid, attempt: attempt) }
+            if attempt <= FocusSettle.observerRetryDelays.count { scheduleObserverRetry(pid: pid, attempt: attempt) }
             return
         }
         guard !breaker.isOpen(pid: pid, at: services.clock.now()) else {
@@ -178,11 +181,12 @@ extension FocusCore {
         deferred.publicationObserver?()
     }
 
-    /// PLT-R380 amendment of 19/11/2026: a publication of the owner's focus while the owner has no observer and no
-    /// retry is pending asks for the observer again (a new owner was already asked by `observeOwner`), so an app
-    /// that refused a whole chain gets its observer once it accepts, without waiting for the next activation.
+    /// PLT-R380 amendment of 19/11/2026: a publication of the owner's focus while the owner has no observer (or only
+    /// a partial one) and no retry is pending asks for the observer again (a new owner was already asked by
+    /// `observeOwner`), so an app that refused a whole chain gets its observer once it accepts, without waiting for
+    /// the next activation.
     func observeOwnerIfUnobserved(at instant: MonotonicInstant) {
-        guard let pid = current?.pid, observed[pid] == nil, deferred.retryTimers[pid] == nil,
+        guard let pid = current?.pid, !observerInPlace(pid), deferred.retryTimers[pid] == nil,
             let wanted = wantedObservation(of: pid), !breaker.isOpen(pid: pid, at: instant)
         else { return }
         // Unlike an owner change, this install is news: the app had refused a whole chain.

@@ -113,6 +113,8 @@ public enum AXObservationMode: Sendable, Hashable {
 /// A registered AXObserver; `invalidate` removes notifications and its run-loop source.
 public protocol AXObservation: AnyObject, Sendable {
     var runLoopSource: CFRunLoopSource { get }
+    /// The notifications the app took. A `.bestEffort` observation may lack some it was asked for (PLT-R380).
+    var notifications: Set<AXNotificationKind> { get }
     func invalidate()
 }
 
