@@ -112,6 +112,8 @@ final class FocusHarness {
     let metrics = PlatformMetrics()
     let health = HealthEventLog()
     let clock = ManualClock()
+    /// The tracker's diagnostics (PLT-R380 observer attempts).
+    let logger = RecordingLogger()
     let documents = Recorder<AppModesDocument>()
     let scheduler: ManualScheduler
     /// Every timer the tracker asked for (PLT-R803 leeway checks).
@@ -133,7 +135,7 @@ final class FocusHarness {
         tracker = FocusTracker(
             thread: thread, ax: ax, processes: processes, output: cell, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: LooseVersion("27.2")!,
-            scheduler: scheduled ? timers : nil)
+            scheduler: scheduled ? timers : nil, logger: logger)
         let documents = self.documents
         tracker.setMemoryObserver { documents.append($0) }
     }
@@ -183,6 +185,15 @@ final class FocusHarness {
     }
 
     var snapshot: FocusSnapshot { cell.load() }
+
+    /// The observer attempts the tracker logged for `pid`, in order (PLT-R380).
+    func observerAttempts(pid: Int32) -> [(attempt: Int, result: ObserverAttemptResult)] {
+        logger.entries.compactMap { entry in
+            guard case .focus(.observerAttempt(let logged, let attempt, let result)) = entry.event, logged == pid
+            else { return nil }
+            return (attempt, result)
+        }
+    }
 
     func finish() {
         tracker.stop()

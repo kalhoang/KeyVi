@@ -57,7 +57,8 @@ extension KeyPipeline {
     ) -> TapVerdict {
         noteKeyboardActivity(event, now: now, focus: focus)  // PLT-R382, PLT-R389
         reconcile(
-            settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle)
+            settings: settings, focus: focus, inputSource: inputSource, secureInput: secureInput, lifecycle: lifecycle,
+            now: now)
         resumeSecureInputIfNeeded(event, secureInput: secureInput, generation: focus.generation, now: now)
         trackKeysDown(event, generation: focus.generation, now: now)  // PLT-R397A
         capturingThisKey = captureAllowed(focus: focus, secureInput: secureInput)  // PLT-R905
@@ -242,7 +243,7 @@ extension KeyPipeline {
     /// engine (a hard boundary by itself); focus, input-source, secure-input and lifecycle changes reset.
     func reconcile(
         settings: TapSettingsSnapshot, focus: FocusSnapshot, inputSource: InputSourceSnapshot,
-        secureInput: SecureInputSnapshot, lifecycle: LifecycleSnapshot
+        secureInput: SecureInputSnapshot, lifecycle: LifecycleSnapshot, now: MonotonicInstant
     ) {
         var change = BoundaryAccumulator()
         let resetCount = context.feedback.compositionResetCount
@@ -266,7 +267,7 @@ extension KeyPipeline {
             }
             seen.engineRevision = revision
         }
-        reconcileFocus(focus, into: &change, rebuild: &rebuild)
+        reconcileFocus(focus, into: &change, rebuild: &rebuild, now: now)
         if inputSource.generation != seen.inputSourceGeneration {
             seen.inputSourceGeneration = inputSource.generation
             seen.pasteKeyCode = inputSource.table?.keyCode(producing: "v")
@@ -308,11 +309,13 @@ extension KeyPipeline {
         if !secureInput.enabled { seen.awaitingKeyAfterSecureRelease = true }
     }
 
-    private func reconcileFocus(_ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool) {
+    private func reconcileFocus(
+        _ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool, now: MonotonicInstant
+    ) {
         guard focus.generation != seen.focus.generation else { return }
         let identity = FocusIdentity(focus)
         if !identity.sameOwner(as: seen.focus) {
-            if keepsCompositionAcrossLateFocusChange(focus, identity: identity) {
+            if keepsCompositionAcrossLateFocusChange(focus, identity: identity, at: now) {
                 keyState.lateFocusCheckPending = true  // PLT-R340 amendment: the next job verifies
             } else {
                 change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)

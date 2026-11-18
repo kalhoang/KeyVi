@@ -6,6 +6,7 @@
 // sheet gave "ddường"). Driven with the pipeline doubles (PipelineFixture, ScriptedEngine).
 
 import AppModel
+import Diagnostics
 import Injection
 import RealtimeSupport
 import TestSupport
@@ -168,6 +169,52 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         fixture.completeJobs()
         fixture.press(Key.s)
         #expect(fixture.popJobs().compactMap(\.edit).first?.verifyLateFocus == false)  // only the first job checks
+    }
+
+    /// The late focus records of the tap log, for the diagnostics (PLT-R340, PLT-R901: integers only).
+    private func lateFocusRecords(_ fixture: PipelineFixture) -> [TapLogRecord] {
+        var records: [TapLogRecord] = []
+        fixture.tapLog.drain { if $0.code == .lateFocusKept || $0.code == .lateFocusRefused { records.append($0) } }
+        return records
+    }
+
+    /// A kept change leaves one record with the microseconds from the word's last and first key to `changedAt`.
+    @Test func aKeptChangeIsRecordedWithItsIntervalsPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        fixture.clock.advance(byMicroseconds: 40_000)
+        fixture.press(Key.a)  // "â": the word's last key, 40 ms after its first
+        publishNewElement(fixture)
+        fixture.press(Key.s)
+        let records = lateFocusRecords(fixture)
+        #expect(records.map(\.code) == [.lateFocusKept])
+        #expect(records.first?.a == 50_000 && records.first?.b == 90_000)
+    }
+
+    /// A change refused by the window leaves a record too, so a VM run shows how far outside the window it was;
+    /// other boundaries (another process, no active word) leave none.
+    @Test func aChangeOutsideTheWindowIsRecordedAndOtherBoundariesAreNotPLTR340() {
+        let fixture = PipelineFixture()
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        publishNewElement(fixture, after: 180_000)
+        fixture.press(Key.a)
+        let records = lateFocusRecords(fixture)
+        #expect(records.map(\.code) == [.lateFocusRefused])
+        #expect(records.first?.a == 300_000 && records.first?.b == 660_000)
+
+        let other = PipelineFixture()
+        other.press(Key.a)
+        publishNewElement(other, pid: 300)
+        other.press(Key.a)
+        let committed = PipelineFixture()
+        committed.typeKeys([Key.a, Key.space])
+        publishNewElement(committed)
+        committed.press(Key.a)
+        #expect(lateFocusRecords(other).isEmpty && lateFocusRecords(committed).isEmpty)
     }
 
     /// The key that discovers the change may produce no edit: a job without an edit carries the check and the key

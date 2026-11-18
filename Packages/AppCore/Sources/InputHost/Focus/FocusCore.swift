@@ -86,6 +86,8 @@ final class FocusCore {
         var signposts: PlatformSignposts?
         /// Settle re-reads and observer retries (`FocusCore+Settle.swift`); nil defers nothing.
         var scheduler: (any TimerScheduler)?
+        /// Content-free diagnostics: one record per observer attempt but a first install (PLT-R380, PLT-R901).
+        var logger: (any DiagnosticsLogging)?
     }
 
     let services: Services

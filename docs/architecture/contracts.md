@@ -2134,6 +2134,8 @@ public enum LogEvent: Sendable {
     case settings(SettingsEvent)
     case rules(RulesEvent)
     case update(UpdateEvent)
+    /// Focus tracking facts (PLT-R340, PLT-R380): integers and codes only, never what a field holds (PLT-R901).
+    case focus(FocusEvent)
     /// A fixed message. `StaticString` guarantees a compile-time literal.
     case note(StaticString, category: LogCategory)
     /// A fixed message plus one redacted dynamic value.
@@ -2172,6 +2174,36 @@ public enum LogEvent: Sendable {
         case installingNow
         case failed(code: Int)
     }
+}
+
+extension LogEvent {
+    public enum FocusEvent: Sendable, Hashable {
+        /// PLT-R340: a focus change the tap found after keys of the active word, in the same process or after a
+        /// timed-out read, kept the word or ended it. Microseconds from the word's last key and from its first key
+        /// (nil when unknown) to the new element's `changedAt`.
+        case lateFocusChange(kept: Bool, sinceLastKeyMicroseconds: UInt64, sinceWordStartMicroseconds: UInt64?)
+        /// PLT-R340: the worker found the new element unreadable, or without the kept word before the caret; the
+        /// key passed through and the composition was reset.
+        case lateFocusCheckFailed
+        /// PLT-R380: one attempt to observe an app; `attempt` 0 is the first. A first attempt that installs the
+        /// observer is not logged (every app switch makes one).
+        case observerAttempt(pid: Int32, attempt: Int, result: ObserverAttemptResult)
+    }
+}
+
+/// What one observer attempt did (PLT-R380, PLT-R384).
+public enum ObserverAttemptResult: String, Sendable, Hashable, Codable, CaseIterable {
+    /// Every notification asked for was registered.
+    case installed
+    /// A best-effort attempt (the last scheduled one and the slow ones) registered what the app accepted; it may
+    /// lack a notification the app refused.
+    case installedBestEffort
+    /// The app took none of the notifications, or refused one it may take later.
+    case refused
+    /// No call: the app neither owns the focus nor is a running overlay app at the moment.
+    case notWanted
+    /// No call: the app's circuit breaker is open (PLT-R384).
+    case breakerOpen
 }
 
 /// Settings file identifiers for logs (no paths).
@@ -2810,6 +2842,12 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case callbackOverBudget
     /// PLT-R397A: a keyUp whose keyDown the tap never saw (`a` = key code); the composition was reset.
     case unseenKeyUp
+    /// PLT-R340: a focus change found after keys of the active word kept the composition. `a` = microseconds from
+    /// the word's last key to the new element's `changedAt`, `b` = from its first key (`UInt64.max`: unknown).
+    case lateFocusKept
+    /// PLT-R340: such a change ended the word because it was observed too long after the word's last or first key
+    /// (same process, readable element, no pause, a compatible engine variant); `a` and `b` as for `lateFocusKept`.
+    case lateFocusRefused
 }
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {
@@ -9652,7 +9690,8 @@ public final class InputHostController {
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
             health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
-            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler)
+            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler,
+            logger: dependencies.logger)
         // A settle re-read or an observer retry publishes without a notification: wake the main thread the same way.
         focusTracker.setDeferredPublicationObserver { refresh.request() }
         worker = InjectionWorker(
@@ -10313,13 +10352,14 @@ public final class FocusTracker: Sendable {
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
-        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil,
+        logger: (any DiagnosticsLogging)? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
-            signposts: signposts, scheduler: scheduler)
+            signposts: signposts, scheduler: scheduler, logger: logger)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 

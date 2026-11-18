@@ -19,6 +19,12 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case callbackOverBudget
     /// PLT-R397A: a keyUp whose keyDown the tap never saw (`a` = key code); the composition was reset.
     case unseenKeyUp
+    /// PLT-R340: a focus change found after keys of the active word kept the composition. `a` = microseconds from
+    /// the word's last key to the new element's `changedAt`, `b` = from its first key (`UInt64.max`: unknown).
+    case lateFocusKept
+    /// PLT-R340: such a change ended the word because it was observed too long after the word's last or first key
+    /// (same process, readable element, no pause, a compatible engine variant); `a` and `b` as for `lateFocusKept`.
+    case lateFocusRefused
 }
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {

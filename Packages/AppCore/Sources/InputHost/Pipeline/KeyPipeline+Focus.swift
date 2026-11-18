@@ -126,19 +126,29 @@ extension KeyPipeline {
     /// word begun earlier was typed into the previous one. A word re-opened by Backspace keeps its first key's time,
     /// and a word whose start is unknown is refused. The timed-out branch keeps the last-key window alone: no
     /// element changed under the word there, and the next real snapshot can come seconds after its first key.
-    func keepsCompositionAcrossLateFocusChange(_ focus: FocusSnapshot, identity: FocusIdentity) -> Bool {
+    ///
+    /// Once the other conditions hold and a word is active, the window's verdict goes into the tap log with both
+    /// intervals in microseconds (`lateFocusKept`, `lateFocusRefused`; one ring push, integers only, PLT-R304,
+    /// PLT-R901), so an integration run shows how close each change was to the window.
+    func keepsCompositionAcrossLateFocusChange(
+        _ focus: FocusSnapshot, identity: FocusIdentity, at now: MonotonicInstant
+    ) -> Bool {
         let sameProcess = identity.pid == seen.focus.pid
         guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess || seen.focus.appUnknownAfterTimeout,
             focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
             identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
-            focus.changedAt.nanoseconds(since: lastKey) <= LateFocusChange.windowNanoseconds
+            !engine.activeDisplay.isEmpty
         else { return false }
-        if sameProcess {
-            guard let wordStart = keyState.wordStartedAt,
-                focus.changedAt.nanoseconds(since: wordStart) <= LateFocusChange.windowNanoseconds
-            else { return false }
-        }
-        return !engine.activeDisplay.isEmpty
+        let window = LateFocusChange.windowNanoseconds
+        let sinceLastKey = focus.changedAt.nanoseconds(since: lastKey)
+        let sinceWordStart = keyState.wordStartedAt.map { focus.changedAt.nanoseconds(since: $0) }
+        let wordFits = !sameProcess || sinceWordStart.map { $0 <= window } == true
+        let kept = sinceLastKey <= window && wordFits
+        context.tapLog.push(
+            TapLogRecord(
+                code: kept ? .lateFocusKept : .lateFocusRefused, at: now, a: sinceLastKey / 1_000,
+                b: sinceWordStart.map { $0 / 1_000 } ?? .max))
+        return kept
     }
 
     /// The key that discovered a kept late focus change produced no edit to verify: a job without an edit carries

@@ -53,8 +53,11 @@ extension WorkerCore {
             return .discardedForGeneration
         }
         // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
-        // without an edit (the check of a key that only passes).
-        if !lateFocusMatches(job) { return passThrough(job) }
+        // without an edit (the check of a key that only passes). A failure leaves a content-free record (PLT-R901).
+        if !lateFocusMatches(job) {
+            services.logger.log(.focus(.lateFocusCheckFailed), level: .info)
+            return passThrough(job)
+        }
         if job.kind == .revision { return revisionOutcome(job) }
         let prepared = prepare(job)
         if prepared.deleteCount == 0, prepared.insertion.isEmpty { return .executed }

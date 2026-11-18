@@ -4,6 +4,7 @@
 // callbacks hop back through `FocusNotificationSink`.
 
 import AppModel
+import Diagnostics
 
 struct ObservedApplication {
     var observation: any AXObservation
@@ -72,13 +73,24 @@ extension FocusCore {
         let mode: AXObservationMode = attempt >= FocusSettle.observerRetryDelays.count ? .bestEffort : .complete
         guard let observation = services.ax.observe(pid: pid, notifications: kinds, mode: mode, handler: handler)
         else {
+            noteObserverAttempt(pid: pid, attempt: attempt, result: .refused)
             scheduleObserverRetry(pid: pid, attempt: attempt)
             return false
+        }
+        if attempt > 0 {  // a first attempt that installs is every app switch: nothing to report
+            noteObserverAttempt(
+                pid: pid, attempt: attempt, result: mode == .complete ? .installed : .installedBestEffort)
         }
         cancelObserverRetry(pid: pid)
         services.thread.addSource(observation.runLoopSource)
         observed[pid] = ObservedApplication(observation: observation, kinds: kinds, bundle: bundle, overlay: overlay)
         return true
+    }
+
+    /// One content-free record per reported observer attempt: the pid, the attempt and a result code (PLT-R380,
+    /// PLT-R901). Logged on the ax thread; the logger hands it to the utility queue.
+    func noteObserverAttempt(pid: Int32, attempt: Int, result: ObserverAttemptResult) {
+        services.logger?.log(.focus(.observerAttempt(pid: pid, attempt: attempt, result: result)), level: .info)
     }
 
     func removeObserver(_ pid: Int32) {

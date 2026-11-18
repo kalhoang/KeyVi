@@ -164,10 +164,12 @@ extension FocusCore {
         deferred.retryTimers[pid] = nil
         guard observed[pid] == nil else { return }
         guard let wanted = wantedObservation(of: pid) else {
+            noteObserverAttempt(pid: pid, attempt: attempt, result: .notWanted)
             if attempt < FocusSettle.observerRetryDelays.count { scheduleObserverRetry(pid: pid, attempt: attempt) }
             return
         }
         guard !breaker.isOpen(pid: pid, at: services.clock.now()) else {
+            noteObserverAttempt(pid: pid, attempt: attempt, result: .breakerOpen)
             return scheduleObserverRetry(pid: pid, attempt: attempt)
         }
         guard addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: attempt) else { return }
@@ -183,7 +185,10 @@ extension FocusCore {
         guard let pid = current?.pid, observed[pid] == nil, deferred.retryTimers[pid] == nil,
             let wanted = wantedObservation(of: pid), !breaker.isOpen(pid: pid, at: instant)
         else { return }
-        addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: 0)
+        // Unlike an owner change, this install is news: the app had refused a whole chain.
+        if addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: 0) {
+            noteObserverAttempt(pid: pid, attempt: 0, result: .installed)
+        }
     }
 
     private func cancelSettle() {

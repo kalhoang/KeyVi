@@ -343,6 +343,42 @@ struct FocusSettleTests {
         #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
     }
 
+    /// PLT-R380, PLT-R901: each attempt after the first, and a first attempt that is refused, leaves one log record
+    /// with the pid, the attempt and a result code, so an integration run shows how an app's observer was installed.
+    @Test func everyObserverAttemptButAFirstInstallIsLoggedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        #expect(harness.observerAttempts(pid: terminalPID).isEmpty)  // installed at once: nothing to say
+        harness.ax.refuseObservers(pid: zaloPID, times: 2)
+        harness.activate(zaloPID)
+        harness.advance(by: .seconds(1))
+        let logged = harness.observerAttempts(pid: zaloPID)
+        #expect(logged.map(\.attempt) == [0, 1, 2])
+        #expect(logged.map(\.result) == [.refused, .refused, .installed])
+    }
+
+    /// The skipped attempts are logged with their reason, and an observer a publication finally installs too.
+    @Test func skippedAttemptsAndAnInstallAfterAPublicationAreLoggedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
+        harness.activate(zaloPID)
+        harness.activate(terminalPID)
+        harness.advance(by: .seconds(1))
+        #expect(harness.observerAttempts(pid: zaloPID).contains { $0.result == .notWanted })
+        harness.activate(zaloPID)
+        harness.advance(by: .seconds(120))
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .refused)
+        harness.ax.refuseObservers(pid: zaloPID, times: 0)  // the app accepts from now on
+        harness.ax.focus(pid: zaloPID, attributes: field(identifier: "moved"), notify: nil, element: 7)
+        harness.idleRevalidation()
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installed)
+    }
+
     /// PLT-R384: no observer call goes to an app whose breaker is open; the chain's attempts pass it by.
     @Test func retriesSkipAnAppWhoseBreakerIsOpenPLTR384() {
         let harness = FocusHarness(scheduled: true)
@@ -357,6 +393,7 @@ struct FocusSettleTests {
         let attempts = harness.ax.observeAttempts(pid: zaloPID)
         harness.advance(by: .seconds(50))  // within the 60 s cool-down
         #expect(harness.ax.observeAttempts(pid: zaloPID) == attempts)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .breakerOpen)
     }
 
     @Test func retriesStopWhenTheAppIsNoLongerTheOwner() {
