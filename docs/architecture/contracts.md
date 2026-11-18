@@ -2193,10 +2193,12 @@ extension LogEvent {
 
 /// What one observer attempt did (PLT-R380, PLT-R384).
 public enum ObserverAttemptResult: String, Sendable, Hashable, Codable, CaseIterable {
-    /// Every notification asked for was registered.
+    /// Every notification asked for was registered: by an attempt that takes all or none, or by a best-effort one
+    /// that replaced an observer without focused-element changes (PLT-R380).
     case installed
-    /// A best-effort attempt (the last scheduled one and the slow ones) registered what the app accepted; it may
-    /// lack a notification the app refused.
+    /// A best-effort attempt (the last scheduled one and the slow ones, and every attempt while an observer without
+    /// focused-element changes is in place) registered what the app accepted; it may lack a notification the app
+    /// refused. One that replaced such an observer has focused-element changes but lacks another name.
     case installedBestEffort
     /// The app took none of the notifications, or refused one it may take later.
     case refused
@@ -15567,6 +15569,12 @@ public final class FakeAXProvider: AXProvider, Sendable {
 
     /// Observer requests for `pid` so far, refused ones included.
     public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
+
+    /// Identifiers of the live observers of `pid`, oldest first. An observer removed and registered again gets a
+    /// new identifier, so tests can tell a kept observer from a replaced one (PLT-R380).
+    public func observerIDs(pid: Int32) -> [UInt64] {
+        state.withLock { $0.observers.filter { $0.pid == pid }.map(\.id) }
+    }
 
     public func setUnavailable(pid: Int32, _ unavailable: Bool) {
         state.withLock {

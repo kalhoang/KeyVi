@@ -10,9 +10,10 @@
 //   observer was never added again, so none of that app's focus changes arrived until the next activation.
 // - On a loaded guest (VM run of 19/11/2026) TestHost refused observers for about 5 s after its launch, and the
 //   retries ended before it accepted one: the owner is now asked every 2 s after the scheduled attempts while its
-//   observation is wanted, and a publication of its focus asks again once a chain is over (PLT-R380 amendment).
-//   An app still half up may take every name but AXFocusedUIElementChanged (probe of the control run of 18/11):
-//   such a best-effort observer is kept but does not end the chain.
+//   observation is wanted, and a publication of its focus asks again once a chain is over, once per activation
+//   (PLT-R380 amendment). An app still half up may take every name but AXFocusedUIElementChanged (probe of the
+//   control run of 18/11): such a best-effort observer is kept but does not end the chain, and only a later result
+//   with that name replaces it.
 // Timers run on `Services.scheduler` (the utility queue in production, one-shot, 10 % leeway, PLT-R803) and hop to
 // the ax thread through the sink. Every item carries the epoch or attempt it belongs to, so a superseded timer
 // that already fired does nothing.
@@ -48,7 +49,8 @@ enum FocusSettle {
     /// shortest steady-state period PLT-R803 allows.
     static let observerSlowRetryDelay: TimeSpan = .seconds(2)
     /// Slow attempts of one retry chain (one minute). The chain then ends; a later publication of the app's focus
-    /// while it has no observer starts a new one, so a launch that takes longer still gets its observer.
+    /// while it has no observer that counts starts a new one, once per activation of the app, so a launch that takes
+    /// longer still gets its observer.
     static let observerSlowRetryLimit = 30
 
     /// The wait before the attempt after `attempt` was refused: the scheduled delays, then the slow pace for
@@ -72,6 +74,9 @@ struct FocusDeferredState {
     var settleIfMoved = false
     var settleTimers: [any ScheduledTimer] = []
     var retryTimers: [Int32: any ScheduledTimer] = [:]
+    /// PLT-R380: the focus owner a publication has already asked for an observer since it became the owner or
+    /// since the last activation or wake; further publications ask it nothing until then.
+    var publicationAskedOwner: Int32?
     /// The last focus read timed out (or met an open breaker, PLT-R384).
     var lastReadTimedOut = false
     /// Told after a deferred refresh published a snapshot, so the main thread follows (the notification path has
@@ -184,15 +189,17 @@ extension FocusCore {
     /// PLT-R380 amendment of 19/11/2026: a publication of the owner's focus while the owner has no observer (or only
     /// a partial one) and no retry is pending asks for the observer again (a new owner was already asked by
     /// `observeOwner`), so an app that refused a whole chain gets its observer once it accepts, without waiting for
-    /// the next activation.
+    /// the next activation. It does so once until the app becomes the owner again or an activation or a wake syncs
+    /// the observers (`publicationAskedOwner`): an app that refuses focused-element changes for good would otherwise
+    /// start a new chain with every publication while the user stays in it.
     func observeOwnerIfUnobserved(at instant: MonotonicInstant) {
         guard let pid = current?.pid, !observerInPlace(pid), deferred.retryTimers[pid] == nil,
-            let wanted = wantedObservation(of: pid), !breaker.isOpen(pid: pid, at: instant)
+            deferred.publicationAskedOwner != pid, let wanted = wantedObservation(of: pid),
+            !breaker.isOpen(pid: pid, at: instant)
         else { return }
+        deferred.publicationAskedOwner = pid
         // Unlike an owner change, this install is news: the app had refused a whole chain.
-        if addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: 0) {
-            noteObserverAttempt(pid: pid, attempt: 0, result: .installed)
-        }
+        addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: 0, reportsInstall: true)
     }
 
     private func cancelSettle() {

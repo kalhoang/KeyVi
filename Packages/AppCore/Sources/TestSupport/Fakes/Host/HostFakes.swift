@@ -102,6 +102,12 @@ public final class FakeAXProvider: AXProvider, Sendable {
     /// Observer requests for `pid` so far, refused ones included.
     public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
 
+    /// Identifiers of the live observers of `pid`, oldest first. An observer removed and registered again gets a
+    /// new identifier, so tests can tell a kept observer from a replaced one (PLT-R380).
+    public func observerIDs(pid: Int32) -> [UInt64] {
+        state.withLock { $0.observers.filter { $0.pid == pid }.map(\.id) }
+    }
+
     public func setUnavailable(pid: Int32, _ unavailable: Bool) {
         state.withLock {
             if unavailable { $0.unavailable.insert(pid) } else { $0.unavailable.remove(pid) }
