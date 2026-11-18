@@ -599,7 +599,7 @@ Content-free records added for these runs (`integration-out/app-diagnostics.json
 | `focus.lateFocusKept` | `sinceLastKeyUs`, `sinceWordStartUs` | a focus change found after keys of the active word (same process, or after a timed-out read) kept it; microseconds from the word's last and first key to the new element's `changedAt` |
 | `focus.lateFocusRefused` | `sinceLastKeyUs`, `sinceWordStartUs` | such a change ended the word because it came too long after the word's last key, or, in the same process, after its first key |
 | `focus.lateFocusCheckFailed` | none | the worker found the new element without the kept word; the key passed and the word was reset |
-| `focus.observerAttempt` | `pid`, `attempt`, `result` (`installed`, `installedBestEffort`, `refused`, `notWanted`, `breakerOpen`) | one observer attempt; a first attempt that installs is not logged |
+| `focus.observerAttempt` | `pid`, `attempt`, `result` (`installed`, `installedBestEffort`, `refused`, `notWanted`, `breakerOpen`) | one observer attempt; a first attempt that installs is not logged, and of the slow attempts only an install and the chain's last attempt are |
 
 Proof plan of `fix/v101-late-focus`, with the VM rules of this section (resource check and watchdog), in this order:
 

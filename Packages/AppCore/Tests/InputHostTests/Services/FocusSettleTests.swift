@@ -274,6 +274,10 @@ struct FocusSettleTests {
                 == 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit)
         #expect(harness.ax.observedNotifications[zaloPID] == nil)
         #expect(harness.scheduler.pendingCount == 0)
+        // The log keeps the scheduled attempts and the chain's last one, not every slow attempt (PLT-R901 volume).
+        let logged = harness.observerAttempts(pid: zaloPID)
+        #expect(logged.count == 1 + FocusSettle.observerRetryDelays.count + 1)
+        #expect(logged.last?.attempt == FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit)
     }
 
     /// VM run of 19/11/2026 (control run of `testhost.native.textView`): TestHost refused observers for about
@@ -293,6 +297,7 @@ struct FocusSettleTests {
         harness.advance(by: FocusSettle.observerSlowRetryDelay * 3)
         #expect(harness.ax.observedNotifications[zaloPID] != nil)
         #expect(harness.ax.observeAttempts(pid: zaloPID) == scheduled + 3)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installedBestEffort)
         #expect(harness.scheduler.pendingCount == 0)
         harness.ax.focus(
             pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 5)
@@ -343,9 +348,10 @@ struct FocusSettleTests {
         #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
     }
 
-    /// PLT-R380, PLT-R901: each attempt after the first, and a first attempt that is refused, leaves one log record
-    /// with the pid, the attempt and a result code, so an integration run shows how an app's observer was installed.
-    @Test func everyObserverAttemptButAFirstInstallIsLoggedPLTR380() {
+    /// PLT-R380, PLT-R901: the scheduled attempts (a first one only when refused), the last attempt of a chain and
+    /// every install after a refusal leave one log record each with the pid, the attempt and a result code, so an
+    /// integration run shows how an app's observer was installed.
+    @Test func observerAttemptsAreLoggedButAFirstInstallPLTR380() {
         let harness = FocusHarness(scheduled: true)
         defer { harness.finish() }
         harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)

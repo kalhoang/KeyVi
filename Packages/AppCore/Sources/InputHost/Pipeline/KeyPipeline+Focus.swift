@@ -117,8 +117,9 @@ extension KeyPipeline {
     /// PLT-R340 amendment: keep the composition across a focus change discovered after keys of the active token
     /// were composed with the previous snapshot. Same process (or a previous snapshot that names no process because
     /// its system-wide focus read timed out, amendment of 2026-11-15: Pa's Safari trace), an element the worker can
-    /// read (a field handle and AX available), no focus pause, the same engine variant, and the change observed at
-    /// most `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary.
+    /// read (a field handle and AX available), no focus pause, the same engine variant (or one the engine can
+    /// continue into, `engineCanContinue`), and the change observed at most `LateFocusChange.windowNanoseconds` after
+    /// the token's last key. Everything else stays a hard boundary.
     /// The active-display read runs only on this rare path (a new element while a word is being typed).
     ///
     /// Amendment of 19/11/2026: when the previous snapshot named the same process, the change must also be observed

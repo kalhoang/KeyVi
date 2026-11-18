@@ -2186,7 +2186,7 @@ extension LogEvent {
         /// key passed through and the composition was reset.
         case lateFocusCheckFailed
         /// PLT-R380: one attempt to observe an app; `attempt` 0 is the first. A first attempt that installs the
-        /// observer is not logged (every app switch makes one).
+        /// observer is not logged (every app switch makes one), nor a refused slow attempt before a chain's last.
         case observerAttempt(pid: Int32, attempt: Int, result: ObserverAttemptResult)
     }
 }

@@ -88,8 +88,15 @@ extension FocusCore {
     }
 
     /// One content-free record per reported observer attempt: the pid, the attempt and a result code (PLT-R380,
-    /// PLT-R901). Logged on the ax thread; the logger hands it to the utility queue.
+    /// PLT-R901). Logged on the ax thread; the logger hands it to the utility queue. An install is always reported;
+    /// a call that was refused or skipped only within the scheduled attempts or as the chain's last attempt, so an
+    /// app that never accepts writes a few lines per chain, not one every 2 s.
     func noteObserverAttempt(pid: Int32, attempt: Int, result: ObserverAttemptResult) {
+        let installed = result == .installed || result == .installedBestEffort
+        let reported =
+            installed || attempt <= FocusSettle.observerRetryDelays.count
+            || FocusSettle.observerRetryDelay(after: attempt) == nil
+        guard reported else { return }
         services.logger?.log(.focus(.observerAttempt(pid: pid, attempt: attempt, result: result)), level: .info)
     }
 
