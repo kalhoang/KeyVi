@@ -135,3 +135,37 @@ is the QA-R19 waiver above.
 - Without a public beta, a regression reaches every user who installs 1.0.0. The appcast pull (within 1 hour of a
   confirmed P0, [appcast pull](../runbooks/appcast-pull.md)) and the [rollback](../runbooks/rollback.md) runbook are
   the mitigation.
+
+## Amendment, 2026-11-18: what shipped, and what the record said was missing
+
+Recorded the day after 1.0.0 was published, so that the record matches the facts
+([0009](0009-pa-decisions-2026-11-18.md)).
+
+- **What was built.** The tag `v1.0.0` points at `9d63a360` (2026-11-18, "chore(release): date 1.0.0 on 2026-11-18"),
+  not at `4ebe3bd9`, the commit of the local gate and of the provenance record review. Between the two, the engine
+  changed under `Packages/VietnameseEngine/Sources/VietnameseEngine/Commit/` (the escape rule of L4,
+  `EscapeRule.swift`, decided by the product owner on 17/11/2026) and `Composition/Composition.swift`, plus
+  `data/NOTICES.md`. The GitHub Release `v1.0.0` was published on 2026-11-17 at 22:13 UTC (2026-11-18 in UTC+7),
+  and `site/data/releases.json` dates 1.0.0 on 2026-11-18.
+- **CLR-R13 (decision 5).** Decision 5 said 1.0.0 would not be published while the similarity report was missing.
+  1.0.0 was published on the record review alone
+  ([`2026-11-17-1.0.0.md`](../provenance/reports/2026-11-17-1.0.0.md)), whose note N1 says the comparison against
+  other codebases had not been done. On 2026-11-18 the product owner commissioned that comparison: a reviewer the
+  product owner appoints performs it under the new
+  [similarity review runbook](../runbooks/similarity-review.md), first on `9d63a360` (the shipped 1.0.0), then on
+  each release delta. Until its report exists, 1.0.0 stands on the record review, and the 1.0.1 delta report
+  covers `4ebe3bd9..9d63a360` as well as the changes after it.
+- **Repository settings.** The consequence "private vulnerability reporting was still disabled" no longer holds:
+  private vulnerability reporting is enabled and GitHub Discussions is on (both checked with `gh api` on
+  2026-11-18; release runbook section 0).
+- **`--skip-attestation`.** A release signed on Pa's Mac carries no GitHub artifact attestation, because the
+  attestation of QA-R30 step 7 is produced only by steps that run in GitHub Actions and QA-R31 keeps signing on
+  Pa's Mac ([0005](0005-pa-decisions-2026-11-13.md) Q9, which closed open decision 14 of
+  [0001](0001-defaults-for-open-decisions.md)). Publishing such a release with `--skip-attestation` is therefore
+  the designed path, not a waiver like `--skip-beta-soak`; the release runbook section 4 says the same.
+- **Third-party notices.** The three placeholder lines of the release-gate row "`THIRD_PARTY_NOTICES.md` complete"
+  were resolved before the tag: `THIRD_PARTY_NOTICES.md` section 4 "Other assets" now states that there is no DMG
+  background, no bundled font and no illustration or screen recording (note N2 of the provenance report).
+- **QA-R29 for the next release.** 1.0.1 ships first as a beta and then as stable after 72 hours counted from the
+  beta's publication, with no minimum number of beta users ([0009](0009-pa-decisions-2026-11-18.md) item 1); this
+  record's waiver still covers 1.0.0 only.

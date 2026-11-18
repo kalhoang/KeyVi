@@ -30,7 +30,7 @@ xcrun notarytool store-credentials "<profile-name>" \
 
 ## 3. CI (only if Developer ID signing and notarization run in CI)
 
-Open decision 14 allows signing in the protected `release` environment; otherwise everything stays on Pa's Mac (the scripts support both).
+Signing and notarisation run on Pa's Mac (QA-R31; [0005](../decisions/0005-pa-decisions-2026-11-13.md) Q9 closed open decision 14 on 2026-11-13). This section applies only if that decision ever changes; the scripts still support both.
 
 1. In the repository, Settings, Environments, `release`: required reviewer is Pa; deployment restricted to tags on protected branches (QA-R31).
 2. Add environment secrets (not repository secrets): `ASC_API_KEY_P8_BASE64` (the base64 of the `.p8` file, `base64 -i AuthKey_<KEYID>.p8 | pbcopy`), `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID`, plus `DEVELOPER_ID_P12_BASE64` and `DEVELOPER_ID_P12_PASSWORD` for the signing certificate ([certificate renewal](certificate-renewal.md) step 6). These are the names `release.yml` and `scripts/ci-signing.sh` read ([ADR 0503](../decisions/0503-release-pipeline.md)).

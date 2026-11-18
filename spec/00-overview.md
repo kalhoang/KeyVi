@@ -62,7 +62,7 @@ All answered on 13/11/2026; the app licence followed the same evening. The full 
 | 13 | Zero-width placeholder for Google Sheets / Excel autocomplete | Only under the PLT-R422 gate; both rules use `axSelection` until it exists | 02 s.14 |
 | 14 | Signing and notarization in protected CI vs only on Pa's Mac | On Pa's Mac; CI builds stay unsigned | 02 s.14, 04 QA-R31 |
 | 15 | Archive hosting | `{{app-slug}}.kal.vn` only | 02 s.14, PLT-R906 |
-| 16 | Self-hosted Mac runner for compatibility automation | Proposed: a tart macOS virtual machine on Pa's Mac (awaiting Pa) | 02 s.14, 04 QA-R12 |
+| 16 | Self-hosted Mac runner for compatibility automation | A tart macOS virtual machine on Pa's Mac, usable at any time after a free-resources check (confirmed 18/11/2026, `docs/decisions/0009-pa-decisions-2026-11-18.md`) | 02 s.14, 04 QA-R12 |
 | 17 | IMKit edition later | Decide after spike S1 | 02 PLT-R207, PLT-R398D |
 | 18 | Website analytics | Self-hosted Umami, cookieless | 03 PRD-R74 |
 | 19 | Donation account details, public sponsor list | Bank VietQR, bank name and account number shown, no holder name; no sponsor list for now | 03 PRD-R59, PRD-R61 |

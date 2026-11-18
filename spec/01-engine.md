@@ -732,7 +732,7 @@ Examples (table: `vn` -> `Việt Nam`, `@@` -> `kal@example.com`, `dc` -> `đư�
 | `VietnameseEngineTesting` | library (tests only) | Independent oracle, corpus generators, simulated text field, fuzz drivers. | `VietnameseEngine`. |
 | `lexicon-builder` | executable | Builds resource files from pinned inputs (ENG-R810). | Foundation. |
 
-- **ENG-R1201** Swift 6 language mode with complete strict concurrency checking, using the latest stable toolchain at implementation time (VERIFY version). Package platforms: `.macOS(.v13)` as the floor so that the engine never constrains the app's own minimum (decided in the platform spec). The core SHOULD also build on Linux so CI can fuzz cheaply.
+- **ENG-R1201** Swift 6 language mode with complete strict concurrency checking, using the latest stable toolchain at implementation time (Swift 6.4.2 with Xcode 27.2, `docs/decisions/0500-ci-runners-and-toolchain-pins.md`). Package platforms: `.macOS(.v12)`, the app's own minimum, so that the engine never constrains it (PLT-R106, `docs/decisions/0315-minimum-macos-12.md`). The core SHOULD also build on Linux so CI can fuzz cheaply. *(Amendment of 2026-11-18: the floor read `.macOS(.v13)`, written before the app's minimum moved to macOS 12; the package has declared `.macOS(.v12)` since ADR 0315.)*
 - **ENG-R1202** No global or static mutable state anywhere in the package. No singletons.
 - **ENG-R1203** All public types MUST be `Sendable`. Value types MUST be `Hashable` where listed. Large immutable data (lexicons) MAY sit behind a final class with only `let` properties.
 
@@ -1631,7 +1631,7 @@ The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat,
 
 ## 15. Open questions for Pa
 
-Q1 to Q8 were answered on 13/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`. Q9 is open.
+Q1 to Q8 were answered on 13/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md`. Q9 was answered on 18/11/2026 (`docs/decisions/0009-pa-decisions-2026-11-18.md`).
 
 | # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|
@@ -1643,4 +1643,4 @@ Q1 to Q8 were answered on 13/11/2026; every answer and the place that implements
 | Q6 | Macro triggers are matched on raw keys (ENG-R1102); is the trigger character set (printable ASCII, no Vietnamese letters) acceptable? | Yes, keep the current set. |
 | Q7 | Attested-syllable source: Vietnamese legal texts plus Pa's additions, or hand curation only? | Keep the current attested sources (legal texts plus reviewed additions). |
 | Q8 | Keep teencode `z` onset and `k` coda in v1, and add the `dz` onset (P0-2)? `f`, `j`, `w` stay out. | Keep, plus `dz` (resolved earlier the same day). |
-| Q9 | (15/11/2026) After a tone-removal key removed the marks (ENG-R411), the commit decides by 8.1 like any token, so an unmarked spelling that is not a syllable is restored: `dduwowngfzz` shows `duong` and Space gives `dduwowngfzz` (L5), as `vieejtz` already did. Should a removal make the commit keep the unmarked text like an escape (L4: keep it unless the raw keys are English)? | Open. |
+| Q9 | (15/11/2026) After a tone-removal key removed the marks (ENG-R411), the commit decides by 8.1 like any token, so an unmarked spelling that is not a syllable is restored: `dduwowngfzz` shows `duong` and Space gives `dduwowngfzz` (L5), as `vieejtz` already did. Should a removal make the commit keep the unmarked text like an escape (L4: keep it unless the raw keys are English)? | Answered on 18/11/2026 by the product owner: yes, a tone removal keeps the unmarked text (`docs/decisions/0009-pa-decisions-2026-11-18.md` item 4). The rule in 8.1 and its worked examples are written by the engine track. |

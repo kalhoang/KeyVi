@@ -86,7 +86,7 @@ QA-R10 The repository MUST contain a test host app with: a native text field, a 
 
 QA-R11 Integration tests post synthetic key events through the real pipeline (as `02-platform.md` defines) into the test host and assert the final text, for at least: the 200 most common Vietnamese words in both methods, English restore samples, backspace across punctuation, fast typing at 15 keys per second, toggle hotkey, per-app rule switching between two host windows, macro expansion with a letters-only and a punctuation shortcut (`vn`, `@@`), restore hotkey consumed once and passed through on the second press, Secure Input on and off, tap disable and recovery (engine state MUST be reset after recovery), permission revoked mid-session (MUST fail open).
 
-QA-R12 Integration tests run on a self-hosted macOS runner (a Mac under Pa's control with permissions pre-granted to the test build's stable signing identity; proposed on 13/11/2026: a tart macOS virtual machine on Pa's Mac, awaiting Pa's confirmation, while Linux jobs stay on GitHub-hosted runners) on every merge to `main` and before every release. VERIFY whether GitHub-hosted macOS runners can grant Accessibility/Input Monitoring to a test binary (TCC database edits are possible on some images); if yes, also run a subset per PR.
+QA-R12 Integration tests run on a self-hosted macOS runner (a Mac under Pa's control with permissions pre-granted to the test build's stable signing identity; decided on 18/11/2026: a tart macOS virtual machine on Pa's Mac, usable at any time after a check that the host has free CPU, memory and disk, while Linux jobs stay on GitHub-hosted runners) on every merge to `main` and before every release. *(Amendment of 2026-11-18, the product owner's decision, `docs/decisions/0009-pa-decisions-2026-11-18.md`: the runner was proposed on 13/11/2026 and awaited confirmation. While the GitHub Actions workflows stay disabled, the suite runs in that virtual machine by hand, `docs/runbooks/integration-suite.md` and `docs/runbooks/vm-test-lab.md`.)* VERIFY whether GitHub-hosted macOS runners can grant Accessibility/Input Monitoring to a test binary (TCC database edits are possible on some images); if yes, also run a subset per PR.
 
 QA-R13 The self-hosted runner MUST only run workflows from `main` and release tags of this repository (never pull requests from forks), because it holds granted permissions.
 
@@ -142,7 +142,7 @@ QA-R23 Pin the Xcode version explicitly (via `xcode-select` on a runner image th
 
 QA-R24 Supply-chain hygiene: all third-party actions pinned by full commit SHA; Dependabot for actions and SwiftPM; `Package.resolved` committed; Sparkle is the only runtime dependency unless a decision record adds another; `pull_request_target` is never used; workflow permissions default to `contents: read`.
 
-QA-R25 Branch protection on `main`: required checks from `ci.yml`, linear history, signed commits from the maintainer, no force-push. Releases are cut from `main` (or from a `release/x.y` branch for patch releases of an older minor).
+QA-R25 Branch protection on `main` and `prod`: no force push and no deletion; changes reach `main` as merge commits made with `--no-ff`, never squashed or rebased, so every branch keeps its commits (CLR-R12); required status checks from `ci.yml` once its jobs run again; signed commits from the maintainer recommended, and required once commit signing is set up. Releases are cut from `main` (or from a `release/x.y` branch for patch releases of an older minor). *(Amendment of 2026-11-18, integrator's call under the product owner's delegation, `docs/decisions/0009-pa-decisions-2026-11-18.md`: the text asked for linear history and required signed commits. Linear history would force squash or rebase merges, which CLR-R12 rules out for this project's evidence of independent creation; the repository has protected `main` and `prod` against force pushes and deletions since 15/11/2026, and no signing key is set up yet.)*
 
 ### 3.2 Versioning and channels
 
@@ -152,7 +152,7 @@ QA-R27 The engine package is versioned separately with its own SemVer and change
 
 QA-R28 Two channels: Stable (default) and Beta. Beta items are tagged with the Sparkle channel `beta` in the same appcast or a separate feed (platform spec decides); Beta users also receive stable releases that are newer than the latest beta.
 
-QA-R29 Cadence target: beta whenever there are user-visible fixes (typically weekly to biweekly during beta stages), stable roughly monthly after 1.0, hotfix any time. A stable release MUST have been on beta for at least 72 hours with no new P0/P1 regression, except hotfixes for P0.
+QA-R29 Cadence target: beta whenever there are user-visible fixes (typically weekly to biweekly during beta stages), stable roughly monthly after 1.0, hotfix any time. A stable release MUST have been on beta for at least 72 hours with no new P0/P1 regression, except hotfixes for P0. The 72 hours count from the publication of the latest beta of that version on the beta channel; while the user base is small there is no minimum number of beta users, installs or update checks. *(Amendment of 2026-11-18, the product owner's decision, `docs/decisions/0009-pa-decisions-2026-11-18.md`: 1.0.1 ships as a beta first, then as stable.)*
 
 ### 3.3 Build, sign, notarise, staple
 
@@ -341,6 +341,6 @@ All answered on 13/11/2026; every answer and where it is implemented is listed i
 
 1. App licence, which decides DCO-only versus CLA (QA-R61): GPL-3.0-or-later for the app with MPL-2.0 for the engine packages, the `data/` pipeline and the reference model (amended 15/11/2026); DCO for every contribution plus an inbound MIT grant for every contribution, no CLA (ADR 0006).
 2. Sparkle signing: on Pa's Mac (QA-R32), together with Developer ID signing and notarisation (QA-R31).
-3. Self-hosted Mac for integration tests (QA-R12): a tart macOS virtual machine on Pa's Mac is proposed, awaiting Pa's confirmation.
+3. Self-hosted Mac for integration tests (QA-R12): a tart macOS virtual machine on Pa's Mac, usable at any time after a free-resources check (confirmed on 18/11/2026, `docs/decisions/0009-pa-decisions-2026-11-18.md`).
 4. Support and security email addresses (QA-R51, QA-R56): one project mailbox on `kal.vn` (`APP_SUPPORT_EMAIL`).
 5. Repository and Homebrew tap owner account: Pa's personal GitHub account; the repository starts private.

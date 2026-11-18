@@ -51,6 +51,9 @@ The host has 16 GB and 10 CPUs and runs other jobs (up to five parallel builds a
 - defaults: `{{app-slug}}-monterey` and its clones 4096 MB and 2 CPUs, `{{app-slug}}-dev` and its clones 6144 MB and
   4 CPUs; `--memory MB` and `--cpus N` override them up to `VM_LAB_MAX_MEMORY_MB` (8192) and `VM_LAB_MAX_CPUS` (6);
 - before booting the 6 GB VM, look at `memory_pressure` on the host; with heavy swapping, wait for builds to end;
+- any time of day is fine (the product owner, 18/11/2026, [ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md)
+  item 7) as long as that check passes: no heavy swapping (`memory_pressure`), the load average below the CPU count
+  (`uptime`), and enough free disk for a clone (`scripts/vm/lab.sh status`); otherwise wait;
 - every script stops the VMs it started when it exits, also on failure or Ctrl-C (`trap` in `lib.sh`). Only
   `lab.sh up` leaves a VM running on purpose; stop it with `lab.sh down`.
 

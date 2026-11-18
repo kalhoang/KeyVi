@@ -10,7 +10,7 @@ Brand values (`{{AppName}}`, `{{app-slug}}`, site host, bundle ID) come from `sc
 source scripts/brand.env   # APP_DISPLAY_NAME, APP_SLUG, APP_BUNDLE_ID_RELEASE, APP_SITE_HOST
 ```
 
-Related runbooks: [rollback](rollback.md), [appcast pull](appcast-pull.md), [key rotation](key-rotation.md), [certificate renewal](certificate-renewal.md), [notarization setup](notarization-setup.md), [self-hosted runner](self-hosted-runner.md).
+Related runbooks: [rollback](rollback.md), [appcast pull](appcast-pull.md), [key rotation](key-rotation.md), [certificate renewal](certificate-renewal.md), [notarization setup](notarization-setup.md), [self-hosted runner](self-hosted-runner.md), [similarity review](similarity-review.md).
 
 ## 0. One-time prerequisites
 
@@ -21,9 +21,9 @@ Do these once; the sections linked from each line explain how.
 - [ ] Sparkle EdDSA key in the login keychain, with two offline encrypted backups (QA-R32, [key rotation](key-rotation.md)). The public key (`SUPublicEDKey`) and the feed URL are fixed in the app from the first public build (QA-R33).
 - [ ] `SPARKLE_PUBLIC_ED_KEY` filled in `Config/Sparkle.xcconfig` with the public key printed by `generate_keys`, as described in the [EdDSA key note of ADR 0304](../decisions/0304-sparkle-version-pin.md#runbook-note-filling-sparkle_public_ed_key). `scripts/verify-release.sh` and `scripts/publish-release` refuse a build whose `SUPublicEDKey` is empty.
 - [ ] GitHub environment `release` exists, requires Pa as reviewer, is restricted to tags on protected branches (QA-R31).
-- [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)).
-- [ ] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`).
-- [ ] GitHub Discussions is enabled in the repository settings (General, Features): the question link of the New Issue chooser (`.github/ISSUE_TEMPLATE/config.yml`), `CONTRIBUTING.md` and the README send questions there (QA-R43, QA-R51). Check with `gh api repos/kalhoang/{{AppName}} --jq .has_discussions` (`true`).
+- [ ] Self-hosted integration runner registered and healthy ([self-hosted runner](self-hosted-runner.md)). The runner is the tart virtual machine on Pa's Mac, usable at any time after a check that the host has free CPU, memory and disk (QA-R12, [ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md) item 7). While the GitHub Actions workflows stay disabled (item 6 of the same record), the suite runs there by hand ([integration suite](integration-suite.md)).
+- [x] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`). Enabled, checked on 2026-11-18.
+- [x] GitHub Discussions is enabled in the repository settings (General, Features): the question link of the New Issue chooser (`.github/ISSUE_TEMPLATE/config.yml`), `CONTRIBUTING.md` and the README send questions there (QA-R43, QA-R51). Check with `gh api repos/kalhoang/{{AppName}} --jq .has_discussions` (`true`). Enabled, checked on 2026-11-18.
 - [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
 - [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
 
@@ -31,7 +31,7 @@ Do these once; the sections linked from each line explain how.
 
 1. Semantic Versioning for `CFBundleShortVersionString` (QA-R26): MAJOR for breaking changes to the settings format or minimum macOS, MINOR for features, PATCH for fixes. Betas: `X.Y.Z-beta.N`.
 2. `CFBundleVersion` is a single integer that increases with every build published to any channel, including betas and rollbacks. Sparkle compares this value, not the short version. It is derived from the version, never chosen by hand: `scripts/build-number.sh X.Y.Z` prints it (`MAJOR * 1000000 + MINOR * 10000 + PATCH * 100 + beta N or 99`, [ADR 0503](../decisions/0503-release-pipeline.md) decision 4; for example `0.1.0-beta.1` is 10001 and `0.1.0` is 10099). A rollback ships as a new, higher version.
-3. A stable release must have been on beta for at least 72 hours with no new P0 or P1 regression, except a hotfix for a P0 (QA-R29). `scripts/publish-release` enforces it: a stable `X.Y.Z` needs its latest `X.Y.Z-beta.N` in `site/data/releases.json` dated at least 72 hours (3 days) earlier; a dry run only warns, `--apply` refuses. Two options bypass the check, and they exclude each other:
+3. A stable release must have been on beta for at least 72 hours with no new P0 or P1 regression, except a hotfix for a P0 (QA-R29). The 72 hours count from the publication of the latest `X.Y.Z-beta.N`; while the user base is small there is no minimum number of beta users or installs ([ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md) item 1). Publish the beta with `scripts/publish-release X.Y.Z-beta.N --beta` (section 7) on the day its `CHANGELOG.md` heading names, so the date in `site/data/releases.json` is the publication date. That date has no time of day, so the script's check can pass up to a day early; publish the stable release no earlier than 72 hours by the clock after the beta's publication. `scripts/publish-release` enforces it: a stable `X.Y.Z` needs its latest `X.Y.Z-beta.N` in `site/data/releases.json` dated at least 72 hours (3 days) earlier; a dry run only warns, `--apply` refuses. Two options bypass the check, and they exclude each other:
    - `--p0-hotfix` skips the check and implies `--no-phasing` (QA-R35).
    - `--skip-beta-soak DECISION` skips only the check, for a stable release Pa decided to publish without a beta. `DECISION` is the path of the decision record, `docs/decisions/<record>.md`, that cites QA-R29 and names the version (for example `1.0.0` or `v1.0.0`) in the same prose paragraph; code spans and fenced code do not count, so a quoted command line waives nothing. The script refuses a missing file, a file outside `docs/decisions/`, and a record with no such paragraph, in the dry run and with `--apply`, before anything is downloaded or signed. Phased rollout stays as configured (on unless `--no-phasing`), and the script prints a warning that names the record. A waiver covers only the release it names: 1.0.0 was published this way ([ADR 0507](../decisions/0507-first-public-release-1-0.md)); every later stable release keeps the 72-hour beta rule unless Pa records a new decision.
 
@@ -47,7 +47,7 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 - [ ] Upgrade test passed (section 5 below).
 - [ ] Network egress test green: only the allowed host (spec/02-platform.md section 13.7).
 - [ ] No compatibility rule is past `reviewBy` by more than 30 days (spec/02-platform.md section 13.8).
-- [ ] Provenance review done for the first public release and for 1.0, and a report exists for this release (CLR-R13, [provenance](../provenance/README.md)).
+- [ ] Provenance review done for the first public release and for 1.0, and a report exists for this release (CLR-R13, [provenance](../provenance/README.md)). The comparison against other codebases follows the [similarity review](similarity-review.md) runbook: a release that changes engine or input-handling code is covered by a similarity report or, while one is commissioned and not finished, its provenance report says so; a `fail` verdict blocks the release.
 - [ ] `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7).
 - [ ] `CHANGELOG.md` section written in user-visible language with app names, plus Vietnamese and English release notes.
 - [ ] No open P0 issue. No unresolved `update-regression` issue.
@@ -57,7 +57,7 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 1. Move the `Unreleased` entries of `CHANGELOG.md` under `## [X.Y.Z] - YYYY-MM-DD`; leave an empty `Unreleased` section. The date is the day you publish: `scripts/publish-release` writes it into `site/data/releases.json`, so the download page and the changelog page show the same date, and refuses a heading more than one day from today in UTC or in any other form, such as an undated heading or text after the date (QA-R37).
 2. Write the release notes in both languages: the English section in `CHANGELOG.md` and the Vietnamese section, same heading, in `CHANGELOG.vi.md`. The update window shows at most five visible lines per language, led by user-visible fixes listed by app name (PRD-R51); `scripts/publish-release` adds the link to the changelog page and refuses more than five lines. A section of five lines or fewer is published as it stands; for a longer one, keep the full grouped list in the changelog and write two short files that sum it up, passed with `--notes-en FILE` and `--notes-vi FILE` (the rule the header of `CHANGELOG.md` states). Do not write a donation line into the notes: the release-notes page is shown in the in-app update window, and the website changelog page already ends with the single plain donation line (PRD-R57).
 3. Nothing to commit for the version itself: the tag (`vX.Y.Z`) is the version, and `release.yml` passes it and its build number to `scripts/build-release.sh <version> <build>`, which sets `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
-4. Merge through a pull request into `main` (branch protection: required checks, linear history, signed commits, no force-push; QA-R25). Patch releases of an older minor come from a `release/x.y` branch.
+4. Merge into `main` with a merge commit (`--no-ff`), never a squash or a rebase, so the branch keeps its commits (CLR-R12); branch protection refuses force pushes and deletions on `main` and `prod`; required status checks apply once `ci.yml` runs again; signed commits are recommended until commit signing is set up (QA-R25, amended 2026-11-18). Patch releases of an older minor come from a `release/x.y` branch.
 
 ## 4. Tag and build
 
@@ -82,7 +82,7 @@ Pushing a `v*` tag starts `release.yml` (GitHub-hosted macOS, environment `relea
 
 The job waits for your manual approval of the `release` environment (QA-R31). Approve only after confirming the tag and commit. Certificates are imported into a temporary keychain that the job deletes at the end.
 
-**Doing the same locally** (when signing runs on Pa's Mac instead of CI, open decision 14; the scripts support both). Same order as `release.yml`: the app is notarised and stapled before the DMG is made from it ([ADR 0503](../decisions/0503-release-pipeline.md) decision 2). The Developer ID identity is read from the login keychain; notarisation uses the keychain profile `<slug>-notary` ([notarization setup](notarization-setup.md) section 2):
+**Doing the same locally.** Signing and notarisation run on Pa's Mac (QA-R31, the product owner's decision of 13/11/2026, [0005](../decisions/0005-pa-decisions-2026-11-13.md) Q9, which closed open decision 14 of [0001](../decisions/0001-defaults-for-open-decisions.md)); `release.yml` and the scripts still support signing in CI if that decision ever changes. Same order as `release.yml`: the app is notarised and stapled before the DMG is made from it ([ADR 0503](../decisions/0503-release-pipeline.md) decision 2). The Developer ID identity is read from the login keychain; notarisation uses the keychain profile `<slug>-notary` ([notarization setup](notarization-setup.md) section 2):
 
 ```sh
 source scripts/brand.env
@@ -102,13 +102,13 @@ scripts/verify-release.sh --app "$app" --dmg "$dmg" "${prev[@]}"
 (cd "$out" && shasum -a 256 "$APP_SLUG-$version.dmg" "$APP_SLUG-$version.zip" > SHA256SUMS)
 ```
 
-Inputs and environment of each script are in its header comment. In short: no script needs an environment variable on Pa's Mac; `scripts/notarize.sh` uses `NOTARY_KEYCHAIN_PROFILE` when set (otherwise `<slug>-notary`) and, in CI, `ASC_API_KEY_PATH`, `ASC_API_KEY_ID` and `ASC_API_ISSUER_ID`; `scripts/publish-release` uses `SPARKLE_SIGN_UPDATE` when set. Builds made this way carry no GitHub attestation, so publish them with `scripts/publish-release X.Y.Z --skip-attestation`.
+Inputs and environment of each script are in its header comment. In short: no script needs an environment variable on Pa's Mac; `scripts/notarize.sh` uses `NOTARY_KEYCHAIN_PROFILE` when set (otherwise `<slug>-notary`) and, in CI, `ASC_API_KEY_PATH`, `ASC_API_KEY_ID` and `ASC_API_ISSUER_ID`; `scripts/publish-release` uses `SPARKLE_SIGN_UPDATE` when set. Builds made this way carry no GitHub attestation: the attestation of QA-R30 step 7 covers only the steps that run in GitHub Actions, and under QA-R31 signing runs on Pa's Mac, so `--skip-attestation` is the expected option for every locally signed release, by design and not a waiver: `scripts/publish-release X.Y.Z --skip-attestation`.
 
 ## 5. Release candidate checks on the built DMG
 
 Run these on the notarized artefact, not on a debug build.
 
-1. **Fresh install** on macOS 15, 26 and 27 (spec/02-platform.md section 13.5): Gatekeeper passes without a warning; launching from the mounted DMG triggers the move-to-Applications offer and never a permission request.
+1. **Fresh install** on macOS 12, 15, 26 and 27 (spec/02-platform.md section 13.5; the lab has macOS 12 and 27, see [VM test lab](vm-test-lab.md)): Gatekeeper passes without a warning; launching from the mounted DMG triggers the move-to-Applications offer and never a permission request.
 2. **Upgrade test** (QA-R40, PLT-R1108), on the self-hosted runner or a clean VM:
    1. Install the previous stable from its DMG and grant permissions.
    2. Change at least 10 settings, add per-app rules and 50 macros.
