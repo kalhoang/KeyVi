@@ -352,6 +352,25 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
     }
 
+    /// The first-key window needs a previous element: after the frontmost fallback (no element) nothing changed
+    /// under the word when AX starts naming the field, so a word begun more than 500 ms earlier is still kept and
+    /// checked, like after a timed-out read (PLT-R340 amendment of 19/11/2026, PLT-R381 last sentence).
+    @Test func theFrontmostFallbackKeepsAnOlderWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishFrontmostSnapshot(fixture)
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, generation: 3, after: 180_000)  // 300 ms after "s", 660 ms after "d"
+        #expect(fixture.keyDown(Key.a) == .swallow)  // held behind the check
+        #expect(fixture.log.resets.isEmpty)
+        let check = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(check.verifyLateFocus && check.replacedText == "dứ")
+    }
+
     /// The weaker identity does not widen the rule the way a timed-out read does: another process is an
     /// application change, and so is a late observation.
     @Test func anotherProcessAfterTheFrontmostFallbackIsAHardBoundaryPLTR340() {
