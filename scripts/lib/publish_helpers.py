@@ -462,20 +462,26 @@ def cmd_changelog_notes(args) -> int:
 def cmd_release_date(args) -> int:
     """QA-R37: the date releases.json carries is the one the changelog page shows, the date of the version's
     heading (`## [X.Y.Z] - YYYY-MM-DD`). The maintainer dates it in their own time zone, so it may be one day off
-    today in UTC; further off means a stale heading, which stops the release. No dated heading: today in UTC."""
+    today in UTC; further off means a stale heading, which stops the release. The version is found the way
+    changelog-notes and the changelog page find it (brackets and a v prefix optional); a heading for it in any other
+    form than `- YYYY-MM-DD` stops the release too. No heading for the version at all: today in UTC."""
     today = dt.date.fromisoformat(args.today) if args.today else dt.datetime.now(dt.timezone.utc).date()
-    heading = re.compile(r"^##\s+\[v?%s\](?:\s+-\s+(\S+))?\s*$" % re.escape(args.version))
-    stated = None
+    version = re.escape(args.version)
+    names_version = re.compile(r"^##\s+\[?v?%s\]?(?:\s|$)" % version)
+    dated = re.compile(r"^##\s+\[?v?%s\]?\s+-\s+(\d{4}-\d{2}-\d{2})\s*$" % version)
+    heading = None
     if os.path.exists(args.file):
         with open(args.file, encoding="utf-8") as handle:
-            for line in handle.read().splitlines():
-                match = heading.match(line)
-                if match:
-                    stated = match.group(1)
-                    break
-    if not stated:
+            heading = next((line for line in handle.read().splitlines() if names_version.match(line)), None)
+    if heading is None:
         print(today.isoformat())
         return 0
+    match = dated.match(heading)
+    if not match:
+        print(f"the {args.version} heading in {args.file} must read `## [{args.version}] - YYYY-MM-DD`: {heading}",
+              file=sys.stderr)
+        return 1
+    stated = match.group(1)
     try:
         date = dt.date.fromisoformat(stated)
     except ValueError:

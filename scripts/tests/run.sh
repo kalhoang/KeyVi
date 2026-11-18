@@ -917,8 +917,9 @@ if [[ $no_macos -eq 0 ]]; then
   # publish-release inlines the release-notes stylesheet into each notes page (PLT-R906).
   mkdir -p "$M/site/static/assets"
   cp "$REPO/site/static/assets/release-notes.css" "$M/site/static/assets/"
-  # QA-R37: the heading's date is the release date, at most a day from today in UTC, so the fixture is dated today.
-  release_day="$(date -u +%Y-%m-%d)"
+  # QA-R37: the heading's date is the release date, at most a day from today in UTC. The fixture is dated yesterday
+  # (UTC) so that releases.json can only match the heading, never a date taken from the clock.
+  release_day="$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d '1 day ago' +%Y-%m-%d)"
   printf '# Changelog\n\n## [1.2.3] - %s\n- First public test\n' "$release_day" >"$M/CHANGELOG.md"
   app="$M/dist/testapp-1.2.3/Test App.app"
   mkdir -p "$app/Contents/MacOS"

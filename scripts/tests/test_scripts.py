@@ -828,10 +828,24 @@ class PublishHelpersTests(TempDirTestCase):
             result = date("1.1.0", today)
             self.assertEqual(result.returncode, 1, today)
             self.assertIn("2026-11-18", result.stderr)
-        # No heading for the version, or one without a date: today in UTC (or --today).
+        # No heading for the version: today in UTC (or --today).
         self.assertEqual(date("1.2.0", "2026-12-02").stdout.strip(), "2026-12-02")
-        changelog.write_text("# Changelog\n\n## [1.2.0]\n- Undated\n", encoding="utf-8")
-        self.assertEqual(date("1.2.0", "2026-12-02").stdout.strip(), "2026-12-02")
+        # Headings the changelog page also reads as this version: a v prefix, no brackets, a beta (whose dots must
+        # not match any character), CRLF line ends.
+        for text, version in (("## [v1.2.0] - 2026-12-01\n", "1.2.0"), ("## 1.2.0 - 2026-12-01\n", "1.2.0"),
+                              ("## [1.3.0xbetaY1] - 2026-11-01\n## [1.3.0-beta.1] - 2026-12-01\n", "1.3.0-beta.1"),
+                              ("# Changelog\r\n\r\n## [1.2.0] - 2026-12-01\r\n- a\r\n", "1.2.0")):
+            with open(changelog, "w", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+            result = date(version, "2026-12-02")
+            self.assertEqual((result.returncode, result.stdout.strip()), (0, "2026-12-01"), text)
+        # A heading for the version that is not `- YYYY-MM-DD` stops the release and is quoted: the page would show
+        # a different date (or none) from releases.json.
+        for heading in ("## [1.2.0]", "## [1.2.0] -", "## [1.2.0] - 2026-12-01 [YANKED]", "## [1.2.0] - 01/12/2026"):
+            changelog.write_text(f"# Changelog\n\n{heading}\n- a\n", encoding="utf-8")
+            result = date("1.2.0", "2026-12-02")
+            self.assertEqual(result.returncode, 1, heading)
+            self.assertIn(heading, result.stderr)
         # An impossible date in the heading stops the release instead of falling back.
         changelog.write_text("# Changelog\n\n## [1.2.0] - 2026-02-30\n- Bad\n", encoding="utf-8")
         result = date("1.2.0", "2026-03-01")
