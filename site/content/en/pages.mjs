@@ -213,7 +213,8 @@ export const compat = {
 
 export const changelog = {
   h1: "Changelog",
-  lede: "The changes you can see in each release, grouped by app.",
+  lede: "The changes you can see in each release.",
+  empty: "No release yet.",
   donateLine: "{{AppNameTM}} is free. If you find it useful, you can <a href=\"{{hrefDonate}}\">chip in so Kal has more time to keep building it</a>.",
 };
 

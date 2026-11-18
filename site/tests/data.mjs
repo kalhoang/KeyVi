@@ -88,6 +88,18 @@ export async function runDataChecks(check, fixtures) {
     assert.match(read("en", "changelog", "index.html"), /<h2 id="v1\.0\.0">/);
     assert.match(c, /<strong>iTerm2<\/strong>/);
     assert.match(c, /href="\/ung-ho\/"/);
+    assert.ok(!c.includes("All notable changes"), "the file's preamble is not shown");
+  });
+
+  await check("changelog pages: the repository changelog shows its releases without the contributor preamble or Unreleased", () => {
+    for (const path of [["nhat-ky-thay-doi", "index.html"], ["en", "changelog", "index.html"]]) {
+      const html = fallbackPages.get(join(fallback, ...path));
+      const prose = html.match(/<div class="prose changelog">([\s\S]*?)<\/div>/)?.[1] ?? "";
+      assert.match(prose, /^\s*<h2 id="v\d+\.\d+\.\d+/, `${path.join("/")}: the page starts at a release heading`);
+      for (const leak of ["Unreleased", "QA-R", "PRD-R", "--notes-en", "--notes-vi", "publish-release", "Keep a Changelog"]) {
+        assert.ok(!prose.includes(leak), `${path.join("/")}: no "${leak}"`);
+      }
+    }
   });
 
   await check("changelog pages: the Vietnamese page renders CHANGELOG.vi.md, the English one CHANGELOG.md, never mixed", async () => {

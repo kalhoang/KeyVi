@@ -8,7 +8,7 @@ import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAna
 import { loadBrand } from "../lib/brand.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "../lib/headers.mjs";
 import { verifyBadge } from "../lib/layout.mjs";
-import { changelogHeadingId } from "../lib/pages/simple.mjs";
+import { changelogHeadingId, releaseSections } from "../lib/pages/simple.mjs";
 import { LANGS, ROUTES, routePath } from "../lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "../lib/tone.mjs";
 import { SITE_DIR, ROOT_DIR, walk, attrs, isReleaseNotesPage, sha256Base64, contrast, thirdPartyOrigins, cspOf, assertFingerprinted } from "./helpers.mjs";
@@ -162,6 +162,17 @@ export async function runShellChecks(check, fixtures) {
     assert.equal(changelogHeadingId(2, "v2.0.0"), "v2.0.0");
     assert.equal(changelogHeadingId(2, "[Unreleased]"), undefined);
     assert.equal(changelogHeadingId(3, "[1.2.0] - 2026-12-01"), undefined);
+  });
+
+  await check("changelog page: only release sections reach visitors, never the contributor preamble or Unreleased", () => {
+    const md = ["Contributor rules (QA-R66): add entries under `Unreleased`; headings use `## [X.Y.Z] - YYYY-MM-DD`.", "",
+      "## [Unreleased]", "", "- Not shipped yet.", "", "## [1.1.0-beta.1] - 2026-12-05", "", "- Beta change.", "",
+      "## [1.0.0] - 2026-11-18", "", "### Fixed", "", "- Shipped change.", ""].join("\n");
+    const out = releaseSections(md);
+    assert.ok(out.startsWith("## [1.1.0-beta.1] - 2026-12-05"), out);
+    assert.ok(out.includes("- Beta change.") && out.includes("### Fixed") && out.includes("- Shipped change."));
+    assert.ok(!/Contributor rules|Unreleased|Not shipped yet/.test(out), out);
+    assert.equal(releaseSections("Preamble only.\n\n## [Unreleased]\n\n- Nothing yet.\n"), "");
   });
 
   await check("fallback: pages state the macOS 12 Monterey floor and its permission path (Q6, ADR 0315, PRD-R40)", () => {
