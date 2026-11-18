@@ -65,7 +65,7 @@ Keywords MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. Any
   *Rationale: they were broken in the incumbent, are rarely needed on macOS today, and every one of them multiplies test surface. A host-side converter can be added later without touching the engine.*
 - **ENG-R121** No "Quick Telex" shortcuts (`cc`, `gg`, `kk`, `nn`, `tt`, `pp`, `qq`, `uu` expanding to consonant clusters) and no quick start or end consonants. Not even as an option.
   *Rationale: they were on by default in the incumbent and mangled ordinary typing (`cc` became `ch`, `kkk` became `khk`, `nn` became `ng`, `tt` became `th`).*
-- **ENG-R122** No dictionary spell checking and no "suggest a correction" feature. Restore (section 8) is the only correction the engine makes.
+- **ENG-R122** No dictionary spell checking and no "suggest a correction" feature. Restore (section 8) is the only correction the engine makes. *(Amended 18/11/2026: 1.1.0 adds the typo correction of section 11A under PRD-R4A, which replaces one clearly mistyped word with the only word it can be; there is still no suggestion list and no spell checking of Vietnamese.)*
 - **ENG-R123** No automatic capitalisation of sentence starts in the engine (host feature, later version).
 - **ENG-R124** No word prediction, autocomplete, translation or any feature that sends text anywhere.
 - **ENG-R125** Withdrawn on review: macros are in v1 (ENG-R110, section 11). The number is kept so that references stay stable.
@@ -532,6 +532,7 @@ Inputs: the committed display `C` (after 5.5 normalisation), the raw keys `R`, t
 - **ENG-R801** The engine MUST implement exactly this order, with one exception: for a code-only word whose raw keys are not English, L9 is evaluated right after L5, before L6 and L7, which would keep it (decided by the product owner on 18/11/2026, ENG-R850, REG-38; the first version evaluated L9 after L8 for every word); a code-only word whose raw keys are English reaches L9 in its place, after L6 and L8, which restore it on their own when they apply. It MUST include the escape condition of L3: a token in which an escape was used is never kept by L3 and is decided by L4 instead, so `www` (displayed `ww`, raw keys a tech-always word) commits as `www` and ENG-T12 holds. Each committed token MUST produce a reason code naming the rule (section 12) so that diagnostics can show "restored because invalid syllable" without storing text. *(The escape condition was confirmed by the product owner on 13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md.)* L4 decides as ENG-R804 says, with the reason code `escape` for every outcome; L4a, after L4, decides with the reason code `toneRemoval` (decided by the product owner on 18/11/2026, Q9 of section 15, REG-39). *(Amended by the product owner on 17/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md: the first version read "keep `C` if `C` is an English word; else restore if `R` is English; else keep `C`", so `leecher` committed `lecher` and `turn off the light` committed `turn of the light`, REG-37.)* L9a, L9b and L9c are evaluated in that order after L9 and before L10; their reason codes are `boundaryParticle`, `phrase` and `learned`. L9c also applies to a token that L6, L7 or L8 would decide when `R` is on the collision list and the memory votes for the other side (a vote that agrees leaves the rule as it is): the memory reaches the collision supplement (`cos`, kept `có` by L7) and the generated rows that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10 never apply; L9 reads the line before the token either way (ENG-R850).
 - **ENG-R802** When auto restore is off, rules L3b to L11 MUST NOT restore anything. L1 and L2 (the user's own choices) still apply.
 - **ENG-R803** A restore at commit is an edit that replaces `C` with `R` followed by the boundary key (`thenPassThrough`). When the commit also revises the previous token (ENG-R828), the edit covers the previous token, its separator and the current token in one `TextEdit`; the boundary key follows.
+- **Typo correction (1.1.0).** After this decision, section 11A MAY replace a token that the decision would show as typed or restored, or that L6 keeps only through a place-name cluster, with the one English word that is one edit away (ENG-R1110); the edit has the shape of ENG-R803 and the reason code `corrected(rule)` names the rule above that would have decided the token (ENG-R1115). Nothing in this table changes.
 - **ENG-R804 Escape at commit (rule L4).** A **doubling** is an escape whose key comes right after a key whose effect it removes (4.7: `ass`, `aaa`, `boooong`, `Karr`, `Anaa`, VNI `a11`); an escape key that comes back after other keys is not one (`costs`: the second `s` after `t` escapes the tone, ENG-R410; `leecher`: the third `e` after `ch` escapes the circumflex; `pajama`). `C` is the committed display, `R` the raw keys, "English" as in 8.1:
   (a) `C` and `R` both English: `C` is kept only when every escape of the token was a doubling, the doubling was **needed**, and the context is not English; otherwise `R` is restored. The doubling was needed when the keys of `C`, typed as a token of their own with the same configuration, resources (the learned memory left out: it decides collision words only, ENG-R877) and context, commit something other than `C`: `of` alone commits `ò` (L11), so `off` keeps `of`; `pas` alone is restored by L8 and `desert` shows `dểt` and is restored by L5, so `pass` and `dessert` are restored in every context (`tôi pass môn`). The context is English when the run is English (ENG-R823, the evidence of L10, with the English-lean words when `lookaheadRevision` is on) or, with `lookaheadRevision` on (ENG-R829), when the previous tokens and `R` start a bundled phrase (ENG-R826, the evidence of L9b): `and off`, `the mess`, `turn off the light` (`turn` is kept as `tủn` but continues the phrase `turn off`, which RV1 then restores) commit the word typed, while `off` alone, `tắt off đi` (`tắt of đi`) and `ass` keep `of` and `as`.
   (b) Only `C` English: `C` is kept in every context (`tarr` -> `tar`, `hosst` -> `host`, `ddid` -> `did`, REG-10).
@@ -722,6 +723,74 @@ Examples (table: `vn` -> `Việt Nam`, `@@` -> `kal@example.com`, `dc` -> `đư�
 
 ---
 
+## 11A. Typo and spelling correction (1.1.0)
+
+Planned for 1.1.0 under PRD-R4A of `03-product.md` (the product owner's decision of 16/11/2026: after 1.0, not part of it; on by default by the decision of 18/11/2026, which the release track records in `docs/decisions/0009-pa-decisions-2026-11-18.md`). At the commit of a word the engine replaces one clearly mistyped word with the only word it can be, offline, from the bundled data, with no suggestion list; ENG-R122 is amended accordingly. The product side (the setting D30, the never-correct list and their copy) is `03-product.md` PRD-R80 and PRD-R81. Requirements ENG-R1110 to ENG-R1125, tests ENG-T50 to ENG-T57, worked examples 13.12 (rows S01 to S84). Terms used here: the **typed word** is the token's raw keys `R`, lowercased; the **correction lexicon** is the English lexicon of 8.2 plus the letter-only entries of the tech-always list; the **guard list** is the list of rarer English words and proper names of ENG-R1120; the **never-correct list** is the user list of ENG-R1118. The correction never changes a Vietnamese word (ENG-R1110 (d)), and it leaves a mistyped word alone when one key would make it Vietnamese (ENG-R1125: `ddi pahir` stays `đi pahir`, it does not become `đi pair`), because a word that could be a Vietnamese typo is not a word of which "exactly one word fits". It corrects no Vietnamese typo either: a mistyped Vietnamese syllable is usually one key away from several valid ones, so Vietnamese typo patterns are a later phase with their own rule (ENG-R1123).
+
+### 11A.1 Where the correction sits and which tokens are candidates
+
+- **ENG-R1110 Candidate.** At a commit, after the macro check (ENG-R1103) and after the decision of 8.1 has been taken with its reason code, and before the edit of ENG-R803 is formed, the engine decides whether the token is corrected. The decision reads the token alone (its raw keys, its display `C`, its flags, the 8.1 decision, the key that commits it, the boundary characters between the previous token and the token, and whether the token starts a sentence, the class of ENG-R863) and the resources; it never waits for the words after the token. A token is a **candidate** when all of the following hold; a token that is not a candidate commits exactly as in 1.0:
+  (a) `typoCorrection` is on and the app context is `general` (ENG-R1119);
+  (b) the 8.1 decision would leave the typed word on screen: rule L0 (`C` equals `R`), or a `restored` decision of any rule other than L1 and L2; or `C` is kept by L6, the onset of `C` (3.13) is one of the clusters `bl br dr đr gl gr kl kr pl pr` (the Tier B onsets of place names, 3.3), the typed word is all lowercase and is not English: the product owner's case study `gramar`, which shows `grẩm` and which L6 keeps because `gramar` is not English (PRD-R4A). The cluster case needs a transformed display: L0 comes before L6, so a cluster token shown exactly as typed (`glong`, `Glong`, `krong`) is decided by L0 and is then a candidate only if (d) allows it, which it does not, being Tier B and an unmarked shape. A token kept by L1 (the user's toggle), L2 (a user list), L3 (an abbreviation), L4 (a deliberate escaped form), L7 to L11 or the memory (L9c), a token revised by ENG-R828, a macro expansion (ENG-R1104) and a re-opened token that was corrected or restored before (ENG-R1117) are never candidates;
+  (c) the typed word is not a word of any list: not in the English lexicon, the tech-always list or the code-only list (`chown` and `mkdir` are words in prose too), not in the guard list (ENG-R1120), not in the user's keep-as-typed or keep-Vietnamese lists (ENG-R860, with the per-app entries the host merges in, ENG-R862), not in the never-correct list (ENG-R1118) and not on the collision list (8.1: the ambiguity table and the collision supplement). The collision list holds every word the learned memory can hold (ENG-R863), so a word the memory holds is never a candidate (PRD-R4A); the check is explicit because the collision supplement is by construction outside the English lexicon (8.2);
+  (d) the typed word is not Vietnamese: `C` is neither Tier A nor Tier B (3.12), except in the cluster case of (b), and the typed word is not an **unmarked shape**, the letters of a Tier A or Tier B syllable with its marks and stroke removed (ENG-R1120: `truong`, `nguoi`, `khong`, `thuong`, as chat is often typed without marks; `truing` is one letter away from `truong`), nor one edit away from Vietnamese (ENG-R1125);
+  (e) the conditions of ENG-R1111 (letters, length, case) and ENG-R1112 (context) hold.
+  The engine then applies the edit model of ENG-R1113 and corrects the token only when exactly one word fits (ENG-R1114).
+- **ENG-R1111 Letters, length and case.** The typed word consists of ASCII letters only (a VNI token with a digit, a Telex token with a bracket letter and a token with any other character are never candidates; in Telex a main-row digit is a boundary, 9.2, so `androd1` commits `androd` at the digit and ENG-R1112 leaves it alone) and has 5 to 24 letters (PRD-R4A: at least five; the cap bounds the work of ENG-R1122). Its case decides where it may be corrected: a word in lowercase anywhere; a word in sentence case (the first letter uppercase, every other letter lowercase, ENG-R850 (e)) only where it starts a sentence (no previous token in the history, or `.`, `!`, `?` or `:` among the boundary characters after the previous token: the sentence-start class of ENG-R863), because inside a sentence a capital is a name (`Kbang`, `Glong`, `Biden`), and the correction keeps the case (`Androdi` gives `Android`); a word in any other case (all capitals `ANDRODI`, mixed `AndroDi`, camel case) never. A word whose last letter is repeated three or more times in a row (`stilll`, `coolll`, `smalll`) is a chat elongation, not a typo, and is never a candidate, although deleting one letter would give a word (`still`); in Telex an elongated tone key is an escape and L4 decides the token first (`yesss` commits `yess`, ENG-R804 (d)).
+- **ENG-R1112 Context.** No correction is made: in the `code` app context (ENG-R850: terminals, IDEs and code editors; whatever the words around the token, unlike rule L9); when the key that commits the token is not whitespace, Return, Tab or one of the closers of prose `. , ; : ! ? ) ] } "`, all ASCII so that the undo of ENG-R1117 always applies (a digit, the non-ASCII `” …`, an apostrophe or closing single quote `' ’` (`weren't` commits `weren`, one letter from `wren`), `/`, `@`, `\`, `-`, `_`, `#`, `~`, the backquote, `|`, `&`, `$`, `=`, `+`, `*`, `%`, `^`, `<`, `>`, `(`, `[`, `{` and every other character leave the token as decided: the user is typing an identifier, a path, a link or a contraction); and when the character right before the token's first letter is neither a space (U+0020 or U+00A0) nor an opening bracket or quote `( [ { " “ ‘ '`, unless nothing but spaces and tabs stands between the start of its line (no previous token in the history, or the last boundary was Return) and the token, so that the first word of a field, of a line or of an indented line is a candidate: the openers of ENG-R850 (d) count only when a space follows them (`- androdi`, `> androdi`, `# androdi`, which pass by the space), and a token glued to `#`, `/`, `@` or `-` is glued at a line start as anywhere else (`#androdi` starting a post is a tag). A token glued to `.`, `/`, `@`, `\`, `-`, `_`, `#`, `:`, `~` or a digit is part of a link, an e-mail address, a path, a tag, a mention or a compound (`www.exapmle.com`, `kal@exapmle.com`, `/opt/locla`, `#androdi`, `well-knwon`). Known cost: a word committed by `.` is corrected before the engine can know that a domain follows (`googel.com` would give `google.com`).
+
+### 11A.2 Edit model and the one-word rule
+
+- **ENG-R1113 Edit model.** The correction considers the words at distance one from the typed word under these edits, applied to the letters as typed (the raw keys, never the display: `gramar`, not `grẩm`):
+  (1) **transposition** of two neighbouring letters (`androdi` -> `android`, `recieve` -> `receive`, `whcih` -> `which`);
+  (2) **deletion** of one letter (`untill` -> `until`, `arguement` -> `argument`, VNI `messsage` -> `message`; in Telex the `ss` of `messsage` is an escape and L4 (b) keeps `message` before any correction), except the first letter unless it equals the second (`aabout` -> `about`, but never `kbang` -> `bang` or `xcode` -> `code`: names of ethnic-minority places and of tools begin with consonant pairs) and except the last letter unless it equals the one before it (`helpp` -> `help`, `committ` -> `commit`, but never `messi` -> `mess` or `biden` -> `bide`);
+  (3) **insertion** of one letter (`gramar` -> `grammar`, `adress` -> `address`, `langage` -> `language`, `libary` -> `library`), except after the last letter unless it repeats it (`pajama` never becomes `pajamas`: plurals and inflections the lexicon lacks are words, not typos);
+  (4) **substitution** of one letter by a neighbouring key (`servet` -> `server`, `hwllo` -> `hello`), the neighbours given by the table below, except a last letter `r` after `e` replaced by `d` (`leecher` and `absorber` would become `leeched` and `absorbed`: the lexicon lists participles more often than the nouns in `-er` derived from the same verbs; `leecher` is the word of REG-37).
+  Neighbours (the standard QWERTY layout; bundled data, ENG-R1120; symmetric, and the build fails otherwise): `q: w a` · `w: q e a s` · `e: w r s d` · `r: e t d f` · `t: r y f g` · `y: t u g h` · `u: y i h j` · `i: u o j k` · `o: i p k l` · `p: o l` · `a: q w s z` · `s: w e a d z x` · `d: e r s f x c` · `f: r t d g c v` · `g: t y f h v b` · `h: y u g j b n` · `j: u i h k n m` · `k: i o j l m` · `l: o p k` · `z: a s x` · `x: s d z c` · `c: d f x v` · `v: f g c b` · `b: g h v n` · `n: h j b m` · `m: j k n`. Layout assumption: the engine never sees key codes (section 2), so the table is a stated assumption, QWERTY, the layout of the keyboards Apple sells in Vietnam and the one the ABC and U.S. input sources assume; on QWERTZ, AZERTY or Dvorak the substitution edit finds fewer typos and the other three edits are unaffected. A later version MAY let the host pass the table of the active layout.
+- **ENG-R1114 One word.** The words that fit are the distinct words of the correction lexicon (the English lexicon of 8.2 and the letter-only entries of the tech-always list; never the code-only list, the guard list or any Vietnamese data) of at least four letters that one edit of ENG-R1113 reaches. The token is corrected only when exactly one word fits (PRD-R4A); two or more (`thier`: `their`, `tier`, `thief`; `wierd`: `weird`, `wired`; `pleasee`: `please`, `pleases`, `pleased`) or none (`grammer`: `e` and `a` are not neighbours) leave it as decided. There is no frequency or size-level tie-break: the lexicon carries membership only (8.2), and a tie-break would turn "the one word it can be" into a guess. A word that several edits reach counts once (`gramar` -> `grammar` by inserting `m` at either position). Vietnamese counts as a fit too: a typed word one edit from Vietnamese is never corrected (ENG-R1125).
+- **ENG-R1125 Vietnamese within one edit.** A candidate is not corrected when any single edit of its typed word reaches Vietnamese: a transposition of two neighbouring letters, a deletion of any letter, an insertion of any letter at any place or a substitution by a neighbouring key of the table of ENG-R1113, without the position rules of ENG-R1113 (they protect English words, not Vietnamese ones), giving either (1) a **Vietnamese keying**, the Telex keys of a Tier A syllable (3.12) with a tone it allows, written in the usual order: the onset, the vowels and the coda letter by letter, each marked letter as its two keys (`aa aw ee oo ow uw dd`, also `uow` for `ươ` and `w` for a leading `ư` after a consonant other than `q`), and the tone key (`s f r x j`, none for the level tone) last or right before the coda (`phair`, `phis`, `chinhs`, `thieeus`, `hoanf`); or (2) an unmarked shape of ENG-R1110 (d) (`thach`, `chip`). Such a word can be a Vietnamese word with one key wrong as well as an English one, so the English word is not the only word it can be (PRD-R4A, "Vietnamese first"): `ddi pahir` (`phải` with `h` and `a` swapped) stays `đi pahir`, and `pehis`, `hoand`, `chihns` and `htach` stay as typed instead of becoming `penis`, `hand`, `chins` and `hatch`. The check is the same in Telex and VNI (a VNI word typed with its digits is not a candidate, ENG-R1111, and one typed without them is within one edit of its unmarked shape). The keyings are the usual order only, not every order Telex accepts: `gamar` composes `gẩm`, yet `gramar` is one deletion from it and must still give `grammar`. Measured on 18/11/2026 with a model of these rules: of 3,371 one-key Telex typos of the words of the prose corpus (13.4), 133 had exactly one English fit without this rule and 10 with it, nine of them typos of English words of the corpus (`internte`, `pagge`) and one a typo of the Tier B loanword `blốc` (`bloofs` -> `bloods`); of the injected English typos of ENG-T52 it leaves 0.2 to 1.5 points fewer corrected (ENG-R1124).
+
+### 11A.3 The edit, the history and the words around
+
+- **ENG-R1115 The edit.** The commit's edit replaces the token's display (what the 8.1 decision would have shown: the keys as typed after L0, the display `C` that a restore would have replaced, `grẩm` in the cluster case) with the correction in the case of ENG-R1111, followed by the key that commits the token (`thenPassThrough`), in one `TextEdit`, never two (ENG-R803). `EngineOutput.decision` is `corrected(rule)`, where `rule` names the 8.1 rule that would have decided the token (`unchanged`, `invalid`, `escape`, `extendedSpelling`), so diagnostics can say "corrected; the word was not a syllable" without storing text (ENG-R801). The history (ENG-R1001) keeps the token with its raw keys as typed, the correction as its display and the flag **corrected**; it is literal, as a macro expansion is (ENG-R1104).
+- **ENG-R1116 Language, revisions and boundaries.** A corrected token is `en` for the English run (ENG-R823): the engine put an English word there. It is not a collision word, so it gives no collision signal and reads no memory (ENG-R863, ENG-R864). A commit never both revises and corrects: the evidence rules of ENG-R828 read the committing token's own decision and raw keys, which a candidate never satisfies (its raw keys are neither English nor a Vietnamese syllable), and a token that ENG-R828 revises is a collision word, never a candidate. The correction is decided at every key that commits (P0-3, 13.9.1), Return and Tab included, with the same result, except that ENG-R1112 reads the key itself; so `androdi` followed by Return sends `android` in a chat app, as a restore would.
+- **ENG-R1117 Undo and re-opening.** A `restoreToggle` that immediately follows a commit which corrected the token MUST answer with an edit that replaces the correction with the raw keys as typed (the boundary character unchanged; the shape of the revision undo of ENG-R829 and PLT-R353; every key that can commit a correction is ASCII, ENG-R1112, so the pass-through of ENG-R829 after a non-ASCII boundary never applies to it), mark the token user-restored (L1 if it is re-opened) and carry `LearningSignal.neverCorrect(raw)` (ENG-R1118); the next toggle passes through (ENG-R702). After Return or Tab the history is cleared and the toggle passes through (ENG-R829): a correction at Return cannot be undone with the key. Backspace after the commit removes the boundary character and re-opens the corrected token (ENG-R1002), which shows the correction and is literal: Backspace deletes one character at a time (`passThrough`, ENG-R714), keys typed into it are appended as typed, and the toggle right after the re-opening brings back the raw keys as typed, marks the token user-restored and carries the same signal (as ENG-R1104 does for a macro). A re-opened corrected token is never corrected again: its next commit changes nothing on screen and reports `corrected` again, or `kept(userChoice)` once the toggle restored it.
+- **ENG-R1118 Learning and the never-correct list.** `LearningSignal.neverCorrect(raw)` carries the typed word (lowercased ASCII letters) of a correction the user undid with the toggle. The host adds it to the **never-correct list** at once: one signal is enough, because the user acted against a change they saw (unlike ENG-R862, which waits for two signals). The list is per user and applies in every app (like the memory of ENG-R863, not per app like ENG-R862); the host stores it next to the keep lists and shows it with them in settings, where entries can be added (lowercased, letters only; anything else is refused with an explanation) and removed, and exports and imports it with the keep lists (`03-product.md` PRD-R81). The host passes it to the engine as `Resources.userNeverCorrect` (12.2); a word on it is never a candidate (ENG-R1110 (c)). The list is user data: never logged, never in diagnostics except as a count (as macros, ENG-R1106). The engine stores nothing (ENG-R1202).
+- **ENG-R1119 Configuration.** `EngineConfiguration.typoCorrection` (default true) enables this section. The host passes the user's D30 switch ANDed with D4 (`autoRestore`: with English restore off the English data is not consulted, ENG-R802, and no correction is made), with the rule's `features.englishRestore`, the existing per-app switch, and with the rule's `features.restoreHotkey` (and the user's D8): a correction is made only where the restore key can undo it, for the reason PLT-R357 gives for the revisions, so the launchers whose rule turns the restore key off (Spotlight and the overlay panels of `compat/rules.json`, where Escape closes the panel) and every app where D8 is off get no correction. No new rule flag is needed: the `code` context already turns the correction off (ENG-R1112), the restore key decides the rest, and the edit is of the same kind as a restore (ENG-R803), which every strategy applies. With `typoCorrection` off no output carries `corrected(...)` or `LearningSignal.neverCorrect`, a toggle after a commit behaves as ENG-R703 and ENG-R829 say, and every corpus and worked example outside 13.12 gives the result it gives with the section absent (ENG-T54 checks this, as ENG-R829 does for `lookaheadRevision`). Changing it is a configuration change (ENG-R1211).
+
+### 11A.4 Data, privacy, performance, later phases
+
+- **ENG-R1120 Data.** Five resources, all built by `lexicon-builder` from pinned inputs with recorded checksums (ENG-R810), none embedded in the core (ENG-R812): (1) the correction lexicon needs no new file (ENG-R1114); (2) the **guard list**: the SCOWL "words" lists of sizes 40 to 70 and the SCOWL "proper-names" lists of sizes 10 to 70 (the American, British, British-z and English components of the pinned archive, `data/inputs/english/SOURCES.tsv`), minus the correction lexicon, under the same notice as the lexicon (ENG-R811); shipped as a membership structure that MAY answer yes for a word it does not hold (a false positive only suppresses a correction; at most 0.5 % on random letter strings) and takes at most 512 KB resident; (3) the **keyboard neighbours** table of ENG-R1113, 26 entries, reviewed with the lists; the build fails when it is not symmetric or does not cover every letter; (4) the **unmarked shapes** of ENG-R1110 (d), generated from the tier tables like the viability structure (ENG-R346, never hand-written): every Tier A and Tier B syllable, tone ignored, with `ă â` -> `a`, `ê` -> `e`, `ô ơ` -> `o`, `ư` -> `u`, `đ` -> `d`; (5) the **Vietnamese keyings** of ENG-R1125, generated from the same tables (27,367 key strings on 18/11/2026), or computed on the fly by a parser of the usual order that reads an edited string back into onset, vowels, coda and tone; either way ENG-T56 compares the result with an independent computation. Together they add at most 1 MB of resident memory; ENG-R1231 holds for the whole of the resources.
+- **ENG-R1121 Privacy.** Nothing in this section logs, prints, persists or transmits keys or text (ENG-R1220). `corrected(rule)` carries no text. `neverCorrect(raw)` carries the typed word only so that the host can add it to a list the user can see, the exception ENG-R1220 already makes for `LearningSignal`. Diagnostics MAY count corrections and undos; they never record the words.
+- **ENG-R1122 Performance.** Candidate generation and lookups are hash or trie lookups on preallocated tables (ENG-R1232), proportional to the token's length (at most 24 letters, ENG-R1111), never to the size of the lexicon or the guard list. A commit that evaluates a candidate MUST complete within 50 µs at p99 and 200 µs in the worst case on the baseline machine of ENG-R1230, and the percentiles of ENG-R1230 on the ENG-T40 benchmark MUST NOT move beyond the benchmark's noise band (candidates are rare in the corpora). The added data loads within the 50 ms of ENG-R1231.
+- **ENG-R1123 Vietnamese typo patterns (later phase).** 1.1.0 corrects no Vietnamese. A later version MAY add a Vietnamese pattern only when all of these hold: (a) it is written down as a bundled list of `typed -> corrected` pairs or as one explicit rule; (b) no typed form is a Tier A or Tier B syllable, an unmarked shape or an English word; (c) each typed form has exactly one corrected form; (d) the pattern makes zero corrections on the generated corpus (13.2), the prose corpus (13.4, with and without marks) and the W11 corpus (13.11); (e) the product owner reviewed the list. A pattern whose typed form is close to several valid syllables is never added, whatever its frequency (PRD-R4A).
+- **ENG-R1124 Measurable targets.**
+
+| Target | Value |
+|---|---|
+| Vietnamese prose corpus (13.4), three typists, both methods, both tone styles | zero corrections |
+| Prose corpus with its marks removed, every token typed as plain letters (unmarked Vietnamese) | zero corrections (without the shape rule of ENG-R1110 (d) and ENG-R1125, 20 distinct tokens in 6,581 places of the corpus would change: `truong`, `thuong`, `phong`, `duong`, `huong`) |
+| One-key typos of Vietnamese words (ENG-T57): every distinct word of the prose corpus (13.4), typed in Telex with the tone key last and, as a second run, typed as plain letters, receives one random edit of each kind (transposition, omission, insertion, neighbouring key; seed recorded) | a typo of a Vietnamese word corrected to an English word: at most 0.1 % of the typos with five or more keys, the list printed (a model of these rules, 18/11/2026: 1 of 3,371 Telex typos, `bloofs` -> `bloods` from the Tier B loanword `blốc`; none of the 579 plain-letter typos that are neither words nor shapes; without ENG-R1125, 133 and 53) |
+| Generated corpus (13.2); the W11 corpus and its three sets (13.11) | zero corrections |
+| English lexicon, tech-always list, code-only list and guard list, each word typed in Telex and VNI, lowercase after a Vietnamese word and in sentence case at the start of the input | zero corrections |
+| Injected typos (ENG-T52): words of the lexicon with one edit, 6,000 words per kind, the seed recorded | corrected to the source: transposition at least 80 %, doubled letter at least 90 %, neighbouring key at least 80 %, omitted letter at least 50 %, added letter at least 70 %; corrected to another word: at most 1.5 % per kind (a model of these rules on the bundled lexicon with ENG-R1125, seed 18112026, 18/11/2026: 85.7, 95.2, 86.7, 57.5 and 75.8 %; 0, 0, 0.05, 1.32 and 1.20 %) |
+| Rare words (ENG-T53): the words of `/usr/share/dict/words` (web2, public domain) outside the lexicon and the guard list | at most 3.5 % corrected, the list printed (3.42 % measured on 18/11/2026 without the guard list) |
+| Fuzz (ENG-T54) | zero crashes, every invariant |
+| A commit that evaluates a candidate (ENG-T55) | ENG-R1122 |
+
+### 11A.5 Acceptance tests
+
+- **ENG-T50 Worked examples.** The rows of 13.12 replayed with the bundled data (8.2) and the fixture entries the table names, in Telex (and VNI where a row says so), asserting the text after the committing key, the decision, the learning signal and the edits of the undo rows.
+- **ENG-T51 Zero-change corpora.** With `typoCorrection` on: the prose corpus (13.4) typed by the three typists in Telex and VNI, both tone styles; the prose corpus with its marks removed, every token typed as plain letters, after a space and at the start of a line; the generated corpus (13.2); the W11 corpus and its three sets (13.11); and every word of the English lexicon, the tech-always and code-only lists and the guard list, typed in Telex and VNI, lowercase after a Vietnamese word and in sentence case at the start of the input. No token is corrected; the test prints every token that was.
+- **ENG-T52 Injected typos.** For each kind of edit (transposition, deletion, insertion of a random letter, doubling of a letter, neighbouring key), 6,000 words of at least five letters drawn from the lexicon with a recorded seed receive one such edit and are typed after a space; the test counts the words corrected to the source, corrected to another word and left untouched, and asserts ENG-R1124. The measured figures are recorded with the seed in the engine's traceability.
+- **ENG-T53 Rare words.** Every word of `/usr/share/dict/words` with five or more ASCII letters that is in neither the lexicon nor the guard list, typed lowercase after a space: at most 3.5 % are corrected; the test prints the list. The file is read from the machine when present and the test is skipped otherwise, so the gate runs on macOS.
+- **ENG-T54 Fuzz invariants.** The fuzz run of 13.6 also runs with `typoCorrection` on, the bundled data and a random never-correct list: ENG-T30, ENG-T31, ENG-T33, ENG-T34, ENG-T37 and ENG-T38 unchanged; ENG-T32 extended: a toggle right after a corrected commit, or right after Backspace re-opened a corrected token, gives exactly the raw keys typed; ENG-T35 extended: in VNI, every inserted string that is not the raw keys or a composition of typed letters is a word of the correction lexicon; and further: no correction in `code`; with the switch off, no output carries `corrected(...)` or `neverCorrect` and every toggle after a commit answers as ENG-R703 and ENG-R829 say (the 1.0 behaviour itself is held by the existing corpora and worked examples, run with the switch off); none of a token on any list; none of a typed word within one edit of a Vietnamese keying or an unmarked shape (ENG-R1125); none that deletes more than the active token's display; never two edits in one event; never a correction together with a revision; and every `neverCorrect` signal names the lowercased raw keys of the token it came from.
+- **ENG-T55 Performance.** A benchmark types 10,000 candidate tokens (typos of lexicon words, 5 to 24 letters) after a space and asserts ENG-R1122; the ENG-T40 percentiles with the switch on and off differ by less than the benchmark's noise band (ENG-R1233).
+- **ENG-T56 Data.** The neighbours table is symmetric and covers the 26 letters; the guard list holds no word of the correction lexicon and answers yes for at most 0.5 % of 100,000 random letter strings; the unmarked shapes and the Vietnamese keyings equal an independent computation from the oracle's tables (ENG-T01); every bundled file of ENG-R1120 is byte-reproducible (ENG-R810).
+- **ENG-T57 Vietnamese typos.** The two runs of the ENG-R1124 row "One-key typos of Vietnamese words", typed after a Vietnamese word with `typoCorrection` on: the test counts the typos of Vietnamese words (words that are Tier A or Tier B) that are corrected and asserts the target; a typo of an English word of the corpus (`internte`) may be corrected and is not counted. The measured figures are recorded with the seed in the engine's traceability.
+
+---
+
 ## 12. Engine API (Swift)
 
 ### 12.1 Package layout
@@ -759,6 +828,7 @@ public struct EngineConfiguration: Sendable, Hashable {
     public var historyLimit: Int          // default 16 tokens, minimum 1
     public var lookaheadRevision: Bool    // default true: L9a, L9b, run exemption, lean window, RV1-RV4 (ENG-R829)
     public var lineStartRevision: Bool    // default true: RV5 in the code context, the user's D29 (ENG-R829)
+    public var typoCorrection: Bool       // default true: typo correction, section 11A (ENG-R1119); 1.1.0
     public init(inputMethod: InputMethod = .telex(TelexOptions()),
                 toneStyle: ToneStyle = .traditional,
                 autoRestore: Bool = true,
@@ -811,6 +881,7 @@ public enum CommitDecision: Sendable, Hashable {
     case kept(CommitRule)
     case restored(CommitRule)
     case macro            // section 11
+    case corrected(CommitRule)   // section 11A (ENG-R1115), 1.1.0: the rule of 8.1 that would have decided the token
 }
 
 public struct MacroTable: Sendable {
@@ -827,6 +898,7 @@ public struct MacroTable: Sendable {
 public enum LearningSignal: Sendable, Hashable {
     case preferredRaw(raw: String)
     case preferredVietnamese(raw: String)
+    case neverCorrect(raw: String)          // section 11A (ENG-R1118), 1.1.0: a correction the user undid
 }
 
 public struct EngineOutput: Sendable, Hashable {
@@ -897,6 +969,14 @@ public struct CollisionLists: Sendable {                         // 8.2, ENG-R82
     public static let empty: CollisionLists
 }
 
+public struct CorrectionData: Sendable {                         // section 11A (ENG-R1120), 1.1.0
+    public var guardList: WordSet                                // rarer English words and proper names; may answer yes for a word it lacks
+    public var keyboardNeighbours: [Character: String]           // the QWERTY table of ENG-R1113
+    public var unmarkedShapes: WordSet                           // generated from the tier tables (ENG-R1110 (d))
+    public var vietnameseKeyings: WordSet                        // usual-order Telex keys of Tier A syllables (ENG-R1125); MAY be empty when a parser computes them
+    public static let empty: CorrectionData
+}
+
 public struct Resources: Sendable {
     public init(english: WordSet, techAlways: WordSet, techCodeOnly: WordSet,
                 techCodeCapitalized: WordSet = WordSet([]),   // 8.2, ENG-R850
@@ -904,7 +984,9 @@ public struct Resources: Sendable {
                 userKeepRaw: WordSet, userKeepVietnamese: WordSet,
                 macros: MacroTable = .empty,
                 collision: CollisionLists = .empty,
-                collisionMemory: CollisionMemorySnapshot = .empty)
+                collisionMemory: CollisionMemorySnapshot = .empty,
+                userNeverCorrect: WordSet = WordSet([]),      // section 11A (ENG-R1118), 1.1.0
+                correction: CorrectionData = .empty)          // section 11A (ENG-R1120), 1.1.0
     public static let empty: Resources
 }
 
@@ -940,7 +1022,8 @@ public enum Orthography {
 extension Resources {
     public static func bundled(userKeepRaw: WordSet, userKeepVietnamese: WordSet,
                                macros: MacroTable = .empty,
-                               collisionMemory: CollisionMemorySnapshot = .empty) throws -> Resources
+                               collisionMemory: CollisionMemorySnapshot = .empty,
+                               userNeverCorrect: WordSet = WordSet([])) throws -> Resources   // 1.1.0: loads CorrectionData too
 }
 ```
 
@@ -1045,6 +1128,7 @@ Run at least 1,000,000 random events per pull request and 100,000,000 nightly, o
 - **ENG-T36 Escape.** For every transform key K and token T where K applies, T + K + K ends with the literal K. The tone-removal key removes one layer per press (ENG-R411: the tone, then the marks), so for it T + K + K + K does.
 - **ENG-T37 Viability.** No display in composing mode is non-viable.
 - **ENG-T38 Backspace only deletes.** Every Backspace takes exactly the last character of the field and leaves the other characters as they were, except the documented exceptions of ENG-R714; no Backspace edit deletes more than the active token's display. Checked on the fuzz streams and as a property test: every generated syllable (ENG-T02 orders O1 to O4 in Telex and VNI, both tone styles, the ENG-T03 variants, plus the horn-first orders Telex `uwo` and VNI `u7o`, the horn and circumflex changes of mind of ENG-R533, Telex standalone `w`, and a mixed-case spelling), the English lexicon and both tech lists (Telex in three casings and VNI) and the distinct words of the prose corpus (three typists, Telex and VNI) are typed, then Backspace is pressed until the field is empty, once before any boundary and once after a space (the first Backspace re-opens the word, ENG-R1002, ENG-R1003). The same check runs on every key sequence of up to five keys over small alphabets of transform keys (Telex with escapes, tone and mark removals and the standalone `w`; Telex with bracket keys, in both cases; VNI; Telex followed by a space) and of up to six keys over the strokes, tones, standalone `w` and bracket keys of Telex, where key orders that no word has meet (`wsaw`, `wzow`, `]ous]`, `dwndw`, `dwnsdw`; ENG-R710, ENG-R711).
+- With `typoCorrection` on (section 11A, 1.1.0) the run also checks ENG-T54, which restates ENG-T32 and ENG-T35 for corrected tokens.
 
 ### 13.7 Performance test
 
@@ -1619,6 +1703,97 @@ The bundled data (8.2), Telex with default options. Each row types the keys from
 
 The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat, office, developer and control sentences (11,180 tokens, 1,343 collision tokens: 720 meant as English, 623 as Vietnamese) and three small sets written to break the rules (57, 42 and 81 lines). They become fixtures of the `CollisionCorpusTests` target with their expected outputs under the rules of ENG-R825 to ENG-R828 (QA-R68). Measured with the engine of 15/11/2026 in host mode (Return ends the run), tone typed at the end: English-intent collisions 76.1 % (548 of 720), Vietnamese-intent 99.5 % (620 of 623), 98 revisions and none wrong, no non-collision token changed, 1,000 sentences exact; tone typed after the vowel: 76.1 % and 98.8 %, 96 revisions, none wrong; the three sets: 15, 11 and 21 revisions, none wrong. The same corpus without the collision rules (`lookaheadRevision` off) gives 58.5 % and 94.5 %. These numbers are the targets of ENG-R876. *(With rule L4 as amended by the product owner on 17/11/2026, ENG-R804, REG-37, the collision numbers are unchanged and 32 more sentences of each habit are exact (1,032 and 1,029; `pass`, `posts`, `costs`, `off`, `mess`, `Terraform`, `Grafana`, `DeepSeek` are kept as typed); without the collision rules 903 sentences are exact instead of 876. With the phrases `day off`, `sale off` and `a mess` added by the product owner on 18/11/2026 one more sentence of each habit is exact, 1,033 and 1,030: `Ê có sale off 50%` keeps `off`; the collision numbers do not move.)*
 
+### 13.12 Worked examples: typo correction (84 rows, 1.1.0)
+
+Section 11A, ENG-T50. The bundled data (8.2), Telex with default options unless the row says VNI, the `general` context, `typoCorrection` on, from an empty field unless the row types more. The never-correct list, the keep lists and the macro table are empty except where a row names an entry. Each row types the keys and then the key shown (a space unless the row says otherwise); the text column is the field after it. Rows S01 to S30 correct; S31 to S67 do not, one row per exclusion; S68 to S73 undo and re-open; S74 to S84 were added after the review of 18/11/2026 (S82 corrects, the others do not). The decision of 8.1 for every row (the text the 1.0 engine leaves and its reason code) was checked against the 1.0 engine with the bundled data on 18/11/2026, and the correction side against the bundled lexicon with a model of the rules; each exclusion row types a word that would be corrected but for the rule it names, unless the row says otherwise. The rows run against the engine once it exists.
+
+| # | Keys typed, then the key shown | Text after | What decided |
+|---|---|---|---|
+| S01 | `androdi` | `android ` | transposition `di` -> `id`; the token was shown as typed (L0) |
+| S02 | `gramar` | `grammar ` | the cluster case of ENG-R1110 (b): `grẩm` was on screen, kept by L6; a missing `m` |
+| S03 | `recieve` | `receive ` | transposition |
+| S04 | `whcih` | `which ` | transposition; `ưhcih` was on screen and L5 would have restored the keys |
+| S05 | `becuase` | `because ` | transposition |
+| S06 | `abotu` | `about ` | transposition |
+| S07 | `wrold` | `world ` | transposition; restored by L5 first |
+| S08 | `exapmle` | `example ` | transposition |
+| S09 | `documnets` | `documents ` | transposition |
+| S10 | `adress` | `address ` | a missing double |
+| S11 | `tomorow` | `tomorrow ` | a missing double |
+| S12 | `langage` | `language ` | an omitted letter; `lângge` was on screen (L5) |
+| S13 | `libary` | `library ` | an omitted letter |
+| S14 | `somthing` | `something ` | an omitted letter |
+| S15 | `untill` | `until ` | an extra letter |
+| S16 | VNI `messsage` | `message ` | an extra letter inside the word (L0 in VNI; in Telex the `ss` is an escape, S74) |
+| S17 | `arguement` | `argument ` | an extra letter inside the word |
+| S18 | `helpp` | `help ` | a doubled last letter; a four-letter word is allowed as the correction |
+| S19 | `committ` | `commit ` | a doubled last letter |
+| S20 | `okayy` | `okay ` | a doubled last letter |
+| S21 | `servet` | `server ` | neighbouring key `t` for `r`; `sẻvet` was on screen (L5) |
+| S22 | `hwllo` | `hello ` | neighbouring key `w` for `e`; `hưllo` was on screen (L5) |
+| S23 | `Androdi` | `Android ` | sentence case at the start of the input; the case is kept |
+| S24 | `xong. Recieve` | `xong. Receive ` | sentence case after `.`, a sentence start (ENG-R863) |
+| S25 | `androdi.` | `android.` | `.` is a closer of prose |
+| S26 | `androdi`, Return | `android` and the Return | corrected at Return like at a space (ENG-R1116) |
+| S27 | VNI `androdi` | `android ` | plain letters in VNI are candidates too |
+| S28 | `(androdi)` | `(android)` | an opening bracket before the word, a closer after it |
+| S29 | `- androdi` at a line start | `- android ` | a list marker and a space before the word |
+| S30 | `ddi androdi` | `đi android ` | the words around do not matter; the corrected token is `en` for the window |
+| S31 | `thier` | `thier ` | three words fit: `their`, `tier`, `thief` |
+| S32 | `wierd` | `wierd ` | two words fit: `weird`, `wired` |
+| S33 | `pleasee` | `pleasee ` | three words fit: `please`, `pleases`, `pleased` |
+| S34 | `grammer` | `grammer ` | no word fits: `e` and `a` are not neighbours |
+| S35 | `eah` | `eah ` | three letters (`each` would be the one fit) |
+| S36 | `wiht` | `wiht ` | four letters (`with` would be the one fit; restored by L5) |
+| S37 | `truong` | `truong ` | the unmarked shape of `trường` (`truing` is one letter away; ENG-R1125 also applies) |
+| S38 | `chuop` | `chuop ` | the unmarked shape of a Tier A syllable (`chop` would be the one fit and no Vietnamese keying is one edit away; neighbouring shapes such as `chuot` also bring in ENG-R1125 (2)) |
+| S39 | `chinhs` | `chính ` | Vietnamese, kept by L7: not a candidate |
+| S40 | `viejt` | `viejt ` | a Vietnamese typo restored by L5; no English word is one edit away |
+| S41 | `ability` | `ability ` | an English word shown as typed (L0); `agility` is one neighbouring key away |
+| S42 | `server` | `server ` | an English word restored by L5; `sever` is one deletion away |
+| S43 | `oauth` | `oauth ` | on the tech-always list (`oath` is one deletion away) |
+| S44 | `gradle` | `gradle ` | on the code-only list only (`grade` is one deletion away) |
+| S45 | `androdi` with `androdi` on the never-correct list | `androdi ` | the never-correct list |
+| S46 | `androdi` with `androdi` on the keep-as-typed list | `androdi ` | L2 decides, not a candidate |
+| S47 | `ANDRODI` | `ANDRODI ` | capitals |
+| S48 | `AndroDi` | `AndroDi ` | mixed case |
+| S49 | `ddi Androdi` | `đi Androdi ` | sentence case inside a sentence is a name (`Android` would fit) |
+| S50 | `ddi Gramar` | `đi Grẩm ` | the cluster case applies to lowercase words only, so the word keeps its 1.0 behaviour |
+| S51 | `Glong` | `Glong ` | shown as typed (L0, before L6), Tier B and an unmarked shape: not a candidate (ENG-R1110 (b), (d)) |
+| S52 | `glong` | `glong ` | the same in lowercase: the cluster case needs a display that L6 keeps, and `gong` would be the one fit |
+| S53 | `stilll` | `stilll ` | a chat elongation (three `l` at the end; `still` would be the one fit) |
+| S54 | `messi` | `messi ` | deleting a last letter that is not doubled is not an edit of the model (`mess`) |
+| S55 | `pajama` | `pajama ` | adding a letter after the last one is not (`pajamas`) |
+| S56 | `mbank` | `mbank ` | deleting a first letter that is not doubled is not (`bank`) |
+| S57 | `leecher` | `leecher ` | `er` -> `ed` is not (`leeched`); the word of REG-37 |
+| S58 | `androd1` | `androd1` | the digit commits `androd` and is not a closer (`android` would fit) |
+| S59 | `www.exapmle.com` | `www.exapmle.com` | glued to `.`: a link |
+| S60 | `kal@exapmle.com` | `kal@exapmle.com` | glued to `@`: an e-mail address |
+| S61 | `/opt/locla` | `/opt/locla ` | glued to `/`: a path (`local` would fit) |
+| S62 | `#androdi` at the start of the input | `#androdi ` | glued to `#` at a line start: a tag (ENG-R1112) |
+| S63 | `well-knwon` | `well-knwon ` | glued to `-`: a compound (`known` would fit) |
+| S64 | `weren't` | `weren't` | the apostrophe commits `weren` and is not a closer (`wren` would fit) |
+| S65 | `androdi` in the `code` context | `androdi ` | never in `code` |
+| S66 | `androdi` with `typoCorrection` off | `androdi ` | the switch (D30 off, D4 off, D8 off, or an app whose rule turns English restore or the restore key off, ENG-R1119) |
+| S67 | `androdi` with the macro `androdi` -> `Android Studio` | `Android Studio ` | the macro expands before any decision (ENG-R1103) and is never corrected |
+| S68 | `androdi`, space, toggle | `androdi ` | the undo: the typed word is back, the space stays; `neverCorrect(raw: "androdi")` is emitted |
+| S69 | `androdi`, space, toggle, toggle | `androdi ` | the second toggle passes through (ENG-R702) |
+| S70 | `androdi`, space, Backspace, Backspace | `androi` | the first Backspace re-opens `android`, the second deletes one character of it |
+| S71 | `androdi`, space, Backspace, toggle | `androdi` | the toggle right after the re-opening brings the keys back and emits the signal |
+| S72 | S68, then `androdi`, space | `androdi androdi ` | the host added `androdi` to the never-correct list after S68 |
+| S73 | `androdi`, space, Backspace, space | `android ` | a re-opened corrected token commits unchanged and reports `corrected` again |
+| S74 | `messsage` | `message ` | Telex: the `ss` is an escape and L4 (b) keeps `message`, an English word; not a candidate |
+| S75 | `ddi pahir` | `đi pahir ` | ENG-R1125: `phair` (`phải`) is one transposition away; `pair` would be the one English fit |
+| S76 | `pehis` | `pehis ` | ENG-R1125: `phis` (`phí`) is one deletion away (`penis` would fit) |
+| S77 | `hoand` | `hoand ` | ENG-R1125: `hoanf` (`hoàn`) is one neighbouring key away (`hand` would fit) |
+| S78 | `chihns` | `chihns ` | ENG-R1125: `chinhs` (`chính`) is one transposition away (`chins` would fit) |
+| S79 | `htach` | `htach ` | ENG-R1125 (2): the unmarked shape `thach` is one transposition away (`hatch` would fit) |
+| S80 | `androdi…` | `androdi…` | `…` is not a closer (ENG-R1112, the undo needs an ASCII boundary) |
+| S81 | `ddi #androdi` | `đi #androdi ` | glued to `#` inside a line |
+| S82 | `# androdi` at the start of the input | `# android ` | a heading marker and a space before the word: corrected |
+| S83 | `yesss` | `yess ` | Telex: the third `s` escapes the tone and L4 (d) keeps the deliberate form `yess`; not a candidate |
+| S84 | `gruop` | `gruop ` | known cost: the transposition of `group` is the unmarked shape of a Tier B syllable (ENG-R1110 (d)) |
+
 ---
 
 ## 14. Traceability: audit lessons to requirements
@@ -1651,12 +1826,20 @@ The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat,
 | Settings export, iCloud sync, per-app memory, smart switch | host and settings specs; the engine has no persistent state |
 | Macros (text expansion), restore of the trigger | section 11, ENG-R110, `CommitDecision.macro` |
 | Ethnic-minority place names and loanwords restored | Tier B (3.12), ENG-R331, ENG-R843 |
+| Mistyped English words stayed mistyped (`androdi`; `gramar` kept as `grẩm` through a place-name cluster) | section 11A (1.1.0, PRD-R4A): ENG-R1110 to ENG-R1125, ENG-T50 to ENG-T57, S01 to S84 |
 
 ---
 
 ## 15. Open questions for Pa
 
 Q1 to Q8 were answered on 13/11/2026 and Q9 on 18/11/2026; every answer and the place that implements it is listed in `docs/decisions/0005-pa-decisions-2026-11-13.md` (Q9 also in `docs/decisions/0009-pa-decisions-2026-11-18.md` item 4).
+
+Q10 and Q11 (18/11/2026, the typo correction of section 11A) are open; the design note `docs/superpowers/specs/2026-11-18-spelling-correction-design.md` gives the reasoning behind each recommendation.
+
+| # | Question (18/11/2026) | Answer |
+|---|---|---|
+| Q10 | Typo correction of a word in sentence case at the start of a sentence (ENG-R1111): correct it, as `Androdi` -> `Android`, or never correct a capitalised word in 1.1.0? A name that starts a sentence and is one edit from a common word is corrected once (`Biden` would become `Bidden`) until the restore key teaches the never-correct list. The D30 copy (`03-product.md` PRD-R80) follows the answer: "words in all capitals" if they are corrected, "capitalised words" if not. Recommendation: correct it; the first word of a sentence is a word as often as any other, and the guard list of proper names covers most names. | Open. |
+| Q11 | Correction at Return and Tab (ENG-R1116): decide at every key that commits, as restore and D29 do, so a chat message leaves with the word corrected and cannot be undone with the restore key; or only at a space or punctuation, so the user sees the word before sending? Recommendation: every key, the rule of P0-3 (13.9.1); Backspace and retyping still work in the next message. | Open. |
 
 | # | Question | Answer (Pa, 13/11/2026) |
 |---|---|---|

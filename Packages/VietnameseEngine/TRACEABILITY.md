@@ -27,7 +27,7 @@ Where the owner is another track, the row says so.
 | ENG-R110 | Macros at commit, empty table shipped | `Macros/`, `Engine/Reducer+Commit.swift` (`expandMacro`) | `MacroExpansionTests`, `macros.tsv`, `PublicAPITests.defaults` |
 | ENG-R120 | No legacy encodings | `PublicAPI.swift` (only NFC `TextEdit.insert`) | Fuzz (ENG-T34) |
 | ENG-R121 | No Quick Telex shortcuts | absence (no rule exists) | `no-shortcuts.tsv`, `OptionAndEscapeTests.noQuickTelexShortcuts`, `RegressionTests.reg04`, `CorpusTargetTests.nonGoals` |
-| ENG-R122 | No spell checking or suggestions | absence | `CorpusTargetTests.nonGoals` (only restore changes words) |
+| ENG-R122 | No spell checking or suggestions (amended 18/11/2026: the typo correction of section 11A is planned for 1.1.0; until it ships, only restore changes words) | absence | `CorpusTargetTests.nonGoals` (only restore changes words) |
 | ENG-R123 | No automatic capitalisation | absence | `CorpusTargetTests.nonGoals` |
 | ENG-R124 | No prediction, autocomplete, translation, network | absence; `StaticSourceTests` forbids I/O | `StaticSourceTests.coreIsClean` |
 | ENG-R125 | Withdrawn (macros are in v1) | - | - |
@@ -219,6 +219,37 @@ Where the owner is another track, the row says so.
 | ENG-R1105 | Hash lookup, 10,000 entries within budget | `Macros/MacroKey.swift` | `MacroValidationTests.tenThousandEntries`, `engine-benchmark` (10,000-entry table) |
 | ENG-R1106 | Macro contents never logged | no logging (REG-23); errors carry triggers only | `RequirementGapTests.validationErrorsCarryNoExpansion`, `StaticSourceTests.coreIsClean` |
 | ENG-R1107 | Host decides whether macros are active | host; `PublicAPI.swift` (`Resources.macros`) | `MacroExpansionTests.emptyTableNeverMatches` |
+
+## 11A. Typo and spelling correction (1.1.0, planned)
+
+Specified on 18/11/2026 (PRD-R4A; design note `docs/superpowers/specs/2026-11-18-spelling-correction-design.md`). No code exists yet: the code and test columns name the planned homes, the worked examples are the rows S01 to S84 of spec 13.12, and the figures of ENG-T52 and ENG-T53 are filled in when the gates first run.
+
+| ID | Requirement | Code | Tests |
+|---|---|---|---|
+| ENG-R1110 | Candidate: after the 8.1 decision; L0, a restore other than L1 and L2, or the lowercase cluster case of L6 (a transformed display only); not a word of any list, the collision list included; not Vietnamese, not an unmarked shape | planned: `Commit/TypoCorrection.swift` | planned: S01-S84 (S37, S38, S51, S52, S74, S83 for the exclusions), the zero-change corpora of ENG-T51 |
+| ENG-R1111 | ASCII letters, 5 to 24 of them; lowercase anywhere, sentence case at a sentence start only; no elongation | planned: `Commit/TypoCorrection.swift` | planned: S23, S24, S35, S36, S47-S49, S53 |
+| ENG-R1112 | Not in `code`; ASCII closers of prose only; nothing glued before the word, at a line start too | planned: `Commit/TypoCorrection.swift` | planned: S25, S28, S29, S58-S65, S80-S82 |
+| ENG-R1113 | Four edits with the position rules; the QWERTY neighbours table | planned: `Commit/EditModel.swift`, resource `keyboard-neighbours.txt` | planned: S01-S22, S54-S57, ENG-T52, ENG-T56 |
+| ENG-R1114 | Exactly one word of the correction lexicon, at least four letters, no tie-break | planned: `Commit/TypoCorrection.swift` | planned: S31-S34, ENG-T52 |
+| ENG-R1125 | No correction of a typed word within one edit of a Vietnamese keying (usual Telex order) or an unmarked shape | planned: `Commit/TypoCorrection.swift`, generated keyings or a parser | planned: S75-S79, ENG-T57, ENG-T56 |
+| ENG-R1115 | One edit; `corrected(rule)`; the history entry literal with the flag | planned: `Engine/Reducer+Commit.swift`, `PublicAPI.swift` | planned: S01-S30, S70, S73, ENG-T54 (never two edits) |
+| ENG-R1116 | `en` for the window; never together with a revision; decided at every committing key | planned: `Commit/` | planned: S26, S30, ENG-T54 |
+| ENG-R1117 | Undo with the toggle; a re-opened corrected token is literal and never corrected again | planned: `Engine/ActiveToken.swift`, `Engine/Reducer+Commit.swift` | planned: S68-S73, ENG-T54 (ENG-T32 extended) |
+| ENG-R1118 | `LearningSignal.neverCorrect`; the list in `Resources.userNeverCorrect`; the host adds a word at once | engine: `PublicAPI.swift` (planned); host: AppCore (planned, docs/architecture/traceability.md) | planned: S45, S68, S72; host tests in AppCore |
+| ENG-R1119 | `typoCorrection`, default true (D30 AND D4 AND the rule's englishRestore AND the restore key); off, no correction output and the 1.0 corpora unchanged | planned: `PublicAPI.swift` | planned: S66, ENG-T54 (no `corrected` or `neverCorrect` with the switch off) |
+| ENG-R1120 | Guard list, neighbours table, unmarked shapes, Vietnamese keyings; built by `lexicon-builder`; at most 1 MB resident | planned: `lexicon-builder`, `VietnameseEngineData` | planned: ENG-T56 |
+| ENG-R1121 | No text in `corrected`; `neverCorrect` carries the typed word only | planned: whole core | planned: `StaticSourceTests.coreIsClean` unchanged, ENG-T54 (the signal names the raw keys) |
+| ENG-R1122 | 50 µs p99 and 200 µs worst case for a candidate; the ENG-T40 percentiles unchanged | planned | planned: ENG-T55 |
+| ENG-R1123 | Vietnamese patterns: a later phase, unambiguous patterns only, zero corrections on the Vietnamese corpora | none in 1.1.0 | planned: ENG-T51 |
+| ENG-R1124 | Measurable targets | planned | planned: ENG-T51 to ENG-T55, ENG-T57 |
+| ENG-T50 | Worked examples S01-S84 with the bundled data and the named fixture entries | planned | planned |
+| ENG-T51 | Zero-change corpora (prose with and without marks, generated, W11, every word list) | planned | planned |
+| ENG-T52 | Injected typos, 6,000 words per kind, seed recorded (a model of the rules with ENG-R1125 on 18/11/2026, seed 18112026: corrected 85.7, 95.2, 86.7, 57.5 and 75.8 %; another word 0, 0, 0.05, 1.32 and 1.20 %) | planned | planned |
+| ENG-T53 | Rare words of `/usr/share/dict/words` outside the lexicon and the guard list, at most 3.5 % (3.42 % measured on 18/11/2026 without the guard list) | planned | planned |
+| ENG-T54 | Fuzz with the switch on: the 13.6 invariants, ENG-T32 and ENG-T35 extended, the correction-specific invariants (with the switch off: no correction output) | planned: `VietnameseEngineTesting/Fuzz/InvariantChecker.swift` | planned |
+| ENG-T55 | Candidate benchmark, 10,000 tokens | planned: `Benchmarks/` | planned |
+| ENG-T56 | Data checks: symmetric table, guard false positives, shapes and keyings against the oracle, reproducible build | planned: `lexicon-builder check` | planned |
+| ENG-T57 | One-key typos of the prose corpus words (Telex and plain letters): at most 0.1 % of Vietnamese-word typos corrected (a model on 18/11/2026: 1 of 3,371 and 0) | planned | planned |
 
 ## 12. API, privacy and performance
 
