@@ -4,7 +4,7 @@ Mọi thay đổi đáng chú ý của KeyVi được ghi trong file này. Phiê
 
 Đây là bản tiếng Việt của [CHANGELOG.md](CHANGELOG.md), có cùng các tiêu đề phiên bản, và là nguồn của trang nhật ký thay đổi tiếng Việt trên website. Định dạng theo [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/); số phiên bản theo [Semantic Versioning](https://semver.org/) (QA-R26).
 
-Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập nhật chỉ hiện ghi chú phát hành ngắn, tối đa năm dòng cho mỗi ngôn ngữ (mục danh sách và đoạn văn; tiêu đề nhóm không tính, PRD-R51). Phần nào có từ năm dòng trở xuống thì được dùng luôn làm ghi chú phát hành, như bản 1.0.0; phần dài hơn thì ghi chú phát hành là một file ngắn tóm tắt lại, truyền bằng `--notes-vi`, và cửa sổ cập nhật có liên kết tới phần đầy đủ ở đây. Nội dung viết bằng lời người dùng hiểu được và nêu tên ứng dụng liên quan (QA-R66, QA-R67).
+Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập nhật chỉ hiện ghi chú phát hành ngắn, tối đa năm dòng cho mỗi ngôn ngữ (mục danh sách và đoạn văn; tiêu đề nhóm không tính, PRD-R51). Phần nào có từ năm dòng trở xuống thì được dùng luôn làm ghi chú phát hành, như bản 1.0.0; phần dài hơn thì ghi chú phát hành là một file ngắn tóm tắt lại, truyền bằng `--notes-vi`, và cửa sổ cập nhật có liên kết tới phần đầy đủ ở đây. Nội dung viết bằng lời người dùng hiểu được và nêu tên ứng dụng liên quan (QA-R66, QA-R67). Các nhóm dùng tiêu đề tiếng Việt: Thêm, Thay đổi, Sắp bỏ, Đã bỏ, Sửa lỗi, Bảo mật và Lỗi đã biết (ứng với Added, Changed, Deprecated, Removed, Fixed, Security và Known issues của bản tiếng Anh).
 
 ## [Unreleased]
 

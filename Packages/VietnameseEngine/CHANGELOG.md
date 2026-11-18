@@ -10,8 +10,8 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
 ### Added
 
 - `CommitRule.toneRemoval`, the reason code of the new rule L4a (spec/01-engine.md 8.1, ENG-R411, REG-39). A
-  consumer that switches exhaustively over `CommitRule` needs the new case. `Composition.newestRemoval` and
-  `Composition.endsWithRemoval` (package API) record the newest tone-removal key that removed something.
+  consumer that switches exhaustively over `CommitRule` needs the new case, so this is a source-breaking addition
+  and the next tag is `engine-v0.2.0`.
 
 ### Changed
 
