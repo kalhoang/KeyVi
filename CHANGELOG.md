@@ -10,6 +10,15 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+### Changed
+
+- When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example "duong", instead of turning back into the keys you typed.
+- The English phrases "day off", "sale off" and "a mess" now keep the word you typed instead of becoming "day of", "sale of" and "a mes".
+
+### Fixed
+
+- In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef now stay as you typed them instead of turning into Vietnamese words (chơn, ăk, è); inside a Vietnamese sentence they still type Vietnamese.
+
 ## [1.0.0] - 2026-11-18
 
 - First public release of KeyVi: write Vietnamese (Telex or VNI) and English in the same sentence without switching. English words such as "file" and "server" stay as you typed them, whichever key ends the word, and words that can be either, such as as or á, follow the words around them.

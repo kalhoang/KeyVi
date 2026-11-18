@@ -8,6 +8,15 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+### Thay đổi
+
+- Khi phím cuối cùng của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên khi kết thúc từ, ví dụ "duong", thay vì trở lại các phím đã gõ.
+- Các cụm tiếng Anh "day off", "sale off" và "a mess" nay giữ đúng từ bạn gõ, không còn bị đổi thành "day of", "sale of" và "a mes".
+
+### Sửa lỗi
+
+- Trong Terminal, iTerm2 và các trình soạn mã, các lệnh như chown, awk và ps -ef nay giữ nguyên như bạn gõ, không còn bị đổi thành chữ tiếng Việt (chơn, ăk, è); trong câu tiếng Việt, chúng vẫn được gõ thành tiếng Việt.
+
 ## [1.0.0] - 2026-11-18
 
 - Bản phát hành công khai đầu tiên của KeyVi: gõ tiếng Việt (Telex hoặc VNI) và tiếng Anh trong cùng một câu mà không cần chuyển chế độ. Từ tiếng Anh như "file" hay "server" giữ đúng như bạn gõ, dù từ kết thúc bằng phím nào, còn những từ có thể là cả hai, như as hay á, được chọn theo các từ xung quanh.
