@@ -1,18 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# VERIFY: replace @OWNER-HANDLE with the maintainer's GitHub handle before the repository becomes public.
-# `@OWNER-HANDLE` below is a placeholder, not a real account.
 # Security-sensitive areas (QA-R59) and the release machinery require the maintainer's review.
 
-*                                  @OWNER-HANDLE
-/.github/                          @OWNER-HANDLE
-/scripts/                          @OWNER-HANDLE
-/Config/                           @OWNER-HANDLE
-/compat/                           @OWNER-HANDLE
-/Packages/AppCore/                 @OWNER-HANDLE
-/Packages/VietnameseEngine/        @OWNER-HANDLE
-/packaging/                        @OWNER-HANDLE
-/docs/decisions/                   @OWNER-HANDLE
-/docs/provenance/                  @OWNER-HANDLE
-/docs/runbooks/                    @OWNER-HANDLE
-/SECURITY.md                       @OWNER-HANDLE
-/THIRD_PARTY_NOTICES.md            @OWNER-HANDLE
+*                                  @kalhoang
+/.github/                          @kalhoang
+/scripts/                          @kalhoang
+/Config/                           @kalhoang
+/compat/                           @kalhoang
+/Packages/AppCore/                 @kalhoang
+/Packages/VietnameseEngine/        @kalhoang
+/packaging/                        @kalhoang
+/docs/decisions/                   @kalhoang
+/docs/provenance/                  @kalhoang
+/docs/runbooks/                    @kalhoang
+/SECURITY.md                       @kalhoang
+/THIRD_PARTY_NOTICES.md            @kalhoang
