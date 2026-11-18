@@ -11,7 +11,7 @@ import { verifyBadge } from "../lib/layout.mjs";
 import { changelogHeadingId, releaseSections } from "../lib/pages/simple.mjs";
 import { LANGS, ROUTES, routePath } from "../lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "../lib/tone.mjs";
-import { SITE_DIR, ROOT_DIR, walk, attrs, isReleaseNotesPage, sha256Base64, contrast, thirdPartyOrigins, cspOf, assertFingerprinted } from "./helpers.mjs";
+import { SITE_DIR, ROOT_DIR, walk, attrs, isReleaseNotesPage, sha256Base64, contrast, apcaLc, thirdPartyOrigins, cspOf, assertFingerprinted } from "./helpers.mjs";
 import { checkSite } from "./site.mjs";
 
 /** Checks of what every page shares and of the build options. */
@@ -107,7 +107,7 @@ export async function runShellChecks(check, fixtures) {
     };
     // Text on its background: body, muted and link text on both surfaces, the tag, the button, the dark band.
     const pairs = [["--ink", "--paper"], ["--muted", "--paper"], ["--muted", "--paper-2"], ["--green-text", "--paper"], ["--green-text", "--paper-2"],
-      ["--green-text", "--green-soft"], ["--muted", "--green-soft"], ["--on-green", "--green"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
+      ["--green-text", "--green-soft"], ["--muted", "--green-soft"], ["--on-green-fill", "--green-fill"], ["--on-night", "--night"], ["--on-night-muted", "--night"], ["--green-on-dark", "--night"]];
     const problems = [];
     for (const [scheme, tokens] of [["light", light], ["dark", dark]]) {
       for (const [text, background] of pairs) {
@@ -116,6 +116,30 @@ export async function runShellChecks(check, fixtures) {
         const ratio = contrast(a, b);
         if (ratio < 4.5) problems.push(`${scheme}: ${text} ${a} on ${background} ${b} is ${ratio.toFixed(2)}:1`);
       }
+      // Button and badge text on the green fill must also read well, which the WCAG 2 ratio alone does not ensure.
+      const [ink, fill] = [resolve(tokens, "--on-green-fill"), resolve(tokens, "--green-fill")];
+      const lc = /^#[0-9a-f]{6}$/i.test(ink ?? "") && /^#[0-9a-f]{6}$/i.test(fill ?? "") ? Math.abs(apcaLc(ink, fill)) : 0;
+      if (lc < 75) problems.push(`${scheme}: --on-green-fill on --green-fill is APCA Lc ${lc.toFixed(1)}, below 75`);
+    }
+    assert.deepEqual(problems, []);
+  });
+
+  await check("tokens: text on a green fill (button, badge, step number, skip link) uses the fill pair, never --green", async () => {
+    const problems = [];
+    for (const file of ["style.css", "home.css"]) {
+      const css = (await readFile(join(SITE_DIR, "static", "assets", file), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+        const background = body.match(/(?:^|;)\s*background(?:-color)?:\s*var\((--[\w-]+)\)/)?.[1];
+        const color = body.match(/(?:^|;)\s*color:\s*var\((--[\w-]+)\)/)?.[1];
+        if (background === "--green" && color) problems.push(`${file} ${selector.trim()}: text ${color} on --green`);
+        if (background === "--green-fill" && color !== "--on-green-fill") problems.push(`${file} ${selector.trim()}: ${color} on --green-fill`);
+        if (color === "--on-green-fill" && background !== "--green-fill") problems.push(`${file} ${selector.trim()}: --on-green-fill on ${background}`);
+      }
+    }
+    for (const selector of [".btn", ".skip", ".learned-badge"]) {
+      const css = (await readFile(join(SITE_DIR, "static", "assets", selector === ".learned-badge" ? "home.css" : "style.css"), "utf8"));
+      const rule = css.match(new RegExp(`(?:^|\\n)${selector.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      if (!/background:\s*var\(--green-fill\)/.test(rule)) problems.push(`${selector} does not use --green-fill`);
     }
     assert.deepEqual(problems, []);
   });

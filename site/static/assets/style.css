@@ -18,7 +18,10 @@
   --green-text: #087a55;
   --green-soft: #ddf5ea;
   --green-on-dark: #3ddc97;
-  --on-green: #141619;
+  /* Fill behind text (button, badge, step number, skip link): white on a deep brand green in both schemes, APCA Lc 81.
+     Dark ink on --green read poorly on the live site (Lc 45) although it passed WCAG 2 at 5.8:1. */
+  --green-fill: #087a55;
+  --on-green-fill: #ffffff;
   --night: #141619;
   --night-2: #1e2126;
   --on-night: #f1f0ec;
@@ -49,7 +52,6 @@
     --green: #3ddc97;
     --green-text: #3ddc97;
     --green-soft: #173a2d;
-    --on-green: #0b1a12;
     --night: #0c0d0f;
     --night-2: #17191d;
     --warn: #e5b960;
@@ -109,7 +111,7 @@ kbd {
 }
 
 /* Page shell */
-.skip { position: absolute; top: 0; left: -999px; z-index: 20; padding: 0.7rem 1rem; background: var(--green); color: var(--on-green); }
+.skip { position: absolute; top: 0; left: -999px; z-index: 20; padding: 0.7rem 1rem; background: var(--green-fill); color: var(--on-green-fill); }
 .skip:focus { top: 0.5rem; left: 0.5rem; }
 .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 .mark { flex: none; width: 1.75rem; height: auto; aspect-ratio: 19.2 / 17.1; color: var(--ink); fill: var(--green); }
@@ -204,8 +206,8 @@ kbd {
   padding: 0.75rem 1.35rem;
   border: 1px solid transparent;
   border-radius: var(--radius-s);
-  background: var(--green);
-  color: var(--on-green);
+  background: var(--green-fill);
+  color: var(--on-green-fill);
   font-weight: 650;
   line-height: 1.25;
   text-decoration: none;

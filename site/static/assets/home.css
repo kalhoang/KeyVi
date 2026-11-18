@@ -139,8 +139,8 @@
   margin-left: 0.4em;
   padding: 0.05em 0.55em;
   border-radius: 999px;
-  background: var(--green);
-  color: var(--on-green);
+  background: var(--green-fill);
+  color: var(--on-green-fill);
   font-size: 0.72em;
   font-weight: 700;
   line-height: 1.45;
@@ -277,8 +277,8 @@
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 50%;
-  background: var(--green);
-  color: var(--on-green);
+  background: var(--green-fill);
+  color: var(--on-green-fill);
   font-weight: 700;
 }
 

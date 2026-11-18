@@ -112,6 +112,26 @@ export function contrast(first, second) {
   return (high + 0.05) / (low + 0.05);
 }
 
+/**
+ * APCA lightness contrast Lc of text on a background (APCA-W3 0.0.98G constants), signed: positive for dark text on a
+ * light background, negative for light text on a dark one. Unlike the WCAG 2 ratio it tracks how readable text on a
+ * mid-tone fill looks: dark ink on the brand green passed WCAG at 5.8:1 yet read poorly (Lc 45).
+ */
+export function apcaLc(text, background) {
+  const y = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
+    const lum = 0.2126729 * r ** 2.4 + 0.7151522 * g ** 2.4 + 0.072175 * b ** 2.4;
+    return lum < 0.022 ? lum + (0.022 - lum) ** 1.414 : lum;
+  };
+  const [yt, yb] = [y(text), y(background)];
+  if (yb > yt) {
+    const sapc = (yb ** 0.56 - yt ** 0.57) * 1.14;
+    return sapc < 0.1 ? 0 : (sapc - 0.027) * 100;
+  }
+  const sapc = (yb ** 0.65 - yt ** 0.62) * 1.14;
+  return sapc > -0.1 ? 0 : (sapc + 0.027) * 100;
+}
+
 /** Origins other than the site itself that a page or header can make the browser contact: resource attributes
  * (script src, stylesheet, preload, icon, img, media) and every CSP source with a scheme and host. */
 export function thirdPartyOrigins(html) {
