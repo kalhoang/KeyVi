@@ -85,15 +85,18 @@ extension ScenarioRunner {
                     try await setup.perform(step, for: scenario)
                 }
             }
+            var fullText: String?
             if scenario.expect.needsReadback {
                 stage = "readback " + scenario.readback.rawValue
-                observed = try await settledText(of: scenario)
+                let reading = try await settledReading(of: scenario)
+                (observed, fullText) = (reading.text, reading.fullText)
             }
             stage = "state probe"
             let observation = try await probe?.observe(after: scenario)
-            outcome = ScenarioVerdict.outcome(expect: scenario.expect, text: observed, observation: observation)
+            outcome = ScenarioVerdict.outcome(
+                expect: scenario.expect, text: observed, observation: observation, fullText: fullText)
             reason = ScenarioVerdict.reason(
-                for: outcome, expect: scenario.expect, text: observed, observation: observation)
+                for: outcome, expect: scenario.expect, text: observed, observation: observation, fullText: fullText)
             if outcome == .pass, let repetition = scenario.repetition,
                 let failure = try await runRepetition(repetition, of: scenario, stage: &stage)
             {
@@ -156,30 +159,35 @@ extension ScenarioRunner {
         if !run.isEmpty { try await driver.type(run, profile: profile) }
     }
 
-    /// The field's text, read again every poll while it differs from the expectation, until the settle time passed.
-    /// A scenario without an expected text, and a person's readback, are read once.
-    func settledText(of scenario: Scenario) async throws -> String {
-        var text = try await readback.currentText(of: scenario)
-        guard let expected = scenario.expect.text, scenario.readback != .human else { return text }
+    /// The field's reading, read again every poll while its text differs from the expectation, until the settle time
+    /// passed. A scenario without an expected text, and a person's readback, are read once.
+    func settledReading(of scenario: Scenario) async throws -> ScenarioReading {
+        var reading = try await readback.currentReading(of: scenario)
+        guard let expected = scenario.expect.text, scenario.readback != .human else { return reading }
         let deadline = clock.now().nanoseconds &+ Self.readbackSettleNanoseconds
-        while text != expected, clock.now().nanoseconds < deadline {
+        while reading.text != expected, clock.now().nanoseconds < deadline {
             let next = min(deadline, clock.now().nanoseconds &+ Self.readbackPollNanoseconds)
             clock.sleep(until: MonotonicInstant(nanoseconds: next))
-            text = try await readback.currentText(of: scenario)
+            reading = try await readback.currentReading(of: scenario)
         }
-        return text
+        return reading
     }
 }
 
 /// Compares an expectation with what was observed. A mismatch anywhere fails; an expectation nobody could
 /// observe (no probe, or the probe returned nil) needs a person; everything matching passes.
+///
+/// `text` is compared with `expect.text`; the PLT-R422 residue check reads `fullText` (the field's whole text, `text`
+/// when nil), which differs only where the scenario declares a selected completion the app's own (PLT-R530).
 public enum ScenarioVerdict {
     public static func outcome(
-        expect: Scenario.Expectation, text: String?, observation: ScenarioObservation?
+        expect: Scenario.Expectation, text: String?, observation: ScenarioObservation?, fullText: String? = nil
     ) -> ScenarioResult.Outcome {
         // Swift `String ==` is canonical equivalence, so NFC and NFD spellings of the same text match.
         if let expected = expect.text, text != expected { return .fail }
-        if expect.noPlaceholderResidue == true, let text, hasPlaceholderResidue(text) { return .fail }
+        if expect.noPlaceholderResidue == true, let whole = fullText ?? text, hasPlaceholderResidue(whole) {
+            return .fail
+        }
         let checks: [Bool?] = [
             compare(expect.paused, observation?.paused),
             compare(expect.holderBundleId, observation?.holderBundleId),
@@ -210,19 +218,19 @@ public enum ScenarioVerdict {
     /// key after release). Lets the VM triage tell a text mismatch from a state mismatch.
     static func reason(
         for outcome: ScenarioResult.Outcome, expect: Scenario.Expectation, text: String?,
-        observation: ScenarioObservation?
+        observation: ScenarioObservation?, fullText: String? = nil
     ) -> String? {
         guard outcome == .fail, let base = reason(for: outcome) else { return reason(for: outcome) }
-        let differences = mismatches(expect: expect, text: text, observation: observation)
+        let differences = mismatches(expect: expect, text: text, observation: observation, fullText: fullText)
         return differences.isEmpty ? base : base + " (" + differences.joined(separator: ", ") + ")"
     }
 
-    static func mismatches(expect: Scenario.Expectation, text: String?, observation: ScenarioObservation?)
-        -> [String]
-    {
+    static func mismatches(
+        expect: Scenario.Expectation, text: String?, observation: ScenarioObservation?, fullText: String? = nil
+    ) -> [String] {
         var differences: [String] = []
         if let expected = expect.text, text != expected { differences.append("text") }
-        if expect.noPlaceholderResidue == true, let text, hasPlaceholderResidue(text) {
+        if expect.noPlaceholderResidue == true, let whole = fullText ?? text, hasPlaceholderResidue(whole) {
             differences.append("placeholder residue")
         }
         func state<Value: Equatable>(_ name: String, _ expected: Value?, _ observed: Value?, _ show: (Value) -> String)

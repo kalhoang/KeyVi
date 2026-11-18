@@ -378,6 +378,16 @@ private let targets = HarnessTargets(
         #expect(try await router(ax: spotlight).currentText(of: makeScenario()) == "TextEdit")
     }
 
+    /// PLT-R422: the residue check reads the full text even where the compared text leaves the completion out.
+    @Test func axReadingKeepsTheFullTextForTheResidueCheckPltR422() async throws {
+        let bar = FixedAXReader(text: "á\u{200B}sia.localhost:8000/", selection: .init(location: 1, length: 20))
+        let declared = makeScenario(readbackOptions: .init(excludesSelectedCompletion: true))
+        let reading = try await router(ax: bar).currentReading(of: declared)
+        #expect(reading == ScenarioReading(text: "á", fullText: "á\u{200B}sia.localhost:8000/"))
+        let plain = try await router(ax: bar).currentReading(of: makeScenario())
+        #expect(plain == ScenarioReading(text: "á\u{200B}sia.localhost:8000/"))
+    }
+
     @Test func terminalCaptureReadsTheLastLine() async throws {
         let fileSystem = InMemoryFileSystem()
         let scenario = makeScenario(readback: .terminalCapture)

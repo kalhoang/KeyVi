@@ -54,6 +54,23 @@ import Testing
                 == 1 + Int(ScenarioRunner.readbackSettleNanoseconds / ScenarioRunner.readbackPollNanoseconds))
     }
 
+    /// PLT-R422 with PLT-R530: a declared completion is left out of the compared text, not of the residue check,
+    /// which reads the field's full text (a placeholder inside the selected tail still fails).
+    @Test func theResidueCheckReadsTheFullTextPltR422() async {
+        let expect = Scenario.Expectation(text: "á", noPlaceholderResidue: true)
+        let tail = FixedReadingReadback([ScenarioReading(text: "á", fullText: "á\u{200B}sia.localhost:8000/")])
+        let result = await runner(readback: tail).run(makeScenario(expect: expect))
+        #expect(result.outcome == .fail && result.observedText == "á")
+        #expect(result.reason == "observed state differs from expect (placeholder residue)")
+        let clean = FixedReadingReadback([ScenarioReading(text: "á", fullText: "ásia.localhost:8000/")])
+        #expect(await runner(readback: clean).run(makeScenario(expect: expect)).outcome == .pass)
+    }
+
+    /// Without a declaration both texts are the same read.
+    @Test func aReadingDefaultsToTheTextForBoth() {
+        #expect(ScenarioReading(text: "đi") == ScenarioReading(text: "đi", fullText: "đi"))
+    }
+
     /// Command plus a digit moves focus or switches windows (TestHost's Window menu): the keys after it wait for
     /// the shortcut settle, or they reach the old window (the first VM runs lost the first word typed after
     /// Command+1 in testhost.perWindowRule.*). Editing shortcuts such as Command+A do not wait.

@@ -127,6 +127,27 @@ public protocol KeyboardDriver: Sendable {
 
 public protocol ScenarioReadback: Sendable {
     func currentText(of scenario: Scenario) async throws -> String
+    /// The compared text and the field's full text from one read; by default `currentText(of:)` for both.
+    func currentReading(of scenario: Scenario) async throws -> ScenarioReading
+}
+
+extension ScenarioReadback {
+    public func currentReading(of scenario: Scenario) async throws -> ScenarioReading {
+        ScenarioReading(text: try await currentText(of: scenario))
+    }
+}
+
+/// One read of the field (PLT-R530): `text` is compared with `expect.text` and the `repeat` words; `fullText` is the
+/// field's whole text, which the PLT-R422 residue check reads. They differ only where the scenario declares a
+/// selected completion the app's own (`readbackOptions.excludesSelectedCompletion`).
+public struct ScenarioReading: Sendable, Hashable {
+    public var text: String
+    public var fullText: String
+
+    public init(text: String, fullText: String? = nil) {
+        self.text = text
+        self.fullText = fullText ?? text
+    }
 }
 
 public struct ScenarioResult: Sendable, Hashable, Codable {

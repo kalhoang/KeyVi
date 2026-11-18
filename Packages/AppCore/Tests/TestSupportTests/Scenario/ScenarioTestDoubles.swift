@@ -54,6 +54,21 @@ struct FakeReadback: ScenarioReadback {
     }
 }
 
+/// A readback that compares a different text from the field's full text (an `ax` readback that left out a declared
+/// completion): returns `readings` in order, then the last one again.
+final class FixedReadingReadback: ScenarioReadback, Sendable {
+    private let readings: [ScenarioReading]
+    private let reads = Mutex(0)
+    init(_ readings: [ScenarioReading]) { self.readings = readings }
+    func currentText(of scenario: Scenario) async throws -> String { try await currentReading(of: scenario).text }
+    func currentReading(of scenario: Scenario) async throws -> ScenarioReading {
+        reads.withLock { count in
+            defer { count += 1 }
+            return readings[min(count, readings.count - 1)]
+        }
+    }
+}
+
 /// A field the app is still writing to: each read returns the next text, then the last one again.
 final class ChangingReadback: ScenarioReadback, Sendable {
     private let texts: [String]
