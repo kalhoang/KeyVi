@@ -2,8 +2,9 @@
 //
 // Puts the app under test into the configuration a scenario needs (AppConfiguration.swift): quit it (its own
 // quit path flushes its settings first, PLT-R1003), back up its four settings files once, write the new ones, start
-// it again and wait until it is ready. `restore()` puts the backed-up files back after the run. Only the runner
-// does this, to the test build's own settings folder; tests drive it over InMemoryFileSystem.
+// it again and wait until it is ready. `restore()` puts the backed-up files back after the run and starts the app
+// again only when it was running before the first apply. Only the runner does this, to the test build's own settings
+// folder; tests drive it over InMemoryFileSystem.
 
 public import AppModel
 public import Foundation
@@ -23,7 +24,10 @@ public protocol AppUnderTestControl: Sendable {
 public protocol AppConfigurator: Sendable {
     /// Does nothing when `configuration` is the one applied last.
     func apply(_ configuration: AppConfiguration) async throws
-    /// Puts back the files found before the first `apply` and restarts the app. Nothing to do before `apply`.
+    /// Puts back the files found before the first `apply`, and restarts the app only when it was running before
+    /// that `apply`: the restored files may turn the automatic update check and install (D19, D20) on, and the test
+    /// build carries the production feed (PLT-R1101, integration-suite.md section 10.10), so the harness adds no
+    /// launch of its own after the run. Nothing to do before `apply`.
     func restore() async throws
 }
 
@@ -36,6 +40,8 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
 
     private struct State {
         var backedUp: Set<SettingsFile>? = nil
+        /// Whether the app was running before the first `apply` of the run; `restore()` starts it again only then.
+        var wasRunning = false
         var current: AppConfiguration? = nil
         /// Set when the hooks timed out once: the app is not the INTEGRATION_HOOKS build, so asking again would
         /// only add the channel's timeout to every switch.
@@ -69,7 +75,9 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
 
     public func apply(_ configuration: AppConfiguration) async throws {
         guard state.withLock({ $0.current }) != configuration else { return }
-        if control.isRunning() { try await control.quit() }
+        let running = control.isRunning()
+        if state.withLock({ $0.backedUp }) == nil { state.withLock { $0.wasRunning = running } }
+        if running { try await control.quit() }
         try backUpOnce()
         let files = try documents.documents(for: configuration, onboarding: try onboarding())
         try fileSystem.createDirectory(at: location.directory, permissions: .ownerOnlyDirectory)
@@ -84,7 +92,8 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
     }
 
     public func restore() async throws {
-        guard let saved = state.withLock({ $0.backedUp }) else { return }
+        guard let (saved, wasRunning) = state.withLock({ state in state.backedUp.map { ($0, state.wasRunning) } })
+        else { return }
         if control.isRunning() { try await control.quit() }
         for file in SettingsFile.allCases {
             let target = location.url(for: file)
@@ -96,6 +105,7 @@ public final class SettingsFileAppConfigurator: AppConfigurator, Sendable {
             }
         }
         state.withLock { $0 = State(hooksSilent: $0.hooksSilent) }
+        guard wasRunning else { return }
         try await control.launch()
         try await awaitReady()
     }

@@ -114,6 +114,20 @@ private let rulesJSON = """
         #expect(live.sink.records.isEmpty)
     }
 
+    /// PLT-R530: the plan names the chords a scenario declares as focus shortcuts, and only for that scenario.
+    @Test func dryRunShowsDeclaredFocusShortcuts() async throws {
+        let fileSystem = try makeCheckout(scenarios: [
+            "a.json": scenarioJSON(
+                id: "a", keys: #"["command+k","d","d","i"]"#, extra: #","focusShortcuts":["command+k"]"#),
+            "b.json": scenarioJSON(id: "b"),
+        ])
+        let (harness, console) = try harness(["run", "--dry-run"], fileSystem: fileSystem)
+        #expect(await harness.execute() == .success)
+        let text = console.output.joined(separator: "\n")
+        #expect(text.contains("\n    focus shortcuts: command+k (waits for the app's focus snapshot, then 300 ms)\n"))
+        #expect(text.components(separatedBy: "focus shortcuts:").count == 2)
+    }
+
     @Test func dryRunFailsOnInvalidScenariosAndUnknownOnlyIDs() async throws {
         let broken = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "b")])
         let (first, console) = try harness(["run", "--dry-run"], fileSystem: broken)
@@ -313,8 +327,9 @@ private let rulesJSON = """
                 "reset fields in " + host, "launch " + host, "secure false in " + host,
                 "focus testhost.native.textField in " + host, "secure false in " + host,
             ])
-        // The app under test was started on factory defaults; its settings were put back after the run.
-        #expect(live.control.events.all == ["launch", "quit", "launch"])
+        // The app under test was started on factory defaults; its settings were put back after the run, and it was
+        // left stopped, as it was before the run (PLT-R1101).
+        #expect(live.control.events.all == ["launch", "quit"])
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20)
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)
         #expect(report.passed == 1 && report.failed == 1 && report.needsHuman == 1 && report.profile == .burst)

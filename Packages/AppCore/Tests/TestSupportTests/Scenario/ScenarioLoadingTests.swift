@@ -32,13 +32,23 @@ import Testing
         #expect(empty.readbackOptions == Scenario.ReadbackOptions())
     }
 
+    /// PLT-R530: chords the runner waits on like Command plus a digit sit beside `keys`.
+    @Test func decodesFocusShortcuts() throws {
+        let json = scenarioJSON(
+            id: "s", keys: #"["command+k","d","d","i"]"#, extra: #","focusShortcuts":["command+k"]"#)
+        #expect(try decode(json, file: "s.json").focusShortcuts == ["command+k"])
+        #expect(try decode(scenarioJSON(id: "s"), file: "s.json").focusShortcuts == nil)
+    }
+
     @Test func roundTripsThroughJSONEncoder() throws {
-        let scenario = makeScenario(
+        var scenario = makeScenario(
             setup: [.init(action: .launch), .init(action: .wait, value: "200")],
+            keys: ["command+k", "d", "d", "i"],
             expect: .init(
                 text: "x", paused: true, holderBundleId: bundle("com.example.Holder"),
                 firstKeyAfterReleaseComposed: false),
             readbackOptions: .init(excludesSelectedCompletion: true))
+        scenario.focusShortcuts = ["command+k"]
         let data = try JSONEncoder().encode(scenario)
         #expect(try ScenarioLoader.decode(data, fileName: "sample.scenario.json") == scenario)
     }
@@ -223,6 +233,23 @@ import Testing
             ScenarioValidator.problems(in: makeScenario(setup: setup, readback: readback, readbackOptions: options))
                 == ["readbackOptions.excludesSelectedCompletion needs an ax readback"])
         #expect(ScenarioValidator.problems(in: makeScenario(readbackOptions: options)) == [])
+    }
+
+    /// A declared focus shortcut is a chord the key script types (PLT-R530): anything else would never wait, or would
+    /// make a plain letter wait.
+    @Test(arguments: [
+        ([String](), "focusShortcuts must not be empty"),
+        (["command+zz"], "focusShortcuts[0] 'command+zz' is not a physical key name"),
+        (["v"], "focusShortcuts[0] 'v' is not a chord"),
+        (["command+l"], "focusShortcuts[0] 'command+l' is not in keys"),
+        (["command+k", "command+k"], "focusShortcuts[1] 'command+k' is listed twice"),
+    ])
+    func focusShortcutsMustBeChordsOfTheKeyScript(shortcuts: [String], problem: String) {
+        var scenario = makeScenario(keys: ["command+k", "v", "i"])
+        scenario.focusShortcuts = shortcuts
+        #expect(ScenarioValidator.problems(in: scenario) == [problem])
+        scenario.focusShortcuts = ["command+k"]
+        #expect(ScenarioValidator.problems(in: scenario) == [])
     }
 
     @Test func unknownKeysOnNonObjects() {

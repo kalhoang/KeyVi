@@ -23,9 +23,13 @@ back through a mirror. The live run on the self-hosted runner is described step 
 
 Every scenario runs on factory defaults, its `method` (Telex or VNI) and, when a profile in `profiles/` lists it,
 that profile: settings (the `settings` object of settings.json), macros and user rule overrides
-(`profiles/profile.schema.json`). Before a scenario whose configuration differs from the previous one, the harness
+(`profiles/profile.schema.json`). Every settings file the harness writes also turns the automatic update check and
+install off (`automaticallyCheckForUpdates` and `automaticallyInstallUpdates` false, PLT-R1101) unless the profile
+sets them: the test build carries the production feed and once updated itself to the published release in the
+middle of a run ([integration-suite.md](../../docs/runbooks/integration-suite.md) section 10.10). Before a scenario whose configuration differs from the previous one, the harness
 quits the test build, writes its four settings files (backed up once, restored after the run even when it stops on
-an error, onboarding state kept), starts it again and waits until it is ready. `--no-configure` turns this off.
+an error, onboarding state kept), starts it again and waits until it is ready. After the restore the test build is
+started again only when it was running before the run. `--no-configure` turns this off.
 
 | Profile | Scenarios | What it sets |
 |---|---|---|
@@ -62,6 +66,13 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
   `launcher.spotlight*` scenarios and the three browser address bars set it, because they expect the typed text.
   TestHost scenarios never set it (`ScenarioFilesTests`): TestHost completes deterministically, and its completion is
   part of the expected text (QA-R21), so `testhost.sheetCell.columnAutocomplete` expects `Đức` with `ức` selected.
+- `focusShortcuts` lists chords of `keys` the runner waits after, as it always does after Command plus a digit: it
+  types the chord on its own, waits until the app under test published a new focus snapshot (the T6 count of its
+  integration hooks), then 300 ms, before the next key. Every entry must be a chord that `keys` types. Only
+  `testhost.panel.inlineCompletionTwice` declares one (`command+k`, both openings of the search panel): it proves the
+  overlay rule and the inline completion, not the race with the panel's opening, which is the product's to handle
+  (integration-suite.md section 10.10). Any other chord types at once: `testhost.sheet.commandS` types right after
+  Command+S because T5.5 asks the product to handle that (`ScenarioFilesTests` pins both).
 - `readback: "human"` scenarios type the keys and then ask the tester to confirm the field. Their `wait` step
   is the time the tester gets to prepare the app (open a sheet, select a shape, connect a remote session). In
   unattended runs they report `needsHuman`, not a failure. They need a `compat/matrix.json` row (PLT-R531).

@@ -14630,8 +14630,9 @@ developer Mac and the mode hosted CI runs; the live commands also need `COMPAT_H
 W2-E2 additions (`Sources/TestSupport/Scenario/`, ADR 0502 "Integration hooks" and "Platform baseline"):
 
 - **App profiles and configuration** (`AppProfiles.swift`, `AppConfiguration.swift`, `AppConfigurator.swift`):
-  every scenario runs on factory defaults plus its `method` plus the profile in `compat/scenarios/profiles/` that
-  lists it; `SettingsFileAppConfigurator` writes the four settings files of the test build (backup once, restore
+  every scenario runs on factory defaults with the automatic update check and install off
+  (`AppSettingsDocuments.harnessDefaults`, D19 and D20, unless the profile sets them; PLT-R1101) plus its `method`
+  plus the profile in `compat/scenarios/profiles/` that lists it; `SettingsFileAppConfigurator` writes the four settings files of the test build (backup once, restore
   after the run) and restarts it through `AppUnderTestControl`.
 - **Integration hooks** (`AppHooks.swift`, `FileDropHookChannel.swift`, below): the harness side of the test
   build's hooks; `HookStateProbe` answers the `paused`, `holderBundleId` and `firstKeyAfterReleaseComposed`
@@ -16751,11 +16752,16 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var readback: Readback
     public var readbackOptions: ReadbackOptions?
     public var repetition: Repetition?
+    /// Chords of `keys` the runner waits after, like Command plus a digit (PLT-R530): it types the chord on its own,
+    /// waits until the app under test published a new focus snapshot, then `shortcutSettleNanoseconds`. For a
+    /// shortcut that opens a panel or moves focus where the scenario proves what happens after the opening, not the
+    /// race with it (`testhost.panel.inlineCompletionTwice`, integration-suite.md section 10.10).
+    public var focusShortcuts: [String]?
 
     public init(
         id: String, targetBundleId: BundleKey, setup: [SetupStep], keys: [String], timing: TimingProfile,
         method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback,
-        readbackOptions: ReadbackOptions? = nil, repetition: Repetition? = nil
+        readbackOptions: ReadbackOptions? = nil, repetition: Repetition? = nil, focusShortcuts: [String]? = nil
     ) {
         self.id = id
         self.targetBundleId = targetBundleId
@@ -16768,10 +16774,11 @@ public struct Scenario: Sendable, Hashable, Codable {
         self.readback = readback
         self.readbackOptions = readbackOptions
         self.repetition = repetition
+        self.focusShortcuts = focusShortcuts
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback, readbackOptions
+        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback, readbackOptions, focusShortcuts
         case repetition = "repeat"
     }
 }

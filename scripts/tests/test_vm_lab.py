@@ -6,6 +6,7 @@ network connection is made. The fakes keep their state in a temporary directory 
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -930,6 +931,26 @@ class IntegrationGuestTests(unittest.TestCase):
             capture_output=True, text=True, cwd=REPO, check=True)
         self.assertEqual(set(sed.stdout.split()), layouts)
 
+
+    def test_the_seeded_settings_turn_the_automatic_update_check_and_install_off(self):
+        """integration-suite.md section 10.10: the test build carries the production feed and found the published
+        release at launch (run 20261118T221229Z). The settings file the guest seeds before the suite (the one the app
+        reads before the harness's first apply, and the one the harness restores at the end) turns D19 and D20 off,
+        with the keys and values of AppSettingsDocuments.harnessDefaults."""
+        guest = INTEGRATION_GUEST.read_text(encoding="utf-8")
+        line = next(text for text in guest.splitlines() if "printf" in text and "settings.json" in text)
+        match = re.search(r"printf '(.+?)\\n'", line)
+        self.assertIsNotNone(match, line)
+        seed = json.loads(match.group(1))
+        self.assertEqual(seed["schemaVersion"], 1)
+        self.assertEqual(seed["onboarding"], {"completedVersion": "0.1.0"})
+        self.assertEqual(seed["settings"], {"automaticallyCheckForUpdates": False, "automaticallyInstallUpdates": False})
+        harness = (REPO / "Packages" / "AppCore" / "Sources" / "TestSupport" / "Scenario"
+                   / "AppConfiguration.swift").read_text(encoding="utf-8")
+        for key in seed["settings"]:
+            self.assertIn(f'"{key}": .bool(false)', harness)
+        self.assertLess(guest.index(line), guest.index("compat-harness run --dry-run"))
+        self.assertLess(guest.index(line), guest.index("scripts/run-integration.sh tests >"))
 
     def test_the_guest_runs_the_committed_probe_only_when_asked(self):
         """--probe compiles scripts/vm/guest/ax-focus-probe.swift, grants it with the other clients, starts it on

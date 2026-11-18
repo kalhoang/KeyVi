@@ -58,6 +58,13 @@
         "excludesSelectedCompletion": { "type": "boolean", "description": "ax readback only (compat-harness rejects it elsewhere): a selection that runs to the end of the value is the app's own completion from user history (Spotlight, a browser's address bar) and is left out of the text compared with expect.text and the repeat words. The noPlaceholderResidue check still reads the whole value. Never on a local.testhost scenario: TestHost completes deterministically, and its completion is part of the expected field text (QA-R21)." }
       }
     },
+    "focusShortcuts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "PLT-R530: chords of keys the runner waits after, like Command plus a digit: it types the chord on its own, waits until the app under test published a new focus snapshot, then 300 ms, before the next key. For a shortcut that opens a panel or moves focus where the scenario proves what happens after the opening, not the race with it. Every entry is a chord that keys types (compat-harness checks it).",
+      "items": { "$ref": "#/$defs/key" }
+    },
     "repeat": {
       "type": "object",
       "additionalProperties": false,

@@ -79,7 +79,7 @@ extension ScenarioRunner {
             }
             for segment in schedule.segments(of: scenario.keys) {
                 stage = "typing"
-                try await type(Array(segment.keys), profile: scenario.timing)
+                try await type(Array(segment.keys), profile: scenario.timing, declared: scenario.focusShortcuts ?? [])
                 if let step = segment.then {
                     stage = "setup " + step.action.rawValue
                     try await setup.perform(step, for: scenario)
@@ -128,7 +128,8 @@ extension ScenarioRunner {
     /// Pause after a focus shortcut in a key script before the next key: Command plus a digit moves focus or
     /// switches windows (TestHost's Window menu, a browser's tabs), which the target app and the app under test
     /// handle on their next turns; the first VM runs lost the word typed right after Command+1. Editing shortcuts
-    /// (Command+A of every soak chunk) do not wait.
+    /// (Command+A of every soak chunk) do not wait, nor does any other chord a scenario does not declare in
+    /// `focusShortcuts` (PLT-R530).
     static let shortcutSettleNanoseconds: UInt64 = 300_000_000
 
     /// `command+<digit>`, with any further modifiers.
@@ -140,12 +141,13 @@ extension ScenarioRunner {
         return parts.dropLast().contains("command")
     }
 
-    /// Types `keys`. A focus shortcut is typed on its own: the runner waits until the app under test published the
-    /// new focus snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key.
-    func type(_ keys: [String], profile: Scenario.TimingProfile) async throws {
+    /// Types `keys`. A focus shortcut (Command plus a digit, or a chord in `declared`, the scenario's
+    /// `focusShortcuts`) is typed on its own: the runner waits until the app under test published the new focus
+    /// snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key.
+    func type(_ keys: [String], profile: Scenario.TimingProfile, declared: [String] = []) async throws {
         var run: [String] = []
         for key in keys {
-            guard Self.isFocusShortcut(key) else {
+            guard Self.isFocusShortcut(key) || declared.contains(key) else {
                 run.append(key)
                 continue
             }

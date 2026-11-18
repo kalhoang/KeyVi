@@ -33,6 +33,9 @@
     "t",
     "escape"
   ],
+  "focusShortcuts": [
+    "command+k"
+  ],
   "timing": "normal",
   "method": "telex",
   "layout": "com.apple.keylayout.ABC",

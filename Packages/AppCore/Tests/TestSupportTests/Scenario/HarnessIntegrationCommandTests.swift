@@ -223,8 +223,9 @@ private let profileJSON = """
             from: fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20))
         #expect(report.privacy?.passed == false && report.passed == 1)
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/privacy-report.json")))
-        // factory, then the canary profile, then a quit before the scan, then the restore.
-        #expect(live.control.events.all == ["launch", "quit", "launch", "quit", "launch"])
+        // factory, then the canary profile, then a quit before the scan; the restore starts nothing: the app was not
+        // running before the run (PLT-R1101).
+        #expect(live.control.events.all == ["launch", "quit", "launch", "quit"])
         // The scan lists the files once the app has quit: no write or backup rotation runs while they are read.
         #expect(evidence.listedWhileRunning.all == [false])
         #expect(app.commands.all.filter { $0 == "state" }.count >= 3)
@@ -254,7 +255,8 @@ private let profileJSON = """
             })
         #expect(evidence.listedWhileRunning.all == [true])
         #expect(fileSystem.fileExists(at: URL(fileURLWithPath: "/out/privacy-report.json")))
-        #expect(control.events.all == ["launch", "quit", "launch", "quit", "quit", "launch"])
+        // The restore quits the app the failed quit left running and starts nothing (not running before the run).
+        #expect(control.events.all == ["launch", "quit", "launch", "quit", "quit"])
     }
 
     /// A configuration that cannot be written fails only its scenario, with the reason.
@@ -328,7 +330,8 @@ private let profileJSON = """
         let (subject, console) = try harness(arguments, fileSystem: fileSystem, live: live, clock: clock, app: app)
         #expect(await subject.execute() == .failure)
         #expect(console.errors.contains { $0.contains("injected") })
-        #expect(live.control.events.all == ["launch", "quit", "launch"])  // factory, then the restore
+        // factory, then the restore's quit; it starts nothing, as the app was not running before (PLT-R1101).
+        #expect(live.control.events.all == ["launch", "quit"])
         let restored = try fileSystem.readData(at: support.appendingPathComponent("settings.json"), maxBytes: 1 << 20)
         #expect(restored == original)
         #expect(!fileSystem.fileExists(at: support.appendingPathComponent("rule-overrides.json")))
@@ -347,7 +350,7 @@ private let profileJSON = """
         let (subject, console) = try harness(["run"], fileSystem: fileSystem, live: live, clock: clock, app: app)
         #expect(await subject.execute() == .failure)
         #expect(console.errors.contains { $0.hasPrefix("compat-harness run: ") })
-        #expect(live.control.events.all == ["launch", "quit", "launch"])
+        #expect(live.control.events.all == ["launch", "quit"])
         let restored = try fileSystem.readData(at: support.appendingPathComponent("settings.json"), maxBytes: 1 << 20)
         #expect(restored == original)
     }

@@ -128,6 +128,22 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         #expect(state.effective.restoreHotkey == .key(.escape))
     }
 
+    /// PLT-R1101 (D19, D20): the real SettingsStore reads both update switches as set and off, on factory defaults and
+    /// on every repository profile, so the app pushes them to Sparkle before Sparkle starts and no automatic check
+    /// runs at launch (VM run 20261118T221229Z, integration-suite.md section 10.10).
+    @Test func settingsStoreReadsTheUpdateSwitchesOffPltR1101() async throws {
+        let targets = try repositoryTargets()
+        let profiled = try repositoryProfiles().map { AppConfiguration(method: .telex, profile: $0) }
+        for configuration in [AppConfiguration.factory] + profiled {
+            let state = try await OracleSettings.load(configuration, targets: targets)
+            #expect(!state.effective.automaticallyCheckForUpdates, "\(configuration.label)")
+            #expect(!state.effective.automaticallyInstallUpdates, "\(configuration.label)")
+            #expect(
+                Set(AppSettingsDocuments.harnessDefaults.keys).isSubset(of: Set(state.user.explicitlySetKeys)),
+                "\(configuration.label)")
+        }
+    }
+
     /// The overrides decode as user rules and win for exactly the TestHost fields they name (PLT-R522), with the
     /// strategy the scenario relies on.
     @Test func overridesResolveForTheirTestHostFields() throws {
@@ -217,6 +233,42 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         #expect(AppSettingsDocuments.macroID(11) == "00000000-0000-4000-8000-000000000012")
         #expect(Set(files.keys) == Set(SettingsFile.allCases))
     }
+
+    private func settingsObject(_ configuration: AppConfiguration) throws -> JSONValue? {
+        let files = try AppSettingsDocuments(targets: targets, shippedActions: [:])
+            .documents(for: configuration, onboarding: nil)
+        return try JSONDecoder().decode(JSONValue.self, from: try #require(files[.settings]))["settings"]
+    }
+
+    private func profile(settings: [String: JSONValue]) -> AppProfile {
+        AppProfile(id: "p", summary: "s", scenarios: [], settings: settings, macros: [], ruleOverrides: [])
+    }
+
+    /// PLT-R1101 (D19, D20): the test build carries the production feed (Config/Sparkle.xcconfig) and an Info.plist
+    /// with automatic checks and installs on. On factory defaults it found the published release at launch,
+    /// installed it and relaunched as the release app, so every later scenario failed (VM run 20261118T221229Z,
+    /// integration-suite.md section 10.10). Every document the harness writes therefore turns both switches off.
+    @Test func everyDocumentTurnsTheAutomaticUpdateCheckAndInstallOffPltR1101() throws {
+        let restore = profile(settings: ["restoreHotkey": .object(["type": .string("key"), "keyCode": .number(53)])])
+        for configuration in [AppConfiguration.factory, AppConfiguration(method: .vni, profile: restore)] {
+            let settings = try settingsObject(configuration)
+            #expect(settings?["automaticallyCheckForUpdates"] == .bool(false), "\(configuration.label)")
+            #expect(settings?["automaticallyInstallUpdates"] == .bool(false), "\(configuration.label)")
+        }
+        #expect(try settingsObject(AppConfiguration(method: .vni, profile: restore))?["restoreHotkey"] != nil)
+    }
+
+    /// A profile that sets an update switch keeps its value; the other switch stays off (PLT-R1101).
+    @Test func aProfileThatSetsAnUpdateSwitchKeepsItsValuePltR1101() throws {
+        let check = try settingsObject(
+            AppConfiguration(method: .telex, profile: profile(settings: ["automaticallyCheckForUpdates": .bool(true)])))
+        #expect(check?["automaticallyCheckForUpdates"] == .bool(true))
+        #expect(check?["automaticallyInstallUpdates"] == .bool(false))
+        let install = try settingsObject(
+            AppConfiguration(method: .telex, profile: profile(settings: ["automaticallyInstallUpdates": .bool(true)])))
+        #expect(install?["automaticallyCheckForUpdates"] == .bool(false))
+        #expect(install?["automaticallyInstallUpdates"] == .bool(true))
+    }
 }
 
 @Suite struct SettingsFileAppConfiguratorTests {
@@ -265,6 +317,28 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         #expect(control.events.all == ["quit", "launch", "quit", "launch", "quit", "launch"])
         try await subject.restore()  // nothing backed up any more
         #expect(control.events.all.count == 6)
+    }
+
+    /// PLT-R1101, integration-suite.md section 10.10: the restored settings may carry the factory D19 and D20 (on),
+    /// and the test build carries the production feed, so a relaunch the harness adds after the run could install
+    /// the published release. `restore()` restarts the app only when it was running before the first `apply`.
+    @Test func restoreLeavesTheAppStoppedWhenItWasNotRunningBeforeTheRunPltR1101() async throws {
+        let fileSystem = InMemoryFileSystem()
+        try fileSystem.createDirectory(at: location.directory, permissions: .ownerOnlyDirectory)
+        let original = Data(#"{"schemaVersion":1,"settings":{},"onboarding":{"completedVersion":"0.1"}}"#.utf8)
+        try fileSystem.writeAtomically(original, to: location.url(for: .settings), permissions: .ownerOnlyFile)
+        let control = FakeAppControl()
+        let subject = configurator(fileSystem, control: control, hooks: nil, clock: ManualClock())
+        try await subject.apply(.factory)
+        try await subject.apply(AppConfiguration(method: .vni))
+        try await subject.restore()
+        #expect(try fileSystem.readData(at: location.url(for: .settings), maxBytes: 1 << 20) == original)
+        #expect(control.events.all == ["launch", "quit", "launch", "quit"])
+        #expect(!control.isRunning())
+        // The next run starts from the same state: a stopped app is left stopped again.
+        try await subject.apply(.factory)
+        try await subject.restore()
+        #expect(control.events.all == ["launch", "quit", "launch", "quit", "launch", "quit"])
     }
 
     /// A configuration whose start failed is not remembered: applying it again retries.

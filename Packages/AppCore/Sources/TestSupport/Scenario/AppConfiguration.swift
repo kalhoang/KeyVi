@@ -48,6 +48,15 @@ public struct AppSettingsDocuments: Sendable {
     public static let writer = "compat-harness"
     /// `createdAt` of the overrides: a fixed instant, so the files are reproducible.
     public static let overrideCreatedAt = "2026-01-01T00:00:00Z"
+    /// Settings every document carries unless the profile sets the key: the automatic update check (D19) and
+    /// install (D20) off (PLT-R1101). The test build has the production feed (Config/Sparkle.xcconfig) and an
+    /// Info.plist with both on, so on factory defaults it found the published release at launch, installed it and
+    /// relaunched as the release app (VM run 20261118T221229Z, integration-suite.md section 10.10). The app pushes
+    /// the stored values to Sparkle before Sparkle starts; a forced check (the `checkForUpdates` hook of the egress
+    /// test) is a user-initiated check and runs either way.
+    public static let harnessDefaults: [String: JSONValue] = [
+        "automaticallyCheckForUpdates": .bool(false), "automaticallyInstallUpdates": .bool(false),
+    ]
 
     public var targets: HarnessTargets
     /// `action` of every shipped rule by id (compat/rules.json), for `actionFromRule`.
@@ -71,10 +80,11 @@ public struct AppSettingsDocuments: Sendable {
     }
 
     /// The four documents. `onboarding` is the `onboarding` object of the settings file found on the machine,
-    /// kept so the app does not show onboarding again (PRD-R42).
+    /// kept so the app does not show onboarding again (PRD-R42). The settings are `harnessDefaults`, then the
+    /// profile's settings over them, then the scenario's method.
     public func documents(for configuration: AppConfiguration, onboarding: JSONValue?) throws -> [SettingsFile: Data] {
         let profile = configuration.profile
-        var settings = profile?.settings ?? [:]
+        var settings = Self.harnessDefaults.merging(profile?.settings ?? [:]) { _, fromProfile in fromProfile }
         settings["typingMethod"] = .string(configuration.method.rawValue)
         var settingsDocument = envelope(["settings": .object(settings)])
         if let onboarding { settingsDocument["onboarding"] = onboarding }
