@@ -91,6 +91,7 @@ extension KeyPipeline {
         let replaced = engine.activeDisplay
         let output = engine.handle(.restoreToggle)
         engineDirty = true
+        if output.decision != nil { keyState.committedSinceEngineReset = true }
         noteEngineCapture(output)
         noteCollisionSignals(output, focus: focus)  // ENG-R864: a toggle against the rules is a correction
         guard case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty else { return nil }
@@ -112,6 +113,7 @@ extension KeyPipeline {
         }
         let output = engine.handle(input)
         engineDirty = true
+        if output.decision != nil { keyState.committedSinceEngineReset = true }  // ENG-R1211 amendment
         keyState.lastComposedKeyAt = key.now  // PLT-R340 amendment: the late focus window starts here
         noteEngineCapture(output)
         noteCollisionSignals(output, focus: focus)
@@ -408,6 +410,7 @@ extension KeyPipeline {
     func resetEngineIfDirty(_ reason: ResetReason) {
         keyState.lateFocusCheckPending = false  // nothing kept to verify
         keyState.lastCommit = nil  // PLT-R911: no copy of the history outlives the engine's
+        keyState.committedSinceEngineReset = false
         guard engineDirty else { return }
         _ = engine.handle(.reset(reason))
         engineDirty = false

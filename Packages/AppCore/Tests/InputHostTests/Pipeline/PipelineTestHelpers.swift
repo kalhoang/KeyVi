@@ -98,6 +98,14 @@ extension EngineEventLog {
             return nil
         }
     }
+
+    /// Engines that continued the previous state (ENG-R1211 amendment of 19/11/2026).
+    var continuedVariants: [EngineVariant] {
+        entries.compactMap {
+            if case .continued(let variant) = $0 { return variant }
+            return nil
+        }
+    }
 }
 
 extension MainNotice {

@@ -196,6 +196,26 @@ import VietnameseEngine
         _ = engine.handle(.reset(.focusChanged))
         #expect(engine.activeDisplay.isEmpty)
     }
+
+    /// ENG-R1211 amendment of 19/11/2026 (PLT-R340): the continued engine is the new variant's prebuilt engine
+    /// with the word being typed carried over unchanged, so `vieejt` begun in one field ends as "việt" in a field
+    /// whose rule turns `lookaheadRevision` off.
+    @Test func aContinuedEngineCarriesTheWordIntoTheNewVariantsEngine() {
+        let catalog = EngineBridge.catalog(settings: DefaultSettings.v1, resources: .empty)
+        let tap = TapSettingsSnapshot(
+            generation: 1, engines: catalog, toggleHotkey: PipelineFixtures.settings().toggleHotkey,
+            restoreHotkey: nil, macrosInEnglishMode: false, rememberPerApp: true)
+        let factory = VietnameseCompositionEngineFactory()
+        var engine = factory.makeEngine(for: .default, settings: tap)
+        for character in "viee" { _ = engine.handle(.key(KeyInput(character))) }
+        var panel = EngineVariant.default
+        panel.lookaheadRevision = false
+        var continued = factory.makeEngine(for: panel, settings: tap, continuing: engine)
+        #expect(!continued.session.engine.configuration.lookaheadRevision)
+        #expect(continued.session.state == engine.session.state)
+        for character in "jt" { _ = continued.handle(.key(KeyInput(character))) }
+        #expect(continued.activeDisplay == "việt")
+    }
 }
 
 @Suite struct EngineBridgeMacroTests {

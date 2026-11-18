@@ -120,6 +120,9 @@ struct RepeatingComboFactory: CompositionEngineFactory, Sendable {
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
         engines.makeEngine(for: variant, settings: settings)
     }
+    func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: ScriptedEngine)
+        -> ScriptedEngine
+    { engines.makeEngine(for: variant, settings: settings, continuing: engine) }
 }
 
 @Suite struct HotkeyHardeningTests {

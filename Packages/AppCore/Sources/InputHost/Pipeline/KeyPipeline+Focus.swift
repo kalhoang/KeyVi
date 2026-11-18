@@ -136,8 +136,9 @@ extension KeyPipeline {
         let sameProcess = identity.pid == seen.focus.pid
         guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess || seen.focus.appUnknownAfterTimeout,
             focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
-            identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
-            !engine.activeDisplay.isEmpty
+            identity.decision.variant == seen.focus.decision.variant
+                || engineCanContinue(into: identity.decision.variant),
+            let lastKey = keyState.lastComposedKeyAt, !engine.activeDisplay.isEmpty
         else { return false }
         let window = LateFocusChange.windowNanoseconds
         let sinceLastKey = focus.changedAt.nanoseconds(since: lastKey)
@@ -149,6 +150,16 @@ extension KeyPipeline {
                 code: kept ? .lateFocusKept : .lateFocusRefused, at: now, a: sinceLastKey / 1_000,
                 b: sinceWordStart.map { $0 / 1_000 } ?? .max))
         return kept
+    }
+
+    /// ENG-R1211 amendment of 19/11/2026 (VM run of 19/11/2026, `testhost.panel.inlineCompletionTwice`): the engine
+    /// of `variant` can take over the word being typed when the variants differ only in `lookaheadRevision`, which
+    /// decides nothing before a commit (ENG-R829, PLT-R357), the engine has committed nothing since its last reset
+    /// (its state is then the active word alone, the same under both switches), and no learned-memory swap waits
+    /// (ENG-R865). Integer and flag tests only (PLT-R304).
+    func engineCanContinue(into variant: EngineVariant) -> Bool {
+        variant.differsOnlyInLookaheadRevision(from: seen.engineVariant) && !keyState.committedSinceEngineReset
+            && !seen.memorySwapPending
     }
 
     /// The key that discovered a kept late focus change produced no edit to verify: a job without an edit carries

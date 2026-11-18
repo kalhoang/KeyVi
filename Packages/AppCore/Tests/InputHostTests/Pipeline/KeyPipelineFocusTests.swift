@@ -475,6 +475,89 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(paused.log.resets.first == .focusChanged)
     }
 
+    /// The panel field's variant: `launcher.spotlight` turns `lookaheadRevision` off (PLT-R357).
+    private static var panelVariant: EngineVariant {
+        var variant = EngineVariant.default
+        variant.lookaheadRevision = false
+        return variant
+    }
+
+    /// VM run of 19/11/2026 (`testhost.panel.inlineCompletionTwice`): the panel's field was published after "v",
+    /// and its variant differs from the previous field's only in `lookaheadRevision`. That switch decides only at a
+    /// commit (ENG-R829, PLT-R357), so the word is kept and continues with the panel's engine (ENG-R1211 amendment
+    /// of 19/11/2026) instead of restarting at "i" ("vieejt").
+    @Test func aChangeOfLookaheadRevisionAloneKeepsTheWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        #expect(fixture.log.madeVariants == [.default])
+        #expect(fixture.log.continuedVariants == [Self.panelVariant])
+        let edit = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
+    }
+
+    /// The continued engine has the new field's switch: the next commit revises nothing there, where the same keys
+    /// in a field that allows revisions revise the previous word (PLT-R357).
+    @Test(arguments: [true, false])
+    func theContinuedEngineTakesTheNewSwitchPLTR357(changesVariant: Bool) {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        let variant = changesVariant ? Self.panelVariant : .default
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: variant) }
+        for key in [Key.s, Key.space, Key.q, Key.a, Key.space] {  // "á qa ": the scripted revision of "á"
+            fixture.press(key)
+            fixture.completeJobs()
+        }
+        #expect(fixture.log.madeVariants == [.default])
+        #expect(ScriptedFieldModel(entries: fixture.log.entries).revisions == (changesVariant ? 0 : 1))
+    }
+
+    /// Any other difference of the variant (context, English restore, macros) changes what the active word becomes,
+    /// so it stays a hard boundary with a fresh engine, also together with `lookaheadRevision`.
+    @Test(arguments: [
+        EngineVariant(appContext: .code, englishRestore: true, macros: true),
+        EngineVariant(appContext: .general, englishRestore: false, macros: true),
+        EngineVariant(appContext: .general, englishRestore: true, macros: false),
+        EngineVariant(appContext: .general, englishRestore: true, macros: false, lookaheadRevision: false),
+    ])
+    func anyOtherVariantChangeIsAHardBoundaryPLTR340(variant: EngineVariant) {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: variant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, variant])  // a fresh engine: the second "a" starts a word
+        #expect(fixture.log.continuedVariants.isEmpty)
+        #expect(fixture.popJobs().compactMap(\.edit).isEmpty)
+    }
+
+    /// The state may move to the other engine only while it holds no committed token (ENG-R1211 amendment): after a
+    /// commit, a change of `lookaheadRevision` alone is a hard boundary as before.
+    @Test func aChangeOfLookaheadRevisionAfterACommitIsAHardBoundaryPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.typeKeys([Key.a, Key.space, Key.a])
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, Self.panelVariant])
+        #expect(fixture.log.continuedVariants.isEmpty)
+    }
+
+    /// A learned memory waiting to be swapped in (ENG-R865) belongs to a clean engine only, so it does not ride on
+    /// a continuation: the change is a hard boundary and the fresh engine carries the new memory.
+    @Test func aChangeOfLookaheadRevisionWithAMemorySwapPendingIsAHardBoundaryENGR865() {
+        let fixture = PipelineFixture(settings: PipelineFixtures.settings(engineRevision: 1))
+        fixture.press(Key.a)
+        fixture.publish(
+            settings: TapSettingsSnapshot(
+                generation: 2, engines: EngineCatalog(engines: [:], revision: 1, memoryRevision: 1),
+                toggleHotkey: .defaultToggle, restoreHotkey: nil, macrosInEnglishMode: false, rememberPerApp: true))
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, Self.panelVariant])
+        #expect(fixture.log.continuedVariants.isEmpty)
+    }
+
     /// Until the kept composition is verified, the restore key passes untouched (an Escape may close the sheet) and
     /// is a hard boundary as usual (PLT-R353).
     @Test func theRestoreKeyPassesUntilTheLateChangeIsVerifiedPLTR340() {

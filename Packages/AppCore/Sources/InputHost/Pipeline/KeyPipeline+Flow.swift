@@ -267,7 +267,8 @@ extension KeyPipeline {
             }
             seen.engineRevision = revision
         }
-        reconcileFocus(focus, into: &change, rebuild: &rebuild, now: now)
+        var continuing = false
+        reconcileFocus(focus, into: &change, rebuild: &rebuild, continuing: &continuing, now: now)
         if inputSource.generation != seen.inputSourceGeneration {
             seen.inputSourceGeneration = inputSource.generation
             seen.pasteKeyCode = inputSource.table?.keyCode(producing: "v")
@@ -286,9 +287,14 @@ extension KeyPipeline {
             engine = factory.makeEngine(for: focus.decision.variant, settings: settings)
             engineDirty = false
             keyState.lastCommit = nil
+            keyState.committedSinceEngineReset = false
             seen.engineVariant = focus.decision.variant
             seen.memoryRevision = settings.engines.memoryRevision
             seen.memorySwapPending = false
+        } else if continuing {
+            // ENG-R1211 amendment of 19/11/2026: the kept word continues with the new field's engine (PLT-R340).
+            engine = factory.makeEngine(for: focus.decision.variant, settings: settings, continuing: engine)
+            seen.engineVariant = focus.decision.variant
         }
         if let reset = change.reset { hardBoundary(reset, job: change.job, generation: focus.generation) }
     }
@@ -309,13 +315,19 @@ extension KeyPipeline {
         if !secureInput.enabled { seen.awaitingKeyAfterSecureRelease = true }
     }
 
+    /// `continuing`: a kept late focus change into a variant that differs only in `lookaheadRevision` moves the
+    /// word to the new variant's engine without a reset (ENG-R1211 amendment of 19/11/2026); every other variant
+    /// change builds a fresh engine.
     private func reconcileFocus(
-        _ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool, now: MonotonicInstant
+        _ focus: FocusSnapshot, into change: inout BoundaryAccumulator, rebuild: inout Bool, continuing: inout Bool,
+        now: MonotonicInstant
     ) {
         guard focus.generation != seen.focus.generation else { return }
         let identity = FocusIdentity(focus)
+        var kept = false
         if !identity.sameOwner(as: seen.focus) {
             if keepsCompositionAcrossLateFocusChange(focus, identity: identity, at: now) {
+                kept = true
                 keyState.lateFocusCheckPending = true  // PLT-R340 amendment: the next job verifies
             } else {
                 change.note(identity.pid != seen.focus.pid ? .applicationChanged : .focusChanged, job: .focusChanged)
@@ -323,7 +335,9 @@ extension KeyPipeline {
         } else if identity.decision != seen.focus.decision {
             change.note(.configurationChanged, job: .ruleChanged)
         }
-        if focus.decision.variant != seen.engineVariant { rebuild = true }
+        if focus.decision.variant != seen.engineVariant {
+            if kept && engineCanContinue(into: focus.decision.variant) { continuing = true } else { rebuild = true }
+        }
         seen.focus = identity
     }
 

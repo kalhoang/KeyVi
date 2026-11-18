@@ -2,7 +2,9 @@
 //
 // How the engine is bridged (docs/decisions/0306-engine-bridge.md). The engine is a pure value type
 // (`Engine.reduce`, 01-engine.md 12.2); the host keeps one `Session` on the tap thread and swaps engines only
-// at hard boundaries (ENG-R1211). Engines are prebuilt off the hot path, one per variant.
+// at hard boundaries (ENG-R1211), with one exception: a late focus change (PLT-R340) into a field whose variant
+// differs only in `lookaheadRevision` continues a state that holds no committed token with the new engine
+// (ENG-R1211 amendment of 19/11/2026). Engines are prebuilt off the hot path, one per variant.
 
 internal import AppModel
 public import SettingsStore
@@ -23,12 +25,21 @@ public protocol CompositionEngineFactory {
     associatedtype Hotkeys: HotkeyRecognizing = HotkeyRecognizer
     /// Called on the tap thread at a hard boundary; MUST NOT allocate beyond copying prebuilt values.
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> Engine
+    /// The engine of `variant` continuing `engine`'s state (ENG-R1211 amendment of 19/11/2026): only for a variant
+    /// that differs from `engine`'s in `lookaheadRevision` alone, while the state holds no committed token, which
+    /// is then the state the new engine would hold after the same keys. Tap thread, a late focus change (PLT-R340);
+    /// MUST NOT allocate beyond copying prebuilt values.
+    func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: Engine) -> Engine
 }
 
 /// Production engine: a `VietnameseEngine.Session` over a prebuilt `Engine`.
 public struct VietnameseCompositionEngine: CompositionEngine {
     public private(set) var session: Session
     public init(engine: VietnameseEngine.Engine) { session = Session(engine: engine) }
+    /// `engine` continuing `state` (ENG-R1211 amendment of 19/11/2026, `makeEngine(for:settings:continuing:)`).
+    public init(engine: VietnameseEngine.Engine, continuing state: EngineState) {
+        session = Session(engine: engine, state: state)
+    }
     public mutating func handle(_ event: EngineEvent) -> EngineOutput { session.handle(event) }
     public var activeDisplay: String { session.state.activeDisplay }
 }
@@ -37,6 +48,12 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     public init() {}
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> VietnameseCompositionEngine {
         VietnameseCompositionEngine(engine: settings.engines.engine(for: variant))
+    }
+
+    public func makeEngine(
+        for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: VietnameseCompositionEngine
+    ) -> VietnameseCompositionEngine {
+        VietnameseCompositionEngine(engine: settings.engines.engine(for: variant), continuing: engine.session.state)
     }
 }
 

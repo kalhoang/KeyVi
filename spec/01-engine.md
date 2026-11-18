@@ -1028,7 +1028,7 @@ extension Resources {
 ```
 
 - **ENG-R1210** `Engine.reduce` MUST be deterministic and side-effect free: no clock, randomness, locale, environment or I/O. Same state and event give the same result.
-- **ENG-R1211** Changing configuration means creating a new `Engine`; the host sends `reset(.configurationChanged)` with it.
+- **ENG-R1211** Changing configuration means creating a new `Engine`; the host sends `reset(.configurationChanged)` with it. *(Amendment of 19/11/2026, `02-platform.md` PLT-R340, late focus change.)* One exception: a state that holds no committed token (no commit since the last reset) is the same under two configurations that differ only in `lookaheadRevision`, because that switch governs only decisions taken at a commit (ENG-R829); the host MAY continue such a state with the other engine (`Session(engine:state:)`) without a reset. Every other configuration change, and this one once a token was committed, keeps the rule above. `LookaheadRevisionContinuationTests` (AppCore) checks the equality with the bundled data for both methods, both contexts and auto restore on and off.
 - **ENG-R1212** `Orthography.analyze` exists for the diagnostics window ("why did this word change?") and for tests. It works only on text the user explicitly pastes there.
 
 ### 12.3 Privacy

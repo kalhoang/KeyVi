@@ -30,6 +30,9 @@ private struct StubFactory: CompositionEngineFactory {
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> StubEngine {
         StubEngine(outputs: outputs)
     }
+    func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: StubEngine)
+        -> StubEngine
+    { engine }
 }
 
 private func taplogCodes(_ fixture: PipelineFixture) -> [TapLogRecord] {
