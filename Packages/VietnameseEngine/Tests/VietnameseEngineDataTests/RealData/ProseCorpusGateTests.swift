@@ -25,14 +25,19 @@ struct ProseCorpusGateTests {
         ProseCorpusCheck.typists.flatMap { order in [ToneStyle.traditional, .modern].map { (method, order, $0) } }
     }
 
-    /// Differences that the data cannot remove (docs/decisions/0202, open issues for Pa), Telex only: the Roman
-    /// numeral `IX` composes `Ĩ`, the everyday syllable of `ầm ĩ`, which is attested so that Telex users can type
-    /// it (ENG-R821 never damages Vietnamese by default); no other key order types `ĩ`.
+    /// Differences the product owner decided to keep (docs/decisions/0005-pa-decisions-2026-11-13.md, Q26; open issue 3
+    /// of docs/decisions/0202), Telex only: the Roman numeral `IX` composes `Ĩ`, the everyday syllable of `ầm ĩ`,
+    /// which is attested so that Telex users can type it (ENG-R821 never damages Vietnamese by default); no other key
+    /// order types `ĩ`, and `XIX` stays a tech-always word. The corpus holds `Chương IX` twice, so every Telex typist
+    /// shows exactly these two differences, kept by rule L7.
     ///
     /// `trên Internet. Cơ chế`, where rule L10 used to commit `Cow` after the English `Internet`, is no longer a
     /// difference: `trên` is in the window, so the run is not English (ENG-R823 as amended on 14/11/2026, REG-32).
     /// Should it come back, the typist test reports it as not attributable to an `en` row.
-    static let knownEngineDifferences: Set<String> = ["IX -> Ĩ"]
+    static let decidedDifferences: Set<String> = ["IX -> Ĩ"]
+
+    /// Q26: the number of `IX` tokens of the prose corpus, each committed `Ĩ` by every Telex typist.
+    static let romanNumeralNineCount = 2
 
     @Test("ENG-R873: three typists, both methods, both tone styles", arguments: cases)
     func typist(_ method: CorpusMethod, _ order: CorpusOrder, _ style: ToneStyle) throws {
@@ -54,16 +59,13 @@ struct ProseCorpusGateTests {
         // The W11 prose gate (ENG-R876): the collision rules never revise a word of Vietnamese prose.
         #expect(report.revisions == 0)
         let unexplained = differences.filter { !Self.isAttributableToAnEnglishRow($0, resources: resources) }
-        let unknown = unexplained.filter { !Self.knownEngineDifferences.contains(Self.key($0)) }
+        let unknown = unexplained.filter { !Self.decidedDifferences.contains(Self.key($0)) }
         #expect(unknown.isEmpty, "\(method) \(order) not attributable to an en row:\n\(RealData.listing(unknown))")
-        let known = unexplained.filter { Self.knownEngineDifferences.contains(Self.key($0)) }
-        if method == .telex {
-            withKnownIssue("ENG-R873: IX types ĩ (docs/decisions/0202)") {
-                #expect(known.isEmpty, "\(RealData.listing(known))")
-            }
-        } else {
-            #expect(known.isEmpty)
-        }
+        // Q26 (product owner, 13/11/2026): Telex `IX` gives `Ĩ`, kept by rule L7 because `ix` is not English.
+        let decided = unexplained.filter { Self.decidedDifferences.contains(Self.key($0)) }
+        let expected = method == .telex ? Self.romanNumeralNineCount : 0
+        #expect(decided.count == expected, "\(RealData.listing(decided))")
+        #expect(decided.allSatisfy { $0.word == "IX" && $0.committed == "Ĩ" && $0.decision == .kept(.notEnglish) })
     }
 
     @Test(

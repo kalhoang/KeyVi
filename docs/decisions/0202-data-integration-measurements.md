@@ -119,7 +119,7 @@ An independent review asked for these data changes, all made (tests first where 
 
 | Finding | Change |
 |---|---|
-| `ix` in tech-always made `ĩ` (ầm ĩ) un-typeable in Telex | `ix` removed from `tech-always.txt` and its row deleted; `ĩ` attested with a reason; `IX -> Ĩ` is a known issue of ENG-R873 (open issue 3) |
+| `ix` in tech-always made `ĩ` (ầm ĩ) un-typeable in Telex | `ix` removed from `tech-always.txt` and its row deleted; `ĩ` attested with a reason; `IX -> Ĩ` is a known issue of ENG-R873 (open issue 3, decided by the product owner in Q26 of 0005) |
 | `a3`, `a5` blocked VNI `ả`, `ạ` | removed from `tech-always.txt`, rows deleted (open issue 4) |
 | generated `en` rows were unreviewed live decisions with no check | own block, reason token, build check (section 2, item 5; open issue 5) |
 | tone-placement equivalence was direction-blind and only the traditional style ran | directional comparison against `SyllableOracle`, typists in both styles (section 4) |
@@ -147,15 +147,20 @@ An independent review asked for these data changes, all made (tests first where 
    when no Vietnamese token is among the previous three.
 3. **`IX` in Telex types `Ĩ`** (ENG-R873, 2 tokens per Telex typist: `Chương IX`). `ĩ` is the everyday
    syllable of `ầm ĩ`, so it is attested and `ix` is not a tech-always word: the default never damages
-   Vietnamese (ENG-R821), and no other key order types `ĩ`. Recorded as a known issue in
-   `ProseCorpusGateTests`. `XIX` stays tech-always (`xĩ` is not a word). Pa decides whether Roman numerals
-   should win (for example by a keep-as-typed entry).
+   Vietnamese (ENG-R821), and no other key order types `ĩ`. `XIX` stays tech-always (`xĩ` is not a word).
+   *Decided on 13/11/2026* by the product owner ([0005](0005-pa-decisions-2026-11-13.md), Q26): `ầm ĩ` wins,
+   Telex `IX` gives `Ĩ` and `XIX` stays. `ProseCorpusGateTests` pins the two `IX -> Ĩ` tokens of every Telex
+   typist as the decided outcome (it recorded them as a known issue until 18/11/2026), and
+   `ProductOwnerDecisionTests` pins `IX`, `ầm ĩ` and `XIX`. A user who wants the numeral types it through the
+   keep-as-typed list.
 4. **Paper sizes in VNI**: `a3` and `a5` are not tech-always words, so VNI `a3` types `ả` and `a5` types `ạ`
    (the particle, one of the most frequent tokens in chat); before the review L11 restored them everywhere.
-   `a4` stays (`ã` is not a word). `co2` is still `en / proposed` (tech-always), so a VNI user who types `cò`
-   as `co2` gets `co2`; `cò` is attested so that flipping the row to `vi` works. A VNI user who wants `A5`
-   types it through the keep-as-typed list; in Telex digits are boundaries and nothing changes. Pa decides
-   all three with the frequencies in mind.
+   `a4` stays (`ã` is not a word). A VNI user who wants `A5` types it through the keep-as-typed list; in Telex
+   digits are boundaries and nothing changes. *Decided on 13/11/2026* by the product owner
+   ([0005](0005-pa-decisions-2026-11-13.md), Q27): `a3` gives `ả`, `a5` gives `ạ`, `a4` stays, and `co2`
+   becomes Vietnamese: it was `en / proposed` (tech-always), so VNI `co2` gave `co2`; `co2` left the
+   tech-always list and its generated row was deleted, so it types `cò` (attested) in every context and
+   whoever needs CO2 types the escape `co22`. `ProductOwnerDecisionTests` pins all four.
 5. **ENG-R870 rests on 266 generated `en` rows.** The generated corpus passes at 100 % only because the
    unattested displays that rule L8 restores (0103 open issue) are excluded as `en` rows that no one decided.
    The rows restate L8; the build check (section 2, item 5) keeps them from outliving it, but the engine and

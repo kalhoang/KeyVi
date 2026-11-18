@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-// The data decisions of the product owner (13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, Q27 and
-// Q29) with the bundled data: VNI `co2` types `cò` in every context and CO2 needs the escape; `chơn` is
-// attested and Telex `chown` keeps it outside the code context; the paper sizes keep their readings.
+// The data decisions of the product owner (13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, Q26, Q27 and
+// Q29) with the bundled data: Telex `IX` types `Ĩ` while `XIX` stays; VNI `co2` types `cò` in every context and CO2
+// needs the escape; `chơn` is attested and Telex `chown` keeps it outside the code context; the paper sizes keep their
+// readings.
 
 import Testing
 import VietnameseEngine
@@ -23,6 +24,20 @@ struct ProductOwnerDecisionTests {
         let before = driver.field.string
         try driver.type(keys)
         return String(driver.field.string.dropFirst(before.count))
+    }
+
+    @Test("Q26: Telex IX types Ĩ (ầm ĩ wins) and the Roman numeral XIX stays as typed")
+    func romanNumeralNineIsVietnamese() throws {
+        let resources = try RealData.resources()
+        #expect(!resources.techAlways.contains("ix"))
+        #expect(resources.ambiguity["ix"] == nil)
+        #expect(resources.attestedSyllables.contains("ĩ"))
+        #expect(resources.techAlways.contains("xix"))
+        for seed in Self.telexSeeds {
+            #expect(try Self.committed("IX ", after: seed, EngineConfiguration()) == "Ĩ ", "\(seed)")
+            #expect(try Self.committed("aamf ix ", after: seed, EngineConfiguration()) == "ầm ĩ ", "\(seed)")
+            #expect(try Self.committed("XIX ", after: seed, EngineConfiguration()) == "XIX ", "\(seed)")
+        }
     }
 
     @Test("Q27: VNI co2 types cò in every context, and the escape keeps CO2")
