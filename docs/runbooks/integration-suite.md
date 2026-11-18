@@ -80,7 +80,8 @@ These steps change system settings, so they are Pa's to do on the runner machine
    grant of an ad-hoc build is tied to that build's cdhash); on a physical Mac it is done once by hand
    ([self-hosted-runner.md](self-hosted-runner.md) section 4).
 9. Start the test build once by hand and finish its onboarding, so it never shows onboarding during a run (the
-   harness keeps the onboarding state when it rewrites the settings).
+   harness keeps the onboarding state when it rewrites the settings). Turn its automatic update check and install
+   (D19, D20) off in its About pane during that start: the test build carries the production feed (section 10.10).
 10. Run the plan check on the runner: `compat-harness run --dry-run`. It must print every scenario, an `app:` line
     per scenario and end without errors.
 
@@ -229,7 +230,8 @@ It copies the committed checkout (`git archive HEAD`) into the clone and runs
    TestHost, `compat-harness`, the tart guest agent (which starts the harness) and `sshd-keygen-wrapper` (for runs
    started over SSH); each row carries the client's compiled code requirement, so the grant follows each new
    cdhash;
-6. marks onboarding as finished in the test build's settings file (section 2 step 9);
+6. marks onboarding as finished in the test build's settings file (section 2 step 9) and turns its automatic
+   update check and install off there (section 10.10);
 7. runs the plan check (`compat-harness run --dry-run`), then `COMPAT_HARNESS_LIVE=1 scripts/run-integration.sh
    tests`, and copies `.build/integration/tests`, the app's diagnostics log (event codes only, PLT-R901) and a
    screenshot of the end of the run back.
@@ -641,3 +643,35 @@ The runs of 19/11/2026 are in the table of section 10.9. Proof plan, with the VM
    (the address bars end without a selection, so the whole-value readback leaves them as they were);
 2. the full suite of section 10.9 step 1 covers the rest. Record every run in the table of section 10.9. A mismatch's
    evidence file now gives the selection and character count of the focused field.
+
+#### The test build updated itself in the middle of a run (2026-11-19)
+
+Run `20261118T221229Z-integration`: the `Integration` build (bundle ID `APP_BUNDLE_ID_DEV`, version 0.1.0, build 1)
+found 1.0.0 (build 1000099) on the production appcast at launch, installed it and relaunched as the release app
+(`APP_BUNDLE_ID`, 1.0.0), and every scenario after it failed with `no application with bundle id` of the test build.
+`Config/Integration.xcconfig` and `Config/Debug.xcconfig` include `Config/Sparkle.xcconfig`, whose feed is the
+production appcast, and `App/Info.plist` sets `SUEnableAutomaticChecks` and `SUAutomaticallyUpdate`; on factory
+defaults D19 and D20 are on. Since 1.0.0 was published on 18/11/2026 any run can hit it, racing the harness's
+relaunches.
+
+| Part | Change | Tests |
+|---|---|---|
+| Harness | Every settings file the harness writes (`AppSettingsDocuments.documents(for:onboarding:)`, factory configuration and every profile) sets `automaticallyCheckForUpdates` and `automaticallyInstallUpdates` to `false` (`AppSettingsDocuments.harnessDefaults`); a profile that sets either keeps its value | `AppSettingsDocumentsTests.everyDocumentTurnsTheAutomaticUpdateCheckAndInstallOffPltR1101`, `AppSettingsDocumentsTests.aProfileThatSetsAnUpdateSwitchKeepsItsValuePltR1101`, `RepositoryProfileTests.settingsStoreReadsTheUpdateSwitchesOffPltR1101` (read back by the real SettingsStore) |
+| VM guest | `scripts/vm/guest/integration-guest.sh` seeds `settings.json` with both switches off beside the onboarding state, for a launch before the harness's first apply, a run with `--no-configure` and the settings the harness restores after the run | `IntegrationGuestTests.test_the_seeded_settings_turn_the_automatic_update_check_and_install_off` |
+
+Why that is enough: the launch sequence loads the settings before it starts the updater
+(`Packages/AppCore/Sources/InputHost/Integration/LaunchSequence.swift` lines 97 and 108); `startUpdater` applies the
+stored D19 to D21 and only then starts Sparkle (`App/Sources/Composition/AppEnvironment.swift` lines 302 and 303);
+`UpdaterController.start()` pushes them into the driver (`App/Sources/Updater/UpdaterController.swift` line 92, the
+setters at lines 159 and 162) before `driver.start()` (line 94). Sparkle starts with automatic checks off, so it
+schedules no check. Forced checks keep working: the egress test's `checkForUpdates` hook (section 5) calls
+`UpdaterController.checkForUpdates()`, which calls Sparkle's user-initiated `checkForUpdates()` (lines 133 to 136);
+Sparkle runs it whatever D19 and D20 say, and shows its update window instead of installing silently. Safe mode
+(PLT-R1009) reads no files, so a test build that starts in safe mode still has both switches on; a guard in the
+product for development builds is not part of this change.
+
+Proof, with the VM rules of this section: the full suite (section 10.9 step 1) must keep the test build's bundle ID
+from the first scenario to the last: no `no application with bundle id` reason in `tests.log`; in
+`app-diagnostics.jsonl` no `update.checkStarted` record with `"manual":false` (an automatic check), no
+`update.updateFound` and no `update.installingNow`; and the test build in `~/Applications` still at version 0.1.0
+after the run.

@@ -5,9 +5,11 @@
   (platform baseline in `perf/`, M2 from the soak, integration hooks, app profiles, privacy canary, egress
   command); amended 2026-11-13 by W3-A (the app side of the hooks in the `Integration` configuration, the release
   check, `testHook` in the scenario schema, gate-aligned histogram sub-buckets, the `build` and `tests` subcommands);
-  where each gate runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
+  amended 2026-11-19 (the harness's settings turn the automatic update check and install off); where each gate
+  runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
 - Requirements: QA-R2, QA-R8, QA-R9, QA-R11, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG
-  section 13.6, PLT-R330, PLT-R398B, PLT-R730, PLT-R801, PLT-R820 to PLT-R822, PLT-R901, PLT-R906, PLT-R909
+  section 13.6, PLT-R330, PLT-R398B, PLT-R730, PLT-R801, PLT-R820 to PLT-R822, PLT-R901, PLT-R906, PLT-R909,
+  PLT-R1101
 
 The CI scripts call code that other tracks write. These are the names and formats the scripts expect.
 
@@ -192,6 +194,13 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
   `compat/scenarios/profiles/<id>.json` (schema `profile.schema.json` there): the `settings` object of
   settings.json verbatim, macros, user rule overrides (`bundleIds` may name `local.testhost`; `actionFromRule`
   copies a shipped rule's `action` for QA-R21 TestHost reproductions). The scenario schema is unchanged.
+- Amended 2026-11-19: every settings file the harness writes also sets `automaticallyCheckForUpdates` and
+  `automaticallyInstallUpdates` (D19, D20) to `false`, unless the profile sets them
+  (`AppSettingsDocuments.harnessDefaults`). The test build carries the production feed and an Info.plist with both
+  on; in the VM run `20261118T221229Z-integration` it found the published 1.0.0 at launch, installed it and
+  relaunched as the release app, so every later scenario failed. The app pushes the stored values to Sparkle before
+  Sparkle starts (PLT-R1101); the forced check of the egress test is user-initiated and still runs
+  ([integration-suite.md](../runbooks/integration-suite.md) section 10.10).
 - Before a scenario whose configuration differs from the previous one, the harness quits the test build (its quit
   flushes its settings), backs up its four settings files once per run, writes the new ones (owner-only, the
   original `onboarding` object kept), starts it and waits until its hooks report a state other than `starting`

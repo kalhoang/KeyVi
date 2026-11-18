@@ -23,7 +23,10 @@ back through a mirror. The live run on the self-hosted runner is described step 
 
 Every scenario runs on factory defaults, its `method` (Telex or VNI) and, when a profile in `profiles/` lists it,
 that profile: settings (the `settings` object of settings.json), macros and user rule overrides
-(`profiles/profile.schema.json`). Before a scenario whose configuration differs from the previous one, the harness
+(`profiles/profile.schema.json`). Every settings file the harness writes also turns the automatic update check and
+install off (`automaticallyCheckForUpdates` and `automaticallyInstallUpdates` false, PLT-R1101) unless the profile
+sets them: the test build carries the production feed and once updated itself to the published release in the
+middle of a run ([integration-suite.md](../../docs/runbooks/integration-suite.md) section 10.10). Before a scenario whose configuration differs from the previous one, the harness
 quits the test build, writes its four settings files (backed up once, restored after the run even when it stops on
 an error, onboarding state kept), starts it again and waits until it is ready. `--no-configure` turns this off.
 

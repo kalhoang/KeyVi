@@ -14548,8 +14548,9 @@ developer Mac and the mode hosted CI runs; the live commands also need `COMPAT_H
 W2-E2 additions (`Sources/TestSupport/Scenario/`, ADR 0502 "Integration hooks" and "Platform baseline"):
 
 - **App profiles and configuration** (`AppProfiles.swift`, `AppConfiguration.swift`, `AppConfigurator.swift`):
-  every scenario runs on factory defaults plus its `method` plus the profile in `compat/scenarios/profiles/` that
-  lists it; `SettingsFileAppConfigurator` writes the four settings files of the test build (backup once, restore
+  every scenario runs on factory defaults with the automatic update check and install off
+  (`AppSettingsDocuments.harnessDefaults`, D19 and D20, unless the profile sets them; PLT-R1101) plus its `method`
+  plus the profile in `compat/scenarios/profiles/` that lists it; `SettingsFileAppConfigurator` writes the four settings files of the test build (backup once, restore
   after the run) and restarts it through `AppUnderTestControl`.
 - **Integration hooks** (`AppHooks.swift`, `FileDropHookChannel.swift`, below): the harness side of the test
   build's hooks; `HookStateProbe` answers the `paused`, `holderBundleId` and `firstKeyAfterReleaseComposed`
