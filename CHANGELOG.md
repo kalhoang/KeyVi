@@ -10,6 +10,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.0.1-beta.1] - 2026-11-18
+
 ### Changed
 
 - When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example "duong", instead of turning back into the keys you typed.
