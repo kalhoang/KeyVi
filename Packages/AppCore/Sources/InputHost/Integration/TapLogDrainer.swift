@@ -2,8 +2,9 @@
 //
 // The consumer side of `TapLogRing` (PLT-R304 "fixed-size records into a lock-free ring", PLT-R903): on the
 // utility queue it turns the tap's records into health events and typed log events. Records carry the tap's
-// monotonic time; health events carry wall-clock dates, so each record is dated by its distance from "now" on
-// both clocks. Workstream W2-A (owner assigned by the integrator after wave 1).
+// monotonic time of the event; health events and log lines carry wall-clock dates, so each record is dated by its
+// distance from "now" on both clocks, not by the drain (records are often drained in one batch at terminate).
+// Workstream W2-A (owner assigned by the integrator after wave 1).
 
 public import AppModel
 public import Diagnostics
@@ -67,7 +68,7 @@ public final class TapLogDrainer: Sendable {
                 health.record(event)
                 result.healthEvents += 1
             } else if let (event, level) = Self.logEvent(for: record) {
-                logger.log(event, level: level)
+                logger.log(event, level: level, at: anchor.date(of: record.at))  // the event's time, not the drain's
             }
         }
         let dropped = ring.droppedCount
@@ -100,10 +101,12 @@ public final class TapLogDrainer: Sendable {
     static func logEvent(for record: TapLogRecord) -> (LogEvent, LogLevel)? {
         switch record.code {
         case .lateFocusKept, .lateFocusRefused:
-            // PLT-R340: `a` and `b` are microseconds; `b` is `UInt64.max` when the word's first key is unknown.
+            // PLT-R340: `a` and `b` are microseconds; `b` is `UInt64.max` when the word's first key is unknown;
+            // `detail` is the `LateFocusReason` (amendment of 19/11/2026), left out when unknown.
             let change = LogEvent.FocusEvent.lateFocusChange(
                 kept: record.code == .lateFocusKept, sinceLastKeyMicroseconds: record.a,
-                sinceWordStartMicroseconds: record.b == .max ? nil : record.b)
+                sinceWordStartMicroseconds: record.b == .max ? nil : record.b,
+                reason: LateFocusReason(rawValue: record.detail))
             return (.focus(change), .info)
         default:
             guard let (message, level) = logLine(for: record.code) else { return nil }

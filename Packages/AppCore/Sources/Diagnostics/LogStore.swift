@@ -85,7 +85,11 @@ public final class DiagnosticsLogger: DiagnosticsLogging {
     /// Never blocks: the timestamp is taken here, rendering and writing happen on the logger's serial
     /// utility queue. Not called on the tap thread (PLT-R304); the tap writes `TapLogRecord`s instead.
     public func log(_ event: LogEvent, level: LogLevel) {
-        let at = clock.now()
+        log(event, level: level, at: clock.now())
+    }
+
+    /// PLT-R903: dated by the event, for records reported after the fact (the tap thread's, drained in batches).
+    public func log(_ event: LogEvent, level: LogLevel, at: Date) {
         queue.async { [files, mirror] in
             let record = LogRecord(event: event, level: level, at: at)
             mirror.write(record)

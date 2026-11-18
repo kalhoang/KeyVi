@@ -29,13 +29,19 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {
     public var code: TapLogCode
+    /// A code-specific enumerated value (`LateFocusReason` for the late focus codes); 0 when the code has none.
+    /// Declared after `code` so the record keeps its size (it fills the padding before `at`).
+    public var detail: UInt16
+    /// When the event happened on the tap thread (the tap's monotonic clock); the drainer converts it to wall time,
+    /// so a record drained later (in one batch at terminate) is still dated by its event (PLT-R903).
     public var at: MonotonicInstant
     /// Code-specific integers (keycode, counts, durations). Never characters.
     public var a: UInt64
     public var b: UInt64
 
-    public init(code: TapLogCode, at: MonotonicInstant, a: UInt64 = 0, b: UInt64 = 0) {
+    public init(code: TapLogCode, at: MonotonicInstant, a: UInt64 = 0, b: UInt64 = 0, detail: UInt16 = 0) {
         self.code = code
+        self.detail = detail
         self.at = at
         self.a = a
         self.b = b

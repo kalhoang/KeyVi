@@ -107,6 +107,24 @@ enum LogEventCatalog {
             event: .focus(.lateFocusChange(kept: false, sinceLastKeyMicroseconds: 7, sinceWordStartMicroseconds: nil)),
             level: .info, at: .distantPast)
         #expect(unknownStart.fields == ["sinceLastKeyUs": .number(7)])
+        // PLT-R340 amendment of 19/11/2026: the check that decided, as a fixed code.
+        let refused = LogRecord(
+            event: .focus(
+                .lateFocusChange(
+                    kept: false, sinceLastKeyMicroseconds: 300_000, sinceWordStartMicroseconds: 660_000,
+                    reason: .firstKeyWindow)),
+            level: .info, at: .distantPast)
+        #expect(
+            refused.fields == [
+                "sinceLastKeyUs": .number(300_000), "sinceWordStartUs": .number(660_000),
+                "reason": .string("firstKeyWindow"),
+            ])
+        #expect(
+            LateFocusReason.allCases.map(\.logCode) == [
+                "window", "trigger", "unreadable", "sameElement", "otherProcess", "noElement", "axUnavailable",
+                "paused", "variant", "lastKeyWindow", "firstKeyWindow",
+            ])
+        #expect(LateFocusReason.allCases.filter(\.keeps) == [.window, .trigger, .unreadable, .sameElement])
         let attempt = LogRecord(
             event: .focus(.observerAttempt(pid: 4_242, attempt: 9, result: .installedBestEffort)), level: .info,
             at: .distantPast)

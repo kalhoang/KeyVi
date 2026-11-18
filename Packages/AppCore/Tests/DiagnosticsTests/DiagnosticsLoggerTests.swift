@@ -131,6 +131,28 @@ private struct LoggerFixture {
         #expect(String(decoding: data ?? Data(), as: UTF8.self).split(separator: "\n").count == 1)
     }
 
+    /// Records the tap thread wrote are drained later (often in one batch at terminate): the line carries the time
+    /// the event happened, given by the caller, not the time it was handed to the logger (PLT-R903, PLT-R304).
+    @Test func aLineIsDatedByTheEventTimeItIsGivenPLTR903() throws {
+        let fixture = LoggerFixture()
+        let happened = DiagnosticsFixtures.generatedAt.addingTimeInterval(-42)  // whole seconds: ISO 8601 lines
+        fixture.logger.log(.focus(.lateFocusCheckFailed), level: .info, at: happened)
+        fixture.logger.log(.note("ready", category: .lifecycle), level: .info)
+        fixture.logger.flush()
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let records = try fixture.lines().map { try decoder.decode(LogRecord.self, from: Data($0.utf8)) }
+        #expect(records.map(\.at) == [happened, DiagnosticsFixtures.generatedAt])
+    }
+
+    /// A logger that keeps no time of its own takes the dated call like any other.
+    @Test func aLoggerWithoutTimesForwardsTheDatedCall() {
+        let recorder = RecordingLogger()
+        let logger: any DiagnosticsLogging = recorder
+        logger.log(.focus(.lateFocusCheckFailed), level: .info, at: .distantPast)
+        #expect(recorder.entries.count == 1)
+    }
+
     @Test func healthEventLogMirrorsIntoTheLogger() {
         let fixture = LoggerFixture()
         let health = HealthEventLog(capacity: 4, mirror: fixture.logger)
