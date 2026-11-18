@@ -189,7 +189,7 @@ export const download = {
   brewUpgrade: "Upgrade and uninstall:",
   archiveHeading: "Older versions",
   archiveBody: "Every published DMG is kept so you can reinstall it when needed. Your settings stay readable when you go back by one minor version.",
-  archiveEmpty: "No versions yet.",
+  archiveEmpty: "No older versions yet.",
   appcastNote: "The Sparkle update feed lives permanently at {{appcastUrl}}; betas are items tagged with the <code>beta</code> channel in that same feed.",
 };
 

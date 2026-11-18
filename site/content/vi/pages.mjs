@@ -199,7 +199,7 @@ export const download = {
   brewUpgrade: "Cập nhật và gỡ cài đặt:",
   archiveHeading: "Các phiên bản cũ",
   archiveBody: "Mọi bản DMG đã phát hành đều được giữ lại để bạn cài lại khi cần. Cài đặt của bạn vẫn đọc được khi lùi một phiên bản nhỏ.",
-  archiveEmpty: "Chưa có phiên bản nào.",
+  archiveEmpty: "Chưa có phiên bản cũ nào.",
   appcastNote: "Nguồn cập nhật cho Sparkle nằm cố định tại {{appcastUrl}}; bản beta là các mục gắn kênh <code>beta</code> trong cùng nguồn đó.",
 };
 

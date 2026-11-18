@@ -102,6 +102,9 @@ export async function runReleaseChecks(check, fixtures) {
         assert.ok(download.includes(fact), `${lang} download page: ${fact}`);
       }
       assert.ok(!download.includes('<div class="callout">'), `${lang}: no no-release callout`);
+      // The only release is shown above, so the archive has no older version (not "no version at all").
+      const archiveEmpty = { vi: "Chưa có phiên bản cũ nào.", en: "No older versions yet." }[lang];
+      assert.ok(download.includes(`<p class="muted">${archiveEmpty}</p>`), `${lang}: the empty archive names older versions`);
     }
   });
 }
