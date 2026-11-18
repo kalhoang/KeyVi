@@ -99,9 +99,9 @@ enum AX {
         _ = AXUIElementSetAttributeValue(axWindow, kAXMainAttribute as CFString, kCFBooleanTrue)
     }
 
-    /// Frontmost app and the system-wide focused element (role, subrole, identifier, its window's identifier), never
-    /// a value and never a window title: titles are content (ARCHITECTURE.md, PLT-R901), and the report is written
-    /// to the evidence directory whichever app the scenario targets.
+    /// Frontmost app and the system-wide focused element (role, subrole, identifier, its window's identifier, its
+    /// selection and character count), never a value and never a window title: titles are content (ARCHITECTURE.md,
+    /// PLT-R901), and the report is written to the evidence directory whichever app the scenario targets.
     static func focusReport() -> [String] {
         let systemWide = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(systemWide, timeout)
@@ -131,7 +131,8 @@ enum AX {
         var settable: DarwinBoolean = false
         AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
         lines.append("focused value settable: " + String(settable.boolValue))
-        return lines
+        let characters = attribute(element, kAXNumberOfCharactersAttribute) as? Int
+        return lines + AXReadbackText.focusReportLines(selection: selection(of: element), characters: characters)
     }
 
     /// Whether the app's focused element takes text (its value is settable): a web mirror hands focus to the page
