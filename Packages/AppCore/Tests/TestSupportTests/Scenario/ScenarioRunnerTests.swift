@@ -87,6 +87,24 @@ import Testing
         #expect(!ScenarioRunner.isFocusShortcut("1") && !ScenarioRunner.isFocusShortcut("command"))
     }
 
+    /// A scenario may declare further chords the runner waits on (`focusShortcuts`, PLT-R530): Command+K opens
+    /// TestHost's search panel, and `v` followed it 80 to 150 ms later, racing the panel's focus (integration-suite.md
+    /// sections 10.9 and 10.10). A declared chord waits like Command plus a digit; an undeclared one types at once.
+    @Test func aDeclaredFocusShortcutWaitsLikeCommandDigitPltR530() async {
+        let driver = FakeDriver()
+        let setup = FakeSetup()
+        let clock = ManualClock()
+        var scenario = makeScenario(keys: ["command+k", "v", "escape", "command+k", "i", "command+s", "e"])
+        scenario.focusShortcuts = ["command+k"]
+        let result = await runner(driver: driver, setup: setup, clock: clock).run(scenario)
+        #expect(driver.typed.all == [["command+k"], ["v", "escape"], ["command+k"], ["i", "command+s", "e"]])
+        #expect(setup.focusWaits.all == [3, 3])
+        #expect(result.durationSeconds == 2 * Double(ScenarioRunner.shortcutSettleNanoseconds) / 1_000_000_000)
+        let undeclared = FakeDriver()
+        _ = await runner(driver: undeclared).run(makeScenario(keys: ["command+k", "v", "i"]))
+        #expect(undeclared.typed.all == [["command+k", "v", "i"]])
+    }
+
     /// The reason names what differed, with the observed state next to the expected one, never the typed text.
     @Test func aFailureNamesTheMismatchedExpectations() {
         let expect = Scenario.Expectation(

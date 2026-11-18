@@ -95,11 +95,16 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var readback: Readback
     public var readbackOptions: ReadbackOptions?
     public var repetition: Repetition?
+    /// Chords of `keys` the runner waits after, like Command plus a digit (PLT-R530): it types the chord on its own,
+    /// waits until the app under test published a new focus snapshot, then `shortcutSettleNanoseconds`. For a
+    /// shortcut that opens a panel or moves focus where the scenario proves what happens after the opening, not the
+    /// race with it (`testhost.panel.inlineCompletionTwice`, integration-suite.md section 10.10).
+    public var focusShortcuts: [String]?
 
     public init(
         id: String, targetBundleId: BundleKey, setup: [SetupStep], keys: [String], timing: TimingProfile,
         method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback,
-        readbackOptions: ReadbackOptions? = nil, repetition: Repetition? = nil
+        readbackOptions: ReadbackOptions? = nil, repetition: Repetition? = nil, focusShortcuts: [String]? = nil
     ) {
         self.id = id
         self.targetBundleId = targetBundleId
@@ -112,10 +117,11 @@ public struct Scenario: Sendable, Hashable, Codable {
         self.readback = readback
         self.readbackOptions = readbackOptions
         self.repetition = repetition
+        self.focusShortcuts = focusShortcuts
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback, readbackOptions
+        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback, readbackOptions, focusShortcuts
         case repetition = "repeat"
     }
 }

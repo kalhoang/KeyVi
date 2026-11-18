@@ -675,3 +675,21 @@ from the first scenario to the last: no `no application with bundle id` reason i
 `app-diagnostics.jsonl` no `update.checkStarted` record with `"manual":false` (an automatic check), no
 `update.updateFound` and no `update.installingNow`; and the test build in `~/Applications` still at version 0.1.0
 after the run.
+
+#### The search panel scenario waits for each opening (2026-11-19)
+
+`testhost.panel.inlineCompletionTwice` typed `v` 80 to 150 ms after Command+K, because the runner waited only after
+Command plus a digit, and the panel's field was sometimes published after `v` (the intermittent row of section
+10.9). As section 10.6 says, the scenario proves the overlay rule and the inline completion handling on both
+openings, not the trigger race; the race itself stays a product limitation, recorded with that row's fix (an edit
+already applied with the previous snapshot's plan cannot be repaired).
+
+| Part | Change | Tests |
+|---|---|---|
+| Scenario schema and runner | A scenario may list chords of its `keys` in `focusShortcuts` (`compat/schema/scenario.schema.json`, `Scenario.focusShortcuts`); the runner treats each like Command plus a digit: typed on its own, then a wait for the app's next focus snapshot and 300 ms. `ScenarioValidator` accepts only chords that `keys` types, each once; the dry-run plan prints a `focus shortcuts:` line for such a scenario | `ScenarioRunnerTests.aDeclaredFocusShortcutWaitsLikeCommandDigitPltR530`, `ScenarioLoadingTests.decodesFocusShortcuts`, `ScenarioLoadingTests.focusShortcutsMustBeChordsOfTheKeyScript`, `HarnessDryRunTests.dryRunShowsDeclaredFocusShortcuts`, `ScenarioFilesTests.validatorKeysAreTheSchemaProperties` |
+| Scenarios | `testhost.panel.inlineCompletionTwice` declares `command+k`, so both openings wait; `testhost.sheet.commandS` declares nothing and keeps typing right after Command+S (T5.5: the product must handle it, PLT-R340 late focus change); `testhost.panel.toneUndo` is unchanged | `ScenarioFilesTests.onlyThePanelReopeningWaitsForItsFocusShortcutT55` |
+
+Proof, with the VM rules of this section: five times `scripts/vm/integration-dev.sh --only
+testhost.panel.inlineCompletionTwice,testhost.sheet.commandS`: both pass every time, `dry-run.log` shows `focus
+shortcuts: command+k` under the panel scenario only; with `--probe`, each focus notification of the panel's field in
+`probe.log` comes at least 300 ms before the first change of that field.

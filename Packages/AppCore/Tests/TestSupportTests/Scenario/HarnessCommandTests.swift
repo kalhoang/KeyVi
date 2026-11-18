@@ -114,6 +114,20 @@ private let rulesJSON = """
         #expect(live.sink.records.isEmpty)
     }
 
+    /// PLT-R530: the plan names the chords a scenario declares as focus shortcuts, and only for that scenario.
+    @Test func dryRunShowsDeclaredFocusShortcuts() async throws {
+        let fileSystem = try makeCheckout(scenarios: [
+            "a.json": scenarioJSON(
+                id: "a", keys: #"["command+k","d","d","i"]"#, extra: #","focusShortcuts":["command+k"]"#),
+            "b.json": scenarioJSON(id: "b"),
+        ])
+        let (harness, console) = try harness(["run", "--dry-run"], fileSystem: fileSystem)
+        #expect(await harness.execute() == .success)
+        let text = console.output.joined(separator: "\n")
+        #expect(text.contains("\n    focus shortcuts: command+k (waits for the app's focus snapshot, then 300 ms)\n"))
+        #expect(text.components(separatedBy: "focus shortcuts:").count == 2)
+    }
+
     @Test func dryRunFailsOnInvalidScenariosAndUnknownOnlyIDs() async throws {
         let broken = try makeCheckout(scenarios: ["a.json": scenarioJSON(id: "b")])
         let (first, console) = try harness(["run", "--dry-run"], fileSystem: broken)

@@ -87,7 +87,7 @@ public struct ScenarioLoader: Sendable {
 public enum ScenarioValidator {
     public static let topLevelKeys: Set<String> = [
         "$schema", "id", "targetBundleId", "setup", "keys", "timing", "method", "layout", "expect", "readback",
-        "readbackOptions", "repeat",
+        "readbackOptions", "repeat", "focusShortcuts",
     ]
     public static let setupKeys: Set<String> = ["action", "value"]
     public static let expectKeys: Set<String> = [
@@ -119,6 +119,7 @@ public enum ScenarioValidator {
             problems.append("expect needs at least one expectation")
         }
         if let repetition = scenario.repetition { problems += repetitionProblems(repetition, in: scenario) }
+        if let shortcuts = scenario.focusShortcuts { problems += focusShortcutProblems(shortcuts, keys: scenario.keys) }
         for (index, step) in scenario.setup.enumerated() {
             if let problem = problem(in: step, keyCount: scenario.keys.count) {
                 problems.append("setup[\(index)] " + problem)
@@ -169,6 +170,26 @@ public enum ScenarioValidator {
             _ = try ScenarioKeys.strokes(repetition.prefix)
         } catch {
             problems.append(keyProblem(error, field: "repeat.prefix"))
+        }
+        return problems
+    }
+
+    /// PLT-R530: every declared focus shortcut is a chord the key script types, listed once. A name that is no chord
+    /// would make a plain key wait; one that is not in `keys` would never wait.
+    static func focusShortcutProblems(_ shortcuts: [String], keys: [String]) -> [String] {
+        guard !shortcuts.isEmpty else { return ["focusShortcuts must not be empty"] }
+        var problems: [String] = []
+        for (index, shortcut) in shortcuts.enumerated() {
+            let entry = "focusShortcuts[\(index)] '" + shortcut + "' "
+            if ScenarioKeys.stroke(shortcut) == nil {
+                problems.append(entry + "is not a physical key name")
+            } else if !shortcut.contains("+") {
+                problems.append(entry + "is not a chord")
+            } else if !keys.contains(shortcut) {
+                problems.append(entry + "is not in keys")
+            } else if shortcuts[..<index].contains(shortcut) {
+                problems.append(entry + "is listed twice")
+            }
         }
         return problems
     }

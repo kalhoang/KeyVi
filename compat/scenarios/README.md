@@ -65,6 +65,13 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
   `launcher.spotlight*` scenarios and the three browser address bars set it, because they expect the typed text.
   TestHost scenarios never set it (`ScenarioFilesTests`): TestHost completes deterministically, and its completion is
   part of the expected text (QA-R21), so `testhost.sheetCell.columnAutocomplete` expects `Đức` with `ức` selected.
+- `focusShortcuts` lists chords of `keys` the runner waits after, as it always does after Command plus a digit: it
+  types the chord on its own, waits until the app under test published a new focus snapshot (the T6 count of its
+  integration hooks), then 300 ms, before the next key. Every entry must be a chord that `keys` types. Only
+  `testhost.panel.inlineCompletionTwice` declares one (`command+k`, both openings of the search panel): it proves the
+  overlay rule and the inline completion, not the race with the panel's opening, which is the product's to handle
+  (integration-suite.md section 10.10). Any other chord types at once: `testhost.sheet.commandS` types right after
+  Command+S because T5.5 asks the product to handle that (`ScenarioFilesTests` pins both).
 - `readback: "human"` scenarios type the keys and then ask the tester to confirm the field. Their `wait` step
   is the time the tester gets to prepare the app (open a sheet, select a shape, connect a remote session). In
   unattended runs they report `needsHuman`, not a failure. They need a `compat/matrix.json` row (PLT-R531).

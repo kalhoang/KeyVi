@@ -64,6 +64,10 @@ enum HarnessPlans {
         let setup = scenario.setup.map { step in
             step.action.rawValue + (step.value.map { " " + targets.expand($0) } ?? "")
         }
+        // PLT-R530: the chords the runner waits after besides Command plus a digit.
+        let shortcuts = scenario.focusShortcuts.map { chords in
+            ["    focus shortcuts: " + chords.joined(separator: ", ") + focusWait]
+        }
         return [
             "- " + scenario.id,
             "    target " + target + ", method " + scenario.method.rawValue + ", layout "
@@ -73,9 +77,12 @@ enum HarnessPlans {
                     ? " (a selected completion at the end left out)" : ""),
             "    setup: " + (setup.isEmpty ? "none" : setup.joined(separator: "; ")),
             "    keys: \(scenario.keys.count) keystroke(s), \(events) event(s), " + seconds(duration),
-            "    expect: " + expectation(scenario.expect),
-        ]
+        ] + (shortcuts ?? []) + ["    expect: " + expectation(scenario.expect)]
     }
+
+    /// How the runner treats a focus shortcut (`ScenarioRunner.type`), for the plan.
+    static let focusWait =
+        " (waits for the app's focus snapshot, then \(ScenarioRunner.shortcutSettleNanoseconds / 1_000_000) ms)"
 
     static func describe(
         _ repetition: Scenario.Repetition, keystrokes: Int, duration: ClosedRange<UInt64>, of scenario: Scenario
