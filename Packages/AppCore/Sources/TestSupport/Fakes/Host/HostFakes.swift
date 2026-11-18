@@ -94,6 +94,11 @@ public final class FakeAXProvider: AXProvider, Sendable {
         _ = state.withLock { $0.refusedNotifications[pid, default: []].insert(kind) }
     }
 
+    /// `pid` accepts `kind` again (an app that has finished launching).
+    public func acceptNotification(pid: Int32, _ kind: AXNotificationKind) {
+        _ = state.withLock { $0.refusedNotifications[pid]?.remove(kind) }
+    }
+
     /// Observer requests for `pid` so far, refused ones included.
     public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
 
@@ -151,7 +156,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
-        let id = state.withLock { state -> UInt64? in
+        let registration = state.withLock { state -> (id: UInt64, accepted: Set<AXNotificationKind>)? in
             state.observeAttempts[pid, default: 0] += 1
             if let refused = state.refusedObservers[pid], refused > 0 {
                 state.refusedObservers[pid] = refused - 1
@@ -164,10 +169,12 @@ public final class FakeAXProvider: AXProvider, Sendable {
             defer { state.nextObserverID += 1 }
             state.observers.append(
                 Observer(id: state.nextObserverID, pid: pid, notifications: accepted, handler: handler))
-            return state.nextObserverID
+            return (state.nextObserverID, accepted)
         }
-        guard let id else { return nil }
-        return FakeAXObservation { [weak self] in self?.removeObserver(id) }
+        guard let registration else { return nil }
+        return FakeAXObservation(notifications: registration.accepted) { [weak self] in
+            self?.removeObserver(registration.id)
+        }
     }
 
     public func enableManualAccessibility(pid: Int32) -> Bool {
@@ -206,7 +213,10 @@ public final class FakeAXObservation: AXObservation, Sendable {
     private let onInvalidate: @Sendable () -> Void
     private let invalidated = Atomic<Bool>(false)
 
-    init(onInvalidate: @escaping @Sendable () -> Void) {
+    public let notifications: Set<AXNotificationKind>
+
+    init(notifications: Set<AXNotificationKind>, onInvalidate: @escaping @Sendable () -> Void) {
+        self.notifications = notifications
         var context = CFRunLoopSourceContext()
         context.info = Unmanaged.passUnretained(identity).toOpaque()
         source = Source(source: CFRunLoopSourceCreate(nil, 0, &context))

@@ -49,6 +49,17 @@ enum LogEventCatalog {
             (.update(.installScheduledOnQuit), "update.installScheduledOnQuit"),
             (.update(.installingNow), "update.installingNow"),
             (.update(.failed(code: -1)), "update.failed"),
+            (
+                .focus(
+                    .lateFocusChange(kept: true, sinceLastKeyMicroseconds: 80_000, sinceWordStartMicroseconds: 90_000)),
+                "focus.lateFocusKept"
+            ),
+            (
+                .focus(.lateFocusChange(kept: false, sinceLastKeyMicroseconds: 1, sinceWordStartMicroseconds: nil)),
+                "focus.lateFocusRefused"
+            ),
+            (.focus(.lateFocusCheckFailed), "focus.lateFocusCheckFailed"),
+            (.focus(.observerAttempt(pid: 42, attempt: 3, result: .refused)), "focus.observerAttempt"),
             (.note("tap re-created", category: .tap), "note"),
             (
                 .redacted("unexpected role", Redacted.hashed(metadataText, salt: salt), category: .focus),
@@ -81,6 +92,31 @@ enum LogEventCatalog {
         let loaded = LogRecord(
             event: .settings(.loaded(schemaVersion: 2, migratedFrom: 1)), level: .info, at: .distantPast)
         #expect(loaded.fields["migratedFrom"]?.intValue == 1)
+    }
+
+    /// PLT-R340, PLT-R380, PLT-R901: the focus records carry integers and codes only, so a VM run's diagnostics
+    /// show why a word was kept or ended and how an app's observer was installed without any typed content.
+    @Test func focusRecordsCarryIntegersAndCodesOnly() {
+        let kept = LogRecord(
+            event: .focus(
+                .lateFocusChange(kept: true, sinceLastKeyMicroseconds: 120_500, sinceWordStartMicroseconds: 480_250)),
+            level: .info, at: .distantPast)
+        #expect(kept.category == .focus)
+        #expect(kept.fields == ["sinceLastKeyUs": .number(120_500), "sinceWordStartUs": .number(480_250)])
+        let unknownStart = LogRecord(
+            event: .focus(.lateFocusChange(kept: false, sinceLastKeyMicroseconds: 7, sinceWordStartMicroseconds: nil)),
+            level: .info, at: .distantPast)
+        #expect(unknownStart.fields == ["sinceLastKeyUs": .number(7)])
+        let attempt = LogRecord(
+            event: .focus(.observerAttempt(pid: 4_242, attempt: 9, result: .installedBestEffort)), level: .info,
+            at: .distantPast)
+        #expect(attempt.category == .focus)
+        #expect(
+            attempt.fields == [
+                "pid": .number(4_242), "attempt": .number(9), "result": .string("installedBestEffort"),
+            ])
+        let failed = LogRecord(event: .focus(.lateFocusCheckFailed), level: .info, at: .distantPast)
+        #expect(failed.category == .focus && failed.fields.isEmpty)
     }
 
     @Test func launchKeepsBundleMetadataButNotTheDisplayName() {

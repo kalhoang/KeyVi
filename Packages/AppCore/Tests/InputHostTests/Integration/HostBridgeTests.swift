@@ -213,10 +213,35 @@ struct TapLogDrainerTests {
     }
 
     @Test(arguments: TapLogCode.allKnown)
-    func everyCodeIsEitherAHealthEventOrALogLine(code: TapLogCode) {
+    func everyCodeIsEitherAHealthEventOrALogEvent(code: TapLogCode) {
         let anchor = MonotonicToWallClock(monotonicNow: .zero, wallNow: Date(timeIntervalSince1970: 0))
-        let health = TapLogDrainer.healthEvent(for: TapLogRecord(code: code, at: .zero), anchor: anchor)
-        #expect((health != nil) != (TapLogDrainer.logLine(for: code) != nil))
+        let record = TapLogRecord(code: code, at: .zero)
+        let health = TapLogDrainer.healthEvent(for: record, anchor: anchor)
+        #expect((health != nil) != (TapLogDrainer.logEvent(for: record) != nil))
+    }
+
+    /// PLT-R340, PLT-R901: the late focus records become focus log events with the two intervals in microseconds
+    /// and nothing else, so a VM run shows how close each kept or ended word was to the 500 ms window.
+    @Test func lateFocusRecordsBecomeFocusEventsWithTheirIntervalsPLTR340() throws {
+        let ring = TapLogRing()
+        let logger = RecordingLogger()
+        let drainer = TapLogDrainer(
+            ring: ring, health: HealthEventLog(), logger: logger, clock: ManualClock(), wallClock: FixedWallClock())
+        ring.push(TapLogRecord(code: .lateFocusKept, at: .zero, a: 120_500, b: 480_250))
+        ring.push(TapLogRecord(code: .lateFocusRefused, at: .zero, a: 300_000, b: .max))
+        #expect(drainer.drain().healthEvents == 0)
+        let events = logger.entries.map(\.event)
+        guard events.count == 2, case .focus(let kept) = events[0], case .focus(let refused) = events[1] else {
+            Issue.record("expected two focus events, got \(events)")
+            return
+        }
+        #expect(
+            kept == .lateFocusChange(kept: true, sinceLastKeyMicroseconds: 120_500, sinceWordStartMicroseconds: 480_250)
+        )
+        #expect(
+            refused == .lateFocusChange(kept: false, sinceLastKeyMicroseconds: 300_000, sinceWordStartMicroseconds: nil)
+        )
+        #expect(logger.entries.allSatisfy { $0.level == .info })
     }
 
     /// PLT-R397A: an unseen keyUp follows nearly every password typed in a secure field (the Return's keyUp arrives
@@ -236,6 +261,7 @@ struct TapLogDrainerTests {
 extension TapLogCode {
     static let allKnown: [TapLogCode] = [
         .tapDisabledByTimeout, .tapDisabledByUserInput, .tapReenabled, .jobQueueFull, .flushRequested, .echoMissing,
-        .secureInputResumedByKey, .layoutMismatch, .unknownEventType, .callbackOverBudget,
+        .secureInputResumedByKey, .layoutMismatch, .unknownEventType, .callbackOverBudget, .unseenKeyUp,
+        .lateFocusKept, .lateFocusRefused,
     ]
 }

@@ -37,6 +37,13 @@ public struct ScriptedEngine: CompositionEngine {
     }
 
     public var activeDisplay: String { composer.display }
+
+    /// The same composition with another `lookaheadRevision` (ENG-R1211 amendment of 19/11/2026).
+    func continuing(revisions: Bool) -> ScriptedEngine {
+        var engine = self
+        engine.composer.revisions = revisions
+        return engine
+    }
 }
 
 /// Uses the reference recogniser so the suites run before W1-E's `HotkeyRecognizer` lands; switch `Hotkeys`
@@ -51,6 +58,13 @@ public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
         log?.made(variant)
         return ScriptedEngine(log: log, revisions: variant.lookaheadRevision)
+    }
+
+    public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: ScriptedEngine)
+        -> ScriptedEngine
+    {
+        log?.continued(variant)
+        return engine.continuing(revisions: variant.lookaheadRevision)
     }
 }
 
@@ -71,6 +85,7 @@ public struct ScriptedFieldModel: Sendable {
         for entry in entries {
             switch entry {
             case .made(let variant): composer = ScriptedComposer(revisions: variant.lookaheadRevision)
+            case .continued(let variant): composer.revisions = variant.lookaheadRevision
             case .event(let event):
                 let output = composer.handle(event)
                 if output.revision != nil { revisions += 1 }

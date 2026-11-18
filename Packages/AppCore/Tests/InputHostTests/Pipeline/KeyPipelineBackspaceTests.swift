@@ -170,6 +170,9 @@ private struct OverDeletingFactory: CompositionEngineFactory {
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> OverDeletingEngine {
         OverDeletingEngine(log: log)
     }
+    func makeEngine(
+        for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: OverDeletingEngine
+    ) -> OverDeletingEngine { engine }
 }
 
 @Suite struct KeyPipelineBackspaceGuardTests {

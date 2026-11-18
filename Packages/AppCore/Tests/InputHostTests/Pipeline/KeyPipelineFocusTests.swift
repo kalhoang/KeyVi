@@ -6,6 +6,7 @@
 // sheet gave "ddường"). Driven with the pipeline doubles (PipelineFixture, ScriptedEngine).
 
 import AppModel
+import Diagnostics
 import Injection
 import RealtimeSupport
 import TestSupport
@@ -170,6 +171,52 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(fixture.popJobs().compactMap(\.edit).first?.verifyLateFocus == false)  // only the first job checks
     }
 
+    /// The late focus records of the tap log, for the diagnostics (PLT-R340, PLT-R901: integers only).
+    private func lateFocusRecords(_ fixture: PipelineFixture) -> [TapLogRecord] {
+        var records: [TapLogRecord] = []
+        fixture.tapLog.drain { if $0.code == .lateFocusKept || $0.code == .lateFocusRefused { records.append($0) } }
+        return records
+    }
+
+    /// A kept change leaves one record with the microseconds from the word's last and first key to `changedAt`.
+    @Test func aKeptChangeIsRecordedWithItsIntervalsPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        fixture.clock.advance(byMicroseconds: 40_000)
+        fixture.press(Key.a)  // "â": the word's last key, 40 ms after its first
+        publishNewElement(fixture)
+        fixture.press(Key.s)
+        let records = lateFocusRecords(fixture)
+        #expect(records.map(\.code) == [.lateFocusKept])
+        #expect(records.first?.a == 50_000 && records.first?.b == 90_000)
+    }
+
+    /// A change refused by the window leaves a record too, so a VM run shows how far outside the window it was;
+    /// other boundaries (another process, no active word) leave none.
+    @Test func aChangeOutsideTheWindowIsRecordedAndOtherBoundariesAreNotPLTR340() {
+        let fixture = PipelineFixture()
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        publishNewElement(fixture, after: 180_000)
+        fixture.press(Key.a)
+        let records = lateFocusRecords(fixture)
+        #expect(records.map(\.code) == [.lateFocusRefused])
+        #expect(records.first?.a == 300_000 && records.first?.b == 660_000)
+
+        let other = PipelineFixture()
+        other.press(Key.a)
+        publishNewElement(other, pid: 300)
+        other.press(Key.a)
+        let committed = PipelineFixture()
+        committed.typeKeys([Key.a, Key.space])
+        publishNewElement(committed)
+        committed.press(Key.a)
+        #expect(lateFocusRecords(other).isEmpty && lateFocusRecords(committed).isEmpty)
+    }
+
     /// The key that discovers the change may produce no edit: a job without an edit carries the check and the key
     /// is held behind it, so a field that does not match resets the composition at once.
     @Test func aKeyWithoutAnEditCarriesTheCheckPLTR340() throws {
@@ -305,6 +352,25 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
     }
 
+    /// The first-key window needs a previous element: after the frontmost fallback (no element) nothing changed
+    /// under the word when AX starts naming the field, so a word begun more than 500 ms earlier is still kept and
+    /// checked, like after a timed-out read (PLT-R340 amendment of 19/11/2026, PLT-R381 last sentence).
+    @Test func theFrontmostFallbackKeepsAnOlderWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishFrontmostSnapshot(fixture)
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, generation: 3, after: 180_000)  // 300 ms after "s", 660 ms after "d"
+        #expect(fixture.keyDown(Key.a) == .swallow)  // held behind the check
+        #expect(fixture.log.resets.isEmpty)
+        let check = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(check.verifyLateFocus && check.replacedText == "dứ")
+    }
+
     /// The weaker identity does not widen the rule the way a timed-out read does: another process is an
     /// application change, and so is a late observation.
     @Test func anotherProcessAfterTheFrontmostFallbackIsAHardBoundaryPLTR340() {
@@ -336,6 +402,59 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         publishNewElement(atTheLimit, after: 500_000)
         atTheLimit.press(Key.a)
         #expect(atTheLimit.log.resets.isEmpty)
+    }
+
+    /// VM run of 19/11/2026 (testhost.native.textView): the previous field's word was left unfinished, then another
+    /// field of the same app took the focus without a key the tap saw (the harness's AX focus, or an app that moves
+    /// its focus by itself). The change was observed 300 ms after the word's last key but 660 ms after its first, so
+    /// the word's keys went into the old field: the hard boundary at the new word's first key, not a kept word
+    /// whose check fails and resets the composition one key late, mid-word (PLT-R340 amendment of 19/11/2026).
+    @Test func aWordThatStartedBeforeTheWindowIsAHardBoundaryPLTR340() {
+        let fixture = PipelineFixture()
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, after: 180_000)  // changedAt: 300 ms after "s", 660 ms after "d"
+        fixture.clock.advance(byMicroseconds: 700_000)
+        #expect(fixture.keyDown(Key.a) == .pass)  // a new word: nothing held behind a check
+        #expect(fixture.log.resets == [.focusChanged])
+        #expect(!fixture.popJobs().contains { $0.edit?.verifyLateFocus == true })
+    }
+
+    /// The first-key condition covers the whole word: a word that Backspace re-opened (ENG-R1002) keeps the time of
+    /// its first key, so a late change right after the Backspace is still a hard boundary (PLT-R340).
+    @Test func aWordReopenedByBackspaceIsMeasuredFromItsFirstKeyPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.typeKeys([Key.a, Key.space])
+        fixture.completeJobs()
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.press(Key.backspace)  // re-opens "a", typed 600 ms ago
+        fixture.completeJobs()
+        publishNewElement(fixture)  // 50 ms after the Backspace
+        fixture.press(Key.a)
+        #expect(fixture.log.resets == [.focusChanged])
+    }
+
+    /// The timed-out branch keeps the last-key window only (amendment of 2026-11-15): the previous snapshot named no
+    /// app, so no element changed under the word; the next real snapshot may come seconds after the word's first key
+    /// (breaker cool-down, PLT-R384), and the word is still kept and checked.
+    @Test func aRealSnapshotAfterATimedOutReadKeepsAnOlderWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishTimedOutSnapshot(fixture)
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, generation: 3, after: 180_000)  // 300 ms after "s", 660 ms after "d"
+        #expect(fixture.keyDown(Key.a) == .swallow)  // held behind the check
+        #expect(fixture.log.resets.isEmpty)
+        let check = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(check.verifyLateFocus && check.replacedText == "dứ")
     }
 
     /// The worker could not read the new element (no AX element, AX unavailable or timed out): hard boundary.
@@ -373,6 +492,89 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         publishNewElement(paused) { $0.pause = .noTextFocus }
         paused.press(Key.a)
         #expect(paused.log.resets.first == .focusChanged)
+    }
+
+    /// The panel field's variant: `launcher.spotlight` turns `lookaheadRevision` off (PLT-R357).
+    private static var panelVariant: EngineVariant {
+        var variant = EngineVariant.default
+        variant.lookaheadRevision = false
+        return variant
+    }
+
+    /// VM run of 19/11/2026 (`testhost.panel.inlineCompletionTwice`): the panel's field was published after "v",
+    /// and its variant differs from the previous field's only in `lookaheadRevision`. That switch decides only at a
+    /// commit (ENG-R829, PLT-R357), so the word is kept and continues with the panel's engine (ENG-R1211 amendment
+    /// of 19/11/2026) instead of restarting at "i" ("vieejt").
+    @Test func aChangeOfLookaheadRevisionAloneKeepsTheWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        #expect(fixture.log.madeVariants == [.default])
+        #expect(fixture.log.continuedVariants == [Self.panelVariant])
+        let edit = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(edit.insertion == "â" && edit.verifyLateFocus && edit.replacedText == "a")
+    }
+
+    /// The continued engine has the new field's switch: the next commit revises nothing there, where the same keys
+    /// in a field that allows revisions revise the previous word (PLT-R357).
+    @Test(arguments: [true, false])
+    func theContinuedEngineTakesTheNewSwitchPLTR357(changesVariant: Bool) {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        let variant = changesVariant ? Self.panelVariant : .default
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: variant) }
+        for key in [Key.s, Key.space, Key.q, Key.a, Key.space] {  // "á qa ": the scripted revision of "á"
+            fixture.press(key)
+            fixture.completeJobs()
+        }
+        #expect(fixture.log.madeVariants == [.default])
+        #expect(ScriptedFieldModel(entries: fixture.log.entries).revisions == (changesVariant ? 0 : 1))
+    }
+
+    /// Any other difference of the variant (context, English restore, macros) changes what the active word becomes,
+    /// so it stays a hard boundary with a fresh engine, also together with `lookaheadRevision`.
+    @Test(arguments: [
+        EngineVariant(appContext: .code, englishRestore: true, macros: true),
+        EngineVariant(appContext: .general, englishRestore: false, macros: true),
+        EngineVariant(appContext: .general, englishRestore: true, macros: false),
+        EngineVariant(appContext: .general, englishRestore: true, macros: false, lookaheadRevision: false),
+    ])
+    func anyOtherVariantChangeIsAHardBoundaryPLTR340(variant: EngineVariant) {
+        let fixture = PipelineFixture()
+        fixture.press(Key.a)
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: variant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, variant])  // a fresh engine: the second "a" starts a word
+        #expect(fixture.log.continuedVariants.isEmpty)
+        #expect(fixture.popJobs().compactMap(\.edit).isEmpty)
+    }
+
+    /// The state may move to the other engine only while it holds no committed token (ENG-R1211 amendment): after a
+    /// commit, a change of `lookaheadRevision` alone is a hard boundary as before.
+    @Test func aChangeOfLookaheadRevisionAfterACommitIsAHardBoundaryPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.typeKeys([Key.a, Key.space, Key.a])
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, Self.panelVariant])
+        #expect(fixture.log.continuedVariants.isEmpty)
+    }
+
+    /// A learned memory waiting to be swapped in (ENG-R865) belongs to a clean engine only, so it does not ride on
+    /// a continuation: the change is a hard boundary and the fresh engine carries the new memory.
+    @Test func aChangeOfLookaheadRevisionWithAMemorySwapPendingIsAHardBoundaryENGR865() {
+        let fixture = PipelineFixture(settings: PipelineFixtures.settings(engineRevision: 1))
+        fixture.press(Key.a)
+        fixture.publish(
+            settings: TapSettingsSnapshot(
+                generation: 2, engines: EngineCatalog(engines: [:], revision: 1, memoryRevision: 1),
+                toggleHotkey: .defaultToggle, restoreHotkey: nil, macrosInEnglishMode: false, rememberPerApp: true))
+        publishNewElement(fixture) { $0.decision = PipelineFixtures.decision(variant: Self.panelVariant) }
+        fixture.press(Key.a)
+        #expect(fixture.log.madeVariants == [.default, Self.panelVariant])
+        #expect(fixture.log.continuedVariants.isEmpty)
     }
 
     /// Until the kept composition is verified, the restore key passes untouched (an Escape may close the sheet) and

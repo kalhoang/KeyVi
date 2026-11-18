@@ -2134,6 +2134,8 @@ public enum LogEvent: Sendable {
     case settings(SettingsEvent)
     case rules(RulesEvent)
     case update(UpdateEvent)
+    /// Focus tracking facts (PLT-R340, PLT-R380): integers and codes only, never what a field holds (PLT-R901).
+    case focus(FocusEvent)
     /// A fixed message. `StaticString` guarantees a compile-time literal.
     case note(StaticString, category: LogCategory)
     /// A fixed message plus one redacted dynamic value.
@@ -2172,6 +2174,36 @@ public enum LogEvent: Sendable {
         case installingNow
         case failed(code: Int)
     }
+}
+
+extension LogEvent {
+    public enum FocusEvent: Sendable, Hashable {
+        /// PLT-R340: a focus change the tap found after keys of the active word, in the same process or after a
+        /// timed-out read, kept the word or ended it. Microseconds from the word's last key and from its first key
+        /// (nil when unknown) to the new element's `changedAt`.
+        case lateFocusChange(kept: Bool, sinceLastKeyMicroseconds: UInt64, sinceWordStartMicroseconds: UInt64?)
+        /// PLT-R340: the worker found the new element unreadable, or without the kept word before the caret; the
+        /// key passed through and the composition was reset.
+        case lateFocusCheckFailed
+        /// PLT-R380: one attempt to observe an app; `attempt` 0 is the first. A first attempt that installs the
+        /// observer is not logged (every app switch makes one), nor a refused slow attempt before a chain's last.
+        case observerAttempt(pid: Int32, attempt: Int, result: ObserverAttemptResult)
+    }
+}
+
+/// What one observer attempt did (PLT-R380, PLT-R384).
+public enum ObserverAttemptResult: String, Sendable, Hashable, Codable, CaseIterable {
+    /// Every notification asked for was registered.
+    case installed
+    /// A best-effort attempt (the last scheduled one and the slow ones) registered what the app accepted; it may
+    /// lack a notification the app refused.
+    case installedBestEffort
+    /// The app took none of the notifications, or refused one it may take later.
+    case refused
+    /// No call: the app neither owns the focus nor is a running overlay app at the moment.
+    case notWanted
+    /// No call: the app's circuit breaker is open (PLT-R384).
+    case breakerOpen
 }
 
 /// Settings file identifiers for logs (no paths).
@@ -2810,6 +2842,12 @@ public enum TapLogCode: UInt16, Sendable, Hashable, Codable, BitwiseCopyable {
     case callbackOverBudget
     /// PLT-R397A: a keyUp whose keyDown the tap never saw (`a` = key code); the composition was reset.
     case unseenKeyUp
+    /// PLT-R340: a focus change found after keys of the active word kept the composition. `a` = microseconds from
+    /// the word's last key to the new element's `changedAt`, `b` = from its first key (`UInt64.max`: unknown).
+    case lateFocusKept
+    /// PLT-R340: such a change ended the word because it was observed too long after the word's last or first key
+    /// (same process, readable element, no pause, a compatible engine variant); `a` and `b` as for `lateFocusKept`.
+    case lateFocusRefused
 }
 
 public struct TapLogRecord: Sendable, Hashable, BitwiseCopyable {
@@ -7721,6 +7759,12 @@ public struct EngineVariant: Sendable, Hashable {
     }
 
     public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)
+
+    /// The two variants differ in `lookaheadRevision` and nothing else (ENG-R1211 amendment of 19/11/2026).
+    public func differsOnlyInLookaheadRevision(from other: EngineVariant) -> Bool {
+        lookaheadRevision != other.lookaheadRevision && appContext == other.appContext
+            && englishRestore == other.englishRestore && macros == other.macros
+    }
 }
 
 /// The resolved rule decision as the tap needs it, converted once per focus change on the ax thread.
@@ -7992,7 +8036,9 @@ public struct LayoutTable: Sendable {
 //
 // How the engine is bridged (docs/decisions/0306-engine-bridge.md). The engine is a pure value type
 // (`Engine.reduce`, 01-engine.md 12.2); the host keeps one `Session` on the tap thread and swaps engines only
-// at hard boundaries (ENG-R1211). Engines are prebuilt off the hot path, one per variant.
+// at hard boundaries (ENG-R1211), with one exception: a late focus change (PLT-R340) into a field whose variant
+// differs only in `lookaheadRevision` continues a state that holds no committed token with the new engine
+// (ENG-R1211 amendment of 19/11/2026). Engines are prebuilt off the hot path, one per variant.
 
 internal import AppModel
 public import SettingsStore
@@ -8013,12 +8059,21 @@ public protocol CompositionEngineFactory {
     associatedtype Hotkeys: HotkeyRecognizing = HotkeyRecognizer
     /// Called on the tap thread at a hard boundary; MUST NOT allocate beyond copying prebuilt values.
     func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> Engine
+    /// The engine of `variant` continuing `engine`'s state (ENG-R1211 amendment of 19/11/2026): only for a variant
+    /// that differs from `engine`'s in `lookaheadRevision` alone, while the state holds no committed token, which
+    /// is then the state the new engine would hold after the same keys. Tap thread, a late focus change (PLT-R340);
+    /// MUST NOT allocate beyond copying prebuilt values.
+    func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: Engine) -> Engine
 }
 
 /// Production engine: a `VietnameseEngine.Session` over a prebuilt `Engine`.
 public struct VietnameseCompositionEngine: CompositionEngine {
     public private(set) var session: Session
     public init(engine: VietnameseEngine.Engine) { session = Session(engine: engine) }
+    /// `engine` continuing `state` (ENG-R1211 amendment of 19/11/2026, `makeEngine(for:settings:continuing:)`).
+    public init(engine: VietnameseEngine.Engine, continuing state: EngineState) {
+        session = Session(engine: engine, state: state)
+    }
     public mutating func handle(_ event: EngineEvent) -> EngineOutput { session.handle(event) }
     public var activeDisplay: String { session.state.activeDisplay }
 }
@@ -8027,6 +8082,12 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     public init() {}
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> VietnameseCompositionEngine {
         VietnameseCompositionEngine(engine: settings.engines.engine(for: variant))
+    }
+
+    public func makeEngine(
+        for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: VietnameseCompositionEngine
+    ) -> VietnameseCompositionEngine {
+        VietnameseCompositionEngine(engine: settings.engines.engine(for: variant), continuing: engine.session.state)
     }
 }
 
@@ -9652,7 +9713,8 @@ public final class InputHostController {
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
             health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
-            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler)
+            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler,
+            logger: dependencies.logger)
         // A settle re-read or an observer retry publishes without a notification: wake the main thread the same way.
         focusTracker.setDeferredPublicationObserver { refresh.request() }
         worker = InjectionWorker(
@@ -10264,6 +10326,8 @@ public enum AXObservationMode: Sendable, Hashable {
 /// A registered AXObserver; `invalidate` removes notifications and its run-loop source.
 public protocol AXObservation: AnyObject, Sendable {
     var runLoopSource: CFRunLoopSource { get }
+    /// The notifications the app took. A `.bestEffort` observation may lack some it was asked for (PLT-R380).
+    var notifications: Set<AXNotificationKind> { get }
     func invalidate()
 }
 
@@ -10313,13 +10377,14 @@ public final class FocusTracker: Sendable {
         thread: RunLoopThread, ax: any AXProvider, processes: any ProcessIdentityProvider,
         output: SnapshotCell<FocusSnapshot>, generation: CurrentFocusGeneration, inbox: SPSCRing<AXNotice>,
         metrics: PlatformMetrics, health: HealthEventLog, clock: any MonotonicClock, macOSVersion: LooseVersion,
-        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil
+        capture: CaptureController? = nil, signposts: PlatformSignposts? = nil, scheduler: (any TimerScheduler)? = nil,
+        logger: (any DiagnosticsLogging)? = nil
     ) {
         self.thread = thread
         let services = FocusCore.Services(
             thread: thread, ax: ax, processes: processes, output: output, generation: generation, inbox: inbox,
             metrics: metrics, health: health, clock: clock, macOSVersion: macOSVersion, capture: capture,
-            signposts: signposts, scheduler: scheduler)
+            signposts: signposts, scheduler: scheduler, logger: logger)
         core = ThreadConfined(FocusCore(services: services, mirror: mirror))
     }
 
@@ -15495,6 +15560,11 @@ public final class FakeAXProvider: AXProvider, Sendable {
         _ = state.withLock { $0.refusedNotifications[pid, default: []].insert(kind) }
     }
 
+    /// `pid` accepts `kind` again (an app that has finished launching).
+    public func acceptNotification(pid: Int32, _ kind: AXNotificationKind) {
+        _ = state.withLock { $0.refusedNotifications[pid]?.remove(kind) }
+    }
+
     /// Observer requests for `pid` so far, refused ones included.
     public func observeAttempts(pid: Int32) -> Int { state.withLock { $0.observeAttempts[pid, default: 0] } }
 
@@ -15552,7 +15622,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         pid: Int32, notifications: Set<AXNotificationKind>, mode: AXObservationMode,
         handler: @escaping @Sendable (AXNotificationKind) -> Void
     ) -> (any AXObservation)? {
-        let id = state.withLock { state -> UInt64? in
+        let registration = state.withLock { state -> (id: UInt64, accepted: Set<AXNotificationKind>)? in
             state.observeAttempts[pid, default: 0] += 1
             if let refused = state.refusedObservers[pid], refused > 0 {
                 state.refusedObservers[pid] = refused - 1
@@ -15565,10 +15635,12 @@ public final class FakeAXProvider: AXProvider, Sendable {
             defer { state.nextObserverID += 1 }
             state.observers.append(
                 Observer(id: state.nextObserverID, pid: pid, notifications: accepted, handler: handler))
-            return state.nextObserverID
+            return (state.nextObserverID, accepted)
         }
-        guard let id else { return nil }
-        return FakeAXObservation { [weak self] in self?.removeObserver(id) }
+        guard let registration else { return nil }
+        return FakeAXObservation(notifications: registration.accepted) { [weak self] in
+            self?.removeObserver(registration.id)
+        }
     }
 
     public func enableManualAccessibility(pid: Int32) -> Bool {
@@ -15607,7 +15679,10 @@ public final class FakeAXObservation: AXObservation, Sendable {
     private let onInvalidate: @Sendable () -> Void
     private let invalidated = Atomic<Bool>(false)
 
-    init(onInvalidate: @escaping @Sendable () -> Void) {
+    public let notifications: Set<AXNotificationKind>
+
+    init(notifications: Set<AXNotificationKind>, onInvalidate: @escaping @Sendable () -> Void) {
+        self.notifications = notifications
         var context = CFRunLoopSourceContext()
         context.info = Unmanaged.passUnretained(identity).toOpaque()
         source = Source(source: CFRunLoopSourceCreate(nil, 0, &context))
@@ -16267,6 +16342,13 @@ public struct ScriptedEngine: CompositionEngine {
     }
 
     public var activeDisplay: String { composer.display }
+
+    /// The same composition with another `lookaheadRevision` (ENG-R1211 amendment of 19/11/2026).
+    func continuing(revisions: Bool) -> ScriptedEngine {
+        var engine = self
+        engine.composer.revisions = revisions
+        return engine
+    }
 }
 
 /// Uses the reference recogniser so the suites run before W1-E's `HotkeyRecognizer` lands; switch `Hotkeys`
@@ -16281,6 +16363,13 @@ public struct ScriptedEngineFactory: CompositionEngineFactory, Sendable {
     public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot) -> ScriptedEngine {
         log?.made(variant)
         return ScriptedEngine(log: log, revisions: variant.lookaheadRevision)
+    }
+
+    public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: ScriptedEngine)
+        -> ScriptedEngine
+    {
+        log?.continued(variant)
+        return engine.continuing(revisions: variant.lookaheadRevision)
     }
 }
 
@@ -16301,6 +16390,7 @@ public struct ScriptedFieldModel: Sendable {
         for entry in entries {
             switch entry {
             case .made(let variant): composer = ScriptedComposer(revisions: variant.lookaheadRevision)
+            case .continued(let variant): composer.revisions = variant.lookaheadRevision
             case .event(let event):
                 let output = composer.handle(event)
                 if output.revision != nil { revisions += 1 }

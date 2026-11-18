@@ -234,7 +234,8 @@ public final class InputHostController {
             processes: dependencies.processes, output: channels.snapshots.focus,
             generation: channels.focusGeneration, inbox: channels.outbox.toAX, metrics: dependencies.metrics,
             health: dependencies.health, clock: dependencies.clock, macOSVersion: macOSVersion,
-            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler)
+            capture: dependencies.capture, signposts: dependencies.signposts, scheduler: dependencies.scheduler,
+            logger: dependencies.logger)
         // A settle re-read or an observer retry publishes without a notification: wake the main thread the same way.
         focusTracker.setDeferredPublicationObserver { refresh.request() }
         worker = InjectionWorker(

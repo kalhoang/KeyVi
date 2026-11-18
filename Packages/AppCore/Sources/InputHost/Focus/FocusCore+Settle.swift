@@ -8,6 +8,11 @@
 //   "no text focus" until the PLT-R382 idle revalidation, after the first word.
 // - A freshly launched app answered AXObserverAddNotification with kAXErrorCannotComplete for about 400 ms. The
 //   observer was never added again, so none of that app's focus changes arrived until the next activation.
+// - On a loaded guest (VM run of 19/11/2026) TestHost refused observers for about 5 s after its launch, and the
+//   retries ended before it accepted one: the owner is now asked every 2 s after the scheduled attempts while its
+//   observation is wanted, and a publication of its focus asks again once a chain is over (PLT-R380 amendment).
+//   An app still half up may take every name but AXFocusedUIElementChanged (probe of the control run of 18/11):
+//   such a best-effort observer is kept but does not end the chain.
 // Timers run on `Services.scheduler` (the utility queue in production, one-shot, 10 % leeway, PLT-R803) and hop to
 // the ax thread through the sink. Every item carries the epoch or attempt it belongs to, so a superseded timer
 // that already fired does nothing.
@@ -38,6 +43,21 @@ enum FocusSettle {
     /// Waits between observer attempts for a focus owner that refused one (about 6 s in all), each measured from
     /// the previous attempt.
     static let observerRetryDelays: [TimeSpan] = [100, 200, 400, 800, 1_600, 3_200].map { .milliseconds($0) }
+    /// PLT-R380 amendment of 19/11/2026: after the scheduled attempts, an app that still refuses is asked again at
+    /// this pace while its observation is wanted (it owns the focus, or it is a running overlay app). 2 s is the
+    /// shortest steady-state period PLT-R803 allows.
+    static let observerSlowRetryDelay: TimeSpan = .seconds(2)
+    /// Slow attempts of one retry chain (one minute). The chain then ends; a later publication of the app's focus
+    /// while it has no observer starts a new one, so a launch that takes longer still gets its observer.
+    static let observerSlowRetryLimit = 30
+
+    /// The wait before the attempt after `attempt` was refused: the scheduled delays, then the slow pace for
+    /// `observerSlowRetryLimit` more attempts; nil when the chain is over.
+    static func observerRetryDelay(after attempt: Int) -> TimeSpan? {
+        if attempt < observerRetryDelays.count { return observerRetryDelays[attempt] }
+        guard attempt < observerRetryDelays.count + observerSlowRetryLimit else { return nil }
+        return observerSlowRetryDelay
+    }
 
     /// PLT-R803: at least 10 % of the delay.
     static func leeway(for delay: TimeSpan) -> TimeSpan {
@@ -108,10 +128,9 @@ extension FocusCore {
     /// Asks for another observer attempt for `pid` after the delay of `attempt`, unless one is pending, there is
     /// no scheduler or the attempts are used up.
     func scheduleObserverRetry(pid: Int32, attempt: Int) {
-        guard let scheduler = services.scheduler, attempt < FocusSettle.observerRetryDelays.count,
+        guard let scheduler = services.scheduler, let delay = FocusSettle.observerRetryDelay(after: attempt),
             deferred.retryTimers[pid] == nil
         else { return }
-        let delay = FocusSettle.observerRetryDelays[attempt]
         deferred.retryTimers[pid] = scheduler.schedule(after: delay, leeway: FocusSettle.leeway(for: delay)) {
             [weak sink] in
             sink?.deferredWorkDue(.observerRetry(pid: pid, attempt: attempt + 1))
@@ -139,13 +158,41 @@ extension FocusCore {
         }
     }
 
+    /// PLT-R380 amendment of 19/11/2026: an attempt that finds the app not wanted at the moment (another app owns
+    /// the focus) skips its call and keeps the chain going through the scheduled attempts; the slow attempts after
+    /// them run only while the observation is wanted. No call goes to an app whose breaker is open (PLT-R384): the
+    /// attempt passes and the chain goes on. A partial observer (`ObservedApplication.partial`) keeps the chain
+    /// going too.
     private func retryObserver(pid: Int32, attempt: Int) {
         deferred.retryTimers[pid] = nil
-        guard observed[pid] == nil, let wanted = wantedObservation(of: pid) else { return }
+        guard !observerInPlace(pid) else { return }
+        guard let wanted = wantedObservation(of: pid) else {
+            noteObserverAttempt(pid: pid, attempt: attempt, result: .notWanted)
+            if attempt <= FocusSettle.observerRetryDelays.count { scheduleObserverRetry(pid: pid, attempt: attempt) }
+            return
+        }
+        guard !breaker.isOpen(pid: pid, at: services.clock.now()) else {
+            noteObserverAttempt(pid: pid, attempt: attempt, result: .breakerOpen)
+            return scheduleObserverRetry(pid: pid, attempt: attempt)
+        }
         guard addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: attempt) else { return }
         // Observed at last: the owner may have moved its focus while nobody was told.
         guard pid == current?.pid, refresh(force: false) == .published else { return }
         deferred.publicationObserver?()
+    }
+
+    /// PLT-R380 amendment of 19/11/2026: a publication of the owner's focus while the owner has no observer (or only
+    /// a partial one) and no retry is pending asks for the observer again (a new owner was already asked by
+    /// `observeOwner`), so an app that refused a whole chain gets its observer once it accepts, without waiting for
+    /// the next activation.
+    func observeOwnerIfUnobserved(at instant: MonotonicInstant) {
+        guard let pid = current?.pid, !observerInPlace(pid), deferred.retryTimers[pid] == nil,
+            let wanted = wantedObservation(of: pid), !breaker.isOpen(pid: pid, at: instant)
+        else { return }
+        // Unlike an owner change, this install is news: the app had refused a whole chain.
+        if addObserver(pid: pid, bundle: wanted.bundle, overlay: wanted.overlay, attempt: 0) {
+            noteObserverAttempt(pid: pid, attempt: 0, result: .installed)
+        }
     }
 
     private func cancelSettle() {

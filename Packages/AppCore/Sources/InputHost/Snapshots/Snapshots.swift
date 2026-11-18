@@ -106,6 +106,12 @@ public struct EngineVariant: Sendable, Hashable {
     }
 
     public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)
+
+    /// The two variants differ in `lookaheadRevision` and nothing else (ENG-R1211 amendment of 19/11/2026).
+    public func differsOnlyInLookaheadRevision(from other: EngineVariant) -> Bool {
+        lookaheadRevision != other.lookaheadRevision && appContext == other.appContext
+            && englishRestore == other.englishRestore && macros == other.macros
+    }
 }
 
 /// The resolved rule decision as the tap needs it, converted once per focus change on the ax thread.

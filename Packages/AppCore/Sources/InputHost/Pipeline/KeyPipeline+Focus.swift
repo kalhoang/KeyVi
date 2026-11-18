@@ -55,14 +55,18 @@ enum CaretContinuity {
 
 /// PLT-R340 amendment (product owner, 2026-11-14, T5.5): a focus change the tap discovers after keys of the active
 /// token were composed with the previous snapshot keeps the composition when the new element belongs to the same
-/// process and the change was observed at most `windowNanoseconds` after the token's last key. The first job after
-/// the discovery verifies the new element's text before the caret (`EditJob.verifyLateFocus`).
+/// process and the change was observed at most `windowNanoseconds` after the token's last key and, when the previous
+/// snapshot named an element of that process, also after its first key (amendment of 19/11/2026). The first job
+/// after the discovery verifies the new element's text before the caret (`EditJob.verifyLateFocus`).
 enum LateFocusChange {
     /// 500 ms: the ax thread observes a focus change that the typing caused (a sheet or an editor taking the key it
     /// was opened by) or that the app reported late within its settle window (last re-read 400 ms after the
     /// notification, `FocusSettle.delays`, PLT-R380) plus scheduling slack; it equals the PLT-R382 typing-pause
     /// threshold, beyond which a key no longer belongs to continuous typing. A change observed later is not part of
-    /// the word and stays a hard boundary.
+    /// the word and stays a hard boundary. Also measured from the word's first key when the previous snapshot named
+    /// an element of the same process: it really changed at most this long before `changedAt`, so a word that began
+    /// earlier went into the previous element (VM run of 19/11/2026, `testhost.native.textView`: the previous field's
+    /// unfinished word was kept, its check failed and the reset landed mid-word).
     static let windowNanoseconds: UInt64 = 500_000_000
 }
 
@@ -113,17 +117,53 @@ extension KeyPipeline {
     /// PLT-R340 amendment: keep the composition across a focus change discovered after keys of the active token
     /// were composed with the previous snapshot. Same process (or a previous snapshot that names no process because
     /// its system-wide focus read timed out, amendment of 2026-11-15: Pa's Safari trace), an element the worker can
-    /// read (a field handle and AX available), no focus pause, the same engine variant, and the change observed at
-    /// most `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary.
+    /// read (a field handle and AX available), no focus pause, the same engine variant (or one the engine can
+    /// continue into, `engineCanContinue`), and the change observed at most `LateFocusChange.windowNanoseconds` after
+    /// the token's last key. Everything else stays a hard boundary.
     /// The active-display read runs only on this rare path (a new element while a word is being typed).
-    func keepsCompositionAcrossLateFocusChange(_ focus: FocusSnapshot, identity: FocusIdentity) -> Bool {
-        let sameProcess = identity.pid == seen.focus.pid || seen.focus.appUnknownAfterTimeout
-        guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess,
+    ///
+    /// Amendment of 19/11/2026: when the previous snapshot named an element of the same process, the change must also
+    /// be observed within the window of the word's first key, because that element really changed then and a word
+    /// begun earlier was typed into the previous one. A word re-opened by Backspace keeps the time of the first key
+    /// typed since the display was last empty, and a word whose start is unknown is refused. Without a previous
+    /// element (a timed-out read, the PLT-R381 frontmost fallback, an element read that failed) the last-key window
+    /// applies alone: no element is known to have changed under the word, and the next real snapshot can come
+    /// seconds after its first key.
+    ///
+    /// Once the other conditions hold and a word is active, the window's verdict goes into the tap log with both
+    /// intervals in microseconds (`lateFocusKept`, `lateFocusRefused`; one ring push, integers only, PLT-R304,
+    /// PLT-R901), so an integration run shows how close each change was to the window.
+    func keepsCompositionAcrossLateFocusChange(
+        _ focus: FocusSnapshot, identity: FocusIdentity, at now: MonotonicInstant
+    ) -> Bool {
+        let sameProcess = identity.pid == seen.focus.pid
+        guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess || seen.focus.appUnknownAfterTimeout,
             focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
-            identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
-            focus.changedAt.nanoseconds(since: lastKey) <= LateFocusChange.windowNanoseconds
+            identity.decision.variant == seen.focus.decision.variant
+                || engineCanContinue(into: identity.decision.variant),
+            let lastKey = keyState.lastComposedKeyAt, !engine.activeDisplay.isEmpty
         else { return false }
-        return !engine.activeDisplay.isEmpty
+        let window = LateFocusChange.windowNanoseconds
+        let sinceLastKey = focus.changedAt.nanoseconds(since: lastKey)
+        let sinceWordStart = keyState.wordStartedAt.map { focus.changedAt.nanoseconds(since: $0) }
+        let elementChanged = sameProcess && seen.focus.fieldToken != nil
+        let wordFits = !elementChanged || sinceWordStart.map { $0 <= window } == true
+        let kept = sinceLastKey <= window && wordFits
+        context.tapLog.push(
+            TapLogRecord(
+                code: kept ? .lateFocusKept : .lateFocusRefused, at: now, a: sinceLastKey / 1_000,
+                b: sinceWordStart.map { $0 / 1_000 } ?? .max))
+        return kept
+    }
+
+    /// ENG-R1211 amendment of 19/11/2026 (VM run of 19/11/2026, `testhost.panel.inlineCompletionTwice`): the engine
+    /// of `variant` can take over the word being typed when the variants differ only in `lookaheadRevision`, which
+    /// decides nothing before a commit (ENG-R829, PLT-R357), the engine has committed nothing since its last reset
+    /// (its state is then the active word alone, the same under both switches), and no learned-memory swap waits
+    /// (ENG-R865). Integer and flag tests only (PLT-R304).
+    func engineCanContinue(into variant: EngineVariant) -> Bool {
+        variant.differsOnlyInLookaheadRevision(from: seen.engineVariant) && !keyState.committedSinceEngineReset
+            && !seen.memorySwapPending
     }
 
     /// The key that discovered a kept late focus change produced no edit to verify: a job without an edit carries

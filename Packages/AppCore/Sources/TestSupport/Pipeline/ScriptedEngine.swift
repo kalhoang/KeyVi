@@ -44,8 +44,9 @@ struct ScriptedComposer {
     /// The separator that committed `previous`.
     private var previousBoundary: Character?
     private var revision: Revision?
-    /// `EngineConfiguration.lookaheadRevision` (the variant's flag in these tests).
-    let revisions: Bool
+    /// `EngineConfiguration.lookaheadRevision` (the variant's flag in these tests); a continued engine takes the new
+    /// variant's flag and keeps the rest (ENG-R1211 amendment of 19/11/2026).
+    var revisions: Bool
 
     init(revisions: Bool = true) { self.revisions = revisions }
 
@@ -213,6 +214,8 @@ struct ScriptedComposer {
 public final class EngineEventLog: Sendable {
     public enum Entry: Sendable, Hashable {
         case made(EngineVariant)
+        /// The engine of this variant continued the previous state (ENG-R1211 amendment of 19/11/2026).
+        case continued(EngineVariant)
         case event(EngineEvent)
     }
 
@@ -251,6 +254,8 @@ public final class EngineEventLog: Sendable {
     public func clear() { state.withLock { $0.entries.removeAll() } }
 
     func made(_ variant: EngineVariant) { record(.made(variant), isReset: true, isFeed: false) }
+
+    func continued(_ variant: EngineVariant) { record(.continued(variant), isReset: false, isFeed: false) }
 
     func handled(_ event: EngineEvent) {
         if case .reset = event {

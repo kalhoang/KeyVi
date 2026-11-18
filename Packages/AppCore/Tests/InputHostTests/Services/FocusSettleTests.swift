@@ -162,16 +162,22 @@ struct FocusSettleTests {
         defer { harness.finish() }
         harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
         harness.start()
-        harness.ax.refuseObservers(pid: zaloPID, times: 100)
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
         harness.activate(zaloPID)
-        harness.advance(by: .seconds(30))
+        harness.advance(by: .seconds(120))
         let requests = harness.timers.requests
-        #expect(requests.count == FocusSettle.delays.count + FocusSettle.observerRetryDelays.count)
+        #expect(
+            requests.count
+                == FocusSettle.delays.count + FocusSettle.observerRetryDelays.count
+                + FocusSettle.observerSlowRetryLimit)
         for request in requests {
             #expect(!request.repeating)
             #expect(request.leeway.nanoseconds * 10 >= request.delay.nanoseconds)
         }
-        // Nothing keeps firing once the focus is still (PLT-R803 steady state).
+        // The slow observer retries keep to the shortest steady-state period PLT-R803 allows.
+        let scheduled = FocusSettle.observerRetryDelays.max() ?? .zero
+        #expect(requests.filter { $0.delay > scheduled }.allSatisfy { $0.delay >= .seconds(2) })
+        // Nothing keeps firing once the focus is still and the retries are used up (PLT-R803 steady state).
         #expect(harness.scheduler.pendingCount == 0)
     }
 
@@ -253,17 +259,238 @@ struct FocusSettleTests {
         #expect(harness.snapshot.field.identifier == "moved")
     }
 
-    @Test func retriesStopAfterTheLastDelay() {
+    /// PLT-R380 amendment of 19/11/2026: the slow retries end after `observerSlowRetryLimit` attempts, so an app
+    /// that never takes an observer costs a bounded number of calls per chain and no timer afterwards.
+    @Test func retriesAreBoundedPLTR380() {
         let harness = FocusHarness(scheduled: true)
         defer { harness.finish() }
         harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
         harness.start()
-        harness.ax.refuseObservers(pid: zaloPID, times: 100)
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
         harness.activate(zaloPID)
-        harness.advance(by: .seconds(30))
-        #expect(harness.ax.observeAttempts(pid: zaloPID) == 1 + FocusSettle.observerRetryDelays.count)
+        harness.advance(by: .seconds(300))
+        #expect(
+            harness.ax.observeAttempts(pid: zaloPID)
+                == 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit)
         #expect(harness.ax.observedNotifications[zaloPID] == nil)
         #expect(harness.scheduler.pendingCount == 0)
+        // The log keeps the scheduled attempts and the chain's last one, not every slow attempt (PLT-R901 volume).
+        let logged = harness.observerAttempts(pid: zaloPID)
+        #expect(logged.count == 1 + FocusSettle.observerRetryDelays.count + 1)
+        #expect(logged.last?.attempt == FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit)
+    }
+
+    /// VM run of 19/11/2026 (control run of `testhost.native.textView`): TestHost refused observers for about
+    /// 5 s after its launch on a loaded guest, longer than a slow guest leaves the scheduled attempts, and none of
+    /// its focus changes reached the tracker. After the scheduled attempts the owner is asked again every 2 s, and
+    /// the observer it finally takes delivers the next notification (PLT-R380 amendment of 19/11/2026).
+    @Test func anObserverRefusedLongerThanTheScheduleIsInstalledByASlowRetryPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        let scheduled = 1 + FocusSettle.observerRetryDelays.count
+        harness.ax.refuseObservers(pid: zaloPID, times: scheduled + 2)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(7))  // past the scheduled attempts (about 6.3 s)
+        #expect(harness.ax.observedNotifications[zaloPID] == nil)
+        harness.advance(by: FocusSettle.observerSlowRetryDelay * 3)
+        #expect(harness.ax.observedNotifications[zaloPID] != nil)
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == scheduled + 3)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installedBestEffort)
+        #expect(harness.scheduler.pendingCount == 0)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 5)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
+    /// An app still half up when a best-effort attempt lands (the control run's probe of 18/11: focused-element
+    /// changes refused with kAXErrorCannotComplete while the other names were accepted) keeps what it accepted, and
+    /// the chain goes on with complete attempts until an observer that reports focused-element changes replaces it
+    /// (PLT-R380 amendment of 19/11/2026).
+    @Test func aBestEffortObserverWithoutFocusChangesIsReplacedByALaterAttemptPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 1 + FocusSettle.observerRetryDelays.count)
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(9))  // the first slow attempt (about 8.3 s) finds the app half up
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedWindowChanged])
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installedBestEffort)
+        #expect(harness.scheduler.pendingCount == 1)  // the chain goes on
+        harness.ax.acceptNotification(pid: zaloPID, .focusedElementChanged)
+        harness.advance(by: FocusSettle.observerSlowRetryDelay)
+        #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installed)
+        #expect(harness.scheduler.pendingCount == 0)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 5)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
+    /// The chain's last attempt may also find the app half up: once the chain is over, a publication of the owner's
+    /// focus asks again, because an observer without focused-element changes does not count as one (PLT-R380).
+    @Test func aPublicationReplacesAnObserverWithoutFocusChangesPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        let chain = 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit
+        harness.ax.refuseObservers(pid: zaloPID, times: chain - 1)
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(120))
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedWindowChanged])
+        #expect(harness.scheduler.pendingCount == 0)
+        harness.ax.acceptNotification(pid: zaloPID, .focusedElementChanged)
+        harness.ax.focus(pid: zaloPID, attributes: field(identifier: "moved"), notify: nil, element: 7)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.field.identifier == "moved")
+        #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 8)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
+    /// When a whole chain was refused, a publication of the owner's focus (here the PLT-R382 read on the first key
+    /// after a pause) tries the observer again, although the owner did not change (PLT-R380 amendment).
+    @Test func aPublicationOfAnUnobservedOwnerTriesTheObserverAgainPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        let chain = 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit
+        harness.ax.refuseObservers(pid: zaloPID, times: chain)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(120))
+        #expect(harness.ax.observedNotifications[zaloPID] == nil)
+        #expect(harness.scheduler.pendingCount == 0)
+        // The app moved its focus and nobody was told; the next key after a pause reads it.
+        harness.ax.focus(pid: zaloPID, attributes: field(identifier: "moved"), notify: nil, element: 7)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.field.identifier == "moved")
+        #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 8)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
+    /// The observer sync of an activation (or a wake) asks too while the owner holds only a partial observer.
+    @Test func anActivationReplacesAnObserverWithoutFocusChangesPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        let chain = 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit
+        harness.ax.refuseObservers(pid: zaloPID, times: chain - 1)
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(120))
+        let attempts = harness.ax.observeAttempts(pid: zaloPID)
+        harness.activate(zaloPID, field(identifier: "first"))  // still refused: the partial observer stays
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == attempts + 1)
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedWindowChanged])
+        harness.advance(by: .seconds(120))  // the new chain ends, still refused
+        harness.ax.acceptNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
+    }
+
+    /// A retry that finds the app momentarily not wanted (another app owns the focus) skips its call but keeps the
+    /// chain going through the scheduled attempts, instead of ending it (PLT-R380 amendment).
+    @Test func aRetryChainOutlastsAMomentWhenTheAppIsNotTheOwnerPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 3)
+        harness.activate(zaloPID)
+        // The activation's observer sync still sees the app as the owner and asks once more before the read.
+        harness.activate(terminalPID)
+        harness.advance(by: .seconds(1))  // attempts 1 to 3 fall due while the terminal owns the focus
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == 2)
+        #expect(harness.scheduler.pendingCount == 1)  // the chain's next attempt
+        harness.activate(zaloPID)
+        harness.advance(by: .seconds(1))
+        #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
+    }
+
+    /// Every scheduled attempt keeps the chain when it finds the app not wanted, the one after the 3,200 ms wait
+    /// included; the first slow attempt then ends it, since slow attempts run only while the app is wanted (PLT-R380).
+    @Test func theLastScheduledAttemptKeepsTheChainWhenTheAppIsNotWantedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
+        harness.activate(zaloPID)
+        harness.advance(by: .milliseconds(3_200))  // attempts 1 to 5 refused, attempt 6 pending
+        harness.activate(terminalPID)
+        harness.advance(by: .milliseconds(3_200))  // attempt 6 finds the app not wanted
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .notWanted)
+        #expect(harness.scheduler.pendingCount == 1)
+        harness.advance(by: FocusSettle.observerSlowRetryDelay)
+        #expect(harness.scheduler.pendingCount == 0)
+    }
+
+    /// PLT-R380, PLT-R901: the scheduled attempts (a first one only when refused), the last attempt of a chain and
+    /// every install after a refusal leave one log record each with the pid, the attempt and a result code, so an
+    /// integration run shows how an app's observer was installed.
+    @Test func observerAttemptsAreLoggedButAFirstInstallPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        #expect(harness.observerAttempts(pid: terminalPID).isEmpty)  // installed at once: nothing to say
+        harness.ax.refuseObservers(pid: zaloPID, times: 2)
+        harness.activate(zaloPID)
+        harness.advance(by: .seconds(1))
+        let logged = harness.observerAttempts(pid: zaloPID)
+        #expect(logged.map(\.attempt) == [0, 1, 2])
+        #expect(logged.map(\.result) == [.refused, .refused, .installed])
+    }
+
+    /// The skipped attempts are logged with their reason, and an observer a publication finally installs too.
+    @Test func skippedAttemptsAndAnInstallAfterAPublicationAreLoggedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
+        harness.activate(zaloPID)
+        harness.activate(terminalPID)
+        harness.advance(by: .seconds(1))
+        #expect(harness.observerAttempts(pid: zaloPID).contains { $0.result == .notWanted })
+        harness.activate(zaloPID)
+        harness.advance(by: .seconds(120))
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .refused)
+        harness.ax.refuseObservers(pid: zaloPID, times: 0)  // the app accepts from now on
+        harness.ax.focus(pid: zaloPID, attributes: field(identifier: "moved"), notify: nil, element: 7)
+        harness.idleRevalidation()
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installed)
+    }
+
+    /// PLT-R384: no observer call goes to an app whose breaker is open; the chain's attempts pass it by.
+    @Test func retriesSkipAnAppWhoseBreakerIsOpenPLTR384() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseObservers(pid: zaloPID, times: 1_000)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.ax.setTimingOut(pid: zaloPID, true)
+        for _ in 0..<3 { harness.idleRevalidation() }  // three timeouts within 10 s open the breaker
+        #expect(harness.health.recent(limit: 10).contains { $0.kind == .axCircuitBreakerTrip })
+        let attempts = harness.ax.observeAttempts(pid: zaloPID)
+        harness.advance(by: .seconds(50))  // within the 60 s cool-down
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == attempts)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .breakerOpen)
     }
 
     @Test func retriesStopWhenTheAppIsNoLongerTheOwner() {

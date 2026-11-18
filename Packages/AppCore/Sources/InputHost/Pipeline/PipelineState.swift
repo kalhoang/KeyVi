@@ -180,6 +180,10 @@ struct KeyState {
     /// PLT-R340 amendment: a late focus change kept the composition; the next job verifies the new element's text
     /// before the caret (`EditJob.verifyLateFocus`). Cleared by that job and by every engine reset.
     var lateFocusCheckPending = false
+    /// The engine committed a token since its last reset or build, so its state holds more than the active word
+    /// and cannot continue with another engine (ENG-R1211 amendment of 19/11/2026). Set by an output that carries a
+    /// commit decision; cleared with the engine.
+    var committedSinceEngineReset = false
     /// Keyboard type already reported to the main thread (`MainNotice.keyboardTypeSeen`).
     var reportedKeyboardType: UInt32?
     /// PLT-R398B: the key being processed was fed to the engine (`compose`). Cleared before the first key-down

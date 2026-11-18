@@ -31,6 +31,7 @@ extension LogEvent {
         case .settings(let event): Self.render(event)
         case .rules(let event): Self.render(event)
         case .update(let event): Self.render(event)
+        case .focus(let event): Self.render(event)
         case .note(let message, let category):
             RenderedLogEvent(category: category, code: "note", fields: ["message": .string(message.description)])
         case .redacted(let message, let value, let category):
@@ -126,6 +127,29 @@ extension LogEvent {
             case .failed(let code): ("failed", ["code": .number(Double(code))])
             }
         return RenderedLogEvent(category: .updates, code: "update." + name, fields: fields)
+    }
+
+    private static func render(_ event: FocusEvent) -> RenderedLogEvent {
+        let (name, fields): (String, [String: JSONValue]) =
+            switch event {
+            case .lateFocusChange(let kept, let sinceLastKey, let sinceWordStart):
+                (
+                    kept ? "lateFocusKept" : "lateFocusRefused",
+                    ["sinceLastKeyUs": .number(Double(sinceLastKey))].merging(
+                        sinceWordStart.map { ["sinceWordStartUs": .number(Double($0))] } ?? [:]
+                    ) { first, _ in first }
+                )
+            case .lateFocusCheckFailed: ("lateFocusCheckFailed", [:])
+            case .observerAttempt(let pid, let attempt, let result):
+                (
+                    "observerAttempt",
+                    [
+                        "pid": .number(Double(pid)), "attempt": .number(Double(attempt)),
+                        "result": .string(result.rawValue),
+                    ]
+                )
+            }
+        return RenderedLogEvent(category: .focus, code: "focus." + name, fields: fields)
     }
 }
 

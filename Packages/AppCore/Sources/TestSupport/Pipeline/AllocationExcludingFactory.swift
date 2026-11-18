@@ -29,4 +29,12 @@ public struct AllocationExcludingFactory<Base: CompositionEngineFactory>: Compos
         defer { AllocationCounter.resume() }
         return Engine(base: base.makeEngine(for: variant, settings: settings))
     }
+
+    public func makeEngine(for variant: EngineVariant, settings: TapSettingsSnapshot, continuing engine: Engine)
+        -> Engine
+    {
+        AllocationCounter.pause()
+        defer { AllocationCounter.resume() }
+        return Engine(base: base.makeEngine(for: variant, settings: settings, continuing: engine.base))
+    }
 }

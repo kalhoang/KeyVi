@@ -64,6 +64,23 @@ private func lateFocusJob(
         #expect(rig.feedback.compositionResetCount == 1)
     }
 
+    /// A failed check leaves one content-free focus record, a passed one none, so an integration run shows which
+    /// kept words the field did not confirm (PLT-R340, PLT-R901).
+    @Test func aFailedCheckIsLoggedWithoutContentPLTR340() {
+        func checkFailures(_ rig: WorkerRig) -> Int {
+            rig.logger.entries.filter { if case .focus(.lateFocusCheckFailed) = $0.event { true } else { false } }
+                .count
+        }
+        let failed = WorkerRig(field: SimulatedTextField(text: "Report"))
+        failed.pushEdit { lateFocusJob($0) }
+        failed.run()
+        #expect(checkFailures(failed) == 1)
+        let passed = WorkerRig(field: SimulatedTextField(text: "d"))
+        passed.pushEdit { lateFocusJob($0) }
+        passed.run()
+        #expect(checkFailures(passed) == 0)
+    }
+
     /// Review of W8-A: the token begins after a separator or at the start of the text, so text that merely ends
     /// with it ("Nova" for the token "a", a focus move the app made by itself) is not the word being typed: the edit
     /// would delete a letter the user never typed ("Nová").

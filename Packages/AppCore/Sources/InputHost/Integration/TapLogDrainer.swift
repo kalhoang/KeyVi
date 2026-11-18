@@ -66,8 +66,8 @@ public final class TapLogDrainer: Sendable {
             if let event = Self.healthEvent(for: record, anchor: anchor) {
                 health.record(event)
                 result.healthEvents += 1
-            } else if let (message, level) = Self.logLine(for: record.code) {
-                logger.log(.note(message, category: .tap), level: level)
+            } else if let (event, level) = Self.logEvent(for: record) {
+                logger.log(event, level: level)
             }
         }
         let dropped = ring.droppedCount
@@ -90,8 +90,24 @@ public final class TapLogDrainer: Sendable {
         case .flushRequested:
             return HealthEvent(kind: .flush, at: at, detail: .count(Int(clamping: max(record.a, 1))))
         case .tapDisabledByTimeout, .tapDisabledByUserInput, .tapReenabled, .jobQueueFull, .secureInputResumedByKey,
-            .layoutMismatch, .unknownEventType, .callbackOverBudget, .unseenKeyUp:
+            .layoutMismatch, .unknownEventType, .callbackOverBudget, .unseenKeyUp, .lateFocusKept, .lateFocusRefused:
             return nil
+        }
+    }
+
+    /// The log event of a record that is not a health event: a fixed note, or a focus event with the record's
+    /// integers (PLT-R902).
+    static func logEvent(for record: TapLogRecord) -> (LogEvent, LogLevel)? {
+        switch record.code {
+        case .lateFocusKept, .lateFocusRefused:
+            // PLT-R340: `a` and `b` are microseconds; `b` is `UInt64.max` when the word's first key is unknown.
+            let change = LogEvent.FocusEvent.lateFocusChange(
+                kept: record.code == .lateFocusKept, sinceLastKeyMicroseconds: record.a,
+                sinceWordStartMicroseconds: record.b == .max ? nil : record.b)
+            return (.focus(change), .info)
+        default:
+            guard let (message, level) = logLine(for: record.code) else { return nil }
+            return (.note(message, category: .tap), level)
         }
     }
 
@@ -110,7 +126,7 @@ public final class TapLogDrainer: Sendable {
         // PLT-R397A: input reached the app without the tap (for example a secure-input burst); key code only. Info:
         // the Return that ends a password in a secure field gives one too, usually with nothing composed.
         case .unseenKeyUp: ("key released that the tap never saw pressed, input boundary", .info)
-        case .echoMissing, .flushRequested: nil
+        case .echoMissing, .flushRequested, .lateFocusKept, .lateFocusRefused: nil
         }
     }
 }

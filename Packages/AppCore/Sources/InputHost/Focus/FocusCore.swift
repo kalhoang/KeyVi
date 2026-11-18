@@ -86,6 +86,8 @@ final class FocusCore {
         var signposts: PlatformSignposts?
         /// Settle re-reads and observer retries (`FocusCore+Settle.swift`); nil defers nothing.
         var scheduler: (any TimerScheduler)?
+        /// Content-free diagnostics: one record per observer attempt but a first install (PLT-R380, PLT-R901).
+        var logger: (any DiagnosticsLogging)?
     }
 
     let services: Services
@@ -229,7 +231,8 @@ final class FocusCore {
         at instant: MonotonicInstant
     ) -> Bool {
         let bundle = reading.identity?.bundle
-        if reading.pid != current?.pid || bundle != current?.identity?.bundle {
+        let ownerChanged = reading.pid != current?.pid || bundle != current?.identity?.bundle
+        if ownerChanged {
             sessionMode = nil  // PRD-R21: rules and memory win on every activation
             observeOwner(pid: reading.pid, bundle: bundle)
         }
@@ -273,6 +276,7 @@ final class FocusCore {
         current = FocusContext(
             pid: reading.pid, element: reading.element?.element, identity: reading.identity, match: match,
             decision: decision, resolution: resolution, snapshot: snapshot)
+        if !ownerChanged { observeOwnerIfUnobserved(at: instant) }  // PLT-R380 amendment of 19/11/2026
         return true
     }
 

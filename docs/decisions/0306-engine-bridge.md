@@ -39,6 +39,19 @@
 6. **Privacy.** The host keeps no copy of engine state or raw keys beyond the session (PLT-R911); learning
    signals are held in memory only until the user accepts them into a list.
 
+## Amendment of 19/11/2026: continuing the word across a `lookaheadRevision` change
+
+The first full TestHost run in the VM since 13/11 failed `testhost.panel.inlineCompletionTwice` with `vieejt` once:
+the search panel's field, whose rule turns `lookaheadRevision` off, was published after the first key, and the
+variant change ended the word even though the late focus change of PLT-R340 would have kept it. Decision 2 now has
+one exception (ENG-R1211 amendment of the same day): when a kept late focus change moves to a variant that differs
+only in `lookaheadRevision`, the engine has committed nothing since its last reset and no learned-memory swap waits,
+the pipeline asks the factory for the new variant's prebuilt engine continuing the current state
+(`CompositionEngineFactory.makeEngine(for:settings:continuing:)`, production `Session(engine:state:)`), with no
+reset and no edit. Such a state is the active word alone, which the switch does not affect
+(`LookaheadRevisionContinuationTests`). Any other variant change, or this one after a commit, still swaps in a
+fresh engine at the hard boundary.
+
 ## Open issue for the engine track
 
 D10 ("expand macros in English mode", default off) needs macro matching without Vietnamese composition. The
