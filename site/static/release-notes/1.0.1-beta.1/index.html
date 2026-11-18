@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-G7+vjOKtYmndlkKwK5RTNJTXV8qyNE7J9zN82DUMg4k='; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>KeyVi 1.0.1-beta.1</title>
+<style>/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Release-notes pages written by scripts/publish-release (ADR 0304): shown inside the in-app update window, */
+/* so they are compact and carry no site navigation. Same palette as style.css. publish-release inlines this */
+/* file into each page, which then loads nothing else (PLT-R906). When it changes, add its new SHA-256 to */
+/* style-src in static/_headers and keep the old ones for pages already published (site/test.mjs checks). */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --ink: #1d1c1a;
+  --muted: #5a5850;
+  --line: #d9d4c6;
+  --link: #1a6a4f;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141513;
+    --ink: #ecebe6;
+    --muted: #b0aea4;
+    --line: #35362f;
+    --link: #7fd9b2;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-body);
+}
+main {
+  max-width: 40rem;
+  padding: 0.75rem 1rem 1rem;
+}
+h1 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+h3 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.25rem;
+}
+ul {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+p {
+  margin: 0.25rem 0;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+a {
+  color: var(--link);
+}
+a:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>KeyVi 1.0.1-beta.1</h1>
+<section lang="vi" aria-labelledby="notes-vi">
+<h2 id="notes-vi">Tiếng Việt</h2>
+<h3>Thay đổi</h3>
+<ul>
+<li>Khi phím cuối cùng của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên khi kết thúc từ, ví dụ &quot;duong&quot;, thay vì trở lại các phím đã gõ.</li>
+<li>Các cụm tiếng Anh &quot;day off&quot;, &quot;sale off&quot; và &quot;a mess&quot; nay giữ đúng từ bạn gõ, không còn bị đổi thành &quot;day of&quot;, &quot;sale of&quot; và &quot;a mes&quot;.</li>
+</ul>
+<h3>Sửa lỗi</h3>
+<ul>
+<li>Trong Terminal, iTerm2 và các trình soạn mã, các lệnh như chown, awk và ps -ef nay giữ nguyên như bạn gõ, không còn bị đổi thành chữ tiếng Việt (chơn, ăk, è); trong câu tiếng Việt, chúng vẫn được gõ thành tiếng Việt.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/nhat-ky-thay-doi/#v1.0.1-beta.1">Xem nhật ký thay đổi đầy đủ</a></p>
+</section>
+<section lang="en" aria-labelledby="notes-en">
+<h2 id="notes-en">English</h2>
+<h3>Changed</h3>
+<ul>
+<li>When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example &quot;duong&quot;, instead of turning back into the keys you typed.</li>
+<li>The English phrases &quot;day off&quot;, &quot;sale off&quot; and &quot;a mess&quot; now keep the word you typed instead of becoming &quot;day of&quot;, &quot;sale of&quot; and &quot;a mes&quot;.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef now stay as you typed them instead of turning into Vietnamese words (chơn, ăk, è); inside a Vietnamese sentence they still type Vietnamese.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/en/changelog/#v1.0.1-beta.1">Read the full changelog</a></p>
+</section>
+</main>
+</body>
+</html>

@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.0.1-beta.1",
+      "build": 1000101,
+      "channel": "beta",
+      "date": "2026-11-18",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.0.1-beta.1.dmg",
+      "sha256": "1b2e033e7f96f9ee2e72342d64ca5d8082dbb6c8873b75480f005d553c806afd",
+      "size": 9526842,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "### Thay đổi\n\n- Khi phím cuối cùng của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên khi kết thúc từ, ví dụ \"duong\", thay vì trở lại các phím đã gõ.\n- Các cụm tiếng Anh \"day off\", \"sale off\" và \"a mess\" nay giữ đúng từ bạn gõ, không còn bị đổi thành \"day of\", \"sale of\" và \"a mes\".\n\n### Sửa lỗi\n\n- Trong Terminal, iTerm2 và các trình soạn mã, các lệnh như chown, awk và ps -ef nay giữ nguyên như bạn gõ, không còn bị đổi thành chữ tiếng Việt (chơn, ăk, è); trong câu tiếng Việt, chúng vẫn được gõ thành tiếng Việt.",
+        "en": "### Changed\n\n- When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example \"duong\", instead of turning back into the keys you typed.\n- The English phrases \"day off\", \"sale off\" and \"a mess\" now keep the word you typed instead of becoming \"day of\", \"sale of\" and \"a mes\".\n\n### Fixed\n\n- In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef now stay as you typed them instead of turning into Vietnamese words (chơn, ăk, è); inside a Vietnamese sentence they still type Vietnamese."
+      }
+    },
+    {
       "version": "1.0.0",
       "build": 1000099,
       "channel": "stable",
