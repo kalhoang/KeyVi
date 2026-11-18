@@ -2199,8 +2199,8 @@ extension LogEvent {
 public enum LateFocusReason: UInt16, Sendable, Hashable, CaseIterable {
     /// Kept: a readable element observed within the windows; the first job checks it.
     case window = 1
-    /// Kept: as `window`, but the word began right after a focus-moving trigger (PLT-R389) that the tap saw after the
-    /// previous element was published, so the first-key window did not apply.
+    /// Kept: as `window`, but the word began right after a Command or Control shortcut or a click (PLT-R389) that the
+    /// tap saw after the previous element was published, so the first-key window did not apply.
     case trigger
     /// Kept without a check: a snapshot of the same process that names no readable element.
     case unreadable
@@ -2221,6 +2221,10 @@ public enum LateFocusReason: UInt16, Sendable, Hashable, CaseIterable {
     /// Refused: observed more than 500 ms after the word's first key, while the previous snapshot named an element
     /// of the same process.
     case firstKeyWindow
+    /// Kept with a check: the element the word began in came back after Accessibility answered that no element had
+    /// the focus, and keys of the word were composed meanwhile (they may not have gone into it). Last, so the codes
+    /// before it keep their values.
+    case backFromNoElement
 
     /// The stable spelling of the `reason` field.
     public var logCode: String {
@@ -2236,13 +2240,14 @@ public enum LateFocusReason: UInt16, Sendable, Hashable, CaseIterable {
         case .variant: "variant"
         case .lastKeyWindow: "lastKeyWindow"
         case .firstKeyWindow: "firstKeyWindow"
+        case .backFromNoElement: "backFromNoElement"
         }
     }
 
     /// The word was kept (`lateFocusKept`); otherwise it ended (`lateFocusRefused`).
     public var keeps: Bool {
         switch self {
-        case .window, .trigger, .unreadable, .sameElement: true
+        case .window, .trigger, .unreadable, .sameElement, .backFromNoElement: true
         case .otherProcess, .noElement, .axUnavailable, .paused, .variant, .lastKeyWindow, .firstKeyWindow: false
         }
     }

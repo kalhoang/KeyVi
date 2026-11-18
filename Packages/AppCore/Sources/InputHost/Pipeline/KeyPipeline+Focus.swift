@@ -28,6 +28,16 @@ enum FocusRevalidation {
         case .backspace, .forwardDelete, .navigation, .function, .other: return false
         }
     }
+
+    /// PLT-R340 amendment of 19/11/2026 (review): a trigger whose new focus can come a moment after the key, so the
+    /// late focus rule may waive the first-key window for a word typed right after it: a Command or Control shortcut
+    /// (Command+S attaches a sheet, Command+K opens a panel). Return, Tab and Escape move the focus at once (the read
+    /// they ask for already finds the new element) and most often move nothing (a newline, a closed completion),
+    /// so they never waive it. A click counts too (`notePointerDownForRevalidation`). Pure, tap-safe.
+    @inline(__always)
+    static func mayMoveFocusLater(_ event: RawKeyEvent) -> Bool {
+        event.flags & (EventFlags.command | EventFlags.control) != 0
+    }
 }
 
 /// PLT-R423 caret continuity (amendment of 16/11/2026, second retest of beta 2): the worker keeps an earlier completion
@@ -74,7 +84,8 @@ extension KeyPipeline {
         guard !event.autorepeat else { return }
         if FocusRevalidation.mayMoveFocus(event) {
             keyState.revalidateNextKey = true
-            keyState.lastFocusTriggerAt = now  // PLT-R340 amendment of 19/11/2026: a word typed right after it
+            // PLT-R340 amendment of 19/11/2026: a word typed right after a shortcut may be measured from its last key.
+            if FocusRevalidation.mayMoveFocusLater(event) { keyState.lastFocusTriggerAt = now }
             requestFocusRevalidation(.revalidateFocusAfterTrigger)
             return
         }

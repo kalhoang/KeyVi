@@ -321,6 +321,107 @@ import VietnameseEngine
         #expect(lateFocusRecords(early).map(\.detail) == [LateFocusReason.firstKeyWindow.rawValue])
     }
 
+    /// Review of 19/11/2026: Return, Tab and Escape move the focus at once, so the read that follows them already
+    /// finds their new element; when they moved nothing (a newline, a closed completion) the field was observed long
+    /// before them. Only a Command or Control shortcut or a click, which opens a sheet or panel a moment later, waives
+    /// the first-key window: Return then a word, and an Accessibility move 660 ms into that word, is the textView case.
+    @Test(arguments: [Key.returnKey, Key.tab, Key.escape])
+    func aTriggerThatMovesTheFocusAtOnceDoesNotWaiveTheFirstKeyWindowPLTR340(trigger: UInt16) {
+        let fixture = PipelineFixture()
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.press(trigger)
+        fixture.clock.advance(byMicroseconds: 100_000)
+        typeWord(fixture, [Key.d, Key.u, Key.w, Key.s], every: 120_000)
+        _ = fixture.popJobs()
+        publish(fixture, generation: 2, after: 180_000)  // 300 ms after "s", 660 after "d"
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.last == .focusChanged)
+        #expect(checks(fixture.popJobs()) == 0)
+        #expect(lateFocusRecords(fixture).map(\.detail) == [LateFocusReason.firstKeyWindow.rawValue])
+    }
+
+    /// A click still waives it, like a shortcut: it can open a panel whose field the app publishes late (PLT-R389).
+    @Test func aClickBeforeTheWordWaivesTheFirstKeyWindowPLTR340() throws {
+        let fixture = PipelineFixture()
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.send(PipelineFixtures.keyEvent(.leftMouseDown, 0))
+        for key in [Key.d, Key.d, Key.u, Key.o, Key.w, Key.n] {
+            fixture.clock.advance(byMicroseconds: 110_000)
+            fixture.press(key)
+            fixture.completeJobs()
+        }
+        publish(fixture, generation: 2, after: 40_000)  // 590 ms after the first "d"
+        fixture.press(Key.g)
+        #expect(fixture.log.resets.isEmpty)
+        #expect(try #require(fixture.popJobs().compactMap(\.edit).first).verifyLateFocus)
+        #expect(lateFocusRecords(fixture).map(\.detail) == [LateFocusReason.trigger.rawValue])
+    }
+
+    // MARK: Review of 19/11/2026: the element found again after AX said nothing had the focus
+
+    /// The keys typed while AX answered that no element had the focus (an available snapshot without one) did not go
+    /// into the element: found again with keys composed meanwhile, it is kept with a check, so a field without them
+    /// passes the key through and resets instead of an edit deleting its own text.
+    @Test func theElementFoundAgainAfterAnAnsweredNoElementIsCheckedPLTR340() throws {
+        let fixture = PipelineFixture()
+        publish(fixture, generation: 2, after: 0) { $0.fieldHandle = nil }  // AX answered: no focused element
+        fixture.press(Key.a)
+        publish(fixture, generation: 3, change: Self.firstElement)
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        let edit = try #require(fixture.popJobs().compactMap(\.edit).last)
+        #expect(edit.verifyLateFocus && edit.insertion == "â")
+        #expect(lateFocusRecords(fixture).map(\.detail).last == LateFocusReason.backFromNoElement.rawValue)
+    }
+
+    /// Guard: with no key composed while nothing had the focus, the element found again is still no focus change.
+    @Test func theElementFoundAgainAfterAnAnsweredNoElementWithoutKeysIsNoFocusChangePLTR340() {
+        let fixture = PipelineFixture()
+        fixture.keyDown(Key.a)
+        fixture.completeJobs()
+        publish(fixture, generation: 2, after: 0) { $0.fieldHandle = nil }
+        fixture.keyUp(Key.a)  // reconciles without composing
+        publish(fixture, generation: 3, change: Self.firstElement)
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        #expect(checks(fixture.popJobs()) == 0)
+    }
+
+    /// A failed system-wide read (no app, AX unavailable) is unknown focus like a timed-out one: the ax thread keeps
+    /// the element across it (`FocusCore.keepsLastElement`), and so does the tap; the element again is no change.
+    @Test func theElementFoundAgainAfterAFailedReadWithoutAnAppIsNoFocusChangePLTR340() {
+        let fixture = PipelineFixture()
+        publish(fixture, generation: 2, after: 0) { focus in
+            focus.app = nil
+            focus.fieldHandle = nil
+            focus.field.axAvailability = .unavailable
+        }
+        fixture.press(Key.a)
+        publish(fixture, generation: 3, change: Self.firstElement)
+        fixture.press(Key.a)
+        #expect(fixture.log.resets.isEmpty)
+        #expect(fixture.popJobs().compactMap(\.edit).map(\.insertion) == ["â"])
+    }
+
+    /// A pending check that meets a snapshot without a readable element waits for a readable one: no job carries it
+    /// with no field to read, and the element found again is checked.
+    @Test func aPendingCheckWaitsForAReadableElementPLTR340() throws {
+        let fixture = PipelineFixture()
+        fixture.keyDown(Key.a)
+        fixture.completeJobs()
+        publish(fixture, generation: 2, after: 0)  // another field, readable: kept, check pending
+        fixture.keyUp(Key.a)
+        publish(fixture, generation: 3, after: 0, change: Self.timedOutRead)
+        fixture.press(Key.s)
+        let unread = fixture.completeJobs().compactMap(\.edit)
+        #expect(!unread.contains { $0.verifyLateFocus && $0.field == nil })
+        #expect(fixture.log.resets.isEmpty)
+        publish(fixture, generation: 4) { $0.fieldHandle = FieldHandle(pid: 100, token: 2, element: nil) }
+        fixture.press(Key.d)
+        let checked = fixture.popJobs().compactMap(\.edit).filter(\.verifyLateFocus)
+        #expect(checked.count == 1 && checked.first?.field?.token == 2)
+    }
+
     // MARK: Item 4: reason codes
 
     /// The structural checks name what refused the change (another process, no element or AX after a timed-out read

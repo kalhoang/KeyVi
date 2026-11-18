@@ -122,9 +122,13 @@ enum LogEventCatalog {
         #expect(
             LateFocusReason.allCases.map(\.logCode) == [
                 "window", "trigger", "unreadable", "sameElement", "otherProcess", "noElement", "axUnavailable",
-                "paused", "variant", "lastKeyWindow", "firstKeyWindow",
+                "paused", "variant", "lastKeyWindow", "firstKeyWindow", "backFromNoElement",
             ])
-        #expect(LateFocusReason.allCases.filter(\.keeps) == [.window, .trigger, .unreadable, .sameElement])
+        #expect(
+            LateFocusReason.allCases.filter(\.keeps) == [
+                .window, .trigger, .unreadable, .sameElement, .backFromNoElement,
+            ])
+        #expect(LateFocusReason.firstKeyWindow.rawValue == 11 && LateFocusReason.backFromNoElement.rawValue == 12)
         let attempt = LogRecord(
             event: .focus(.observerAttempt(pid: 4_242, attempt: 9, result: .installedBestEffort)), level: .info,
             at: .distantPast)

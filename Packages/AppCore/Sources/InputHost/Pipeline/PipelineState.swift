@@ -110,6 +110,12 @@ struct FocusIdentity: Equatable {
     /// No app, because the system-wide focus read timed out (not because AX named none): the app is unknown, not
     /// changed (PLT-R340 late focus change, amendment of 2026-11-15).
     var appUnknownAfterTimeout: Bool
+    /// No app, because the system-wide focus read timed out or failed: the focus is unknown there, not elsewhere, so
+    /// the last element survives it, as on the ax thread (`FocusCore.keepsLastElement`, PLT-R340, PLT-R384).
+    var appUnknown: Bool
+    /// No element although AX answered (no focused element, the PLT-R381 frontmost fallback): keys typed while this
+    /// held did not go into the last element (PLT-R340 amendment of 19/11/2026, review).
+    var answeredNoElement: Bool
     /// When the ax thread observed the element (`FocusSnapshot.changedAt`).
     var changedAt: MonotonicInstant
     /// A field handle and AX available: the worker can read the element (the late focus check, PLT-R340).
@@ -119,14 +125,21 @@ struct FocusIdentity: Equatable {
         generation = focus.generation
         pid = focus.app?.pid ?? ToggleOverride.noProcess
         appUnknownAfterTimeout = focus.app == nil && focus.field.axAvailability == .timedOut
+        appUnknown = focus.app == nil && focus.field.axAvailability != .available
+        answeredNoElement = focus.fieldHandle == nil && focus.field.axAvailability == .available
         fieldToken = focus.fieldHandle?.token
         decision = Decision(
             strategy: focus.decision.plan.strategy, parameters: focus.decision.plan.parameters,
             variant: focus.decision.variant, requireTextFocus: focus.decision.requireTextFocus,
             pause: focus.pause?.code)
         changedAt = focus.changedAt
-        readable = focus.fieldHandle != nil && focus.field.axAvailability == .available
+        readable = focus.isReadableForLateFocusCheck
     }
+}
+
+extension FocusSnapshot {
+    /// A field handle and AX available: the worker can read the element (the late focus check, PLT-R340).
+    var isReadableForLateFocusCheck: Bool { fieldHandle != nil && field.axAvailability == .available }
 }
 
 /// PLT-R340 amendment of 19/11/2026: a focus the late focus rule compares a new snapshot with. A token is the ax
@@ -187,6 +200,10 @@ struct ObservedState {
     /// one that name its process or no process after a timed-out read (the ax thread keeps the token of an element
     /// it finds again after such snapshots, `FocusCore.lastElement`). A snapshot with this token is the same element.
     var lastElement: FocusReference?
+    /// When AX first answered that no element of `lastElement`'s process had the focus (`answeredNoElement`) since
+    /// that element was last named; nil while no such snapshot came. Keys composed after it make the element found
+    /// again a checked keep (`LateFocusReason.backFromNoElement`).
+    var noElementAnsweredAt: MonotonicInstant?
 }
 
 /// Per-key bookkeeping that is not a snapshot generation.
@@ -202,7 +219,8 @@ struct KeyState {
     /// PLT-R340 amendment of 19/11/2026: the element the active word began in, while snapshots of its process without
     /// a readable element kept the word; the next snapshot is judged against it. Cleared with the word.
     var wordReference: FocusReference?
-    /// PLT-R389: the last keyDown or click that can move the focus (the late focus rule's trigger, PLT-R340).
+    /// PLT-R389: the last Command or Control shortcut or click, whose new focus can come a moment later (the late
+    /// focus rule's trigger, PLT-R340, `FocusRevalidation.mayMoveFocusLater`).
     var lastFocusTriggerAt: MonotonicInstant?
     var lastPointerDownAt: MonotonicInstant?
     /// PLT-R382 idle revalidation.
