@@ -1,6 +1,6 @@
 # Runbook: self-hosted macOS runner for integration tests
 
-Owner: the maintainer. Specification: QA-R10 to QA-R13, QA-R16, QA-R40, spec/02-platform.md sections 8.4 and 13.2. Open decision 16 (which Mac, always on or not): Pa chose a tart VM on Pa's Mac on 2026-11-13 (answer S6/Q12), started only for a job (section 8).
+Owner: the maintainer. Specification: QA-R10 to QA-R13, QA-R16, QA-R40, spec/02-platform.md sections 8.4 and 13.2. Open decision 16 (which Mac, always on or not): Pa chose a tart VM on Pa's Mac on 2026-11-13 (answer S6/Q12), started only for a job (section 8); confirmed on 2026-11-18 as the QA-R12 runner, usable at any time after a free-resources check ([ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md) item 7, [VM test lab](vm-test-lab.md) section 3).
 
 Platform integration tests post synthetic key events through the real pipeline into `TestHost/`. How to run the
 suite, read its results and update the performance baseline: [integration-suite.md](integration-suite.md). That needs Accessibility (and maybe Input Monitoring) permission, which GitHub-hosted runners cannot be assumed to grant, so a Mac under Pa's control runs them (QA-R12). Because that Mac holds granted permissions, it is a sensitive machine (QA-R13).
@@ -122,7 +122,7 @@ Check whether a GitHub-hosted macOS image lets a test binary receive Accessibili
 
 ## 8. The runner inside the `{{app-slug}}-dev` tart VM (planned, not registered)
 
-GitHub Actions is disabled on the private repository for now (cost), so **no runner is registered**. This section
+The GitHub Actions workflows other than the website's stay disabled by the product owner's decision of 2026-11-18 ([ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md) item 6), so **no runner is registered**. This section
 is the plan for the day Actions is enabled; until then the same VM runs the suite by hand with
 `scripts/vm/integration-dev.sh` ([integration-suite.md](integration-suite.md) section 10).
 

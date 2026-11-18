@@ -28,7 +28,7 @@ A public release is not published while a report has an unresolved match ([relea
 
 ## 3. What is compared
 
-Compare this repository against OpenKey and XKey in particular, and against the other implementations named in CLR-R1 and CLR-R2 where practical. Record the exact version of each codebase (tag or commit) that was compared.
+Compare this repository against OpenKey and XKey in particular, and against the other implementations named in CLR-R1 and CLR-R2 where practical. Record the exact version of each codebase (tag or commit) that was compared. The comparison against other codebases is done by an outside reviewer under the [similarity review runbook](../runbooks/similarity-review.md) (since 2026-11-18): it names the paths, tools, thresholds and report format, and its reports hold no path of the compared projects either.
 
 Compare at least:
 
@@ -46,7 +46,7 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 ## 4. Process
 
 1. **Freeze the target**: record the commit SHA of this repository under review and the versions of the compared codebases.
-2. **Run the comparison** (section 3) and fill in the [report template](report-template.md). Do not quote the other codebase's code in the report: describe locations (file path and line range in the compared project) and the nature of the similarity.
+2. **Run the comparison** (section 3) and fill in the [report template](report-template.md). Do not quote the other codebase's code in the report: give the location in this repository (file path and line range) and the nature of the similarity. The location in the compared project stays in the reviewer's own notes ([similarity review runbook](../runbooks/similarity-review.md) section 7); no path of a compared project goes into a report.
 3. **Classify each finding**: `none`, `inevitable` (with reason), `suspect`, `match`.
 4. **Remediate every `suspect` or `match`**: a clean implementer (not the reviewer) rewrites the affected code from the spec, without seeing the other code. The reviewer then re-checks only that the rewritten area no longer matches, and records the new commit SHA. Do not "tweak" the matching code: rewrite it.
 5. **Close the report** with a conclusion, the reviewer's signature (name and date) and the maintainer's acknowledgement. Unresolved matches block the release.
@@ -89,4 +89,4 @@ byte-identical to the files Pa supplied (the test pins their SHA-256): the proje
 
 | Date | Release | Reviewer | Result | Report |
 |---|---|---|---|---|
-| 2026-11-17 | 1.0.0 (first public release and 1.0) | Independent clean-side review session (report section 2) | Record checks pass, no match found; the comparison against other codebases is outstanding (report note N1) | [2026-11-17-1.0.0.md](reports/2026-11-17-1.0.0.md) |
+| 2026-11-17 | 1.0.0 (first public release and 1.0) | Independent clean-side review session (report section 2) | Record checks pass, no match found; the comparison against other codebases is outstanding (report note N1), commissioned on 2026-11-18 under the [similarity review runbook](../runbooks/similarity-review.md) (report section 9) | [2026-11-17-1.0.0.md](reports/2026-11-17-1.0.0.md) |

@@ -38,7 +38,7 @@ Only the Account Holder can create Developer ID certificates.
    ```
 
    Compare the output with the previous release's. Any difference in bundle ID or Team ID is a hard failure (QA-R30 step 3, `scripts/verify-release.sh`).
-6. If CI signs releases (open decision 14): export the certificate with its private key as a `.p12` from Keychain Access with a strong password, store it only as a secret of the GitHub environment `release` (together with the password), then delete the exported `.p12` from disk. The workflow imports it into a temporary keychain and deletes that keychain at the end of the job (QA-R31). Remove the old certificate secret.
+6. If CI ever signs releases (not the case: QA-R31 keeps signing on Pa's Mac, [0005](../decisions/0005-pa-decisions-2026-11-13.md) Q9): export the certificate with its private key as a `.p12` from Keychain Access with a strong password, store it only as a secret of the GitHub environment `release` (together with the password), then delete the exported `.p12` from disk. The workflow imports it into a temporary keychain and deletes that keychain at the end of the job (QA-R31). Remove the old certificate secret.
 7. Make a small beta release with the new certificate and run the upgrade test ([release](release.md) section 5) from the previous stable to confirm permissions persist.
 8. Revoke nothing yet. After a successful public release signed with the new certificate, the old one can be left to expire or revoked in the portal.
 

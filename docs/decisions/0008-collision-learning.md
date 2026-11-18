@@ -1,7 +1,7 @@
 # 0008. Collision learning: words that are English and Vietnamese at once
 
-- Status: accepted, 2026-11-15, with one open question (the held-out floor of ENG-R877, see the last section
-  before Consequences). The product owner decided on 15/11/2026 that {{AppName}} learns how each user
+- Status: accepted, 2026-11-15; the one open question (the held-out floor of ENG-R877, see the last section
+  before Consequences) was settled on 2026-11-18 (amendment at the end). The product owner decided on 15/11/2026 that {{AppName}} learns how each user
   resolves these words (per user across all apps, from corrections and from silent acceptance, behind a switch that
   is on by default), proposed that the next word decide the word before it, asked for many more cases before an
   algorithm was chosen, and then reviewed the data lists ([0005](0005-pa-decisions-2026-11-13.md), "Decisions of
@@ -179,3 +179,16 @@ ambiguity table so that the memory has less to learn.
   record mode).
 - The host's memory store (W11-B) must pass a parity test against `ReferenceCollisionMemory` and the worked cases of
   `CollisionMemoryVoteCases`, so the simulated numbers hold for the shipped memory.
+
+## Amendment, 2026-11-18: the held-out floor of ENG-R877
+
+Settled by the integrator under the product owner's delegation of 18/11/2026
+([0009](0009-pa-decisions-2026-11-18.md), "Integrator's calls"). Of the three options of the open question, the
+second is taken: the loss of 1.53 points against the 1.5-point floor is accepted for the five pinned cases (`tips`,
+`cans` and `tee` after a Vietnamese word, `teen` after a neutral one, and the L10 restore after a word the memory
+learned as English at the start of a sentence) as known costs, until the review of the ambiguity table and the
+phrase list (parked in 0009). The floor of ENG-R877 is not widened, and the gate keeps holding the loss at those
+five words, so any further loss still fails. Reason: each case is a loanword that one user means as English and
+another as Vietnamese in the same context, which a per-user memory cannot tell apart from the training user's
+corrections; widening the floor would hide a sixth case, and deciding the rows of the ambiguity table belongs to
+that review. The requirement text of ENG-R877 in `spec/01-engine.md` section 8.8 is the engine track's to annotate.

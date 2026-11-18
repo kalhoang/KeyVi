@@ -62,3 +62,13 @@ until a `macos-27` label is GA. When `macos-27` becomes GA, move to it and keep 
   `.github/actionlint.yaml` mirrors it for a plain `actionlint` run and editor integrations.
 - QA-R12 VERIFY (TCC grants on hosted runners) is not resolved here: integration tests stay on the
   self-hosted runner (`integration.yml`).
+
+## Note, 2026-11-18: status and cost of `xcode-27`
+
+Checked in GitHub's public documentation and changelog ([0009](0009-pa-decisions-2026-11-18.md) item 6): `xcode-27`
+is a standard GitHub-hosted runner label (Apple silicon, 3 CPU, 7 GB), listed with `macos-15`, `macos-26` and
+`macos-latest` among the standard runners for public repositories, and GitHub announced the image as generally
+available on 15/10/2026 (the `actions/runner-images` README still called it a preview). Standard GitHub-hosted
+runners are free in public repositories; only larger runners such as `xcode-27-xlarge` are billed. The table above
+keeps the state of 13/11/2026. The macOS workflows are disabled by the product owner's decision of 18/11/2026, not
+because of this label.

@@ -286,6 +286,6 @@ Illustrative file with one entry (values are examples, not real results; the fie
 | Tier 2 | Every minor release |
 | All entries | After each macOS major release and after point releases that touch input (first beta and GM) |
 | Any entry older than 120 days | Shown as `Chưa kiểm tra` on the website and in the next app build |
-| Tier 1 rows at release time | At most 90 days old, on the latest macOS 26 and 27 (PLT section 13.3) |
+| Tier 1 rows at release time | At most 90 days old, on the newest macOS (27) and on macOS 12; macOS 26 relies on community reports (PLT section 13.3, amended 2026-11-18) |
 
 The Tier 1 and Tier 2 app lists are owned by PRD-R39 ([spec/03-product.md](../spec/03-product.md) section 9) and are not repeated here.

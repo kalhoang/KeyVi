@@ -849,7 +849,7 @@ This table is the single source for platform performance gates; `04-quality-rele
 ### 13.3 Manual compatibility matrix
 
 - `compat/matrix.json` in the repository (rendered to the website matrix and shown on the in-app Apps page, `03-product.md` PRD-R35 and PRD-R38, `04-quality-release.md` QA-R17): rows app x version x macOS; columns: Telex basic, VNI basic, inline completion, burst typing, backspace re-entry across ", ", restore hotkey, per-app memory, macro expansion, notes; cells pass, fail or n/a with date and tester. This file records verification status; `compat-rules.json` (section 5) records behaviour. They are separate files with separate schemas.
-- Tier lists (which apps are release-blocking and which are checked per minor release) are owned by `03-product.md` PRD-R39; this file does not repeat them. Tier 1 rows must be at most 90 days old at release time on the latest macOS 26 and 27.
+- Tier lists (which apps are release-blocking and which are checked per minor release) are owned by `03-product.md` PRD-R39; this file does not repeat them. Tier 1 rows must be at most 90 days old at release time on the newest macOS (27) and on the macOS 12 floor (PLT-R106). *(Amendment of 2026-11-18, integrator's call under the product owner's delegation, `docs/decisions/0009-pa-decisions-2026-11-18.md`: the text asked for macOS 26 and 27. macOS 26 is waived as a Tier 1 verification target: the lab has macOS 27.2 and macOS 12.7.6 virtual machines on the product owner's Mac (`docs/runbooks/vm-test-lab.md`) and no macOS 26 system. Tier 1 on macOS 26 relies on community reports; a reported macOS 26 failure is triaged like any other Tier 1 failure.)*
 
 ### 13.4 Latency and resource gates
 
@@ -882,7 +882,7 @@ All answered on 13/11/2026; every answer and where it is implemented is listed i
 2. App licence: GPL-3.0-or-later for everything outside the engine packages, the `data/` pipeline and the reference model, which are MPL-2.0 (ADR 0006, amended 15/11/2026); consequences for the rules database and the injection layer in PLT-R108.
 3. Release signing: Developer ID signing and notarization happen on Pa's Mac (keys never leave it); CI keeps producing unsigned builds. The EdDSA key stays on Pa's Mac (PLT-R1103, QA-R32).
 4. Archive hosting: DMG and update archives only on `{{app-slug}}.kal.vn` (no GitHub Releases, so PLT-R906 needs no extra host).
-5. Self-hosted Mac runner: proposed as a tart macOS virtual machine on Pa's Mac (awaiting Pa's confirmation); Linux jobs stay on GitHub-hosted runners.
+5. Self-hosted Mac runner: a tart macOS virtual machine on Pa's Mac, usable at any time after a free-resources check (confirmed on 18/11/2026, `docs/decisions/0009-pa-decisions-2026-11-18.md`); Linux jobs stay on GitHub-hosted runners.
 6. Accessibility enabling in Chromium or Electron apps: keep `axEnable: manual` (off unless a rule proves no side effect).
 7. Zero-width placeholder: keep it behind the PLT-R422 gate. Until an automated 1,000-edit test exists, the Google Sheets and Excel rules use `axSelection` only and the matrix notes the imperfect behaviour.
 8. Terminals: keep "inherit" (Vietnamese allowed in TUIs).

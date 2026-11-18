@@ -2,7 +2,7 @@
 
 Owner: Pa. Specification: PRD-R73 to PRD-R76, PLT-R1101, QA-R38, QA-R54. Decisions: [ADR 0601](../decisions/0601-static-site-generator.md) (generator), [ADR 0602](../decisions/0602-site-hosting-kalera-swarm.md) (this hosting). Pa's answers of 2026-11-13: S9 and Q11 (Kalera Swarm), Q7 (cookieless analytics), Q10 (updates and DMGs on the site host only).
 
-The website, the Sparkle appcast, the release-notes pages, the update archives and the DMGs are served by one container image, `ghcr.io/<owner>/{{app-slug}}-site`, running as two replicas on the Kalera Docker Swarm (Portainer environment `F3D`, id 7) behind the shared Traefik (`traefik2` stack, network `traefik_public`, TLS through the Cloudflare DNS challenge). The host name is the site host, `APP_SITE_HOST` in `scripts/brand.env` (`{{app-slug}}.kal.vn`). Images are built and deployed by `.github/workflows/site-image.yml` from the branch `prod` only, never from `main` (Kalera rule). Until the first public release (1.0.0, section 8) the deployed site is a preview: `SITE_STRICT=false`, so the build accepts VERIFY badges and placeholders and every response carries `X-Robots-Tag: noindex`.
+The website, the Sparkle appcast, the release-notes pages, the update archives and the DMGs are served by one container image, `ghcr.io/<owner>/{{app-slug}}-site`, running as two replicas on the Kalera Docker Swarm (Portainer environment `F3D`, id 7) behind the shared Traefik (`traefik2` stack, network `traefik_public`, TLS through the Cloudflare DNS challenge). The host name is the site host, `APP_SITE_HOST` in `scripts/brand.env` (`{{app-slug}}.kal.vn`). Images are built and deployed by `.github/workflows/site-image.yml` from the branch `prod` only, never from `main` (Kalera rule). Until the first public release (1.0.0, section 8) the deployed site was a preview (`SITE_STRICT=false`, VERIFY badges and placeholders accepted, `X-Robots-Tag: noindex` on every response); since 2026-11-18 it is built strictly and indexed.
 
 Brand values never appear in the stack file or the workflow. `deploy/site/stack-env.sh` prints them from `scripts/brand.env`:
 
@@ -10,20 +10,20 @@ Brand values never appear in the stack file or the workflow. `deploy/site/stack-
 deploy/site/stack-env.sh --owner <github owner>    # SITE_HOST, SITE_SLUG, IMAGE_OWNER, IMAGE_NAME, IMAGE_TAG, IMAGE
 ```
 
-## 0. Current deployment (2026-11-14)
+## 0. Current deployment (2026-11-18)
 
-The preview is live at the site host. State on 2026-11-15, after the repository became public, so the next maintainer does not redo it, with the release gate of 2026-11-17 (Pa: 1.0.0 is the first production release on the website, no more betas):
+The production site is live at the site host, with 1.0.0 published. State on 2026-11-18, so the next maintainer does not redo it (first written on 2026-11-15, after the repository became public; 1.0.0 was the first production release on the website, Pa's decision of 2026-11-17):
 
 | Item | State |
 |---|---|
 | Repository | `kalhoang/{{AppName}}` (`APP_REPOSITORY_URL`), public since 15/11/2026. Branch protection on `main` and `prod` refuses force pushes and deletions. The history before publication was rewritten once (CLR-R12 amendment); the original history is the private repository `kalhoang/{{app-slug}}-original-history`, plus an offline bundle with the map of commit IDs |
-| GHCR package | `{{app-slug}}-site`, **public** (Pa, 2026-11-14), so the Swarm pulls it without a registry entry |
-| Actions | Only `Site` is enabled. `Site image` stays disabled until Pa finishes the two steps of the next row, and `CI`, `Diagnostics labels`, `Integration`, `Nightly`, `PR labels` and `Release` are disabled by hand until macOS runners exist (ADR 0602, S6/Q12). Re-enable one with `gh workflow enable <name>` |
-| Variables and secrets | Repository variable `SITE_STRICT=false`; `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod`. Still to do by Pa on github.com, because neither value can be copied from the earlier repository: add the environment secret `PORTAINER_WEBHOOK_URL` (the service webhook from Portainer), and in the settings of the GHCR package `{{app-slug}}-site` under "Manage Actions access" give this repository write access; then `gh workflow enable "Site image"` |
+| GHCR package | `{{app-slug}}-site`, **public** (Pa, 2026-11-14), so the Swarm pulls it without a registry entry. The package is still linked to the old private repository `kalhoang/{{app-slug}}-original-history` (its source repository on GHCR); this repository writes to it through the Actions access of the next rows. Linking it to this repository is optional and changes nothing for the Swarm |
+| Actions | `Site` and `Site image` are enabled (`Site image` since 2026-11-18, after the two steps of the next row; its runs on `prod` succeed from that day). `CI`, `Diagnostics labels`, `Integration`, `Nightly`, `PR labels` and `Release` stay disabled by hand, by the product owner's decision of 2026-11-18 ([ADR 0009](../decisions/0009-pa-decisions-2026-11-18.md) item 6). Re-enable one with `gh workflow enable <name>` |
+| Variables and secrets | Repository variable `SITE_STRICT=true` (since 2026-11-18, section 8 step 5); `IMAGE_OWNER` is unset, so the repository owner is used. Environment `site` limits deployments to `prod` and holds the secret `PORTAINER_WEBHOOK_URL` (set on 2026-11-18). The GHCR package `{{app-slug}}-site` gives this repository's Actions write access ("Manage Actions access", 2026-11-18) |
 | Portainer | Stack `{{app-slug}}-site`, id 73, environment 7 (Swarm). Stack variables: `SITE_HOST`, `SITE_SLUG`, `IMAGE_OWNER=kalhoang`, `IMAGE_NAME`, `IMAGE_TAG=prod`. Service `{{app-slug}}-site_site`, 2 replicas |
 | Redeploy | A push to `prod` runs `site-image.yml`, which builds and pushes the image and calls the service webhook; verified end to end on 2026-11-14 |
-| Release gate | The site content passes `node site/build.mjs --strict` (branch `release/w21s-site`, 2026-11-17): no VERIFY badge is left, `site/config.json` names the tap `kalhoang/tap` and takes the repository from `APP_REPOSITORY_URL` of `scripts/brand.env` (an empty or missing `githubRepo` means that one), `sponsorsUrl` is empty (no sponsor card, not a placeholder). The check `release gate` of `node site/test.mjs` builds the shipped config strictly with no `site/data/releases.json` and with a 1.0.0 entry shaped as `scripts/publish-release` writes it. The deployed site is still the preview: `SITE_STRICT=false` and `noindex` stay until section 8 is done |
-| 1.0.0 | Not published: no `site/data/releases.json`, no GitHub Release `v1.0.0`, the website shows "no release yet". Section 8 lists what the release needs |
+| Release gate | The site content passes `node site/build.mjs --strict` (branch `release/w21s-site`, 2026-11-17): no VERIFY badge is left, `site/config.json` names the tap `kalhoang/tap` and takes the repository from `APP_REPOSITORY_URL` of `scripts/brand.env` (an empty or missing `githubRepo` means that one), `sponsorsUrl` is empty (no sponsor card, not a placeholder). The check `release gate` of `node site/test.mjs` builds the shipped config strictly with no `site/data/releases.json` and with a 1.0.0 entry shaped as `scripts/publish-release` writes it. Since 2026-11-18 the deployed site is built strictly and sends no `X-Robots-Tag` |
+| 1.0.0 | Published on 2026-11-18: `site/data/releases.json` lists 1.0.0 (build 1000099, date 2026-11-18), the appcast has one item, the GitHub Release `v1.0.0` is published (not a draft), and `https://<site host>/download/{{app-slug}}-1.0.0.dmg` answers 200 (checked 2026-11-18). Section 8 records the steps |
 
 ## 1. What is where
 
@@ -46,7 +46,7 @@ The preview is live at the site host. State on 2026-11-15, after the repository 
 - [ ] The repository `kalhoang/{{app-slug}}` exists (S3; private first).
 - [ ] Branch `prod`, created from `main`, protected: only Pa pushes, no force push, no deletion.
 - [ ] Environment `site` with the deployment branch rule "selected branches: `prod`". Its secret `PORTAINER_WEBHOOK_URL` is added in section 4 step 4; until then the workflow pushes the image and skips the redeploy with a warning.
-- [ ] Repository variables: `IMAGE_OWNER` = `kalhoang` (the GHCR namespace; default: the repository owner). `IMAGE_OWNER` must equal the repository owner: the workflow pushes with `GITHUB_TOKEN`, which can publish packages only in the repository's own namespace, so its first step stops the run for any other value (publishing under another account would need a token with `write:packages` there, not set up). `SITE_STRICT` = `false` (preview until the first public release, section 8). `SITE_IMAGE_NAME` only if the image should not be called `{{app-slug}}-site`.
+- [ ] Repository variables: `IMAGE_OWNER` = `kalhoang` (the GHCR namespace; default: the repository owner). `IMAGE_OWNER` must equal the repository owner: the workflow pushes with `GITHUB_TOKEN`, which can publish packages only in the repository's own namespace, so its first step stops the run for any other value (publishing under another account would need a token with `write:packages` there, not set up). `SITE_STRICT` = `true` since 1.0.0 (it was `false` for the preview before the first public release, section 8). `SITE_IMAGE_NAME` only if the image should not be called `{{app-slug}}-site`.
 - [ ] GHCR package visibility, Pa's choice. **Public** is simplest: the image contains only the public website and the public release files, and the Swarm pulls it without credentials. **Private**: add a registry in Portainer (Registries, `ghcr.io`, user `kalhoang`, a personal access token with `read:packages` only) and select it for the stack.
 - [ ] Cloudflare: an API token for the `kal.vn` zone (S9, pending), so that the DNS record of section 5 can be created and, if the shared Traefik's DNS challenge token does not cover `kal.vn` yet, so that it can.
 - [ ] On Pa's Mac: Docker with buildx (OrbStack), `gh` logged in as `kalhoang` with the `write:packages` scope (`gh auth refresh -s write:packages`).
@@ -58,7 +58,7 @@ Run from the repository root on Pa's Mac, by hand: nothing automated runs these 
 ```sh
 eval "$(deploy/site/stack-env.sh --owner kalhoang --tag prod | sed 's/^/export /')"
 python3 -I deploy/site/fetch-downloads.py --out deploy/site/downloads --repo "kalhoang/$SITE_SLUG"   # nothing to fetch before the first release
-docker build -f deploy/site/Dockerfile --platform linux/amd64 --build-arg SITE_STRICT=false -t "$IMAGE" .
+docker build -f deploy/site/Dockerfile --platform linux/amd64 --build-arg SITE_STRICT=true -t "$IMAGE" .   # false only built the preview before 1.0.0
 ```
 
 The build stage runs on the Mac's own platform and the nginx stage only copies files, so building `linux/amd64` on Apple silicon needs no emulation. VERIFY the architecture of the Swarm nodes once (`docker node ls`, then `docker node inspect --format '{{.Description.Platform.Architecture}}' <node>`): if a node is `aarch64`, build with `--platform linux/amd64,linux/arm64` and `--push` instead.
@@ -154,7 +154,7 @@ Until 1.0.0 is published the deployed site is a preview: `SITE_STRICT=false` bui
    curl -sS "https://$APP_SITE_HOST/appcast.xml" | grep -c '<item>'                      # 1
    ```
 
-None of these steps is done on 2026-11-17; section 0 records the state.
+All of these steps were done for 1.0.0 on 2026-11-18; section 0 records the state. Later releases follow the [release runbook](release.md) and section 6.
 
 ## 9. Releases and incidents
 

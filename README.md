@@ -8,7 +8,7 @@ KeyVi™ is a Vietnamese input method for macOS, written from scratch by Kal. It
 
 ## Status
 
-**Version 1.0, the first public release (17 November 2026).** Download it from the website: [keyvi.kal.vn/en/download](https://keyvi.kal.vn/en/download/) (in Vietnamese: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/)). Installed copies update themselves through Sparkle.
+**Version 1.0, the first public release (18 November 2026).** Download it from the website: [keyvi.kal.vn/en/download](https://keyvi.kal.vn/en/download/) (in Vietnamese: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/)). Installed copies update themselves through Sparkle.
 
 Every release has to pass the P0 tests (PRD-R0). The three P0 items are the reason this project exists:
 

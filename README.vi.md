@@ -8,7 +8,7 @@ KeyVi™ là bộ gõ tiếng Việt cho macOS do Kal tự viết từ đầu. �
 
 ## Tình trạng
 
-**Phiên bản 1.0, bản phát hành công khai đầu tiên (17/11/2026).** Bạn tải ứng dụng tại website: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/). Các bản đã cài tự cập nhật qua Sparkle.
+**Phiên bản 1.0, bản phát hành công khai đầu tiên (18/11/2026).** Bạn tải ứng dụng tại website: [keyvi.kal.vn/tai-ve](https://keyvi.kal.vn/tai-ve/). Các bản đã cài tự cập nhật qua Sparkle.
 
 Mọi bản phát hành đều phải đạt các bài kiểm thử P0 (PRD-R0). Ba mục P0 là lý do dự án này tồn tại:
 
