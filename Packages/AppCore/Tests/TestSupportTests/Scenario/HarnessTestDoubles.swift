@@ -189,7 +189,10 @@ final class RecordingLiveServices: LiveHarnessServices, Sendable {
 
 struct FixedAXReader: AXFieldReader {
     var text: String
-    func text(identifier: String?, in bundle: BundleKey) async throws -> String { text }
+    var selection: AXReadbackText.Selection?
+    func field(identifier: String?, in bundle: BundleKey) async throws -> AXFieldState {
+        AXFieldState(value: text, selection: selection)
+    }
 }
 
 /// Footprint samples in order (MB); repeats the last one.

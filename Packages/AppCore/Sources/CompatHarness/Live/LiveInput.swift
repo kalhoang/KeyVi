@@ -145,25 +145,27 @@ enum AX {
         return result == .success && settable.boolValue
     }
 
+    /// `kAXSelectedTextRangeAttribute` in UTF-16 units; nil when the element has none.
+    static func selection(of element: AXUIElement) -> AXReadbackText.Selection? {
+        guard let raw = attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(raw) == AXValueGetTypeID()
+        else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(raw as! AXValue, .cfRange, &range) else { return nil }  // type ID checked above
+        return AXReadbackText.Selection(location: range.location, length: range.length)
+    }
+
     static func set(_ element: AXUIElement, _ name: String, _ value: CFTypeRef) throws {
         let result = AXUIElementSetAttributeValue(element, name as CFString, value)
         guard result == .success else { throw LiveError.axFailure("set " + name, result.rawValue) }
     }
 }
 
-/// The value without a selected inline completion at its end (`AXReadbackText`, `launcher.spotlight`).
+/// The whole value and the selection, nothing stripped: whether a selected completion counts is the scenario's
+/// declaration, applied by `ReadbackRouter` (PLT-R530).
 struct LiveAXFieldReader: AXFieldReader {
-    func text(identifier: String?, in bundle: BundleKey) async throws -> String {
+    func field(identifier: String?, in bundle: BundleKey) async throws -> AXFieldState {
         let element = try AX.element(identifier, in: bundle)
         let value = AX.attribute(element, kAXValueAttribute) as? String ?? ""
-        return AXReadbackText.typed(value: value, selection: selection(of: element))
-    }
-
-    private func selection(of element: AXUIElement) -> AXReadbackText.Selection? {
-        guard let raw = AX.attribute(element, kAXSelectedTextRangeAttribute), CFGetTypeID(raw) == AXValueGetTypeID()
-        else { return nil }
-        var range = CFRange()
-        guard AXValueGetValue(raw as! AXValue, .cfRange, &range) else { return nil }  // type ID checked above
-        return AXReadbackText.Selection(location: range.location, length: range.length)
+        return AXFieldState(value: value, selection: AX.selection(of: element))
     }
 }

@@ -205,9 +205,10 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     }
 }
 
-/// Reads the text of an element by accessibility identifier (or the focused element) of an app. Runner only.
+/// Reads the value and the selection of an element by accessibility identifier (or the focused element) of an app.
+/// Runner only.
 public protocol AXFieldReader: Sendable {
-    func text(identifier: String?, in bundle: BundleKey) async throws -> String
+    func field(identifier: String?, in bundle: BundleKey) async throws -> AXFieldState
 }
 
 /// One line from the tester; `nil` when no terminal is attached or input ended.
@@ -247,7 +248,8 @@ public struct ReadbackRouter: ScenarioReadback {
         switch scenario.readback {
         case .ax:
             guard let ax else { throw HarnessReadbackError.unavailable(.ax) }
-            return try await ax.text(identifier: field, in: target)
+            let state = try await ax.field(identifier: field, in: target)
+            return AXReadbackText.typed(value: state.value, selection: state.selection)
         case .webdriver:
             return try await webDrivers.client(for: target).fieldText(selector: field)
         case .terminalCapture:

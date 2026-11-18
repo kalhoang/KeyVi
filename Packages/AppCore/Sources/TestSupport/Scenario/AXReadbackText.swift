@@ -6,6 +6,18 @@
 // `axSelection` strategy makes (PLT-R353). A collapsed selection, or one that ends before the end of the value, is
 // not a completion and keeps the whole value.
 
+/// What the `ax` readback reads of a field: its whole `kAXValueAttribute` and its `kAXSelectedTextRangeAttribute`
+/// (nil when the field has none). The reader strips nothing; `ReadbackRouter` decides what is compared.
+public struct AXFieldState: Sendable, Hashable {
+    public var value: String
+    public var selection: AXReadbackText.Selection?
+
+    public init(value: String, selection: AXReadbackText.Selection? = nil) {
+        self.value = value
+        self.selection = selection
+    }
+}
+
 public enum AXReadbackText {
     /// `kAXSelectedTextRangeAttribute` in UTF-16 units.
     public struct Selection: Sendable, Hashable {
