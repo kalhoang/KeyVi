@@ -69,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 95)
+        #expect(Self.rows.count == 99)
     }
 
     @Test(arguments: rows)

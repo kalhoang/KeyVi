@@ -76,6 +76,10 @@ B049	a1	\s	VNI	vi	general	á\s	á	L7 raw not English: keep	L7	kept
 B050	year	\s	Telex	none	general	year\s	year	L0 output equals the keys typed: nothing to decide	L0	unchanged
 B051	mother	\s	Telex	none	general	mother\s	mother	L0 output equals the keys typed: nothing to decide	L0	unchanged
 B052	baans	\s	Telex	none	general	bấn\s	bấn	L7 raw not English: keep	L7	kept
+B052a	dduwowngfzz	\s	Telex	none	general	duong\s	duong	L4a tone removal, raw not English: keep	L4a	kept
+B052b	vieejtz	\s	Telex	none	general	viêt\s	viêt	L4a tone removal, raw not English: keep	L4a	kept
+B052c	daauszz	\s	Telex	none	general	dau\s	dau	L4a tone removal, raw not English: keep	L4a	kept
+B052d	vie65t0	\s	VNI	none	general	viêt\s	viêt	L4a tone removal, raw not English: keep	L4a	kept
 B053	dzaayj	\s	Telex	none	general	dzậy\s	dzậy	L6 extended, raw not English: keep	L6	kept
 B054	dzoo	,	Telex	none	general	dzô,	dzô	L6 extended, raw not English: keep	L6	kept
 B055	heoj	\s	Telex	none	general	hẹo\s	hẹo	raw not English: keep (ENG-R316)	L7	kept

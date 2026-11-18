@@ -40,6 +40,21 @@ struct ProductOwnerDecisionTests {
         }
     }
 
+    @Test(
+        "Q9 of spec section 15 (18/11/2026): a word that ends with a tone removal keeps the text shown (rule L4a)",
+        arguments: [
+            ("dduwowngfzz ", "duong "), ("vieejtz ", "viêt "), ("daauszz ", "dau "), ("quartz ", "quartz "),
+            ("Amazon ", "Amazon "), ("Arizona ", "Arizona "), ("booze ", "booze "), ("hertz ", "het "),
+        ])
+    func toneRemovalKeepsTheText(_ keys: String, _ expected: String) throws {
+        // `quartz` is English, so L4a restores it; `Amazon`, `Arizona` and `booze` remove a mark before more letters, so
+        // the rules after L4a restore them as before; `hertz` (not in the lexicon) is the known cost (ENG-R411).
+        for seed in Self.telexSeeds {
+            #expect(try Self.committed(keys, after: seed, EngineConfiguration()) == expected, "\(seed)")
+        }
+        #expect(try Self.committed("vie65t0 ", after: "", Self.vni) == "viêt ")
+    }
+
     @Test("Q27: VNI co2 types cò in every context, and the escape keeps CO2")
     func co2IsVietnamese() throws {
         let resources = try RealData.resources()

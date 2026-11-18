@@ -160,6 +160,7 @@ struct CorpusScore {
         case .abbreviation: return "L3"
         case .camelCase: return "L3b"
         case .escape: return "L4"
+        case .toneRemoval: return "L4a"
         case .invalid: return "L5"
         case .extendedSpelling: return "L6"
         case .notEnglish: return "L7"

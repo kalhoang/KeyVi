@@ -14,6 +14,9 @@ package struct CommitInputs: Sendable {
     package let endsWithEscape: Bool
     /// An escape was not a doubling (`Composition.escapedAcrossKeys`, rule L4).
     package let escapedAcrossKeys: Bool
+    /// The last key is a tone-removal key that removed the tone or the letter marks (`Composition.endsWithRemoval`,
+    /// rule L4a, REG-39).
+    package let endsWithRemoval: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -33,6 +36,7 @@ package struct CommitInputs: Sendable {
         escapeUsed = token.composition.escapeUsed
         endsWithEscape = token.composition.endsWithEscape
         escapedAcrossKeys = token.composition.escapedAcrossKeys
+        endsWithRemoval = token.composition.endsWithRemoval
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -100,6 +104,7 @@ package struct CommitContext: Sendable {
 /// | L3 no vowel letter | `abbreviation` | - |
 /// | L3b camel case (ENG-R904) | - | `camelCase` |
 /// | L4 escape used | `escape` | `escape` |
+/// | L4a the last key removed the tone or the marks (ENG-R411) | `toneRemoval` | `toneRemoval` (R English) |
 /// | L5 invalid | - | `invalid` |
 /// | L6 Tier B only | `extendedSpelling` | `extendedSpelling` |
 /// | L7 `R` not English | `notEnglish` | - |
@@ -184,6 +189,11 @@ package struct CommitPolicy: Sendable {
         if inputs.camelCase { return restore(.camelCase) }
         // L4: an escape was used.
         if inputs.escapeUsed { return decideEscape(inputs, rawLowercased: r, context: context) }
+        // L4a: the last key is a tone-removal key that removed the tone or the marks (ENG-R411). The user saw what it left
+        // and committed it, so it is kept, syllable or not, unless the raw keys are English, as an escape keeps its form
+        // (decided by the product owner on 18/11/2026, Q9 of section 15, REG-39): `dduwowngfzz` keeps `duong`, `quartz`
+        // is restored. A removal that more letters follow belongs to a word typed through (`Amazon`): L5 onwards decide.
+        if inputs.endsWithRemoval { return isEnglish(r) ? restore(.toneRemoval) : .kept(.toneRemoval) }
         // L5: the display is not a syllable.
         if inputs.facts.validity == .invalid { return restore(.invalid) }
         // L9 reads the line (ENG-R850): app context `code`, a code-only word outside Vietnamese text (amended on

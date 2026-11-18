@@ -198,6 +198,9 @@ public enum CommitRule: Sendable, Hashable {
     case camelCase
     /// L4: an escape by doubling was used in the token.
     case escape
+    /// L4a: a tone-removal key (Telex `z`, VNI `0`) removed the tone or the letter marks: kept, unless the keys are
+    /// English (ENG-R411, REG-39).
+    case toneRemoval
     /// L5: the display is not a syllable of Tier A or B: restored.
     case invalid
     /// L6: Tier B only; restored when the keys are English.

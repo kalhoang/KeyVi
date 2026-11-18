@@ -29,7 +29,7 @@ DEFAULT_SPEC = PACKAGE_DIR.parent.parent / "spec" / "01-engine.md"
 CORPUS_DIR = PACKAGE_DIR / "Tests" / "VietnameseEngineTests" / "Corpus"
 
 BOUNDARY_KEYS = {"Space": " ", "Return": "\n", "Tab": "\t"}
-EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 95, "restore-toggle.tsv": 9}
+EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 99, "restore-toggle.tsv": 9}
 
 
 def fail(message):
@@ -117,7 +117,7 @@ def outcome_of(rule_text):
 
 
 def rule_code_of(rule_text):
-    match = re.match(r"(L\d+b?)\b", rule_text)
+    match = re.match(r"(L\d+[ab]?)\b", rule_text)
     if match:
         return match.group(1)
     if rule_text.startswith("raw not English"):

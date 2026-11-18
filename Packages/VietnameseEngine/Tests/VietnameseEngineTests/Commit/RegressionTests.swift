@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-38, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-39, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-38 (13.5)")
+@Suite("Regressions REG-01 to REG-39 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni)
 
@@ -332,9 +332,8 @@ struct RegressionTests {
         #expect(try Committing.driver("daauszz").field.string == "dau")
         #expect(try Committing.driver("daauszzz").field.string == "dauz")
         #expect(try Committing.driver("dduwowngfzz").field.string == "duong")
-        // The commit decides by 8.1 as for any token: `duong` is not a syllable, so L5 restores the raw keys,
-        // as it already did for a tone removal that leaves an invalid syllable (`vieejtz`). Known cost.
-        #expect(try text("dduwowngfzz ") == "dduwowngfzz " && text("vieejtz ") == "vieejtz ")
+        // The commit keeps what the removal left (rule L4a, REG-39 below; until 18/11/2026 L5 restored the keys).
+        #expect(try text("dduwowngfzz ") == "duong " && text("vieejtz ") == "viêt ")
         #expect(try Committing.driver("a6100", vni).field.string == "a")
         // Unchanged where nothing is marked: REG-01, REG-25 and the `dz` onset.
         #expect(try text("quz ") == "quz " && text("za ") == "za " && text("dzui ") == "dzui ")
@@ -395,5 +394,16 @@ struct RegressionTests {
         // Vietnamese text and the general context keep the Vietnamese display.
         #expect(try Committing.text("tay chown ", terminal) == "tay chơn ")
         #expect(try Committing.text("sudo chown ") == "sudo chơn ")
+    }
+
+    @Test("REG-39: the text a tone-removal key left is kept at commit")
+    func reg39() throws {
+        // Q9, decided by the product owner on 18/11/2026: rule L4a keeps the display unless the raw keys are English.
+        // Before, `duong` and `viêt` are not syllables, so L5 restored the keys typed.
+        #expect(try text("dduwowngfzz ") == "duong ")
+        #expect(try text("vieejtz ") == "viêt " && text("vieejtzz ") == "viet ")
+        #expect(try text("daauszz ") == "dau ")
+        #expect(try text("vie65t0 ", vni) == "viêt ")
+        #expect(try Committing.decision("dduwowngfzz ") == .kept(.toneRemoval))
     }
 }

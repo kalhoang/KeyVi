@@ -34,6 +34,9 @@ def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, 
         ends_with_escape = st.last_escape == len(st.raw) - 1
         if not st.escape_across and (vowel_groups(C) <= 1 or ends_with_escape): return C, "kept: user escape"
         return R, "restored: escaped token typed through"
+    if st.last_removal is not None and st.last_removal == len(st.raw) - 1:
+        # rule L4a, decided by the product owner on 18/11/2026 (ENG-R411, REG-39): the last key removed the tone or marks
+        return (R, "restored: tone removal, raw is English") if r in EN | TECH else (C, "kept: tone removal")
     v = validity(C)
     if v is None: return R, "restored: invalid syllable"
     code_word = context == "code" and r in CODE_ONLY and not vietnamese_text
@@ -330,9 +333,27 @@ ESCAPE_RUNS = [
     ("password ", "password ", "restored: escaped token, raw is English"),
     ("www ", "www ", "restored: escaped token, raw is English"),
 ]
+# Rule L4a (product owner, 18/11/2026, ENG-R411, REG-39) with the 13.9 fixtures: a token whose last key removed the tone
+# or the marks keeps the text shown unless its keys are English; a removal that more letters follow is decided as before.
+REMOVAL_RUNS = [
+    ("dduwowngfzz ", "duong ", "kept: tone removal"),  # B052a
+    ("vieejtz ", "viêt ", "kept: tone removal"),  # B052b
+    ("daauszz ", "dau ", "kept: tone removal"),  # B052c
+    ("vieejtzz ", "viet ", "kept: tone removal"),
+    ("testz ", "tet ", "kept: tone removal"),
+    ("daauszzz ", "daauszzz ", "restored: invalid syllable"),  # the third `z` is a letter
+    ("Amazon ", "Amazon ", "restored: invalid syllable"),  # a removal that more letters follow
+    ("vieejtzs ", "viết ", "kept: valid, raw not English"),
+    ("aazaa ", "aa ", "kept: user escape"),  # an escape in the token: L4 decides
+]
+# VNI rows, decided token by token (`type_run` splits on digits): B052d.
+REMOVAL_VNI = [("vie65t0", "viêt", "kept: tone removal"), ("vie65t00", "viet", "kept: tone removal")]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]
     bad += [(keys, type_run(keys), (want, why)) for keys, want, why in ESCAPE_RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, type_run(keys), (want, why)) for keys, want, why in REMOVAL_RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, decide(keys, Cfg(im="vni")), (want, why)) for keys, want, why in REMOVAL_VNI
+            if decide(keys, Cfg(im="vni")) != (want, why)]
     bad += [(keys, type_run_collision(keys), (want, why)) for keys, want, why in COLLISION_RUNS
             if type_run_collision(keys) != (want, why)]
     bad += [(keys, type_run(keys, context="code"), (want, why)) for keys, want, why in CODE_RUNS
@@ -344,7 +365,7 @@ if __name__ == "__main__":
             for keys, want, why in CODE_RUNS_CAPITALIZED
             if type_run(keys, context="code", code_capitalized={"tar"}) != (want, why)]
     for row in bad: print("mismatch:", row)
-    total = (len(RUNS) + len(ESCAPE_RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
+    total = (len(RUNS) + len(ESCAPE_RUNS) + len(REMOVAL_RUNS) + len(REMOVAL_VNI) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
              + len(CODE_RUNS_CAPITALIZED))
-    print(f"{total - len(bad)}/{total} English-run, escape, collision and code-context examples agree")
+    print(f"{total - len(bad)}/{total} English-run, escape, tone-removal, collision and code-context examples agree")
     sys.exit(1 if bad else 0)

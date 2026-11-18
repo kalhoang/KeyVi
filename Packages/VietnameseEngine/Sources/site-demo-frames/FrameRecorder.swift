@@ -308,6 +308,7 @@ extension CommitRule {
         case .abbreviation: "abbreviation"
         case .camelCase: "camelCase"
         case .escape: "escape"
+        case .toneRemoval: "toneRemoval"
         case .invalid: "invalid"
         case .extendedSpelling: "extendedSpelling"
         case .notEnglish: "notEnglish"
