@@ -50,6 +50,21 @@ private func scenarioFiles() throws -> [URL] {
         }
     }
 
+    /// The validator's key sets are the schema's properties (`additionalProperties: false` at every level), so a key
+    /// cannot reach one and not the other.
+    @Test func validatorKeysAreTheSchemaProperties() throws {
+        let schema = try JSONDecoder().decode(
+            JSONValue.self,
+            from: Data(contentsOf: repositoryRoot.appendingPathComponent("compat/schema/scenario.schema.json")))
+        func keys(_ value: JSONValue?) -> Set<String> { Set(value?.objectValue.map { Array($0.keys) } ?? []) }
+        let properties = schema["properties"]
+        #expect(keys(properties) == ScenarioValidator.topLevelKeys)
+        #expect(keys(properties?["setup"]?["items"]?["properties"]) == ScenarioValidator.setupKeys)
+        #expect(keys(properties?["expect"]?["properties"]) == ScenarioValidator.expectKeys)
+        #expect(keys(properties?["repeat"]?["properties"]) == ScenarioValidator.repeatKeys)
+        #expect(keys(properties?["readbackOptions"]?["properties"]) == ScenarioValidator.readbackOptionsKeys)
+    }
+
     /// 02-platform.md 13.2 minimum automated scenario set.
     @Test func minimumSetOfSection13_2IsPresent() throws {
         let ids = Set(try scenarioFiles().map { $0.deletingPathExtension().lastPathComponent })

@@ -50,6 +50,14 @@
       }
     },
     "readback": { "enum": ["ax", "webdriver", "terminalCapture", "human"] },
+    "readbackOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the readback reads the field (PLT-R530, amended 19/11/2026).",
+      "properties": {
+        "excludesSelectedCompletion": { "type": "boolean", "description": "ax readback only (compat-harness rejects it elsewhere): a selection that runs to the end of the value is the app's own completion from user history (Spotlight, a browser's address bar) and is left out of the text compared with expect.text and the repeat words. The noPlaceholderResidue check still reads the whole value. Never on a local.testhost scenario: TestHost completes deterministically, and its completion is part of the expected field text (QA-R21)." }
+      }
+    },
     "repeat": {
       "type": "object",
       "additionalProperties": false,

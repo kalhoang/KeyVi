@@ -87,13 +87,14 @@ public struct ScenarioLoader: Sendable {
 public enum ScenarioValidator {
     public static let topLevelKeys: Set<String> = [
         "$schema", "id", "targetBundleId", "setup", "keys", "timing", "method", "layout", "expect", "readback",
-        "repeat",
+        "readbackOptions", "repeat",
     ]
     public static let setupKeys: Set<String> = ["action", "value"]
     public static let expectKeys: Set<String> = [
         "text", "paused", "holderBundleId", "firstKeyAfterReleaseComposed", "noPlaceholderResidue",
     ]
     public static let repeatKeys: Set<String> = ["words", "seed", "timing", "prefix"]
+    public static let readbackOptionsKeys: Set<String> = ["excludesSelectedCompletion"]
     /// Longest `wait` step accepted, in milliseconds.
     public static let maximumWaitMilliseconds = 60_000
     /// Most words a `repeat` block may type (schema `maximum`): ten times the PLT-R422 gate.
@@ -126,6 +127,10 @@ public enum ScenarioValidator {
         if scenario.readback == .webdriver, !scenario.setup.contains(where: { $0.action == .openURL }) {
             problems.append("webdriver readback needs an openURL step")
         }
+        // PLT-R530: only the `ax` readback reads a selection; elsewhere the declaration would do nothing.
+        if scenario.readbackOptions?.excludesSelectedCompletion == true, scenario.readback != .ax {
+            problems.append("readbackOptions.excludesSelectedCompletion needs an ax readback")
+        }
         return problems
     }
 
@@ -143,6 +148,9 @@ public enum ScenarioValidator {
         problems += expectExtra.sorted().map { "unknown key expect." + $0 }
         let repeatExtra = (object["repeat"]?.objectValue?.keys).map { $0.filter { !repeatKeys.contains($0) } } ?? []
         problems += repeatExtra.sorted().map { "unknown key repeat." + $0 }
+        let optionsExtra =
+            (object["readbackOptions"]?.objectValue?.keys).map { $0.filter { !readbackOptionsKeys.contains($0) } } ?? []
+        problems += optionsExtra.sorted().map { "unknown key readbackOptions." + $0 }
         return problems
     }
 

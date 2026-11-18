@@ -21,11 +21,11 @@ func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
 func makeScenario(
     id: String = "sample.scenario", target: String = "com.example.Editor", setup: [Scenario.SetupStep] = [],
     keys: [String] = ["d", "d", "i"], timing: Scenario.TimingProfile = .burst, readback: Scenario.Readback = .ax,
-    expect: Scenario.Expectation = Scenario.Expectation(text: "đi")
+    expect: Scenario.Expectation = Scenario.Expectation(text: "đi"), readbackOptions: Scenario.ReadbackOptions? = nil
 ) -> Scenario {
     Scenario(
         id: id, targetBundleId: bundle(target), setup: setup, keys: keys, timing: timing, method: .telex,
-        expect: expect, readback: readback)
+        expect: expect, readback: readback, readbackOptions: readbackOptions)
 }
 
 enum TestFailure: Error { case injected }

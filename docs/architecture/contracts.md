@@ -16526,6 +16526,20 @@ public struct Scenario: Sendable, Hashable, Codable {
         }
     }
 
+    /// `readbackOptions` in the file: how the readback reads the field (PLT-R530, amended 19/11/2026).
+    public struct ReadbackOptions: Sendable, Hashable, Codable {
+        /// `ax` readback only: a selection that runs to the end of the value is the app's own completion, from user
+        /// history (Spotlight, a browser's address bar), and is left out of the text compared with `expect.text` and
+        /// the `repeat` words (`AXReadbackText`). The PLT-R422 residue check still reads the whole value. Never on a
+        /// TestHost scenario: TestHost completes deterministically, and its completion is part of the expected field
+        /// text (QA-R21).
+        public var excludesSelectedCompletion: Bool?
+
+        public init(excludesSelectedCompletion: Bool? = nil) {
+            self.excludesSelectedCompletion = excludesSelectedCompletion
+        }
+    }
+
     /// `repeat` in the file (PLT-R422 gate, section 4 acceptance): after the key script passes, `words`
     /// randomised words of the Telex soak corpus drawn with `seed`, each typed after `prefix` at `timing` and
     /// read back on its own; every word must read back as exactly its corpus text.
@@ -16555,12 +16569,13 @@ public struct Scenario: Sendable, Hashable, Codable {
     public var layout: InputSourceID?
     public var expect: Expectation
     public var readback: Readback
+    public var readbackOptions: ReadbackOptions?
     public var repetition: Repetition?
 
     public init(
         id: String, targetBundleId: BundleKey, setup: [SetupStep], keys: [String], timing: TimingProfile,
         method: Method, layout: InputSourceID? = nil, expect: Expectation, readback: Readback,
-        repetition: Repetition? = nil
+        readbackOptions: ReadbackOptions? = nil, repetition: Repetition? = nil
     ) {
         self.id = id
         self.targetBundleId = targetBundleId
@@ -16571,11 +16586,12 @@ public struct Scenario: Sendable, Hashable, Codable {
         self.layout = layout
         self.expect = expect
         self.readback = readback
+        self.readbackOptions = readbackOptions
         self.repetition = repetition
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback
+        case id, targetBundleId, setup, keys, timing, method, layout, expect, readback, readbackOptions
         case repetition = "repeat"
     }
 }
