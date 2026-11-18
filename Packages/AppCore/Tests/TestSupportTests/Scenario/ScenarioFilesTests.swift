@@ -215,7 +215,9 @@ private func scenarioFiles() throws -> [URL] {
     /// PLT-R530, integration-suite.md section 10.10: `testhost.panel.inlineCompletionTwice` proves the overlay rule and
     /// the inline completion on both openings of the search panel, not the race with its opening, so the runner waits
     /// after each Command+K. `testhost.sheet.commandS` keeps typing right after Command+S: T5.5 asks the product to
-    /// handle that (PLT-R340 late focus change). Declaring another one is a decision, not a side effect.
+    /// handle that (PLT-R340 late focus change). `testhost.panel.toneUndo` keeps typing right after Command+K: it is
+    /// the panel scenario left to the product's late keep (PLT-R340, ENG-R1211). Declaring another one is a decision,
+    /// not a side effect.
     @Test func onlyThePanelReopeningWaitsForItsFocusShortcutT55() async throws {
         let scenarios = try ScenarioRunner.load(directory: scenariosDirectory)
         let declared = scenarios.filter { $0.focusShortcuts != nil }.map(\.id)
@@ -235,6 +237,9 @@ private func scenarioFiles() throws -> [URL] {
         let commandS = try #require(scenarios.first { $0.id == "testhost.sheet.commandS" })
         #expect(commandS.focusShortcuts == nil && commandS.keys.first == "command+s")
         #expect(try await typed("testhost.sheet.commandS") == [commandS.keys])
+        let toneUndo = try #require(scenarios.first { $0.id == "testhost.panel.toneUndo" })
+        #expect(toneUndo.focusShortcuts == nil && toneUndo.keys.first == "command+k")
+        #expect(try await typed("testhost.panel.toneUndo") == [toneUndo.keys])
     }
 
     /// TestHost scenarios use the alias and real TestHost field identifiers.

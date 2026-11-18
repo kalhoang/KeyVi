@@ -5,7 +5,8 @@
   (platform baseline in `perf/`, M2 from the soak, integration hooks, app profiles, privacy canary, egress
   command); amended 2026-11-13 by W3-A (the app side of the hooks in the `Integration` configuration, the release
   check, `testHook` in the scenario schema, gate-aligned histogram sub-buckets, the `build` and `tests` subcommands);
-  amended 2026-11-19 (the harness's settings turn the automatic update check and install off); where each gate
+  amended 2026-11-19 (the harness's settings turn the automatic update check and install off, the restore starts
+  the test build again only when it was running, `focusShortcuts` in the scenario schema); where each gate
   runs: [ADR 0506](0506-ci-coverage-after-the-engine-merge.md)
 - Requirements: QA-R2, QA-R8, QA-R9, QA-R11, QA-R14, QA-R15, QA-R16, ENG-R1230, ENG-R1231, ENG-R1233, ENG
   section 13.6, PLT-R330, PLT-R398B, PLT-R730, PLT-R801, PLT-R820 to PLT-R822, PLT-R901, PLT-R906, PLT-R909,
@@ -193,20 +194,30 @@ swift run --package-path Packages/AppCore -c release compat-harness bench --runs
 - Every scenario runs on factory defaults plus its `method` plus, when one lists it, a profile from
   `compat/scenarios/profiles/<id>.json` (schema `profile.schema.json` there): the `settings` object of
   settings.json verbatim, macros, user rule overrides (`bundleIds` may name `local.testhost`; `actionFromRule`
-  copies a shipped rule's `action` for QA-R21 TestHost reproductions). The scenario schema is unchanged.
+  copies a shipped rule's `action` for QA-R21 TestHost reproductions). The scenario schema is unchanged by
+  profiles (its 2026-11-19 addition, `focusShortcuts`, is in the next bullet).
 - Amended 2026-11-19: every settings file the harness writes also sets `automaticallyCheckForUpdates` and
   `automaticallyInstallUpdates` (D19, D20) to `false`, unless the profile sets them
   (`AppSettingsDocuments.harnessDefaults`). The test build carries the production feed and an Info.plist with both
   on; in the VM run `20261118T221229Z-integration` it found the published 1.0.0 at launch, installed it and
   relaunched as the release app, so every later scenario failed. The app pushes the stored values to Sparkle before
   Sparkle starts (PLT-R1101); the forced check of the egress test is user-initiated and still runs
-  ([integration-suite.md](../runbooks/integration-suite.md) section 10.10).
+  ([integration-suite.md](../runbooks/integration-suite.md) section 10.10). The restore after the run starts the
+  test build again only when it was running before the first apply, because the restored files may turn both
+  switches on.
+- Amended 2026-11-19, scenario schema: an optional top-level `focusShortcuts` lists chords of the scenario's `keys`
+  (`compat/schema/scenario.schema.json`, `Scenario.focusShortcuts`). `ScenarioValidator` rejects an empty list, a
+  name that is not a key, a non-chord, a chord that `keys` does not type and a repeated entry. The runner types a
+  declared chord on its own, then waits for the app's next focus snapshot and 300 ms, as it does after Command plus
+  a digit (PLT-R530), and the dry-run plan prints a `focus shortcuts:` line. A scenario declares one only when it
+  proves what happens after the focus change, not the race with it (integration-suite.md section 10.10).
 - Before a scenario whose configuration differs from the previous one, the harness quits the test build (its quit
   flushes its settings), backs up its four settings files once per run, writes the new ones (owner-only, the
   original `onboarding` object kept), starts it and waits until its hooks report a state other than `starting`
   (or 2 s without hooks; after the first timeout the harness stops asking, so a build without hooks waits 2 s per
   switch, not 12 s). After the run it restores the backup, also when the run stops on an error or the factory
-  configuration fails. `--no-configure` turns this off.
+  configuration fails, and starts the test build again only when it was running before the run.
+  `--no-configure` turns this off.
 
 ## Integration hooks (W2-E2, app side W3-A)
 

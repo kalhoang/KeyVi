@@ -79,9 +79,16 @@ These steps change system settings, so they are Pa's to do on the runner machine
    `sudo scripts/vm/grant-tcc.sh --bundle ... --binary ...` after **every** build (its image has SIP disabled, and the
    grant of an ad-hoc build is tied to that build's cdhash); on a physical Mac it is done once by hand
    ([self-hosted-runner.md](self-hosted-runner.md) section 4).
-9. Start the test build once by hand and finish its onboarding, so it never shows onboarding during a run (the
-   harness keeps the onboarding state when it rewrites the settings). Turn its automatic update check and install
-   (D19, D20) off in its About pane during that start: the test build carries the production feed (section 10.10).
+9. Before the test build's first start, turn its automatic update check and install (D19, D20) off in its
+   settings file: the test build carries the production feed, and on factory defaults Sparkle checks at that very
+   start and, with D20 on, installs the published release on quit, which turning the switches off in the About pane
+   during the start does not cancel (section 10.10). When
+   `~/Library/Application Support/<APP_DISPLAY_NAME>/settings.json` does not exist yet, write it with
+   `{"schemaVersion":1,"settings":{"automaticallyCheckForUpdates":false,"automaticallyInstallUpdates":false}}`
+   (the seed of `scripts/vm/guest/integration-guest.sh` without its onboarding state); when it does, quit the test
+   build and set both keys to `false` in its `settings` object. Then start the test build by hand and finish its
+   onboarding, so it never shows onboarding during a run (the harness keeps the onboarding state when it rewrites
+   the settings).
 10. Run the plan check on the runner: `compat-harness run --dry-run`. It must print every scenario, an `app:` line
     per scenario and end without errors.
 
@@ -97,7 +104,9 @@ These steps change system settings, so they are Pa's to do on the runner machine
       four settings files (factory defaults, the scenario's method, its profile from `compat/scenarios/profiles/`),
       starts it and waits until it is ready; the original files are backed up once in
       `<output>/app-settings-backup/` and restored after the run, also when the run stops on an error (only a
-      killed harness process skips the restore, see section 8);
+      killed harness process skips the restore, see section 8); after the restore the harness starts the test build
+      again only when it was running before the run, because the restored files may turn its automatic updates on
+      (section 10.10);
    2. presses TestHost's Reset fields button, then runs the setup steps, types the keys at the scenario's timing
       profile, reads the field back through AX and asks the app for its state;
    3. after the last scenario, quits the app (so its last flush is on disk and nothing is written while the scan
@@ -657,7 +666,9 @@ relaunches.
 | Part | Change | Tests |
 |---|---|---|
 | Harness | Every settings file the harness writes (`AppSettingsDocuments.documents(for:onboarding:)`, factory configuration and every profile) sets `automaticallyCheckForUpdates` and `automaticallyInstallUpdates` to `false` (`AppSettingsDocuments.harnessDefaults`); a profile that sets either keeps its value | `AppSettingsDocumentsTests.everyDocumentTurnsTheAutomaticUpdateCheckAndInstallOffPltR1101`, `AppSettingsDocumentsTests.aProfileThatSetsAnUpdateSwitchKeepsItsValuePltR1101`, `RepositoryProfileTests.settingsStoreReadsTheUpdateSwitchesOffPltR1101` (read back by the real SettingsStore) |
-| VM guest | `scripts/vm/guest/integration-guest.sh` seeds `settings.json` with both switches off beside the onboarding state, for a launch before the harness's first apply, a run with `--no-configure` and the settings the harness restores after the run | `IntegrationGuestTests.test_the_seeded_settings_turn_the_automatic_update_check_and_install_off` |
+| VM guest | `scripts/vm/guest/integration-guest.sh` seeds `settings.json` with both switches off beside the onboarding state when the file does not exist yet, for a launch before the harness's first apply, a run with `--no-configure` and the settings the harness restores after the run. A file that predates the seed (a disk image snapshotted after a launch of the app) keeps its switches | `IntegrationGuestTests.test_the_seeded_settings_turn_the_automatic_update_check_and_install_off` |
+| Harness restore | `SettingsFileAppConfigurator.restore()` puts the backed-up files back and starts the test build again only when it was running before the first apply, so the harness adds no launch with the restored switches after the run (the VM guest script does not start the test build before the suite) | `SettingsFileAppConfiguratorTests.restoreLeavesTheAppStoppedWhenItWasNotRunningBeforeTheRunPltR1101`, `SettingsFileAppConfiguratorTests.applyBacksUpOnceWritesAndRestartsThenRestorePutsEverythingBack` |
+| Runner setup | Section 2 step 9 turns both switches off in the settings file before the test build's first start: once Sparkle has found an update at a start with D20 on, turning the switches off in the About pane no longer stops the install on quit | none (a manual step) |
 
 Why that is enough: the launch sequence loads the settings before it starts the updater
 (`Packages/AppCore/Sources/InputHost/Integration/LaunchSequence.swift` lines 97 and 108); `startUpdater` applies the
@@ -687,7 +698,7 @@ already applied with the previous snapshot's plan cannot be repaired).
 | Part | Change | Tests |
 |---|---|---|
 | Scenario schema and runner | A scenario may list chords of its `keys` in `focusShortcuts` (`compat/schema/scenario.schema.json`, `Scenario.focusShortcuts`); the runner treats each like Command plus a digit: typed on its own, then a wait for the app's next focus snapshot and 300 ms. `ScenarioValidator` accepts only chords that `keys` types, each once; the dry-run plan prints a `focus shortcuts:` line for such a scenario | `ScenarioRunnerTests.aDeclaredFocusShortcutWaitsLikeCommandDigitPltR530`, `ScenarioLoadingTests.decodesFocusShortcuts`, `ScenarioLoadingTests.focusShortcutsMustBeChordsOfTheKeyScript`, `HarnessDryRunTests.dryRunShowsDeclaredFocusShortcuts`, `ScenarioFilesTests.validatorKeysAreTheSchemaProperties` |
-| Scenarios | `testhost.panel.inlineCompletionTwice` declares `command+k`, so both openings wait; `testhost.sheet.commandS` declares nothing and keeps typing right after Command+S (T5.5: the product must handle it, PLT-R340 late focus change); `testhost.panel.toneUndo` is unchanged | `ScenarioFilesTests.onlyThePanelReopeningWaitsForItsFocusShortcutT55` |
+| Scenarios | `testhost.panel.inlineCompletionTwice` declares `command+k`, so both openings wait; `testhost.sheet.commandS` declares nothing and keeps typing right after Command+S (T5.5: the product must handle it, PLT-R340 late focus change); `testhost.panel.toneUndo` declares nothing on purpose and keeps typing `t` right after Command+K: with `inlineCompletionTwice` waiting, it is the one panel scenario left where the field can be published after the first key, so it keeps the product side of that race covered (the PLT-R340 keep into the `launcher.spotlight` variant and the ENG-R1211 continuation of 19/11/2026, proof step 4 of section 10.9: `focus.lateFocusKept`, no `focus.lateFocusCheckFailed`); it has no inline completion for a late field to break | `ScenarioFilesTests.onlyThePanelReopeningWaitsForItsFocusShortcutT55` |
 
 Proof, with the VM rules of this section: five times `scripts/vm/integration-dev.sh --only
 testhost.panel.inlineCompletionTwice,testhost.sheet.commandS`: both pass every time, `dry-run.log` shows `focus
