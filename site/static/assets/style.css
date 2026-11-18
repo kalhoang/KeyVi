@@ -219,10 +219,12 @@ kbd {
 .btn-disabled { border: 1px dashed var(--line-strong); background: var(--paper-2); color: var(--muted); cursor: default; }
 .btn-disabled:hover, .btn-disabled:active { filter: none; transform: none; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; margin-block: 1.5rem; }
+/* The brew line stays on one line and shrinks with the viewport so a 360px phone shows it whole (it scrolls below). */
 .cmd {
   display: block;
   max-width: 100%;
-  padding: 0.65rem 0.95rem;
+  padding: 0.65rem clamp(0.6rem, 2.5vw, 0.95rem);
+  font-size: min(0.9em, 3.4vw);
   border: 1px solid var(--line);
   border-radius: var(--radius-s);
   background: var(--paper-2);

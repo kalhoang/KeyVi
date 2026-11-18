@@ -223,7 +223,8 @@ export const compat = {
 
 export const changelog = {
   h1: "Nhật ký thay đổi",
-  lede: "Những thay đổi bạn nhìn thấy trong từng bản phát hành, gom theo ứng dụng.",
+  lede: "Những thay đổi bạn nhìn thấy trong từng bản phát hành.",
+  empty: "Chưa có bản phát hành nào.",
   donateLine: "{{AppNameTM}} miễn phí. Nếu thấy có ích, bạn có thể <a href=\"{{hrefDonate}}\">ủng hộ để Kal có thêm thời gian làm tiếp</a>.",
 };
 

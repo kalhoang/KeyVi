@@ -15,14 +15,28 @@ export function changelogHeadingId(depth, text) {
   return match ? `v${match[1]}` : undefined;
 }
 
+/**
+ * The part of a changelog visitors see: its release sections, in file order. The preamble (writing rules for
+ * contributors) and the Unreleased section stay in the file; the page lists what shipped (spec/03-product.md section 16,
+ * `/nhat-ky-thay-doi`: per release, date, channel and changes). Returns "" when no release has a section yet.
+ */
+export function releaseSections(markdown) {
+  return markdown
+    .split(/^(?=## )/m)
+    .filter((section) => section.startsWith("## ") && RELEASE_HEADING.test(section.slice(3).trim()))
+    .join("")
+    .trimEnd();
+}
+
 export function renderChangelog(ctx, lang) {
   const { c, f, p, ui } = kit(ctx, lang);
   const m = c.changelog;
   // The page owns the h1. Brand tokens ({{AppName}}) are filled as plain text; the renderer escapes them.
-  const source = p(ctx.data.changelog[lang].replace(/^\s*#\s[^\n]*\n/, ""));
+  const source = releaseSections(p(ctx.data.changelog[lang]));
+  const releases = source ? renderMarkdown(source, { baseLevel: 1, headingId: changelogHeadingId }) : `<p class="muted">${esc(m.empty)}</p>`;
   const body = `
     ${pageHead(esc(m.h1), esc(m.lede))}
-    <div class="prose changelog">${renderMarkdown(source, { baseLevel: 1, headingId: changelogHeadingId })}</div>
+    <div class="prose changelog">${releases}</div>
     <p class="muted prose">${f(m.donateLine)}</p>`;
   return { routeId: "changelog", navId: "changelog", title: p(ui.titles.changelog), description: p(ui.descriptions.changelog), body };
 }
