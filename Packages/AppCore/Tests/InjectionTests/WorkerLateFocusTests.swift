@@ -25,7 +25,131 @@ private func lateFocusJob(
     return job
 }
 
+/// An app still applying a key the tap passed through physically: the field reads without it until `due` on the
+/// rig's clock (the first read of a selected range at or after `due` applies it). `onRead` runs before each
+/// selected-range read with its index from 1; `timesOut` makes those reads time out.
+private struct CatchingUpFieldAccess: FocusedFieldAccess {
+    let base: FakeFocusedFieldAccess
+    let field: SimulatedTextField
+    /// The rig's clock, set once the rig exists (the wrapper is built inside the rig's initialiser).
+    let clock: Mutex<ManualClock?>
+    let due: MonotonicInstant
+    let pending: Character
+    var timesOut: Set<Int> = []
+    var onRead: @Sendable (Int) -> Void = { _ in }
+    private let state = Mutex((reads: 0, applied: false))
+
+    init(
+        base: FakeFocusedFieldAccess, field: SimulatedTextField, clock: Mutex<ManualClock?>, due: MonotonicInstant,
+        pending: Character, timesOut: Set<Int> = [], onRead: @escaping @Sendable (Int) -> Void = { _ in }
+    ) {
+        self.base = base
+        self.field = field
+        self.clock = clock
+        self.due = due
+        self.pending = pending
+        self.timesOut = timesOut
+        self.onRead = onRead
+    }
+
+    func selectedRange(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<Injection.TextRange> {
+        let (index, apply) = state.withLock { state in
+            state.reads += 1
+            let apply = !state.applied && clock.withLock { $0?.now() ?? .zero } >= due
+            if apply { state.applied = true }
+            return (state.reads, apply)
+        }
+        onRead(index)
+        if apply {
+            self.field.apply(
+                InjectionFieldWiring.keyDown(pending, receivedAt: due), layout: InjectionTestLayouts.qwerty())
+        }
+        if timesOut.contains(index) { return .timedOut }
+        return base.selectedRange(field, timeout: timeout)
+    }
+    func caret(_ field: FieldHandle, timeout: TimeSpan) -> AXCallResult<FieldCaret> {
+        base.caret(field, timeout: timeout)
+    }
+    func text(_ field: FieldHandle, in range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<String> {
+        base.text(field, in: range, timeout: timeout)
+    }
+    func setSelectedRange(_ field: FieldHandle, to range: Injection.TextRange, timeout: TimeSpan) -> AXCallResult<Void>
+    {
+        base.setSelectedRange(field, to: range, timeout: timeout)
+    }
+    func setSelectedText(_ field: FieldHandle, to text: String, timeout: TimeSpan) -> AXCallResult<Void> {
+        base.setSelectedText(field, to: text, timeout: timeout)
+    }
+}
+
+/// A rig whose field (`text`) gets the token's "d" only `lag` milliseconds after the job's key (`Fixture.start`).
+private func catchingUpRig(
+    text: String = "", lagMilliseconds: UInt64, timesOut: Set<Int> = [],
+    onRead: @escaping @Sendable (Int) -> Void = { _ in }
+) -> WorkerRig {
+    let field = SimulatedTextField(text: text)
+    let due = Fixture.start.advanced(byMicroseconds: lagMilliseconds * 1_000)
+    var access: CatchingUpFieldAccess?
+    let rig = WorkerRig(field: field) { base in
+        let wrapper = CatchingUpFieldAccess(
+            base: base, field: field, clock: Mutex(nil), due: due, pending: "d", timesOut: timesOut, onRead: onRead)
+        access = wrapper
+        return wrapper
+    }
+    access?.clock.withLock { $0 = rig.clock }
+    return rig
+}
+
 @Suite struct WorkerLateFocusTests {
+    // MARK: A field still catching up (PLT-R340 amendment of 19/11/2026)
+
+    /// VM run 20261118T220253Z: the check read the field about 5 ms after the tap passed the token's key through,
+    /// before the app had inserted it (caret at 0). A failed first read within `InjectionTiming.revisionSettle` of
+    /// the key is read once more when that window ends, as for a revision (PLT-R357), so the word is kept.
+    @Test(arguments: [0, 1])
+    func aFieldStillCatchingUpIsReadAgainAfterTheSettleWindowPLTR340(timedOutReads: Int) {
+        let rig = catchingUpRig(lagMilliseconds: 20, timesOut: timedOutReads == 1 ? [1] : [])
+        let edit = rig.pushEdit { lateFocusJob($0) }
+        rig.run()
+        #expect(rig.outcome(edit) == .executed)
+        #expect(rig.field.text == "đ")
+        #expect(rig.feedback.compositionResetCount == 0)
+        #expect(rig.clock.now() >= Fixture.start.advanced(byMicroseconds: 50_000))
+    }
+
+    /// Bounded: one more read only. An app still behind when the window ends fails the check (the key passes and
+    /// the word is reset), and a first read that already ends after the window is not repeated.
+    @Test func theSecondReadIsTheLastPLTR340() {
+        let slow = catchingUpRig(lagMilliseconds: 80)
+        let edit = slow.pushEdit { lateFocusJob($0) }
+        slow.run()
+        #expect(slow.outcome(edit) == .passedThroughByFallback)
+        #expect(slow.feedback.compositionResetCount == 1)
+
+        let late = WorkerRig(field: SimulatedTextField(text: "Report"))
+        late.clock.advance(byMicroseconds: 60_000)  // the job starts 60 ms after its key
+        let started = late.clock.now()
+        let other = late.pushEdit { lateFocusJob($0) }
+        late.run()
+        #expect(late.outcome(other) == .passedThroughByFallback)
+        #expect(late.clock.now() == started)  // no wait
+    }
+
+    /// PLT-R316: a focus change while the worker waited (a click is never held, PLT-R317) discards the job: its key
+    /// is replayed into the new field and the word is reset, nothing is posted.
+    @Test func aFocusChangeDuringTheWaitDiscardsTheJobPLTR316() {
+        let generation = Mutex<CurrentFocusGeneration?>(nil)
+        let rig = catchingUpRig(lagMilliseconds: 20) { read in
+            if read == 2 { generation.withLock { $0?.store(FocusGeneration(rawValue: 2)) } }
+        }
+        generation.withLock { $0 = rig.generation }
+        let edit = rig.pushEdit { lateFocusJob($0) }
+        rig.run()
+        #expect(rig.outcome(edit) == .discardedForGeneration)
+        #expect(rig.poster.posted.backspaceCount == 0)
+        #expect(rig.feedback.compositionResetCount >= 1)
+    }
+
     /// The sheet's name field shows the first "d" before the caret: the second "d" turns it into "đ".
     @Test func aMatchingFieldAppliesTheEditPLTR340() {
         let rig = WorkerRig(field: SimulatedTextField(text: "d"))

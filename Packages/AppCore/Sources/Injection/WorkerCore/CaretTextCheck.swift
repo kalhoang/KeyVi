@@ -22,6 +22,16 @@ enum CaretTextCheck: Sendable, Hashable {
     /// The text before the caret is other text.
     case differs
 
+    /// The app may still be applying keys that passed through the tap (PLT-R340, PLT-R357): the caret before the
+    /// expected text, other text before it, or no answer in time. A selection, a short read or a letter before the
+    /// token does not come from a field that is merely behind.
+    var mayCatchUp: Bool {
+        switch self {
+        case .caretBeforeText, .differs, .unreadable: true
+        case .matches, .selection, .shortRead, .notAtTokenStart: false
+        }
+    }
+
     /// True or false when the field answered; nil when it could not be compared (the caller decides).
     var verdict: Bool? {
         switch self {
