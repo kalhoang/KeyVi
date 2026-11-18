@@ -8,6 +8,8 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+## [1.0.1-beta.1] - 2026-11-18
+
 ### Thay đổi
 
 - Khi phím cuối cùng của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên khi kết thúc từ, ví dụ "duong", thay vì trở lại các phím đã gõ.
