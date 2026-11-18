@@ -54,9 +54,16 @@ extension WorkerCore {
         }
         // PLT-R340 amendment: a kept late focus change is confirmed before anything is posted, also for a job
         // without an edit (the check of a key that only passes). A failure leaves a content-free record (PLT-R901).
-        if !lateFocusMatches(job) {
+        switch lateFocusCheck(job) {
+        case .matches: break
+        case .mismatch:
             services.logger.log(.focus(.lateFocusCheckFailed), level: .info)
             return passThrough(job)
+        case .staleGeneration:  // the focus moved during the settle wait (PLT-R316)
+            replayTrigger(of: job)
+            feedback.requestCompositionReset()
+            unreportedDiscards += 1
+            return .discardedForGeneration
         }
         if job.kind == .revision { return revisionOutcome(job) }
         let prepared = prepare(job)
@@ -150,10 +157,7 @@ extension WorkerCore {
             noteRevisionReadBack(.read(first, afterSettle: false))
             return .matches
         }
-        let anchor = max(lastPosted?.at.nanoseconds ?? 0, job.createdAt.nanoseconds)
-        let settled = MonotonicInstant(
-            nanoseconds: anchor &+ InjectionTiming.nanoseconds(InjectionTiming.revisionSettle))
-        guard services.clock.now() < settled else {
+        guard let settled = settleDeadline(for: job) else {
             noteRevisionReadBack(.read(first, afterSettle: false))
             return .mismatch
         }
@@ -198,6 +202,25 @@ extension WorkerCore {
         return textBeforeCaret(of: field, endsWith: expected, allowingSelection: false, atTokenStart: false) ?? true
     }
 
+    /// The end of the settle window of a job (`InjectionTiming.revisionSettle` after its key or after the worker's
+    /// last posted event, whichever is later), or nil when it has already passed.
+    func settleDeadline(for job: EditJob) -> MonotonicInstant? {
+        let anchor = max(lastPosted?.at.nanoseconds ?? 0, job.createdAt.nanoseconds)
+        let settled = MonotonicInstant(
+            nanoseconds: anchor &+ InjectionTiming.nanoseconds(InjectionTiming.revisionSettle))
+        return services.clock.now() < settled ? settled : nil
+    }
+
+    enum LateFocusCheck { case matches, mismatch, staleGeneration }
+
+    /// A first late focus read that started within the settle window may end after it (two bounded calls, the
+    /// second timing out); the second read still runs, at once, when the first ended at most one call timeout after
+    /// the window, so the key held behind the check waits at most 50 + 30 + 60 = 140 ms (PLT-R314: 150 ms).
+    private func secondReadFits(after settled: MonotonicInstant) -> Bool {
+        let latest = settled.nanoseconds &+ InjectionTiming.nanoseconds(InjectionTiming.axCallTimeout)
+        return services.clock.now().nanoseconds <= latest
+    }
+
     /// PLT-R340 amendment (2026-11-14): after a focus change the tap discovered late and kept the composition, the
     /// new element must be readable and its text before the caret must end with the token's display. A selected
     /// inline completion after the caret is allowed (the text before the selection is compared). The token begins
@@ -205,13 +228,36 @@ extension WorkerCore {
     /// that merely ends with the token ("Nova" for "a") is not the word being typed. Strict: an unreadable field, no
     /// field and no expected text all fail, which turns the kept composition into the hard boundary it would have
     /// been.
-    func lateFocusMatches(_ job: EditJob) -> Bool {
-        guard job.verifyLateFocus else { return true }
+    ///
+    /// Amendment of 19/11/2026 (VM run 20261118T220253Z: the check read the field about 5 ms after the tap passed the
+    /// token's last key through, before a busy app had inserted it): a read that found the caret before the token,
+    /// other text or no answer within `InjectionTiming.revisionSettle` of the job's key (or of the worker's last
+    /// posted event, whichever is later) is read once more when that window ends, as for a revision (PLT-R357). Only
+    /// after such a failure, the key held behind the check (PLT-R311) waits at most for the rest of that window and
+    /// one more bounded read (two calls of `InjectionTiming.axCallTimeout`): for the usual first job after the
+    /// discovery, with nothing posted since its key, 50 + 60 ms = 110 ms after the key in all, within the 150 ms
+    /// ceiling of PLT-R314. The window is judged when the first read starts; a slow first read that ends after it
+    /// (review of 19/11/2026: about 60 ms in a busy app) is read again at once if it ended at most one call timeout
+    /// after the window (`secondReadFits`), 140 ms at most. A focus change seen after the wait discards the job
+    /// (PLT-R316).
+    func lateFocusCheck(_ job: EditJob) -> LateFocusCheck {
+        guard job.verifyLateFocus else { return .matches }
         // A revision carries no replaced text (PLT-R357): its token is the current display, after the separator.
         guard let expected = job.revision?.currentDisplay ?? job.replacedText, !expected.isEmpty,
             let field = job.field
-        else { return false }
-        return textBeforeCaret(of: field, endsWith: expected, allowingSelection: true, atTokenStart: true) ?? false
+        else { return .mismatch }
+        let read = {
+            self.checkTextBeforeCaret(of: field, endsWith: expected, allowingSelection: true, atTokenStart: true)
+        }
+        // The window is judged when the first read starts: in a busy app that read alone can outlast it.
+        let window = settleDeadline(for: job)
+        let first = read()
+        if first == .matches { return .matches }
+        guard first.mayCatchUp, let settled = window, secondReadFits(after: settled) else { return .mismatch }
+        if services.clock.now() < settled { services.clock.sleep(until: settled) }
+        let second = read()
+        if job.generation < focusGeneration.load() { return .staleGeneration }
+        return second == .matches ? .matches : .mismatch
     }
 
     /// Bounded read (PLT-R343): the selected range, then at most 64 UTF-16 units before its start. Nil when the

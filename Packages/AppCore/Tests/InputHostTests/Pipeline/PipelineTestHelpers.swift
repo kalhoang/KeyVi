@@ -12,11 +12,14 @@ enum Key {
     static let a: UInt16 = 0x00
     static let s: UInt16 = 0x01
     static let d: UInt16 = 0x02
+    static let g: UInt16 = 0x05
     static let x: UInt16 = 0x07
     static let q: UInt16 = 0x0C
     static let w: UInt16 = 0x0D
     static let e: UInt16 = 0x0E
+    static let o: UInt16 = 0x1F
     static let u: UInt16 = 0x20
+    static let n: UInt16 = 0x2D
     static let space: UInt16 = 0x31
     static let comma: UInt16 = 0x2B
     static let backspace: UInt16 = 0x33

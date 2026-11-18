@@ -132,12 +132,12 @@ extension LogEvent {
     private static func render(_ event: FocusEvent) -> RenderedLogEvent {
         let (name, fields): (String, [String: JSONValue]) =
             switch event {
-            case .lateFocusChange(let kept, let sinceLastKey, let sinceWordStart):
+            case .lateFocusChange(let kept, let sinceLastKey, let sinceWordStart, let reason):
                 (
                     kept ? "lateFocusKept" : "lateFocusRefused",
-                    ["sinceLastKeyUs": .number(Double(sinceLastKey))].merging(
-                        sinceWordStart.map { ["sinceWordStartUs": .number(Double($0))] } ?? [:]
-                    ) { first, _ in first }
+                    ["sinceLastKeyUs": .number(Double(sinceLastKey))]
+                        .merging(sinceWordStart.map { ["sinceWordStartUs": .number(Double($0))] } ?? [:]) { a, _ in a }
+                        .merging(reason.map { ["reason": .string($0.logCode)] } ?? [:]) { a, _ in a }
                 )
             case .lateFocusCheckFailed: ("lateFocusCheckFailed", [:])
             case .observerAttempt(let pid, let attempt, let result):

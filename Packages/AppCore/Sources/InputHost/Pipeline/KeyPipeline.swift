@@ -96,7 +96,8 @@ public final class KeyPipeline<Factory: CompositionEngineFactory, Clock: Monoton
                 resetCount: context.feedback.compositionResetCount, stateCode: nil, secureResumedGeneration: nil,
                 postingBroken: context.feedback.isPostingBroken,
                 pasteKeyCode: inputSource.table?.keyCode(producing: "v"), engineRevision: settings.engines.revision,
-                memoryRevision: settings.engines.memoryRevision)
+                memoryRevision: settings.engines.memoryRevision,
+                lastElement: focus.fieldHandle == nil ? nil : FocusReference(FocusIdentity(focus)))
             return (
                 factory.makeEngine(for: focus.decision.variant, settings: settings),
                 Factory.Hotkeys(toggle: settings.toggleHotkey, restore: settings.restoreHotkey), observed,

@@ -63,6 +63,14 @@ struct FocusSnapshotContent: Hashable {
     }
 }
 
+/// PLT-R340 amendment of 19/11/2026: the element the last publication that named one named, with its token and focus
+/// time (`FocusCore.lastElement`).
+struct PublishedElement {
+    var element: AXFocusedElement
+    var token: UInt64
+    var changedAt: MonotonicInstant
+}
+
 struct FingerprintKey: Hashable {
     var bundlePath: String
     var buildVersion: String?
@@ -105,7 +113,11 @@ final class FocusCore {
     var sessionMode: SessionMode?
     var appliedToggleSequence: UInt64 = 0
     var generation = FocusGeneration.initial
+    /// The last token minted (contracts.md 10.4).
     var fieldToken: UInt64 = 0
+    /// PLT-R340 amendment of 19/11/2026: kept across publications that name no element of the same process or no
+    /// process (`keepsLastElement`), so the same element found again keeps its token and focus time.
+    var lastElement: PublishedElement?
     var lastEmittedDocument: AppModesDocument?
     var emittedHistory = EmittedModeHistory()
     var manualAccessibilityPIDs: Set<Int32> = []
@@ -135,6 +147,7 @@ final class FocusCore {
         for pid in Array(observed.keys) { removeObserver(pid) }
         overlayPIDs = [:]
         current = nil
+        lastElement = nil
         sessionMode = nil
     }
 
@@ -271,7 +284,7 @@ final class FocusCore {
             mirror.update(decision: decision)
             return sourceChanged
         }
-        stampNewGeneration(&snapshot, element: reading.element, sameElement: sameElement, at: instant)
+        stampNewGeneration(&snapshot, reading: reading, sameElement: sameElement, at: instant)
         // The generation first: the worker discards edits built for an older one (PLT-R316).
         services.generation.store(generation)
         services.output.publish(snapshot)
@@ -299,16 +312,37 @@ final class FocusCore {
     /// contracts.md 10.4: the token names the element. A republication for the same element (rule or settings
     /// re-resolution, changed attributes) keeps it and the focus time, so the tap does not see a focus change;
     /// every element change mints a new one (PLT-R340, PLT-R408).
+    ///
+    /// PLT-R340 amendment of 19/11/2026 (VM run 20261118T220253Z, `testhost.native.burst`): a publication that names
+    /// no element (a timed-out or failed read, no focused element, the PLT-R381 frontmost fallback, an open breaker)
+    /// is not an element change for the element before it. The element found again (CFEqual, same pid) right after
+    /// such publications keeps its token and focus time; another element, or one found after a publication of
+    /// another process, gets a new token. A publication without an element still carries its own focus time.
     private func stampNewGeneration(
-        _ snapshot: inout FocusSnapshot, element: AXFocusedElement?, sameElement: Bool, at instant: MonotonicInstant
+        _ snapshot: inout FocusSnapshot, reading: FocusReading, sameElement: Bool, at instant: MonotonicInstant
     ) {
         generation = generation.next
         snapshot.generation = generation
-        if !sameElement {
-            fieldToken &+= 1
-            snapshot.changedAt = instant
+        guard let element = reading.element else {
+            if !sameElement { snapshot.changedAt = instant }
+            if !keepsLastElement(reading) { lastElement = nil }
+            snapshot.fieldHandle = nil
+            return
         }
-        snapshot.fieldHandle = element.map { FieldHandle(pid: $0.pid, token: fieldToken, element: $0.element) }
+        let known = lastElement.flatMap { $0.element == element ? $0 : nil }
+        if known == nil { fieldToken &+= 1 }
+        let published = known ?? PublishedElement(element: element, token: fieldToken, changedAt: instant)
+        lastElement = published
+        snapshot.changedAt = published.changedAt
+        snapshot.fieldHandle = FieldHandle(pid: element.pid, token: published.token, element: element.element)
+    }
+
+    /// A publication without an element keeps the last element when it names that element's process, or no process
+    /// because its read timed out or failed (the focus is unknown there, not elsewhere, PLT-R384). A publication of
+    /// another process, or AX answering that no application has the focus, drops it.
+    private func keepsLastElement(_ reading: FocusReading) -> Bool {
+        guard let pid = reading.pid else { return reading.availability != .available }
+        return pid == lastElement?.element.pid
     }
 
     /// PLT-R521 tie health event; PLT-R385 `AXManualAccessibility` only when the rule asks, recorded once per pid.

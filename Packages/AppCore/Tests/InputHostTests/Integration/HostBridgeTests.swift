@@ -244,6 +244,40 @@ struct TapLogDrainerTests {
         #expect(logger.entries.allSatisfy { $0.level == .info })
     }
 
+    /// PLT-R340 amendment of 19/11/2026: the record's `detail` names the check that kept or ended the word; an
+    /// unknown value renders no reason rather than a wrong one.
+    @Test func lateFocusRecordsCarryTheirReasonPLTR340() {
+        let record = TapLogRecord(
+            code: .lateFocusRefused, at: .zero, a: 1, b: 2, detail: LateFocusReason.otherProcess.rawValue)
+        let unknown = TapLogRecord(code: .lateFocusKept, at: .zero, a: 1, b: 2, detail: 999)
+        #expect(
+            TapLogDrainer.logEvent(for: record)?.0.focusEvent
+                == .lateFocusChange(
+                    kept: false, sinceLastKeyMicroseconds: 1, sinceWordStartMicroseconds: 2, reason: .otherProcess))
+        #expect(
+            TapLogDrainer.logEvent(for: unknown)?.0.focusEvent
+                == .lateFocusChange(kept: true, sinceLastKeyMicroseconds: 1, sinceWordStartMicroseconds: 2))
+    }
+
+    /// PLT-R903: the tap's records are drained in batches (at terminate in the VM runs), so each log line carries
+    /// the time its record was written on the tap thread, converted from the monotonic clock at the drain.
+    @Test func aDrainedRecordIsLoggedAtTheTimeItHappenedPLTR903() throws {
+        let ring = TapLogRing()
+        let logger = DatedRecordingLogger()
+        let clock = ManualClock()
+        let wallClock = FixedWallClock()
+        let drainer = TapLogDrainer(
+            ring: ring, health: HealthEventLog(), logger: logger, clock: clock, wallClock: wallClock)
+        let first = clock.now()
+        ring.push(TapLogRecord(code: .lateFocusRefused, at: first, a: 300_000, b: 660_000, detail: 1))
+        clock.advance(byMicroseconds: 500_000)
+        ring.push(TapLogRecord(code: .unseenKeyUp, at: clock.now(), a: 0x31))
+        clock.advance(byMicroseconds: 2_000_000)  // drained 2.5 s after the first record
+        drainer.drain()
+        let now = wallClock.now()
+        #expect(logger.dates == [now.addingTimeInterval(-2.5), now.addingTimeInterval(-2)])
+    }
+
     /// PLT-R397A: an unseen keyUp follows nearly every password typed in a secure field (the Return's keyUp arrives
     /// after secure input ends), usually with nothing composed, so it is an info line that claims no reset.
     @Test func anUnseenKeyUpIsAnInfoLinePLTR397A() throws {
@@ -264,4 +298,22 @@ extension TapLogCode {
         .secureInputResumedByKey, .layoutMismatch, .unknownEventType, .callbackOverBudget, .unseenKeyUp,
         .lateFocusKept, .lateFocusRefused,
     ]
+}
+
+/// Keeps the date each event was logged with (PLT-R903 event time).
+private final class DatedRecordingLogger: DiagnosticsLogging, Sendable {
+    private let storage = Mutex<[Date?]>([])
+
+    func log(_ event: LogEvent, level: LogLevel) { storage.withLock { $0.append(nil) } }
+
+    func log(_ event: LogEvent, level: LogLevel, at date: Date) { storage.withLock { $0.append(date) } }
+
+    var dates: [Date?] { storage.withLock { $0 } }
+}
+
+extension LogEvent {
+    fileprivate var focusEvent: FocusEvent? {
+        if case .focus(let event) = self { return event }
+        return nil
+    }
 }

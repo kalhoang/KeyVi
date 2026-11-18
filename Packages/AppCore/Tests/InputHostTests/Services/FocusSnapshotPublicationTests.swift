@@ -95,13 +95,113 @@ struct FocusSnapshotPublicationTests {
         tokens.append(try #require(harness.snapshot.fieldHandle?.token))
         #expect(Set(tokens).count == tokens.count)
         #expect(harness.snapshot.generation == FocusGeneration(rawValue: 5))
-        // Leaving the field for no element and coming back is two element changes.
+        // Leaving the field for no element and coming to another field of the app is an element change.
         harness.ax.focusWithoutElement(pid: F.terminalPID, notify: .focusedElementChanged)
         harness.sync()
         #expect(harness.snapshot.fieldHandle == nil)
-        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: .focusedElementChanged)
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: .focusedElementChanged, element: 3)
         harness.sync()
         #expect(harness.snapshot.fieldHandle.map { !tokens.contains($0.token) } == true)
+    }
+
+    // MARK: The last known element (PLT-R340 amendment of 19/11/2026)
+
+    /// VM run 20261118T220253Z (`testhost.native.burst`): after a timed-out notification read, the first key's read
+    /// (PLT-R382) finds the same field again; it keeps its token and its focus time, so the tap sees no focus change.
+    @Test func theSameElementAfterATimedOutReadKeepsItsTokenPLTR340() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: nil)
+        harness.start()
+        let before = harness.snapshot
+        let token = try #require(before.fieldHandle?.token)
+        harness.clock.advance(byMicroseconds: 200_000)
+        harness.ax.setTimingOut(pid: F.terminalPID, true)
+        harness.ax.post(.focusedElementChanged, from: F.terminalPID)
+        harness.sync()
+        #expect(harness.snapshot.fieldHandle == nil)
+        #expect(harness.snapshot.field.axAvailability == .timedOut)
+        harness.ax.setTimingOut(pid: F.terminalPID, false)
+        harness.clock.advance(byMicroseconds: 600_000)
+        harness.idleRevalidation()  // PLT-R382: the burst's first key
+        #expect(harness.snapshot.generation == before.generation.next.next)
+        #expect(harness.snapshot.fieldHandle?.token == token)
+        #expect(harness.snapshot.changedAt == before.changedAt)
+    }
+
+    /// The same holds after a publication that names the app without a focused element and after the PLT-R381
+    /// frontmost fallback: neither names another element.
+    @Test func theSameElementAfterAnElementlessPublicationKeepsItsTokenPLTR340() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.zaloPID, attributes: F.attributes(), notify: nil, element: 4)
+        harness.start()
+        let token = try #require(harness.snapshot.fieldHandle?.token)
+        let changedAt = harness.snapshot.changedAt
+        harness.clock.advance(byMicroseconds: 300_000)
+        harness.ax.focusWithoutElement(pid: F.zaloPID, notify: .focusedElementChanged)
+        harness.sync()
+        #expect(harness.snapshot.fieldHandle == nil)
+        harness.ax.clearFocusedApplication()
+        harness.processes.setFrontmost(F.zaloPID)
+        harness.clock.advance(byMicroseconds: 300_000)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.app?.source == .frontmostApplication)
+        harness.clock.advance(byMicroseconds: 300_000)
+        harness.ax.focus(pid: F.zaloPID, attributes: F.attributes(), notify: .focusedElementChanged, element: 4)
+        harness.sync()
+        #expect(harness.snapshot.fieldHandle?.token == token)
+        #expect(harness.snapshot.changedAt == changedAt)
+    }
+
+    /// And across the breaker's `timedOut` publication (PLT-R384): once it closes, the field is the one it was.
+    @Test func theSameElementAfterTheBreakerClosesKeepsItsTokenPLTR340() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: nil)
+        harness.start()
+        let before = harness.snapshot
+        harness.ax.setTimingOut(pid: F.terminalPID, true)
+        for _ in 0..<3 {
+            harness.clock.advance(byMicroseconds: 1_000_000)
+            harness.idleRevalidation()
+        }
+        #expect(harness.snapshot.field.axAvailability == .timedOut && harness.snapshot.fieldHandle == nil)
+        harness.ax.setTimingOut(pid: F.terminalPID, false)
+        harness.clock.advance(byMicroseconds: 61_000_000)
+        harness.idleRevalidation()
+        #expect(harness.snapshot.field.axAvailability == .available)
+        #expect(harness.snapshot.fieldHandle?.token == before.fieldHandle?.token)
+        #expect(harness.snapshot.changedAt == before.changedAt)
+    }
+
+    /// Guard: another element of the same process after a timed-out read is an element change (a new token and
+    /// focus time), and so is the same element once another process was published in between.
+    @Test func anotherElementOrAnotherProcessInBetweenMintsANewTokenPLTR340() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: nil)
+        harness.start()
+        let first = try #require(harness.snapshot.fieldHandle?.token)
+        harness.ax.setTimingOut(pid: F.terminalPID, true)
+        harness.ax.post(.focusedElementChanged, from: F.terminalPID)
+        harness.sync()
+        harness.ax.setTimingOut(pid: F.terminalPID, false)
+        harness.clock.advance(byMicroseconds: 600_000)
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: nil, element: 2)
+        harness.idleRevalidation()
+        let second = try #require(harness.snapshot.fieldHandle?.token)
+        #expect(second != first)
+        #expect(harness.snapshot.changedAt == harness.clock.now())
+
+        harness.ax.focusWithoutElement(pid: F.zaloPID, notify: nil)
+        harness.tracker.revalidate()  // another app, without an element
+        harness.sync()
+        #expect(harness.snapshot.app?.pid == F.zaloPID && harness.snapshot.fieldHandle == nil)
+        harness.ax.focus(pid: F.terminalPID, attributes: F.attributes(), notify: nil, element: 2)
+        harness.tracker.revalidate()
+        harness.sync()
+        #expect(harness.snapshot.fieldHandle.map { $0.token != second && $0.token != first } == true)
     }
 
     // MARK: Idle revalidation (PLT-R382)
