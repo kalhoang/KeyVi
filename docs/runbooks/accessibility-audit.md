@@ -61,9 +61,10 @@ Legend: **Code** is what the code and tests guarantee; **Pa** is what Pa verifie
 
 ### 3.1 Menu bar icon (PRD-R9, PRD-R10, PLT-R211)
 
-- Code: one template glyph per state (`StatusGlyph`, placeholder artwork): V or E in a rounded square, a dot for
-  an ignored app, a lock badge for Secure Input, a dimmed glyph when paused, a slash when not working, a record dot
-  while a typing trace records. The VoiceOver label is the PRD-R10 label, or a reason-specific label where one
+- Code: one template image per state, the nine `StatusIcon-*` images generated from Pa's artwork and loaded by
+  `StatusGlyph` (`docs/provenance/README.md` section 7): Vietnamese, English, an ignored app, Secure Input in
+  each mode, paused (dimmed), not working (a slash), permission missing (a warning badge) and capturing a typing
+  trace. The VoiceOver label is the PRD-R10 label, or a reason-specific label where one
   glyph covers several states (starting, no text field, typing turned off, session inactive, guided test,
   fail-open other than a revoked permission). The hint is "Mở menu của <App>." The label follows a language change
   at once.
@@ -74,7 +75,7 @@ Legend: **Code** is what the code and tests guarantee; **Pa** is what Pa verifie
   2. Change the state while the VoiceOver cursor rests on the icon (press Control+Shift). Note whether VoiceOver
      re-reads the new label by itself; if not, note it (the switch HUD announcement covers manual toggles).
   3. With Increase Contrast on, in light and dark menu bars, every glyph is distinguishable without colour; the
-     dimmed glyph is still visible. Note it if the dimmed glyph is too faint (placeholder artwork).
+     dimmed glyph is still visible. Note it if the dimmed glyph is too faint.
 
 ### 3.2 Menu (PRD-R11, PRD-R13, PLT-R211)
 

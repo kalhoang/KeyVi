@@ -4,7 +4,7 @@ This file lists every third-party dependency, data list and asset that ships wit
 
 The project's own code is GPL-3.0-or-later (the root [LICENSE](LICENSE)); the engine packages, the `data/` pipeline and the reference model in `spec/reference-model/` are under the Mozilla Public License 2.0 (each has its own `LICENSE` with the verbatim MPL-2.0 text; the copyright lines are in the `NOTICE` files and in the reference model's README; [ADR 0006](docs/decisions/0006-app-licence-and-pro-edition.md)). The entries below are the material that comes from elsewhere or needs a recorded source.
 
-1.0.0, of 17 November 2026, is the first public release. `scripts/make-dmg.sh` copies this file into every disk image as it is, so it holds no placeholder: an asset added later gets its entry in the same change.
+1.0.0, of 18 November 2026, is the first public release. `scripts/make-dmg.sh` copies this file into every disk image as it is, so it holds no placeholder: an asset added later gets its entry in the same change.
 
 ## 1. Runtime dependencies of the app
 
