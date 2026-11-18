@@ -564,3 +564,58 @@ in the web fields only) and the fixed build three times. Record the runs here.
 | Run | Commit | Fields | Result | What it showed |
 |---|---|---|---|---|
 | none yet | | | | written by W14-H; not run (Pa was using the Mac, 2026-11-15) |
+
+### 10.9 First full run since 13/11 (1.0.1-beta.1, 2026-11-19)
+
+The first full run in the VM since 13/11 (clone `{{app-slug}}-dev-suite`, 4096 MB, 4 CPUs, started by the host's
+resource watchdog) ran at `851a7c55`, the commit of 1.0.1-beta.1. The five failures of section 10.5 pass, which is the
+first VM proof of the W7-A fixes. Three scenarios failed, and a control run with the probe followed (folders under
+`/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261118T182610Z-integration` (full suite) | `851a7c55` | 43 | 3 | `testhost.native.textView` gave `tieengs việt`, `testhost.panel.inlineCompletionTwice` gave `vieejt<esc>việt<esc>`, `testhost.sheetCell.columnAutocomplete` gave `Đ` (expect `Đức`) |
+| `20261118T184158Z-integration` (`--probe --only testhost.native.telex,testhost.native.textView,testhost.native.vni,testhost.panel.inlineCompletionTwice,testhost.sheet.commandS,testhost.sheetCell.columnAutocomplete`) | `851a7c55` | 4 | 2 | `testhost.native.textView` gave `tieéng việt` and `testhost.sheetCell.columnAutocomplete` `Đ` again; the panel passed, with 43 ms between its focus notification and the first key reaching its field; the probe's observer on the freshly launched TestHost was refused for about 5 s, and {{AppName}} logged no state change for TestHost's reset or the text view |
+
+Root causes, from the run logs, the probe and scratch HostRig reproductions, each checked a second time
+independently; the product rows are fixed on branch `fix/v101-late-focus` (1.0.1-beta.2):
+
+| Scenario | Root cause | Fix | Unit tests |
+|---|---|---|---|
+| `testhost.native.textView`, full run | A regression of the PLT-R340 late focus amendment (W8-A, after the run of 13/11). `testhost.native.telex` ends without a separator, so its word stays active, and the harness then focuses the text view through AX, with no key the tap sees. The change was observed within 500 ms of that word's last key, so the word was kept; the worker's check failed and the reset landed one key late, so the next word restarted at its second key (`ieengs` is no syllable and stays as typed) | When the previous snapshot named the same process, the change must also be observed within 500 ms of the word's first key; after a timed-out read the last-key window stays alone (PLT-R340 amendment of 19/11/2026) | `LateFocusChangeTests` (`aWordThatStartedBeforeTheWindowIsAHardBoundaryPLTR340`, `aWordReopenedByBackspaceIsMeasuredFromItsFirstKeyPLTR340`, `aRealSnapshotAfterATimedOutReadKeepsAnOlderWordPLTR340`) |
+| `testhost.native.textView`, control run | TestHost, launched by the run's first scenario, refused observers for about 5 s on the loaded guest. The retries (about 6.3 s) ended, or were dropped while TestHost was momentarily not the owner, so none of TestHost's notifications arrived: the text view reached the tap only through the PLT-R382 read of the first key, which published it after the second key (`tieéng`) | After the scheduled attempts the app is asked every 2 s, at most 30 more times, while its observation is wanted; a skipped attempt keeps the chain; no call while its breaker is open; a publication of an unobserved owner asks again (PLT-R380 amendment of 19/11/2026) | `FocusSettleTests` |
+| `testhost.panel.inlineCompletionTwice`, intermittent | A PLT-R389 trigger race: the scenario types `v` 80 to 150 ms after Command+K, which the runner does not treat as a focus shortcut, and the panel's field was published after `v`. The field takes `launcher.spotlight`'s action, whose `lookaheadRevision` is off, so its variant differed from the mirror field's and the late keep was refused: a hard boundary at `i`, `vieejt` | A kept late focus change into a variant that differs only in `lookaheadRevision` continues the word with the new variant's engine when that engine has committed nothing since its last reset (ENG-R1211 amendment of 19/11/2026, ADR 0306) | `LateFocusChangeTests` (`aChangeOfLookaheadRevisionAloneKeepsTheWordPLTR340` and the guards after it), `LookaheadRevisionContinuationTests`, `EngineCatalogTests` |
+| `testhost.sheetCell.columnAutocomplete` | Not the product: since `5c7b8b27` (14/11) the `ax` readback leaves out a selection that runs to the end of the value in every scenario, and the cell rightly ends as `Đức` with `ức` selected (the control run's `screen.png`) | The harness, on its own branch: the readback leaves the selection out only where a scenario asks for it | the harness branch's tests |
+
+Left for later: a late check that fails still resets the word one key late (PLT-R340, "the hard boundary, applied one
+key late"), so the next word can restart in its middle wherever a late keep is wrong; restarting at the key that
+carried the check is the follow-up. A panel of another process (Spotlight on macOS 27.2, `com.apple.campo`) published
+after the first key is still an application change.
+
+Content-free records added for these runs (`integration-out/app-diagnostics.jsonl`, PLT-R901):
+
+| Code | Fields | Written when |
+|---|---|---|
+| `focus.lateFocusKept` | `sinceLastKeyUs`, `sinceWordStartUs` | a focus change found after keys of the active word (same process, or after a timed-out read) kept it; microseconds from the word's last and first key to the new element's `changedAt` |
+| `focus.lateFocusRefused` | `sinceLastKeyUs`, `sinceWordStartUs` | such a change ended the word because it came too long after the word's last key, or, in the same process, after its first key |
+| `focus.lateFocusCheckFailed` | none | the worker found the new element without the kept word; the key passed and the word was reset |
+| `focus.observerAttempt` | `pid`, `attempt`, `result` (`installed`, `installedBestEffort`, `refused`, `notWanted`, `breakerOpen`) | one observer attempt; a first attempt that installs is not logged |
+
+Proof plan of `fix/v101-late-focus`, with the VM rules of this section (resource check and watchdog), in this order:
+
+1. twice `scripts/vm/integration-dev.sh`: expect 45 of 46 with this branch alone (`testhost.sheetCell.columnAutocomplete`
+   is the harness row) and 46 of 46 with the harness branch merged too, and a clean privacy scan;
+2. three times `scripts/vm/integration-dev.sh --probe --only testhost.native.burst,testhost.native.telex,testhost.native.textView,testhost.panel.inlineCompletionTwice`
+   (TestHost warm, as in the full run): `testhost.native.textView` passes, its first key leaves either no late focus
+   record or a `focus.lateFocusRefused` with `sinceWordStartUs` above 500000, and no `focus.lateFocusCheckFailed`
+   follows;
+3. three times the control run's command above (TestHost launched by the first scenario): `testhost.native.textView`
+   passes; when TestHost refuses its observer, `focus.observerAttempt` lines with its pid end with `installed` or
+   `installedBestEffort`, and `host.state` lines follow TestHost's reset and the text view;
+4. five times `scripts/vm/integration-dev.sh --only testhost.panel.inlineCompletionTwice,testhost.panel.toneUndo,testhost.sheet.commandS,testhost.web.editModeEditor`:
+   every run passes; a panel field published after the first key shows `focus.lateFocusKept` and no
+   `focus.lateFocusCheckFailed`.
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| none yet | | | | written with the fix on 2026-11-19; the integrator runs the steps above |

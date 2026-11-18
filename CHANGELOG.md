@@ -10,6 +10,12 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+### Fixed
+
+- The first word typed right after an app moves the focus to another field by itself no longer loses its marks or gets a wrong one ("tieengs" instead of "tiếng").
+- The first word typed right after an app opens its own search panel no longer loses its marks ("vieejt" instead of "việt") when the panel takes the focus a moment after the first key.
+- KeyVi now keeps watching an app that refused its focus notifications for a few seconds after it launched, so moves between that app's fields are no longer missed until you switch apps.
+
 ## [1.0.1-beta.1] - 2026-11-18
 
 ### Changed
