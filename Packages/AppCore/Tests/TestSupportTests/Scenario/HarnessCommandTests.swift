@@ -327,8 +327,9 @@ private let rulesJSON = """
                 "reset fields in " + host, "launch " + host, "secure false in " + host,
                 "focus testhost.native.textField in " + host, "secure false in " + host,
             ])
-        // The app under test was started on factory defaults; its settings were put back after the run.
-        #expect(live.control.events.all == ["launch", "quit", "launch"])
+        // The app under test was started on factory defaults; its settings were put back after the run, and it was
+        // left stopped, as it was before the run (PLT-R1101).
+        #expect(live.control.events.all == ["launch", "quit"])
         let data = try fileSystem.readData(at: URL(fileURLWithPath: "/out/results.json"), maxBytes: 1 << 20)
         let report = try JSONDecoder().decode(ScenarioRunReport.self, from: data)
         #expect(report.passed == 1 && report.failed == 1 && report.needsHuman == 1 && report.profile == .burst)

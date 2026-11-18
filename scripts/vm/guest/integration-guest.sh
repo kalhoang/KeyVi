@@ -131,7 +131,9 @@ step "onboarding finished once (section 2 step 9), so it never shows during a ru
 # The test build carries the production feed: with D19 and D20 on it found the published release at launch,
 # installed it and relaunched as the release app (integration-suite.md section 10.10). The harness writes both
 # switches off before every launch it makes (AppSettingsDocuments.harnessDefaults); this seed covers a launch before
-# its first apply, a run with --no-configure and the settings the harness restores after the run.
+# its first apply, a run with --no-configure and the settings the harness restores after the run. It is written only
+# when no settings file exists: a file that predates it keeps its switches. The harness starts the app again after
+# its restore only when it was running before the run; this script does not start it before the suite.
 support="$HOME/Library/Application Support/$APP_DISPLAY_NAME"
 mkdir -p "$support"
 if [ ! -f "$support/settings.json" ]; then

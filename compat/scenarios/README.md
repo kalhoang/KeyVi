@@ -28,7 +28,8 @@ install off (`automaticallyCheckForUpdates` and `automaticallyInstallUpdates` fa
 sets them: the test build carries the production feed and once updated itself to the published release in the
 middle of a run ([integration-suite.md](../../docs/runbooks/integration-suite.md) section 10.10). Before a scenario whose configuration differs from the previous one, the harness
 quits the test build, writes its four settings files (backed up once, restored after the run even when it stops on
-an error, onboarding state kept), starts it again and waits until it is ready. `--no-configure` turns this off.
+an error, onboarding state kept), starts it again and waits until it is ready. After the restore the test build is
+started again only when it was running before the run. `--no-configure` turns this off.
 
 | Profile | Scenarios | What it sets |
 |---|---|---|

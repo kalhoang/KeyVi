@@ -319,6 +319,28 @@ private func profileJSON(_ id: String, extra: String = "") -> String {
         #expect(control.events.all.count == 6)
     }
 
+    /// PLT-R1101, integration-suite.md section 10.10: the restored settings may carry the factory D19 and D20 (on),
+    /// and the test build carries the production feed, so a relaunch the harness adds after the run could install
+    /// the published release. `restore()` restarts the app only when it was running before the first `apply`.
+    @Test func restoreLeavesTheAppStoppedWhenItWasNotRunningBeforeTheRunPltR1101() async throws {
+        let fileSystem = InMemoryFileSystem()
+        try fileSystem.createDirectory(at: location.directory, permissions: .ownerOnlyDirectory)
+        let original = Data(#"{"schemaVersion":1,"settings":{},"onboarding":{"completedVersion":"0.1"}}"#.utf8)
+        try fileSystem.writeAtomically(original, to: location.url(for: .settings), permissions: .ownerOnlyFile)
+        let control = FakeAppControl()
+        let subject = configurator(fileSystem, control: control, hooks: nil, clock: ManualClock())
+        try await subject.apply(.factory)
+        try await subject.apply(AppConfiguration(method: .vni))
+        try await subject.restore()
+        #expect(try fileSystem.readData(at: location.url(for: .settings), maxBytes: 1 << 20) == original)
+        #expect(control.events.all == ["launch", "quit", "launch", "quit"])
+        #expect(!control.isRunning())
+        // The next run starts from the same state: a stopped app is left stopped again.
+        try await subject.apply(.factory)
+        try await subject.restore()
+        #expect(control.events.all == ["launch", "quit", "launch", "quit", "launch", "quit"])
+    }
+
     /// A configuration whose start failed is not remembered: applying it again retries.
     @Test func failedStartIsRetried() async throws {
         let clock = ManualClock()
