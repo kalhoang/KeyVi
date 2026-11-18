@@ -99,13 +99,13 @@ struct EscapeCommitRealDataTests {
         return rows
     }()
 
-    @Test("13.9.5 has its 24 rows")
+    @Test("13.9.5 has its 27 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...24).map { String(format: "X%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...27).map { String(format: "X%02d", $0) })
     }
 
     /// 13.9.5: the rows that need the phrase or the English-lean word, which the collision rules switch on.
-    static let collisionRuleRows: Set<String> = ["X06", "X08"]
+    static let collisionRuleRows: Set<String> = ["X06", "X08", "X25", "X26", "X27"]
 
     @Test("ENG-R804: every row of 13.9.5", arguments: rows)
     func row(_ row: Row) throws {
@@ -162,15 +162,31 @@ struct EscapeCommitRealDataTests {
     @Test(
         "ENG-R804 known cost: the English context looks back only, so a neutral word before keeps the escape",
         arguments: [
-            ("day off ", "day of "), ("a mess ", "a mes "), ("ok off ", "ok of "), ("50% off ", "50% of "),
-            ("mess up ", "mes up "), ("off topic ", "of topic "), ("off and on ", "of and on "),
-            ("Off the record ", "Of the record "),
+            ("ok off ", "ok of "), ("50% off ", "50% of "), ("mess up ", "mes up "), ("off topic ", "of topic "),
+            ("off and on ", "of and on "), ("Off the record ", "Of the record "),
         ])
     func contextLooksBackOnly(_ keys: String, _ expected: String) throws {
-        // `day`, `a` and `ok` are kept (`day` is Vietnamese, `a` and `ok` neutral), so the run is not English and no
-        // phrase starts there; a word that only the next token shows to be English keeps the deliberate escape, as
-        // `off` typed alone does. The revisions of ENG-R828 do not take a token decided by L4.
+        // `ok` is kept (neutral), so the run is not English and no phrase starts there; a word that only the next token
+        // shows to be English keeps the deliberate escape, as `off` typed alone does. The revisions of ENG-R828 do not
+        // take a token decided by L4. `mess up`, `off topic` and `Off the record` are parked for a later decision of
+        // the product owner (18/11/2026).
         #expect(try Self.text(keys) == expected)
+    }
+
+    @Test(
+        "ENG-R804 (a): the bundled phrases day off, sale off and a mess are English context (product owner, 18/11/2026)",
+        arguments: [
+            ("day off ", "day off "), ("a mess ", "a mess "), ("Ee cos sale off 50% ", "Ê có sale off 50% "),
+            ("Mai minhf xin day off nhes ", "Mai mình xin day off nhé "),
+            ("Phongf nayf a mess quas ", "Phòng này a mess quá "),
+        ])
+    func bundledPhrasesAreEnglishContext(_ keys: String, _ expected: String) throws {
+        // Until 18/11/2026 `day` (Vietnamese), `a` (neutral) and `sale` after Vietnamese words gave no English evidence,
+        // so the doubling kept the escapes `day of`, `a mes` and `sale of`. The phrases make the context English (the
+        // evidence of L9b), so L4 restores the word typed. The collision rules read phrases only with
+        // `lookaheadRevision` on (ENG-R829): the terminal configuration keeps the escape.
+        #expect(try Self.text(keys) == expected)
+        #expect(try Self.text(keys, Self.configurations[1]) != expected)
     }
 
     @Test(

@@ -1,7 +1,7 @@
 {
   "format": 2,
   "generator": "lexicon-builder",
-  "inputsSHA256": "6cedcbdc75759c89293e9c023d59fa9e643dc57225cae514fa2167741f0b915b",
+  "inputsSHA256": "4b772529b4ed11edec2c0d83dd81717631517e59cc56cf2066cc307a214e809d",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
     {"name": "tech-always.txt", "bytes": 2174, "entries": 388, "sha256": "9ed38dc89f5407a4c499fca259043c59bab9e9677584c32e0d5447e4cec95640"},
@@ -9,7 +9,7 @@
     {"name": "tech-code-capitalized.txt", "bytes": 5, "entries": 1, "sha256": "d329be9e3aea365ba02a318d9392e22abd64076bb7e33eaaacd8b3f29b7f6de8"},
     {"name": "attested.txt", "bytes": 11451, "entries": 1955, "sha256": "869e636ed0590d05856000b9ca0d6088e829b4bebf42e563be260462c08e560c"},
     {"name": "ambiguity.tsv", "bytes": 85186, "entries": 618, "sha256": "3a1c930c118b3de1f618a8bf0f0b4cd581f510ee1c2e470bb6b329d1975db1e5"},
-    {"name": "phrases.txt", "bytes": 3233, "entries": 327, "sha256": "b64088df4cae71f8e14e59a3c7316861c09a00dbdcce5a12509eeb82d3486698"},
+    {"name": "phrases.txt", "bytes": 3257, "entries": 330, "sha256": "0cf8154e92574d0b5c04b1c22bb5517ad28f97ae9906e40ce2b82f358d8cc833"},
     {"name": "collision-supplement.txt", "bytes": 155, "entries": 34, "sha256": "5e4476fc7e2b61680df719c21001107ba0310cc04274262047714c384652ceb7"},
     {"name": "boundary-particles.txt", "bytes": 3, "entries": 1, "sha256": "8b97bca79750847558d488e2ea4de79903c9c71c9af27ecf1b3dff5dba2abdd9"},
     {"name": "english-function-words.txt", "bytes": 688, "entries": 150, "sha256": "b3558f303f448bfea15f40e94fbce8db9d17624b1ce81c12b032058d4f7100ce"},

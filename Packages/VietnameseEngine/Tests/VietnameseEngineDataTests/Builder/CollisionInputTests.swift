@@ -125,7 +125,11 @@ struct CollisionInputTests {
         #expect(inputs.boundaryParticles == ["as"])
         for excluded in ["as of", "its own", "has to", "how to"] { #expect(!inputs.phrases.contains(excluded)) }
         #expect(inputs.phrases.contains("as hell") && inputs.phrases.contains("such as"))
-        #expect(inputs.phrases.count == 327)
+        // Added by the product owner on 18/11/2026: English context for the doubled `off` and `mess` (ENG-R804).
+        for added in ["day off", "sale off", "a mess"] { #expect(inputs.phrases.contains(added)) }
+        // Parked for a later decision of the product owner (18/11/2026).
+        for parked in ["mess up", "off topic", "off the record"] { #expect(!inputs.phrases.contains(parked)) }
+        #expect(inputs.phrases.count == 330)
         #expect(inputs.supplement.count == 34 && inputs.supplement.contains { $0.raw == "cos" && $0.display == "có" })
         #expect(inputs.englishLean == ["am", "be", "by", "he", "i", "me", "my", "she", "the", "them", "then", "we"])
         #expect(inputs.tailWords.filter(\.isParticle).count == 31 && inputs.tailWords.count == 63)

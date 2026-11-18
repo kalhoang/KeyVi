@@ -29,6 +29,9 @@ Provenance
   sentences of each corpus file changed, every one toward the intended words (`pass`, `posts`, `costs`, `off`,
   `mess`, `nests`, `Terraform`, `Grafana`, `DeepSeek`), reviewed one by one; the sets and every label are
   unchanged.
+  Changed on 18/11/2026 for the phrases `day off`, `sale off` and `a mess` that the product owner added to the
+  bundled list (spec/01-engine.md ENG-R804): CS0010 of both corpus files now keeps `sale off` as typed (it showed
+  the escape `sale of`), its intended words; nothing else moved.
 
 Format (tab-separated, one sentence per line, lines starting with # are comments)
   id        sentence id (PA, CS, EN, VI for the corpus; ADV, STR, HLD for the sets)
