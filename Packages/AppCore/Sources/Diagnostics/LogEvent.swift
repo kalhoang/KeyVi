@@ -83,10 +83,12 @@ extension LogEvent {
 
 /// What one observer attempt did (PLT-R380, PLT-R384).
 public enum ObserverAttemptResult: String, Sendable, Hashable, Codable, CaseIterable {
-    /// Every notification asked for was registered.
+    /// Every notification asked for was registered: by an attempt that takes all or none, or by a best-effort one
+    /// that replaced an observer without focused-element changes (PLT-R380).
     case installed
-    /// A best-effort attempt (the last scheduled one and the slow ones) registered what the app accepted; it may
-    /// lack a notification the app refused.
+    /// A best-effort attempt (the last scheduled one and the slow ones, and every attempt while an observer without
+    /// focused-element changes is in place) registered what the app accepted; it may lack a notification the app
+    /// refused. One that replaced such an observer has focused-element changes but lacks another name.
     case installedBestEffort
     /// The app took none of the notifications, or refused one it may take later.
     case refused

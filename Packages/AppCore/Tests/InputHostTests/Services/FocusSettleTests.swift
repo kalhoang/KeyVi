@@ -402,6 +402,94 @@ struct FocusSettleTests {
         #expect(harness.ax.observedNotifications[zaloPID] == FocusCore.baseNotifications)
     }
 
+    /// An app that refuses another name for good (here focused-window changes) and still refused focused-element
+    /// changes when the attempt at the end of the 3,200 ms wait landed gets a partial observer. An attempt that takes
+    /// every name or none can never replace it, so while a partial observer is in place the attempts are best effort
+    /// too, and the first result with focused-element changes replaces it (PLT-R380).
+    @Test func aPartialObserverOfAnAppThatRefusesAnotherNameForGoodIsReplacedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseNotification(pid: zaloPID, .focusedWindowChanged)  // for good
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)  // while it launches
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(7))  // the best-effort attempt (about 6.3 s) finds the app half up
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated])
+        #expect(harness.scheduler.pendingCount == 1)
+        harness.ax.acceptNotification(pid: zaloPID, .focusedElementChanged)
+        harness.advance(by: FocusSettle.observerSlowRetryDelay)
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedElementChanged])
+        #expect(harness.ax.observerIDs(pid: zaloPID).count == 1)
+        #expect(harness.observerAttempts(pid: zaloPID).last?.result == .installedBestEffort)
+        #expect(harness.scheduler.pendingCount == 0)
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "second"), notify: .focusedElementChanged, element: 5)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "second")
+    }
+
+    /// A best-effort attempt that brings no focused-element changes is no better than the partial observer in
+    /// place: it is dropped, and the partial observer stays registered as it is, never removed and added again
+    /// (PLT-R380).
+    @Test func anAttemptNoBetterThanThePartialObserverLeavesItUntouchedPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(7))
+        let partial = harness.ax.observerIDs(pid: zaloPID)
+        #expect(partial.count == 1)
+        harness.advance(by: .seconds(120))  // the chain's later attempts get the same names
+        harness.ax.focus(pid: zaloPID, attributes: field(identifier: "moved"), notify: nil, element: 7)
+        harness.idleRevalidation()  // a publication asks again: a new chain
+        harness.advance(by: .seconds(120))
+        #expect(harness.ax.observerIDs(pid: zaloPID) == partial)
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedWindowChanged])
+        // The partial observer still delivers what it has.
+        harness.ax.focus(
+            pid: zaloPID, attributes: field(identifier: "window"), notify: .focusedWindowChanged, element: 8)
+        harness.sync()
+        #expect(harness.snapshot.field.identifier == "window")
+    }
+
+    /// An app that refuses focused-element changes for good keeps its partial observer. Once a chain is over, a
+    /// publication of its focus asks again at most once until the app is activated again (it becomes the focus
+    /// owner, or an activation or a wake syncs the observers), so staying in the app costs a bounded number of
+    /// calls instead of a new chain for every publication (PLT-R380).
+    @Test func publicationsAskAnAppThatRefusesFocusChangesForGoodOncePerActivationPLTR380() {
+        let harness = FocusHarness(scheduled: true)
+        defer { harness.finish() }
+        harness.ax.focus(pid: terminalPID, attributes: field(), notify: nil)
+        harness.start()
+        let chain = 1 + FocusSettle.observerRetryDelays.count + FocusSettle.observerSlowRetryLimit
+        harness.ax.refuseNotification(pid: zaloPID, .focusedElementChanged)
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(120))  // the activation's chain ends with the partial observer
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == chain)
+        var element: UInt16 = 10
+        func publish() {
+            element += 1
+            harness.ax.focus(pid: zaloPID, attributes: field(identifier: "f\(element)"), notify: nil, element: element)
+            harness.idleRevalidation()
+            #expect(harness.snapshot.field.identifier == "f\(element)")
+            harness.advance(by: .seconds(120))
+        }
+        for _ in 0..<5 { publish() }
+        // The first publication started one more chain; the others asked nothing.
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == 2 * chain)
+        #expect(harness.scheduler.pendingCount == 0)
+        // An activation lets the observer sync and then one publication ask again.
+        harness.activate(zaloPID, field(identifier: "first"))
+        harness.advance(by: .seconds(120))
+        for _ in 0..<3 { publish() }
+        #expect(harness.ax.observeAttempts(pid: zaloPID) == 4 * chain)
+        #expect(harness.scheduler.pendingCount == 0)
+        #expect(harness.ax.observedNotifications[zaloPID] == [.applicationActivated, .focusedWindowChanged])
+    }
+
     /// A retry that finds the app momentarily not wanted (another app owns the focus) skips its call but keeps the
     /// chain going through the scheduled attempts, instead of ending it (PLT-R380 amendment).
     @Test func aRetryChainOutlastsAMomentWhenTheAppIsNotTheOwnerPLTR380() {

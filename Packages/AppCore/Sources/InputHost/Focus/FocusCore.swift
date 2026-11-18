@@ -160,10 +160,14 @@ final class FocusCore {
     /// `scanOverlays`: NSWorkspace activation and wake rescan running overlay apps (a full process scan in
     /// production). The PLT-R382 idle-key revalidation does not: it runs on the first key after every typing
     /// pause, competes with the T6 budget, and an overlay app that launches activates and triggers a scan.
-    /// An activation or wake also opens a settle window: the new owner's focused element may not be readable yet.
+    /// An activation or wake also opens a settle window: the new owner's focused element may not be readable yet,
+    /// and lets a publication ask the owner for its observer again (PLT-R380, `observeOwnerIfUnobserved`).
     func revalidate(scanOverlays: Bool) {
         guard running else { return }
-        if scanOverlays { syncObservers(scanOverlays: true) }
+        if scanOverlays {
+            deferred.publicationAskedOwner = nil
+            syncObservers(scanOverlays: true)
+        }
         refresh(force: false, idle: !scanOverlays)
         if scanOverlays { scheduleSettleUnlessTimedOut() }
     }
