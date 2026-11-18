@@ -445,9 +445,12 @@ notification. That part is the unit tests' (fake AX posts nothing) and the Spotl
 `launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
 again and types `tex` then `xt`; `launcher.spotlight.campo` and `launcher.spotlight.campo.reopen` do the same with
 `targetBundleId` `com.apple.campo`, the panel of macOS 27.2, and `launcher.spotlight.campo.suggestion` types `tieesng`
-(expect `tiếng`). Their `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
-completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
-selected, which is the completion the extra Backspace of PLT-R420 removes, not text that was typed.
+(expect `tiếng`). These four and `launcher.spotlight` declare `readbackOptions.excludesSelectedCompletion`, so their
+`ax` readback leaves out a selected completion that runs to the end of the value (`AXReadbackText`): Spotlight with
+history shows `text` as `TextEdit` with `Edit` selected, which is the completion the extra Backspace of PLT-R420
+removes, not text that was typed. *Correction of 19/11/2026:* from commit `5c7b8b27` (14/11/2026) the readback left
+such a selection out of every `ax` scenario, which broke `testhost.sheetCell.columnAutocomplete`; since PLT-R530 was
+amended it does so only where the scenario declares it, and no TestHost scenario does (QA-R21, section 10.9).
 
 *Correction of 15/11/2026, evening (W17-D, dev build 20261115f):* with `launcher.spotlight` applied to
 `com.apple.campo`, `tiee` still gave `tieê`. Finding 202 of that day's dev trace (`trace-scan.sh show 202 --date
@@ -564,3 +567,33 @@ in the web fields only) and the fixed build three times. Record the runs here.
 | Run | Commit | Fields | Result | What it showed |
 |---|---|---|---|---|
 | none yet | | | | written by W14-H; not run (Pa was using the Mac, 2026-11-15) |
+
+### 10.9 Readback of a selected completion (2026-11-19)
+
+The first full run of the suite in the VM since 13/11/2026 (`20261118T182610Z-integration`, 19/11/2026 at 01:26 host
+time, commit `851a7c55`, the 1.0.1-beta.1 release, 4096 MB) passed 43 of 46. `testhost.native.textView` and
+`testhost.panel.inlineCompletionTwice` failed in the app's input pipeline and are fixed separately; the third failure
+was the harness:
+
+| Scenario | Root cause | Fix | Tests |
+|---|---|---|---|
+| `testhost.sheetCell.columnAutocomplete` (`Đ` for `Đức`, 2 runs of 2; it passed on 13/11/2026 at `db9e6a1`) | Not the app. The cell completed `D` to `Dức` with `ức` selected; the `axSelection` edit added its extra Backspace for the selection, removed `D` and inserted `Đ`, and the cell completed again to `Đức` with `ức` selected (the control run's probe ends with `selection=1,2 characters=3` on the cell; its `screen.png`, taken after this last scenario, shows `Đức` with `ức` selected and `Dropped keys: 0`). Commit `5c7b8b27` (14/11/2026), written for Spotlight's history completion, made `LiveAXFieldReader` leave a selection running to the end of the value out of every `ax` scenario, so the readback returned `Đ`. No suite run reached the VM between that commit and this run. | `LiveAXFieldReader` returns the whole value and the selection; `ReadbackRouter` leaves the selection out only for a scenario that declares `readbackOptions.excludesSelectedCompletion` (PLT-R530, amended 19/11/2026): the five `launcher.spotlight*` scenarios and the three browser address bars with seeded history (runner only, never run in a VM). The PLT-R422 residue check reads the whole value either way. The failure focus report now ends with `focused selection: <location>,<length>` and `focused characters: <n>` (numbers only), so the next mismatch tells a left-out completion (3 characters, `1,2`) from a lost one (1 character, `1,0`) without the probe. | `ReadbackRouterTests`, `ScenarioFilesTests.noTestHostScenarioExcludesASelectedCompletionQaR21`, `ScenarioFilesTests.historyCompletionsAreDeclaredByTheLaunchersAndAddressBarsPltR530`, `ScenarioRunnerTests.theResidueCheckReadsTheFullTextPltR422`, `AXReadbackTextTests.focusReportLinesCarryNumbersOnlyPltR901` |
+
+Runs (folders under `/Volumes/Data/tart/runs/`):
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261118T182610Z-integration` | `851a7c55` | 43 | 3 | Full suite. `testhost.sheetCell.columnAutocomplete` read `Đ` for 4.2 s, so the value was stable through the 2 s readback settle (20 reads); its focus report names the cell, editable |
+| `20261118T184158Z-integration` (`--probe --only` six scenarios, the cell last) | `851a7c55` | 4 | 2 | Control run with the probe: `Đ` again, and the cell's last notification reads `selection=1,2 characters=3` |
+
+Proof plan, from the branch with the fix and with the VM lock taken:
+
+1. `scripts/vm/integration-dev.sh --memory 4096 --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.addressBar.vni,testhost.sheetCell.columnAutocomplete`:
+   expect 4 of 4, the cell read back as `Đức` in about 2 s, and a final `screen.png` showing `Đức` with `ức` selected
+   (the address bars end without a selection, so the whole-value readback leaves them as they were);
+2. `scripts/vm/integration-dev.sh --memory 4096` (the full suite): expect `testhost.sheetCell.columnAutocomplete` to
+   pass and no other outcome to change against `20261118T182610Z-integration` (the two app failures pass only with
+   their own fix).
+
+Record every run in the table above. A mismatch's evidence file now gives the selection and character count of the
+focused field.
