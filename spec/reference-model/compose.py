@@ -26,6 +26,7 @@ class St:
         self.last_escape = None  # raw index of the newest escape key (ENG-R804)
         self.tone_src = []
         self.mark_rm = []  # tone-removal keys that removed letter marks (ENG-R411)
+        self.last_removal = None  # raw index of the newest removal key that removed the tone or marks (rule L4a)
         self.lit_start = None  # raw index of the key that started literal mode
         self.lit_undone = None  # that key was an escape: the keys it undid (ENG-R711)
         self.shown = None  # re-opened word: the text the commit left on screen (ENG-R1002)
@@ -40,6 +41,7 @@ class St:
         n.escape_across, n.last_escape = self.escape_across, self.last_escape
         n.tone_src = list(self.tone_src)
         n.mark_rm = list(self.mark_rm)
+        n.last_removal = self.last_removal
         n.lit_start = self.lit_start
         n.lit_undone = None if self.lit_undone is None else set(self.lit_undone)
         return n
@@ -116,12 +118,14 @@ def try_untone(st, cfg, ch):
     if st.tone:
         st.tone = 0
         st.tone_src.append(len(st.raw) - 1)
+        st.last_removal = len(st.raw) - 1
         return True
     if not any(x.mod or x.stroke for x in st.ls):
         return False
     for x in st.ls:
         x.mod, x.stroke = "", False
     st.mark_rm.append(len(st.raw) - 1)
+    st.last_removal = len(st.raw) - 1
     return True
 
 

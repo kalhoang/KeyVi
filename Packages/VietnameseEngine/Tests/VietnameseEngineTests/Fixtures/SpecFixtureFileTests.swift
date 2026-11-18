@@ -48,19 +48,20 @@ struct SpecFixtureFileTests {
 
     @Test func commitDecisions() throws {
         let rows = try SpecExamples.commitDecisions(tsv: CorpusFiles.text(SpecExamples.commitDecisionsFile))
-        #expect(rows.count == 89)
+        #expect(rows.count == 99)
         // Lettered rows follow the row they extend: B035a-B035i and B064a, B064b (ENG-R850, REG-35, 15/11/2026),
         // B035j-B035l (RV5 of ENG-R828, REG-36, 16/11/2026), B035m, B035n and B064c (the sentence condition of L9,
-        // ENG-R850, 16/11/2026).
-        let lettered: [Int: String] = [35: "abcdefghijklmn", 64: "abc"]
+        // ENG-R850, 16/11/2026), B035o-B035t (L9 right after L5 for code-only words, REG-38, 18/11/2026), B052a-B052d
+        // (rule L4a, REG-39, 18/11/2026).
+        let lettered: [Int: String] = [35: "abcdefghijklmnopqrst", 52: "abcd", 64: "abc"]
         let expectedIDs = (1...72).flatMap { number -> [String] in
             let id = "B" + String(repeating: "0", count: 3 - String(number).count) + String(number)
             return [id] + (lettered[number] ?? "").map { id + String($0) }
         }
         #expect(rows.map(\.id) == expectedIDs)
-        #expect(rows.prefix(66).allSatisfy { $0.boundary == " " })
+        #expect(rows.prefix(76).allSatisfy { $0.boundary == " " })
         #expect(
-            rows[66..<81].map(\.boundary) == [
+            rows[76..<91].map(\.boundary) == [
                 " ", ",", " ", ",", ",", ".", ";", "?", "!", ")", ":", "\n", "\"", "\"", "-",
             ])
         // 13.9.2 (ENG-R823, REG-32): a whole run of tokens per row, from an empty field.
@@ -88,6 +89,14 @@ struct SpecFixtureFileTests {
         #expect(byID["B035m"]?.committed == "Tả" && byID["B035m"]?.expectedDecision == .kept(.defaultVietnamese))
         #expect(byID["B035n"]?.committed == "TẢ thử" && byID["B035n"]?.expectedDecision == .kept(.notEnglish))
         #expect(byID["B064c"]?.expectedText == "Tar-" && byID["B064c"]?.expectedDecision == .restored(.codeContext))
+        // REG-38: L9 decides before L6 and L7, so `chown` (keys not English) follows the line as `tar` does.
+        #expect(byID["B035o"]?.committed == "chown" && byID["B035o"]?.expectedDecision == .restored(.codeContext))
+        #expect(byID["B035q"]?.committed == "chơn" && byID["B035q"]?.expectedDecision == .kept(.notEnglish))
+        #expect(byID["B035r"]?.context == .general && byID["B035r"]?.committed == "chơn")
+        #expect(byID["B035t"]?.committed == "chơn thử" && byID["B035t"]?.expectedDecision == .kept(.notEnglish))
+        // REG-39: a word that ends with a tone removal keeps the text it left (rule L4a, Q9 of section 15).
+        #expect(byID["B052a"]?.committed == "duong" && byID["B052a"]?.expectedDecision == .kept(.toneRemoval))
+        #expect(byID["B052d"]?.method == .vni && byID["B052d"]?.committed == "viêt")
         #expect(byID["B044"]?.expectedDecision == .kept(.unchanged))
         #expect(byID["B047"]?.method == .vni && byID["B047"]?.expectedDecision == .restored(.invalid))
         #expect(byID["B028"]?.previous == .english && byID["B028"]?.previous.seedKeys == "and")

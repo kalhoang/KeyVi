@@ -4,7 +4,7 @@ from compose import compose, Cfg, commit, display
 from ortho import validity, VOWELS, strip
 EN = set("""test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky""".split())
 TECH = {"www","wifi","usb"}
-CODE_ONLY = {"tar","sudo"}
+CODE_ONLY = {"tar","sudo","chown"}  # `chown` (keys not English) joined on 18/11/2026 for REG-38
 CODE_CAPITALIZED = set()  # the capitalized code-word list (8.2) is empty in the 13.9 fixtures
 NOT_ATTESTED = {"dóe","hẻ","dổ","pót","sáy","ửa","tơn","dơn"}
 AMBIG = {"as":"vi","is":"en","was":"en","has":"vi","its":"vi","us":"vi","this":"vi","these":"vi","there":"vi","been":"vi","car":"vi","test":"en","best":"en","list":"en","max":"vi","did":"vi","theme":"vi","cost":"en","room":"en"}
@@ -34,13 +34,20 @@ def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, 
         ends_with_escape = st.last_escape == len(st.raw) - 1
         if not st.escape_across and (vowel_groups(C) <= 1 or ends_with_escape): return C, "kept: user escape"
         return R, "restored: escaped token typed through"
+    if st.last_removal is not None and st.last_removal == len(st.raw) - 1:
+        # rule L4a, decided by the product owner on 18/11/2026 (ENG-R411, REG-39): the last key removed the tone or marks
+        return (R, "restored: tone removal, raw is English") if r in EN | TECH else (C, "kept: tone removal")
     v = validity(C)
     if v is None: return R, "restored: invalid syllable"
+    code_word = context == "code" and r in CODE_ONLY and not vietnamese_text
+    # L9 right after L5 for a code-only word whose keys are not English, before L6 and L7 would keep it (ENG-R801,
+    # ENG-R850 as decided by the product owner on 18/11/2026, REG-38): `chown` follows the line as `tar` does.
+    if code_word and not starts_sentence and r not in EN and r not in TECH: return R, "restored: code context, tech word"
     if v == "B":
         return (R, "restored: Tier B and raw is English") if r in EN else (C, "kept: Tier B, not English")
     if r not in EN and r not in TECH: return C, "kept: valid, raw not English"
     if C.lower() not in {x for x in []} and strip(C.lower()) and C.lower() in NOT_ATTESTED: return R, "restored: not attested, raw is English"
-    if context == "code" and r in CODE_ONLY and not vietnamese_text:
+    if code_word:  # L9 in its place for a code-only word whose keys are English
         if not starts_sentence: return R, "restored: code context, tech word"
         prev = "neutral"  # a capital at a line start opens a new sentence: the English run ends (review, 16/11/2026)
     if prev == "en": return R, "restored: English run"
@@ -146,6 +153,8 @@ RUNS = [
     ("tooi nghix the best car ", "tôi nghĩ the best cả ", "kept: ambiguity table vi"),  # the known cost
     ("vieejt and nam this as ", "việt and nam thí as ", "restored: English run"),  # the second known cost
     ("and\nTar ", "and\nTar ", "restored: English run"),  # the general context keeps the run across Return
+    ("chown ", "chơn ", "kept: valid, raw not English"),  # B035r: the general context never reaches L9 (REG-38)
+    ("sudo chown ", "sudo chơn ", "kept: valid, raw not English"),
 ]
 # 01-engine.md 13.9 rows B035 to B035e and B035i to B035n and 13.9.1 rows B064a to B064c (Telex, code context, from an
 # empty field; the seed tokens `vieejt` and `and` stand for the previous token `vi` and `en`), the sentences of ENG-R850
@@ -228,6 +237,17 @@ CODE_RUNS = [
     ("TAR anh ", "TAR anh ", "unchanged"),
     ("TAR thuwr ", "TẢ thử ", "kept: valid, raw not English"),  # B035n: all caps keeps L9, then RV5
     ("TAR thuwr.", "TAR thử.", "kept: valid, raw not English"),
+    # L9 right after L5 (product owner, 18/11/2026, REG-38): a code-only word whose keys are not English follows the line.
+    ("chown ", "chown ", "restored: code context, tech word"),  # B035o
+    ("sudo chown ", "sudo chown ", "restored: code context, tech word"),  # B035p
+    ("vieejt chown ", "việt chơn ", "kept: valid, raw not English"),  # B035q
+    ("Chown ", "Chơn ", "kept: valid, raw not English"),  # B035s
+    ("chown thuwr ", "chơn thử ", "kept: valid, raw not English"),  # B035t, RV5
+    ("ls; chown ", "ls; chown ", "restored: code context, tech word"),
+    ("and chown ", "and chown ", "restored: code context, tech word"),
+    ("tay chown ", "tay chơn ", "kept: valid, raw not English"),
+    ("chown xf ", "chown xf ", "unchanged"),
+    ("Chown-", "Chown-", "restored: code context, tech word"),
 ]
 # RV5 with `lineStartRevision` off (D29 off): a lowercase or all-caps word keeps the keys; the sentence condition of L9
 # does not depend on the switch.
@@ -236,6 +256,7 @@ CODE_RUNS_WITHOUT_LINE_REVISION = [
     ("Tar thuwr cais nayf ", "Tả thử cái này ", "kept: valid, raw not English"),
     ("tar thuwr ", "tar thử ", "kept: valid, raw not English"),
     ("TAR thuwr ", "TAR thử ", "kept: valid, raw not English"),
+    ("chown thuwr ", "chown thử ", "kept: valid, raw not English"),
 ]
 # The capitalized code-word list (`host` in the bundled data) with `tar` on it, standing for `host`: the word keeps L9
 # in sentence case too, and RV5 with its own evidence (`Host minh` keeps the keys, `Host nayf` gives `Hót này`).
@@ -312,9 +333,27 @@ ESCAPE_RUNS = [
     ("password ", "password ", "restored: escaped token, raw is English"),
     ("www ", "www ", "restored: escaped token, raw is English"),
 ]
+# Rule L4a (product owner, 18/11/2026, ENG-R411, REG-39) with the 13.9 fixtures: a token whose last key removed the tone
+# or the marks keeps the text shown unless its keys are English; a removal that more letters follow is decided as before.
+REMOVAL_RUNS = [
+    ("dduwowngfzz ", "duong ", "kept: tone removal"),  # B052a
+    ("vieejtz ", "viêt ", "kept: tone removal"),  # B052b
+    ("daauszz ", "dau ", "kept: tone removal"),  # B052c
+    ("vieejtzz ", "viet ", "kept: tone removal"),
+    ("testz ", "tet ", "kept: tone removal"),
+    ("daauszzz ", "daauszzz ", "restored: invalid syllable"),  # the third `z` is a letter
+    ("Amazon ", "Amazon ", "restored: invalid syllable"),  # a removal that more letters follow
+    ("vieejtzs ", "viết ", "kept: valid, raw not English"),
+    ("aazaa ", "aa ", "kept: user escape"),  # an escape in the token: L4 decides
+]
+# VNI rows, decided token by token (`type_run` splits on digits): B052d.
+REMOVAL_VNI = [("vie65t0", "viêt", "kept: tone removal"), ("vie65t00", "viet", "kept: tone removal")]
 if __name__ == "__main__":
     bad = [(keys, type_run(keys), (want, why)) for keys, want, why in RUNS if type_run(keys) != (want, why)]
     bad += [(keys, type_run(keys), (want, why)) for keys, want, why in ESCAPE_RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, type_run(keys), (want, why)) for keys, want, why in REMOVAL_RUNS if type_run(keys) != (want, why)]
+    bad += [(keys, decide(keys, Cfg(im="vni")), (want, why)) for keys, want, why in REMOVAL_VNI
+            if decide(keys, Cfg(im="vni")) != (want, why)]
     bad += [(keys, type_run_collision(keys), (want, why)) for keys, want, why in COLLISION_RUNS
             if type_run_collision(keys) != (want, why)]
     bad += [(keys, type_run(keys, context="code"), (want, why)) for keys, want, why in CODE_RUNS
@@ -326,7 +365,7 @@ if __name__ == "__main__":
             for keys, want, why in CODE_RUNS_CAPITALIZED
             if type_run(keys, context="code", code_capitalized={"tar"}) != (want, why)]
     for row in bad: print("mismatch:", row)
-    total = (len(RUNS) + len(ESCAPE_RUNS) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
+    total = (len(RUNS) + len(ESCAPE_RUNS) + len(REMOVAL_RUNS) + len(REMOVAL_VNI) + len(COLLISION_RUNS) + len(CODE_RUNS) + len(CODE_RUNS_WITHOUT_LINE_REVISION)
              + len(CODE_RUNS_CAPITALIZED))
-    print(f"{total - len(bad)}/{total} English-run, escape, collision and code-context examples agree")
+    print(f"{total - len(bad)}/{total} English-run, escape, tone-removal, collision and code-context examples agree")
     sys.exit(1 if bad else 0)

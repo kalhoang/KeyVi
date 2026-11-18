@@ -119,6 +119,7 @@ public struct CommitDecisionExample: Sendable, Hashable {
         case "L3": rule = .abbreviation
         case "L3b": rule = .camelCase
         case "L4": rule = .escape
+        case "L4a": rule = .toneRemoval
         case "L5": rule = .invalid
         case "L6": rule = .extendedSpelling
         case "L7": rule = .notEnglish

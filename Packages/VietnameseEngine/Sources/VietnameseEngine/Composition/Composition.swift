@@ -39,6 +39,9 @@ package struct Composition: Sendable, Hashable {
     /// ENG-R411: raw indices of the tone-removal keys (Telex `z`, VNI `0`) that removed letter marks
     /// rather than a tone.
     package internal(set) var markRemovalSources = KeySet()
+    /// ENG-R411: raw index of the newest tone-removal key (Telex `z`, VNI `0`) that removed the tone or the letter
+    /// marks; nil when none did (`endsWithRemoval`, rule L4a).
+    package internal(set) var newestRemoval: Int?
     package internal(set) var camelCase = CamelCaseTracker()
     /// ENG-R906: raw indices of the bracket keys typed with Caps Lock on while composing. Literal keys
     /// never become letters, so they are not recorded.
@@ -100,6 +103,15 @@ package struct Composition: Sendable, Hashable {
         if let literalStart { return literalStart == last && literalEscapeUndone != nil }
         guard let letter = letters.last else { return false }
         return letter.flags.contains(.escape) && Int(letter.source) == last
+    }
+
+    /// The last key of the token is a tone-removal key that removed the tone or the letter marks (ENG-R411): the user
+    /// saw what it left and committed it, which rule L4a keeps unless the raw keys are English (decided by the product
+    /// owner on 18/11/2026, Q9, REG-39). A removal followed by more letters belongs to a word typed through (`Amazon`,
+    /// where the `z` removes the circumflex that the second `a` put on the first), which the rules after L4a decide.
+    package var endsWithRemoval: Bool {
+        guard let newestRemoval else { return false }
+        return newestRemoval == raw.count - 1
     }
 
     /// ENG-R904: the raw keys are camel case (input to rule L3b).

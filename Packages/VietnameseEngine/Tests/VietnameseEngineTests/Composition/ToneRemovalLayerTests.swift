@@ -82,10 +82,12 @@ struct ToneRemovalLayerTests {
         #expect(second.field.string == "ư")
     }
 
-    /// The commit decides on the display as usual; the raw keys keep every key typed (ENG-R602).
+    /// The commit keeps the unmarked word (rule L4a, REG-39: the last key removed the marks); the raw keys keep every
+    /// key typed (ENG-R602), so the restore toggle gives them back.
     @Test func commitKeepsTheUnmarkedWord() throws {
         let driver = try Committing.driver("daauszz ")
         #expect(driver.field.string == "dau ")
+        #expect(try Committing.text("dduwowngfzz ") == "duong ")
         #expect(try Committing.text("daauszz⎋") == "daauszz")
     }
 

@@ -2,7 +2,9 @@
 
 /// Rule L9 follows the line, not the app (ENG-R850 as amended on 15/11/2026, REG-35): terminals and code editors
 /// carry Vietnamese prose too (prompts to command-line assistants, commit messages, chat, comments), so in the
-/// code context a code-only word is restored only outside Vietnamese text.
+/// code context a code-only word is restored only outside Vietnamese text. Since the product owner's decision of
+/// 18/11/2026 (REG-38) this holds for a code-only word whose keys are not English (`chown`, `ef`), for which L9 is
+/// evaluated right after L5, as for `tar`.
 extension CommitPolicy {
     /// The number of previous tokens of the line that may show a Vietnamese word, as the window of ENG-R823.
     static let vietnameseTextWindow = 3
@@ -124,8 +126,9 @@ extension CommitPolicy {
         character == " " || character == "\u{00A0}"
     }
 
-    /// The token is a code-only word shown as its keys: typed unchanged or restored (`sudo`); a code-only word
-    /// that composed Vietnamese (`chown` kept as `chơn` by L7) is a Vietnamese word on screen.
+    /// The token is a code-only word shown as its keys: typed unchanged or restored (`sudo`, `chown` at the start of a
+    /// line); a code-only word that composed Vietnamese (`chown` kept as `chơn` by L7 in Vietnamese text) is a
+    /// Vietnamese word on screen.
     private func showsCodeWord(_ token: CommittedToken) -> Bool {
         guard token.decision == .kept(.unchanged) || token.showsRawKeys else { return false }
         return resources.techCodeOnly.contains(token.collision.rawLowercased)

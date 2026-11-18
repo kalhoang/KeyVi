@@ -44,8 +44,9 @@ struct CollisionCorpusTests {
             "ENG-R876, any wrong revision fails:\n\(score.badRevisions.joined(separator: "\n"))")
         #expect(score.nonCollisionChanges.isEmpty, "\(score.nonCollisionChanges.joined(separator: "\n"))")
         // REG-37: rule L4 reads the English run (English-lean words included) and the phrases, so with the rules on
-        // `The mess` (EN0074) and `Turn off` (EN0018) keep the word typed, which they do not with the rules off.
-        #expect(score.escapesBroughtBack.count == 2, "\(score.escapesBroughtBack.joined(separator: "\n"))")
+        // `The mess` (EN0074), `Turn off` (EN0018) and, since the product owner added the phrase `sale off` on
+        // 18/11/2026, `Ê có sale off` (CS0010) keep the word typed, which they do not with the rules off.
+        #expect(score.escapesBroughtBack.count == 3, "\(score.escapesBroughtBack.joined(separator: "\n"))")
         #expect(score.collisions.english.share >= 0.75)
         #expect(score.hidden.right == score.hidden.total, "hidden collisions are never changed by a rule")
         if fixture == .toneLast {

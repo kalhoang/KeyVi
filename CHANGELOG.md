@@ -4,11 +4,20 @@ All notable changes to KeyVi are documented in this file. Version 1.0.0 is the f
 
 The format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and the app uses [Semantic Versioning](https://semver.org/) (QA-R26). The engine package is versioned separately and keeps its own changelog (QA-R27).
 
-Writing rules (QA-R66, QA-R67): entries are in user-visible language and name the apps involved ("Fixed duplicated letters in the Chrome address bar", not "Fixed injection bug"). Each release gets Vietnamese and English release notes; this file is the English source of the website changelog page, and [CHANGELOG.vi.md](CHANGELOG.vi.md), with the same headings, is the Vietnamese one. A pull request that changes user-visible behaviour adds its entry under `Unreleased` in the same PR.
+Writing rules (QA-R66, QA-R67): entries are in user-visible language and name the apps involved ("Fixed duplicated letters in the Chrome address bar", not "Fixed injection bug"). Each release gets Vietnamese and English release notes; this file is the English source of the website changelog page, and [CHANGELOG.vi.md](CHANGELOG.vi.md), with the same version headings and its group headings in Vietnamese, is the Vietnamese one. A pull request that changes user-visible behaviour adds its entry under `Unreleased` in the same PR.
 
 Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and `## [X.Y.Z-beta.N] - YYYY-MM-DD` for betas. Entries are grouped under Added, Changed, Deprecated, Removed, Fixed and Security. Known issues go in a `### Known issues` group. The details stay here: when a release is cut, its `Unreleased` entries move under its heading as they are. The update window shows short release notes instead, at most five visible lines per language (list items and paragraphs; group headings do not count, PRD-R51), which `scripts/publish-release` checks before it publishes anything. A section of five lines or fewer is published as it stands, without groups if it has no more to say (1.0.0 is one); for a longer section, the release notes are two short files that sum it up, passed with `--notes-en` and `--notes-vi`, and the update window links to the full section here.
 
 ## [Unreleased]
+
+### Changed
+
+- When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example "duong", instead of turning back into the keys you typed.
+- The English phrases "day off", "sale off" and "a mess" now keep the word you typed instead of becoming "day of", "sale of" and "a mes".
+
+### Fixed
+
+- In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef now stay as you typed them instead of turning into Vietnamese words (chơn, ăk, è); inside a Vietnamese sentence they still type Vietnamese.
 
 ## [1.0.0] - 2026-11-18
 

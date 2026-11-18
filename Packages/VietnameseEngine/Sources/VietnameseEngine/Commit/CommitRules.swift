@@ -14,6 +14,9 @@ package struct CommitInputs: Sendable {
     package let endsWithEscape: Bool
     /// An escape was not a doubling (`Composition.escapedAcrossKeys`, rule L4).
     package let escapedAcrossKeys: Bool
+    /// The last key is a tone-removal key that removed the tone or the letter marks (`Composition.endsWithRemoval`,
+    /// rule L4a, REG-39).
+    package let endsWithRemoval: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -33,6 +36,7 @@ package struct CommitInputs: Sendable {
         escapeUsed = token.composition.escapeUsed
         endsWithEscape = token.composition.endsWithEscape
         escapedAcrossKeys = token.composition.escapedAcrossKeys
+        endsWithRemoval = token.composition.endsWithRemoval
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -100,11 +104,12 @@ package struct CommitContext: Sendable {
 /// | L3 no vowel letter | `abbreviation` | - |
 /// | L3b camel case (ENG-R904) | - | `camelCase` |
 /// | L4 escape used | `escape` | `escape` |
+/// | L4a the last key removed the tone or the marks (ENG-R411) | `toneRemoval` | `toneRemoval` (R English) |
 /// | L5 invalid | - | `invalid` |
 /// | L6 Tier B only | `extendedSpelling` | `extendedSpelling` |
 /// | L7 `R` not English | `notEnglish` | - |
 /// | L8 not attested | - | `notAttested` |
-/// | L9 code context, outside Vietnamese text, not starting a sentence (ENG-R850) | - | `codeContext` |
+/// | L9 code context, outside Vietnamese text, not starting a sentence (ENG-R850; right after L5 when R is not English) | - | `codeContext` |
 /// | L9a boundary particle (ENG-R825) | `boundaryParticle` | - |
 /// | L9b phrase (ENG-R826) | - | `phrase` |
 /// | L9c learned memory (ENG-R863) | `learned` | `learned` |
@@ -115,9 +120,11 @@ package struct CommitContext: Sendable {
 /// ENG-R802: with auto restore off, a rule from L3b to L11 that would restore keeps the token and still
 /// names itself (`kept(.invalid)` reads "would have been restored as invalid; auto restore is off").
 ///
-/// L9c also decides a collision word that L6, L7 or L8 would decide, when the memory votes for the other
-/// side (ENG-R863): the memory reaches the collision supplement (`cos` -> `có` by L7) and the generated rows
-/// that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10
+/// For a code-only word whose keys are not English, L9 is evaluated right after L5, before L6 and L7 (ENG-R801, ENG-R850
+/// as decided by the product owner on 18/11/2026, REG-38), so it reaches `chown`, `ef` and `awk` as well as the English
+/// `tar`, which reaches it in its place after L8. L9c also decides a collision word that L6, L7 or L8 would decide, when the memory votes for
+/// the other side (ENG-R863): the memory reaches the collision supplement (`cos` -> `có` by L7) and the generated
+/// rows that L8 restores. With `lookaheadRevision` off (ENG-R829) L9a, L9b and the `run: vi` exemption of L10
 /// never apply.
 package struct CommitPolicy: Sendable {
     package let resources: Resources
@@ -148,8 +155,8 @@ package struct CommitPolicy: Sendable {
         resources.english.contains(lowercased) || resources.techAlways.contains(lowercased)
     }
 
-    /// The first rule of 8.1 that matches, in exactly the order L0, L1, L2, L3, L3b, L4 ... L11
-    /// (ENG-R801). `includeUserChoice: false` evaluates "the rules alone" for the learning signal of
+    /// The first rule of 8.1 that matches, in exactly the order L0, L1, L2, L3, L3b, L4 ... L11, except that L9 comes
+    /// right after L5 for a code-only word whose keys are not English (ENG-R801, ENG-R850). `includeUserChoice: false` evaluates "the rules alone" for the learning signal of
     /// ENG-R861 (L1 skipped).
     package func decide(_ inputs: CommitInputs, context: CommitContext, includeUserChoice: Bool = true)
         -> CommitDecision
@@ -182,32 +189,45 @@ package struct CommitPolicy: Sendable {
         if inputs.camelCase { return restore(.camelCase) }
         // L4: an escape was used.
         if inputs.escapeUsed { return decideEscape(inputs, rawLowercased: r, context: context) }
-        switch inputs.facts.validity {
-        case .invalid: return restore(.invalid)  // L5
-        case .extended:  // L6, unless the memory votes for the other side (L9c)
-            let decision = isEnglish(r) ? restore(.extendedSpelling) : .kept(.extendedSpelling)
+        // L4a: the last key is a tone-removal key that removed the tone or the marks (ENG-R411). The user saw what it left
+        // and committed it, so it is kept, syllable or not, unless the raw keys are English, as an escape keeps its form
+        // (decided by the product owner on 18/11/2026, Q9 of section 15, REG-39): `dduwowngfzz` keeps `duong`, `quartz`
+        // is restored. A removal that more letters follow belongs to a word typed through (`Amazon`): L5 onwards decide.
+        if inputs.endsWithRemoval { return isEnglish(r) ? restore(.toneRemoval) : .kept(.toneRemoval) }
+        // L5: the display is not a syllable.
+        if inputs.facts.validity == .invalid { return restore(.invalid) }
+        // L9 reads the line (ENG-R850): app context `code`, a code-only word outside Vietnamese text (amended on
+        // 15/11/2026, REG-35) that does not start a sentence (amended by the product owner on 16/11/2026). In Vietnamese
+        // text and at the start of a sentence the rules below decide as in the general context (`chinhs tar` gives
+        // `chính tả`, `vieejt chown` gives `việt chơn`).
+        let codeWord = appContext == .code && !context.inVietnameseText && resources.techCodeOnly.contains(r)
+        let restoresCodeWord = codeWord && !startsSentence(inputs, context: context)
+        // L9 for a code-only word whose keys are not English, evaluated right after L5, before L6 and L7 would keep it
+        // (decided by the product owner on 18/11/2026, REG-38): it follows the line as `tar` does, so `sudo chown -R`
+        // keeps `chown`, which L7 used to keep as `chơn` in every context.
+        let english = isEnglish(r)
+        if restoresCodeWord, !english { return restore(.codeContext) }
+        // L6, unless the memory votes for the other side (L9c).
+        if inputs.facts.validity == .extended {
+            let decision = english ? restore(.extendedSpelling) : .kept(.extendedSpelling)
             return learnedOverride(of: decision, rawLowercased: r, context: context)
-        case .standard: break
         }
         // L7: valid Tier A and R is not English (ENG-R316: no word list can restore it); the memory may
         // restore a word of the collision supplement (L9c).
-        if !isEnglish(r) { return learnedOverride(of: .kept(.notEnglish), rawLowercased: r, context: context) }
+        if !english { return learnedOverride(of: .kept(.notEnglish), rawLowercased: r, context: context) }
         // L8: the attested-syllable data may only break the tie for English raw keys.
         if !resources.attestedSyllables.contains(inputs.facts.lowercased) {
             return learnedOverride(of: restore(.notAttested), rawLowercased: r, context: context)
         }
-        // L9: app context `code`, outside Vietnamese text (ENG-R850 as amended on 15/11/2026, REG-35) and not starting
-        // a sentence (amended by the product owner on 16/11/2026). In Vietnamese text the rules below decide as in the
-        // general context (`chinhs tar` gives `chính tả`). A word in sentence case that starts a line opens a new
-        // sentence, so the English run of the line before, which survives Return (ENG-R823), does not reach it
-        // either: `git status`, Return, `Tar` and a space give `Tả` (review of 16/11/2026).
-        if appContext == .code, !context.inVietnameseText, resources.techCodeOnly.contains(r) {
-            guard startsSentence(inputs, context: context) else { return restore(.codeContext) }
-            var sentence = context
-            sentence.runIsEnglish = false
-            return decideAfterCodeRule(inputs, rawLowercased: r, context: sentence)
-        }
-        return decideAfterCodeRule(inputs, rawLowercased: r, context: context)
+        // L9 in its place for a code-only word whose keys are English (`tar`, `tee`, `host`).
+        guard codeWord else { return decideAfterCodeRule(inputs, rawLowercased: r, context: context) }
+        if restoresCodeWord { return restore(.codeContext) }
+        // A word in sentence case that starts a line opens a new sentence, so the English run of the line before, which
+        // survives Return (ENG-R823), does not reach it: `git status`, Return, `Tar` and a space give `Tả` (review of
+        // 16/11/2026).
+        var sentence = context
+        sentence.runIsEnglish = false
+        return decideAfterCodeRule(inputs, rawLowercased: r, context: sentence)
     }
 
     /// Rules L9a to L11, after rule L9 (ENG-R850).

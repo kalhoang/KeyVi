@@ -7602,6 +7602,15 @@ keeps compiling.
   case and committed by a space (`Tar` gives `Tả` at its own commit, with the reason the rules after L9 give and
   without the English run of the lines before, whatever `lineStartRevision` says), unless the word is on this list. `Resources.bundled` loads it from `tech-code-capitalized.txt` (v1: `host`).
 
+Addition of 18/11/2026 (REG-39, ENG-R411, rule L4a; engine 1.0.1 work). It adds public API: a consumer that switches
+exhaustively over `CommitRule` needs one more case (the app only prints reason codes with `String(describing:)`).
+
+- New `CommitRule` case `toneRemoval` (L4a): the last key of the token is a tone-removal key (Telex `z`, VNI `0`) that
+  removed the tone or the letter marks; the display is kept unless the raw keys are English (`dduwowngfzz` gives
+  `duong`). The dev recorder writes it as `kept(toneRemoval)`.
+- No API change for REG-38: in the code context rule L9 now decides a code-only word whose keys are not English before
+  L6 and L7 (`sudo chown -R` keeps `chown`), with the existing reason `codeContext`.
+
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift
 // SPDX-License-Identifier: GPL-3.0-or-later

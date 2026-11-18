@@ -1,10 +1,48 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Changelog
 
 All notable changes to the engine package are documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows Semantic Versioning,
-separately from the app (spec/04-quality-release.md QA-R27).
+separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged `engine-vX.Y.Z`.
 
-## [0.1.0-dev] - Unreleased
+## [Unreleased]
+
+### Added
+
+- `CommitRule.toneRemoval`, the reason code of the new rule L4a (spec/01-engine.md 8.1, ENG-R411, REG-39). A
+  consumer that switches exhaustively over `CommitRule` needs the new case, so this is a source-breaking addition
+  and the next tag is `engine-v0.2.0`.
+
+### Changed
+
+- Rule L4a, the tone removal at commit (product owner, 18/11/2026, Q9 of spec section 15): when the last key of a
+  token is a tone-removal key (Telex `z`, VNI `0`) that removed the tone or the letter marks, the commit keeps the
+  display, syllable or not, unless the raw keys are English, as an escape keeps its form (L4). `dduwowngfzz` + space
+  gives `duong` (it restored `dduwowngfzz` by L5), `vieejtz` gives `viêt`, `daauszz` gives `dau`, VNI `vie65t0` gives
+  `viêt`; `quartz` is restored. A removal that more letters follow is decided by the rules after L4a as before
+  (`Amazon` stays `Amazon`): read anywhere in the token, the rule committed 193 words of `/usr/share/dict/words` as
+  text that is no syllable; at the end of the token it changes 3 (`bortz`, `hertz`, `wootz` give `bot`, `het`, `uot`,
+  the known cost). Spec rows B052a to B052d; `spec/reference-model/boundary.py` models the rule (`REMOVAL_RUNS`).
+- Rule L9 for code-only words whose raw keys are not English (product owner, 18/11/2026, REG-38, the open point of
+  ENG-R850): in the code context such a word is decided by L9 right after L5, before L6 and L7, so it follows the line
+  exactly as `tar` does. Outside Vietnamese text and not at a sentence start it keeps its keys (`sudo chown -R`,
+  `ls; chown`, `ps -ef`, which gave `chơn` and `è`); RV5 revises it at a line start before a Vietnamese word
+  (`chown thuwr` gives `chơn thử`); in Vietnamese text and in sentence case at a line start it keeps its Vietnamese
+  display (`tay chơn`, `Chơn`). Code-only words whose keys are English reach L9 in its place as before; the general
+  context and VNI do not change. With the bundled data L9 now reaches `awk`, `chown`, `ef`, `host`, `tar` and `tee`;
+  the prose corpus and the W11 corpus in the code context do not move. Spec rows B035o to B035t (`chown` joins the
+  13.9 fixture code-only list) and K26 to K32.
+- Bundled data: the phrases `day off`, `sale off` and `a mess` (product owner, 18/11/2026; 330 phrases). The phrase
+  evidence of rule L4 (ENG-R804 (a)) now keeps the word typed in `day off`, `a mess` and `Ê có sale off`, which kept
+  the escapes `day of`, `a mes` and `sale of`; `ok off`, `50% off`, `mess up`, `off topic` and `Off the record` keep
+  them (parked). The W11 corpus gains one exact sentence per habit (CS0010), the collision numbers do not move. Spec
+  rows X25 to X27.
+- The prose-corpus gate pins Telex `IX` -> `Ĩ` (two tokens per Telex typist) as the product owner's decision Q26 of
+  13/11/2026 instead of recording it as a known issue (docs/decisions/0202, open issue 3).
+
+## [0.1.0] - 2026-11-18
+
+The engine as shipped in the app 1.0.0.
 
 ### Added
 

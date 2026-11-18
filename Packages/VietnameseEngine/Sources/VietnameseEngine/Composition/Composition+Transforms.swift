@@ -27,10 +27,12 @@ extension Composition {
     /// key removes the tone; otherwise, when a letter carries a vowel mark or the stroke, it removes all of
     /// them at once (`đ` becomes `d`); otherwise Telex `z` is a letter and VNI `0` a literal (this covers
     /// `qu` with no vowel, REG-01, and every vowel-less token, 7.3). Removing marks keeps the letters
-    /// viable (the wildcard of ENG-R345), which the check below only confirms.
+    /// viable (the wildcard of ENG-R345), which the check below only confirms. A key that removed something is
+    /// recorded as `newestRemoval`, which rule L4a reads at commit (`endsWithRemoval`, REG-39).
     mutating func removeToneOrMarks(at index: Int) -> Bool {
         if tone != .level {
             setTone(.level, byKey: index)
+            newestRemoval = index
             return true
         }
         guard hasMarkedLetter else { return false }
@@ -43,6 +45,7 @@ extension Composition {
             return false
         }
         markRemovalSources.formUnion(KeySet(index: index))
+        newestRemoval = index
         return true
     }
 

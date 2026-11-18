@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-// The data decisions of the product owner (13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, Q27 and
-// Q29) with the bundled data: VNI `co2` types `cò` in every context and CO2 needs the escape; `chơn` is
-// attested and Telex `chown` keeps it outside the code context; the paper sizes keep their readings.
+// The data decisions of the product owner (13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, Q26, Q27 and
+// Q29) with the bundled data: Telex `IX` types `Ĩ` while `XIX` stays; VNI `co2` types `cò` in every context and CO2
+// needs the escape; `chơn` is attested and Telex `chown` keeps it outside the code context and in Vietnamese text (as a
+// command in a terminal it keeps its keys since 18/11/2026, REG-38); the paper sizes keep their readings.
 
 import Testing
 import VietnameseEngine
@@ -25,6 +26,35 @@ struct ProductOwnerDecisionTests {
         return String(driver.field.string.dropFirst(before.count))
     }
 
+    @Test("Q26: Telex IX types Ĩ (ầm ĩ wins) and the Roman numeral XIX stays as typed")
+    func romanNumeralNineIsVietnamese() throws {
+        let resources = try RealData.resources()
+        #expect(!resources.techAlways.contains("ix"))
+        #expect(resources.ambiguity["ix"] == nil)
+        #expect(resources.attestedSyllables.contains("ĩ"))
+        #expect(resources.techAlways.contains("xix"))
+        for seed in Self.telexSeeds {
+            #expect(try Self.committed("IX ", after: seed, EngineConfiguration()) == "Ĩ ", "\(seed)")
+            #expect(try Self.committed("aamf ix ", after: seed, EngineConfiguration()) == "ầm ĩ ", "\(seed)")
+            #expect(try Self.committed("XIX ", after: seed, EngineConfiguration()) == "XIX ", "\(seed)")
+        }
+    }
+
+    @Test(
+        "Q9 of spec section 15 (18/11/2026): a word that ends with a tone removal keeps the text shown (rule L4a)",
+        arguments: [
+            ("dduwowngfzz ", "duong "), ("vieejtz ", "viêt "), ("daauszz ", "dau "), ("quartz ", "quartz "),
+            ("Amazon ", "Amazon "), ("Arizona ", "Arizona "), ("booze ", "booze "), ("hertz ", "het "),
+        ])
+    func toneRemovalKeepsTheText(_ keys: String, _ expected: String) throws {
+        // `quartz` is English, so L4a restores it; `Amazon`, `Arizona` and `booze` remove a mark before more letters, so
+        // the rules after L4a restore them as before; `hertz` (not in the lexicon) is the known cost (ENG-R411).
+        for seed in Self.telexSeeds {
+            #expect(try Self.committed(keys, after: seed, EngineConfiguration()) == expected, "\(seed)")
+        }
+        #expect(try Self.committed("vie65t0 ", after: "", Self.vni) == "viêt ")
+    }
+
     @Test("Q27: VNI co2 types cò in every context, and the escape keeps CO2")
     func co2IsVietnamese() throws {
         let resources = try RealData.resources()
@@ -44,15 +74,18 @@ struct ProductOwnerDecisionTests {
         #expect(try Self.committed("a4 ", after: "vie65t ", Self.vni) == "a4 ")
     }
 
-    @Test("Q29: chơn is attested, and Telex chown keeps it (rule L7)")
+    @Test("Q29: chơn is attested, and Telex chown keeps it (rule L7) except as a command in the code context")
     func chonIsAttested() throws {
         #expect(try RealData.resources().attestedSyllables.contains("chơn"))
         for seed in Self.telexSeeds {
             #expect(try Self.committed("chown ", after: seed, EngineConfiguration()) == "chơn ", "\(seed)")
         }
-        // The code context gives the same: `chown` is a code-only word, not English by 8.1, so L7 keeps the
-        // display before L9 is reached. Whether L9 should restore such words is an open point for the product
-        // owner (docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions").
-        #expect(try Self.committed("chown ", after: "", Self.code) == "chơn ")
+        // The code context: since the product owner's decision of 18/11/2026 (REG-38) rule L9 is evaluated right after
+        // L5 for `chown`, a code-only word whose keys are not English, so it keeps its keys outside Vietnamese text and
+        // its Vietnamese display inside it (docs/decisions/0005-pa-decisions-2026-11-13.md, "Decisions of 18/11/2026").
+        #expect(try Self.committed("chown ", after: "", Self.code) == "chown ")
+        #expect(try Self.committed("chown ", after: "sudo ", Self.code) == "chown ")
+        #expect(try Self.committed("chown ", after: "vieejt ", Self.code) == "chơn ")
+        #expect(try Self.committed("chown ", after: "tay ", Self.code) == "chơn ")
     }
 }

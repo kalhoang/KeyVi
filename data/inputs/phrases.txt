@@ -5,10 +5,13 @@
 # Written by the project from general English usage; the product owner reviews the list before v1.
 # Left out on purpose: `its own`, `has to`, `how to` (their Vietnamese readings `ít ơn`, `há to`, `hơ to` are
 # plausible Vietnamese) and `as of` (product owner, 15/11/2026: `Hết á of course` must keep `á`).
+# `day off`, `sale off` and `a mess` added by the product owner on 18/11/2026: rule L4 reads a phrase as English
+# context (ENG-R804), so their doubled `off` and `mess` commit as typed instead of the escapes `of` and `mes`.
 # Format: one phrase per line, lowercase words a-z separated by one space. Lines starting with # are comments.
 # `lexicon-builder build` fails when the Vietnamese reading of a phrase occurs in data/corpus/prose-vi.txt.
 
 a lot of
+a mess
 a must
 about us
 air conditioner
@@ -99,6 +102,7 @@ cost of
 dark theme
 data bus
 data sets
+day off
 days ago
 did not
 did you
@@ -250,6 +254,7 @@ right away
 right now
 room for
 run test
+sale off
 same as
 see also
 see you
