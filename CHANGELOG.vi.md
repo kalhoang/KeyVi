@@ -13,6 +13,7 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 - Từ đầu tiên bạn gõ ngay sau khi một ứng dụng tự chuyển sang ô nhập khác không còn bị mất dấu hay sai dấu ("tieengs" thay vì "tiếng").
 - Từ đầu tiên bạn gõ ngay khi một ứng dụng mở khung tìm kiếm riêng không còn bị mất dấu ("vieejt" thay vì "việt") khi ô tìm kiếm của khung đó sẵn sàng chậm hơn phím đầu tiên một chút.
 - KeyVi nay tiếp tục theo dõi một ứng dụng đã từ chối thông báo chuyển ô nhập trong vài giây đầu sau khi mở, nên các lần chuyển ô trong ứng dụng đó không còn bị bỏ sót cho tới khi bạn chuyển sang ứng dụng khác.
+- Trong các ứng dụng phản hồi chậm như Safari và Google Chrome, từ bạn gõ sau khi ngừng gõ một lúc, hoặc ngay sau khi Command+S mở hộp thoại lưu, không còn bị tách đôi hay mất dấu ("nguyeẽn" thay vì "nguyễn", "đuơngf" thay vì "đường").
 
 ## [1.0.1-beta.1] - 2026-11-18
 
