@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "../build.mjs";
 import { CATEGORIES, STATUSES } from "../lib/data.mjs";
+import { releaseSections } from "../lib/pages/simple.mjs";
 import { SITE_DIR, ROOT_DIR, appHelpTargets, section } from "./helpers.mjs";
 import { checkSite } from "./site.mjs";
 
@@ -107,7 +108,9 @@ export async function runDataChecks(check, fixtures) {
     // repository build pairs each language with its own file (lib/data.mjs, loadChangelog).
     const viSource = await readFile(join(ROOT_DIR, "CHANGELOG.vi.md"), "utf8").catch(() => undefined);
     if (viSource === undefined) return;
-    const firstItem = (md) => md.split("\n").find((line) => line.startsWith("- ")).slice(2).split(/[":(]/)[0].trim();
+    // Only release sections reach the pages (spec/03-product.md section 16), so the item comes from the newest one,
+    // not from entries waiting under Unreleased.
+    const firstItem = (md) => releaseSections(md).split("\n").find((line) => line.startsWith("- ")).slice(2).split(/[":(]/)[0].trim();
     const viItem = firstItem(viSource);
     const enItem = firstItem(await readFile(join(ROOT_DIR, "CHANGELOG.md"), "utf8"));
     const viPage = fallbackPages.get(join(fallback, "nhat-ky-thay-doi", "index.html"));
