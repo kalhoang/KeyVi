@@ -2,8 +2,8 @@
 //
 // The data decisions of the product owner (13/11/2026, docs/decisions/0005-pa-decisions-2026-11-13.md, Q26, Q27 and
 // Q29) with the bundled data: Telex `IX` types `Ĩ` while `XIX` stays; VNI `co2` types `cò` in every context and CO2
-// needs the escape; `chơn` is attested and Telex `chown` keeps it outside the code context; the paper sizes keep their
-// readings.
+// needs the escape; `chơn` is attested and Telex `chown` keeps it outside the code context and in Vietnamese text (as a
+// command in a terminal it keeps its keys since 18/11/2026, REG-38); the paper sizes keep their readings.
 
 import Testing
 import VietnameseEngine
@@ -59,15 +59,18 @@ struct ProductOwnerDecisionTests {
         #expect(try Self.committed("a4 ", after: "vie65t ", Self.vni) == "a4 ")
     }
 
-    @Test("Q29: chơn is attested, and Telex chown keeps it (rule L7)")
+    @Test("Q29: chơn is attested, and Telex chown keeps it (rule L7) except as a command in the code context")
     func chonIsAttested() throws {
         #expect(try RealData.resources().attestedSyllables.contains("chơn"))
         for seed in Self.telexSeeds {
             #expect(try Self.committed("chown ", after: seed, EngineConfiguration()) == "chơn ", "\(seed)")
         }
-        // The code context gives the same: `chown` is a code-only word, not English by 8.1, so L7 keeps the
-        // display before L9 is reached. Whether L9 should restore such words is an open point for the product
-        // owner (docs/decisions/0005-pa-decisions-2026-11-13.md, "Found while applying the decisions").
-        #expect(try Self.committed("chown ", after: "", Self.code) == "chơn ")
+        // The code context: since the product owner's decision of 18/11/2026 (REG-38) rule L9 is evaluated right after
+        // L5 for `chown`, a code-only word whose keys are not English, so it keeps its keys outside Vietnamese text and
+        // its Vietnamese display inside it (docs/decisions/0005-pa-decisions-2026-11-13.md, "Decisions of 18/11/2026").
+        #expect(try Self.committed("chown ", after: "", Self.code) == "chown ")
+        #expect(try Self.committed("chown ", after: "sudo ", Self.code) == "chown ")
+        #expect(try Self.committed("chown ", after: "vieejt ", Self.code) == "chơn ")
+        #expect(try Self.committed("chown ", after: "tay ", Self.code) == "chơn ")
     }
 }

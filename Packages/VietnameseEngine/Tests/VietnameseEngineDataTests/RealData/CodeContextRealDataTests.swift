@@ -4,7 +4,9 @@
 // to a command-line assistant in iTerm2 (compat rule `terminal.default`, so the code context): the keys
 // `Suwar looxi chinhs tar"` committed `Sửa lỗi chính tar"`, twice in a row, because rule L9 restored the
 // code-only word `tar` whatever the words around it. L9 now follows the line: in Vietnamese text a code-only
-// word is decided as in the general context, while a shell line keeps its commands as typed.
+// word is decided as in the general context, while a shell line keeps its commands as typed. Since the product
+// owner's decision of 18/11/2026 (REG-38) this holds for code-only words whose keys are not English (`chown`, `ef`,
+// `awk`), for which L9 is evaluated right after L5, before L6 and L7 would keep them.
 
 import Testing
 import VietnameseEngine
@@ -105,6 +107,35 @@ struct CodeContextRealDataTests {
             }
         }
         print("[ENG-R850] code-only words that rule L9 reaches with the bundled data (Telex): \(reached)")
-        #expect(!reached.isEmpty)
+        // REG-38 (product owner, 18/11/2026): the code-only words whose keys are not English reach L9 too.
+        #expect(reached == ["awk", "chown", "ef", "host", "tar", "tee"])
+    }
+
+    @Test(
+        "REG-38: a code-only word whose keys are not English follows the line as tar does",
+        arguments: [
+            ("sudo chown -R minh ", "sudo chown -R minh "), ("ls; chown minh ", "ls; chown minh "),
+            ("ps -ef ", "ps -ef "), ("awk -F ", "awk -F "), ("chown\n", "chown\n"), ("tay chown ", "tay chơn "),
+            ("vieejt ef ", "việt è "), ("Chown ", "Chơn "), ("chown thuwr ", "chơn thử "), ("dungf awk ", "dùng ăk "),
+        ])
+    func notEnglishCodeOnlyWords(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations {
+            #expect(try Self.field(keys, configuration).field.string == expected, "\(keys.debugDescription)")
+        }
+        // The general context never reaches L9: `chown`, `ef` and `awk` keep `chơn`, `è` and `ăk` there.
+        #expect(try Self.field("sudo chown -R ", EngineConfiguration()).field.string == "sudo chơn -R ")
+    }
+
+    @Test("REG-38: in VNI no code-only word reaches L9 (plain letters, digit words show no syllable)")
+    func vniNeverReachesTheCodeRule() throws {
+        let resources = try RealData.resources()
+        let vni = EngineConfiguration(inputMethod: .vni, appContext: .code)
+        var reached: [String] = []
+        for word in try RealData.codeOnlyWords() {
+            var driver = EngineDriver(configuration: vni, resources: resources)
+            try driver.type(word + " ")
+            if driver.outputs.last?.decision == .restored(.codeContext) { reached.append(word) }
+        }
+        #expect(reached.isEmpty, "\(reached)")
     }
 }

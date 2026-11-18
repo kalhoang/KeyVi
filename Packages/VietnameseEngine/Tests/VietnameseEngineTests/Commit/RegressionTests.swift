@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-34, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-38, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-34 (13.5)")
+@Suite("Regressions REG-01 to REG-38 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni)
 
@@ -381,5 +381,19 @@ struct RegressionTests {
         #expect(try Committing.text("Kroong Anaa ") == "Krông Ana ")
         #expect(try Committing.text("ass ") == "as ")
         #expect(try Committing.text("www ") == "www ")
+    }
+
+    @Test("REG-38: a code-only command whose keys are not English keeps its keys in a terminal")
+    func reg38() throws {
+        // The product owner's decision of 18/11/2026: for a code-only word whose keys are not English (`chown`, `chơn` by
+        // L7) L9 is evaluated right after L5, so it follows the line as `tar` does. Before, L7 decided first and
+        // `sudo chown -R` gave `sudo chơn -R`.
+        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+        #expect(try Committing.text("sudo chown -R ", terminal) == "sudo chown -R ")
+        #expect(try Committing.text("ls; chown ", terminal) == "ls; chown ")
+        #expect(try Committing.text("chown thuwr ", terminal) == "chơn thử ")
+        // Vietnamese text and the general context keep the Vietnamese display.
+        #expect(try Committing.text("tay chown ", terminal) == "tay chơn ")
+        #expect(try Committing.text("sudo chown ") == "sudo chơn ")
     }
 }

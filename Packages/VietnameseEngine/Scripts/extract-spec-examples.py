@@ -29,7 +29,7 @@ DEFAULT_SPEC = PACKAGE_DIR.parent.parent / "spec" / "01-engine.md"
 CORPUS_DIR = PACKAGE_DIR / "Tests" / "VietnameseEngineTests" / "Corpus"
 
 BOUNDARY_KEYS = {"Space": " ", "Return": "\n", "Tab": "\t"}
-EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 89, "restore-toggle.tsv": 9}
+EXPECTED_ROWS = {"worked-examples.tsv": 304, "commit-decisions.tsv": 95, "restore-toggle.tsv": 9}
 
 
 def fail(message):

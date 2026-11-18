@@ -11,9 +11,9 @@
 # L4 restores the keys, so ENG-T11 sees no L4 change. Doubles that were not needed (`pass`, `dessert`) and escapes that
 # are no doubling (`costs`) are restored in every context and are no longer listed (50 L4 entries until 17/11/2026).
 ass	as	L4	Vietnamese context only: the doubling is the deliberate escape to the English word "as", whose own keys commit a Vietnamese syllable
-awk	ăk	L6	code-only command (spec 8.2 example), not English by 8.1: L6 keeps the Tier B display in every context, the code context included, because it decides before L9 (open point in docs/decisions/0005)
-chown	chơn	L7	code-only command, not English by 8.1: L7 keeps the Tier A display chơn (Chơn Thành, chơn chất, attested by the product owner on 13/11/2026) in every context, the code context included, because L7 decides before L9 (open point in docs/decisions/0005)
-ef	è	L7	code-only flag, not English by 8.1: L7 keeps the Tier A display è (è cổ) in every context, the code context included, because it decides before L9 (open point in docs/decisions/0005)
+awk	ăk	L6	code-only command (spec 8.2 example), not English by 8.1: L6 keeps the Tier B display in the general context; in the code context L9, evaluated right after L5 for such words since 18/11/2026 (REG-38), restores it outside Vietnamese text
+chown	chơn	L7	code-only command, not English by 8.1: L7 keeps the Tier A display chơn (Chơn Thành, chơn chất, attested by the product owner on 13/11/2026) in the general context; in the code context L9, evaluated right after L5 for such words since 18/11/2026 (REG-38), restores it outside Vietnamese text
+ef	è	L7	code-only flag, not English by 8.1: L7 keeps the Tier A display è (è cổ) in the general context; in the code context L9, evaluated right after L5 for such words since 18/11/2026 (REG-38), restores it outside Vietnamese text
 hiss	his	L4	Vietnamese context only: the doubling is the deliberate escape to the English word "his", whose own keys commit a Vietnamese syllable
 mass	mas	L4	Vietnamese context only: the doubling is the deliberate escape to the English word "mas", whose own keys commit a Vietnamese syllable
 mess	mes	L4	Vietnamese context only: the doubling is the deliberate escape to the English word "mes", whose own keys commit a Vietnamese syllable

@@ -69,7 +69,7 @@ struct CommitDecisionTests {
     }
 
     @Test func allRowsArePresent() {
-        #expect(Self.rows.count == 89)
+        #expect(Self.rows.count == 95)
     }
 
     @Test(arguments: rows)
@@ -92,7 +92,7 @@ struct CommitDecisionTests {
         for boundary in Self.boundaries(for: row.method) {
             let (text, output, driver) = try Self.run(row, boundary: boundary.input)
             // ENG-R850: a word in sentence case at the start of a line is decided by the rules after L9 only when a
-            // space commits it (B035m, B064c); at any other key L9 restores it (13.9.1).
+            // space commits it (B035m, B035s, B064c); at any other key L9 restores it (13.9.1).
             if Self.startsSentence(row) {
                 if boundary.input.character == " " {
                     var general = row.configuration
@@ -142,7 +142,7 @@ struct CommitDecisionTests {
     }
 
     @Test func sentenceRowsAreTheExpectedOnes() {
-        #expect(Self.rows.filter(Self.startsSentence).map(\.id) == ["B035m", "B064c"])
+        #expect(Self.rows.filter(Self.startsSentence).map(\.id) == ["B035m", "B035s", "B064c"])
     }
 
     @Test func boundaryListCoversSection9() {

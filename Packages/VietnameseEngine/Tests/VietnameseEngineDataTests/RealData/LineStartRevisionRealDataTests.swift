@@ -60,7 +60,8 @@ struct LineStartRevisionRealDataTests {
             if driver.outputs.last?.revision == .lineVietnamese { revised.append(word) }
         }
         print("[ENG-R850] code-only words that RV5 revises at a line start with the bundled data (Telex): \(revised)")
-        #expect(revised == ["host", "tar", "tee"])
+        // REG-38 (18/11/2026): `awk`, `chown` and `ef`, whose keys are not English, are revised as `tar` is.
+        #expect(revised == ["awk", "chown", "ef", "host", "tar", "tee"])
     }
 
     @Test(
@@ -234,9 +235,9 @@ struct LineStartRevisionRealDataTests {
         return rows
     }()
 
-    @Test("13.9.4 has its 25 rows")
+    @Test("13.9.4 has its 32 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...25).map { String(format: "K%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...32).map { String(format: "K%02d", $0) })
     }
 
     @Test("ENG-R850, ENG-R828: every row of 13.9.4", arguments: rows)

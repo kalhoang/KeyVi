@@ -4,9 +4,11 @@ import VietnameseEngine
 import VietnameseEngineTesting
 
 /// Rule L9 follows the line, not the app (ENG-R850 as amended on 15/11/2026, REG-35): in the code context a
-/// code-only word whose raw keys are English is restored unless it is in Vietnamese text, which the rules after
-/// L9 decide exactly as in the general context. 13.9 fixtures: the code-only list holds `tar` and `sudo`, and
-/// `tar` has no ambiguity row, so a token that L9 leaves alone is kept by L11 (`defaultVietnamese`).
+/// code-only word is restored unless it is in Vietnamese text, which the rules after L9 decide exactly as in the
+/// general context. Since the product owner's decision of 18/11/2026 (REG-38), for a code-only word whose raw keys are
+/// not English (`chown`) L9 is evaluated right after L5, before L6 and L7 would keep it. 13.9 fixtures: the code-only list holds
+/// `tar`, `sudo` and `chown`, and `tar` has no ambiguity row, so a token that L9 leaves alone is kept by L11
+/// (`defaultVietnamese`); `chown` is not English, so the rules after L9 keep it by L7 (`notEnglish`).
 @Suite("Rule L9 follows the line (ENG-R850, REG-35)")
 struct CodeContextTests {
     static let code = EngineConfiguration(appContext: .code)
@@ -121,12 +123,83 @@ struct CodeContextTests {
 
     @Test("A code word that composed Vietnamese is a Vietnamese word, not a code word")
     func codeWordShowingVietnamese() throws {
-        // `chown` is code-only but not English, so L7 keeps `chơn`; on screen it is a Vietnamese word.
-        let resources = Resources(
-            english: WordSet(SpecFixtures.englishLexicon), techAlways: WordSet(SpecFixtures.techAlways),
-            techCodeOnly: WordSet(SpecFixtures.techCodeOnly + ["chown"]),
-            attestedSyllables: WordSet(SpecFixtures.attestedSyllables), ambiguity: [:], userKeepRaw: WordSet([]),
-            userKeepVietnamese: WordSet([]))
-        #expect(try Committing.text("chown tar ", Self.code, resources: resources) == "chơn tả ")
+        // In Vietnamese text `chown` is kept as `chơn` by L7: on screen it is a Vietnamese word, so `tar` after it is in
+        // Vietnamese text too. At the start of a line both are code words (REG-38).
+        #expect(try Committing.text("vieejt chown tar ", Self.code) == "việt chơn tả ")
+        #expect(try Committing.text("chown tar ", Self.code) == "chown tar ")
+    }
+
+    // MARK: - REG-38: code-only words whose keys are not English (product owner, 18/11/2026)
+
+    /// Keys and the field they leave in the code context: `chown` follows the line exactly as `tar` does.
+    static let notEnglishRestored: [(keys: String, text: String)] = [
+        ("chown ", "chown "), ("sudo chown ", "sudo chown "), ("chown;", "chown;"), ("ls; chown ", "ls; chown "),
+        ("and chown ", "and chown "), ("vieejt | chown ", "việt | chown "), ("vieejt\nchown ", "việt\nchown "),
+        ("anh.chown ", "anh.chown "), ("chown\n", "chown\n"), ("Chown-", "Chown-"),
+    ]
+
+    @Test("REG-38: outside Vietnamese text L9 restores a code-only word whose keys are not English")
+    func notEnglishCodeWordIsRestored() throws {
+        for configuration in [Self.code, Self.codeWithoutRevision] {
+            for (keys, text) in Self.notEnglishRestored {
+                let driver = try Committing.driver(keys, configuration)
+                #expect(driver.field.string == text, "\(keys.debugDescription)")
+                #expect(driver.outputs.last?.decision == .restored(.codeContext), "\(keys.debugDescription)")
+            }
+        }
+    }
+
+    @Test(
+        "REG-38: in Vietnamese text and at the start of a sentence the rules after L9 keep it, by L7",
+        arguments: [
+            ("vieejt chown ", "việt chơn "), ("tay chown ", "tay chơn "), ("chinhs chown,", "chính chơn,"),
+            ("vieejt; chown ", "việt; chơn "), ("Chown ", "Chơn "), ("- Chown ", "- Chơn "),
+        ])
+    func notEnglishCodeWordInVietnameseText(_ keys: String, _ text: String) throws {
+        for configuration in [Self.code, Self.codeWithoutRevision] {
+            let driver = try Committing.driver(keys, configuration)
+            #expect(driver.field.string == text, "\(keys.debugDescription)")
+            #expect(driver.outputs.last?.decision == .kept(.notEnglish), "\(keys.debugDescription)")
+        }
+    }
+
+    @Test("REG-38: RV5 revises it at a line start before a Vietnamese word, as it revises tar (ENG-R828)")
+    func notEnglishCodeWordAtALineStart() throws {
+        let driver = try Committing.driver("chown thuwr ", Self.codeWithoutRevision)
+        #expect(driver.field.string == "chơn thử ")
+        #expect(driver.outputs.compactMap(\.revision) == [.lineVietnamese])
+        // Shell lines keep it, and with D29 off it stays as typed.
+        #expect(try Committing.text("chown xf ", Self.code) == "chown xf ")
+        #expect(try Committing.text("chown thuwr.", Self.code) == "chown thử.")
+        let d29Off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        #expect(try Committing.text("chown thuwr ", d29Off) == "chown thử ")
+    }
+
+    @Test("REG-38: the general context, VNI and auto restore off are unchanged")
+    func notEnglishCodeWordElsewhere() throws {
+        for keys in ["chown ", "sudo chown ", "ls; chown ", "chown;"] {
+            #expect(try Committing.decision(keys) == .kept(.notEnglish), "\(keys)")
+        }
+        #expect(try Committing.text("sudo chown ") == "sudo chơn ")
+        // VNI letters are plain: `chown` is typed unchanged (L0).
+        let vniCode = EngineConfiguration(inputMethod: .vni, appContext: .code)
+        #expect(try Committing.decision("chown ", vniCode) == .kept(.unchanged))
+        // ENG-R802: L9 names itself and keeps the display.
+        let off = EngineConfiguration(autoRestore: false, appContext: .code)
+        #expect(try Committing.text("chown ", off) == "chơn ")
+        #expect(try Committing.decision("chown ", off) == .kept(.codeContext))
+    }
+
+    @Test("REG-38: L5 still decides first, and the rules after L9 stay as they were for words of Tier B")
+    func ruleOrderAroundL9() throws {
+        // `awk` shows `ăk`, a syllable of Tier B only (L6 in the general context); `curl` shows `củl`, no syllable (L5).
+        var resources = SpecFixtures.commitResources()
+        resources.techCodeOnly = WordSet(SpecFixtures.techCodeOnly + ["awk", "curl", "ef"])
+        #expect(try Committing.decision("awk ", Self.code, resources: resources) == .restored(.codeContext))
+        #expect(try Committing.decision("awk ", resources: resources) == .kept(.extendedSpelling))
+        #expect(try Committing.decision("vieejt awk ", Self.code, resources: resources) == .kept(.extendedSpelling))
+        #expect(try Committing.decision("curl ", Self.code, resources: resources) == .restored(.invalid))
+        #expect(try Committing.text("ps -ef ", Self.code, resources: resources) == "ps -ef ")
+        #expect(try Committing.text("ps -ef ", resources: resources) == "ps -è ")
     }
 }
