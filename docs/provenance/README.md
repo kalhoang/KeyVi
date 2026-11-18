@@ -46,7 +46,7 @@ Common vocabulary is not a match: Vietnamese linguistic terms, Telex and VNI let
 ## 4. Process
 
 1. **Freeze the target**: record the commit SHA of this repository under review and the versions of the compared codebases.
-2. **Run the comparison** (section 3) and fill in the [report template](report-template.md). Do not quote the other codebase's code in the report: describe locations (file path and line range in the compared project) and the nature of the similarity.
+2. **Run the comparison** (section 3) and fill in the [report template](report-template.md). Do not quote the other codebase's code in the report: give the location in this repository (file path and line range) and the nature of the similarity. The location in the compared project stays in the reviewer's own notes ([similarity review runbook](../runbooks/similarity-review.md) section 7); no path of a compared project goes into a report.
 3. **Classify each finding**: `none`, `inevitable` (with reason), `suspect`, `match`.
 4. **Remediate every `suspect` or `match`**: a clean implementer (not the reviewer) rewrites the affected code from the spec, without seeing the other code. The reviewer then re-checks only that the rewritten area no longer matches, and records the new commit SHA. Do not "tweak" the matching code: rewrite it.
 5. **Close the report** with a conclusion, the reviewer's signature (name and date) and the maintainer's acknowledgement. Unresolved matches block the release.

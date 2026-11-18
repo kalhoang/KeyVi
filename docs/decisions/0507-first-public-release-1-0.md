@@ -63,6 +63,7 @@ The state on 2026-11-17:
    similarity review before it. The review is done by the dirty side and recorded as a separate report in
    [`docs/provenance/`](../provenance/), following its README; this record does not restate it. It is not waived:
    1.0.0 is not published while that report is missing or has an unresolved match (release runbook section 2).
+   (1.0.0 shipped before the comparison; see the amendment of 2026-11-18 below.)
 
 6. **Homebrew minimum macOS.** The cask template still declared `depends_on macos: ">= :sequoia"`, left from the
    macOS 15 floor that [0315](0315-minimum-macos-12.md) replaced. It now declares `">= :monterey"`, the same floor as

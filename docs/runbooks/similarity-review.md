@@ -166,8 +166,8 @@ forces it), `suspect` (cannot be explained by the spec, may be chance) or `match
 
 The reviewer writes `docs/provenance/reports/<YYYY-MM-DD>-similarity-<short commit>.md` (the date the report is
 signed and the first 8 characters of the target commit) from the template in section 9, and hands it to the
-maintainer, who commits it on `main` unchanged apart from the acknowledgement line and adds a row to the index of
-the [provenance README](../provenance/README.md).
+maintainer, who merges it into `main` from a branch with a merge commit (QA-R25), unchanged apart from the
+acknowledgement line, and adds a row to the index of the [provenance README](../provenance/README.md).
 
 The report holds only:
 
@@ -177,9 +177,9 @@ The report holds only:
 - per finding: category, class and the reason;
 - the verdict and the reviewer's signed statement.
 
-It never holds code, file names, paths, identifiers, data, comments or summaries of another project. (This is
-stricter than the record review's template, which asked for locations in the compared project; for this
-comparison the paths of the other side stay with the reviewer.)
+It never holds code, file names, paths, identifiers, data, comments or summaries of another project. The paths of
+the other side stay in the reviewer's own notes; the record review's [template](../provenance/report-template.md)
+follows the same rule since 2026-11-18.
 
 ## 8. When there is a finding
 

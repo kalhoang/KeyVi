@@ -43,9 +43,11 @@ Copy this file to `docs/provenance/reports/YYYY-MM-DD-<release>.md` and fill it 
 
 One row per finding. Classes: `none`, `inevitable`, `suspect`, `match`.
 
-| # | Category (identifier / layout / table order / comment / data / behaviour) | Location in this repository | Location in compared project (path and line range, no code) | Nature of similarity | Class | Reason if inevitable |
+| # | Category (identifier / layout / table order / comment / data / behaviour) | Location in this repository (path and line range) | Compared project (name and version only) | Nature of similarity (no code, no path of the compared project) | Class | Reason if inevitable |
 |---|---|---|---|---|---|---|
 | 1 | | | | | | |
+
+The location in the compared project stays in the reviewer's own notes, never in this report ([similarity review runbook](../runbooks/similarity-review.md) section 7).
 
 If there are no findings, write "No similarities beyond inevitable vocabulary" and list the inevitable items above.
 
