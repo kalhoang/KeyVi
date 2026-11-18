@@ -338,6 +338,59 @@ private func typingFixture(focus: FocusSnapshot = PipelineFixtures.focus()) -> (
         #expect(atTheLimit.log.resets.isEmpty)
     }
 
+    /// VM run of 19/11/2026 (testhost.native.textView): the previous field's word was left unfinished, then another
+    /// field of the same app took the focus without a key the tap saw (the harness's AX focus, or an app that moves
+    /// its focus by itself). The change was observed 300 ms after the word's last key but 660 ms after its first, so
+    /// the word's keys went into the old field: the hard boundary at the new word's first key, not a kept word
+    /// whose check fails and resets the composition one key late, mid-word (PLT-R340 amendment of 19/11/2026).
+    @Test func aWordThatStartedBeforeTheWindowIsAHardBoundaryPLTR340() {
+        let fixture = PipelineFixture()
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, after: 180_000)  // changedAt: 300 ms after "s", 660 ms after "d"
+        fixture.clock.advance(byMicroseconds: 700_000)
+        #expect(fixture.keyDown(Key.a) == .pass)  // a new word: nothing held behind a check
+        #expect(fixture.log.resets == [.focusChanged])
+        #expect(!fixture.popJobs().contains { $0.edit?.verifyLateFocus == true })
+    }
+
+    /// The first-key condition covers the whole word: a word that Backspace re-opened (ENG-R1002) keeps the time of
+    /// its first key, so a late change right after the Backspace is still a hard boundary (PLT-R340).
+    @Test func aWordReopenedByBackspaceIsMeasuredFromItsFirstKeyPLTR340() {
+        let fixture = PipelineFixture()
+        fixture.typeKeys([Key.a, Key.space])
+        fixture.completeJobs()
+        fixture.clock.advance(byMicroseconds: 600_000)
+        fixture.press(Key.backspace)  // re-opens "a", typed 600 ms ago
+        fixture.completeJobs()
+        publishNewElement(fixture)  // 50 ms after the Backspace
+        fixture.press(Key.a)
+        #expect(fixture.log.resets == [.focusChanged])
+    }
+
+    /// The timed-out branch keeps the last-key window only (amendment of 2026-11-15): the previous snapshot named no
+    /// app, so no element changed under the word; the next real snapshot may come seconds after the word's first key
+    /// (breaker cool-down, PLT-R384), and the word is still kept and checked.
+    @Test func aRealSnapshotAfterATimedOutReadKeepsAnOlderWordPLTR340() throws {
+        let fixture = PipelineFixture()
+        publishTimedOutSnapshot(fixture)
+        for key in [Key.d, Key.u, Key.w, Key.s] {
+            fixture.press(key)
+            fixture.completeJobs()
+            fixture.clock.advance(byMicroseconds: 120_000)
+        }
+        _ = fixture.popJobs()
+        publishNewElement(fixture, generation: 3, after: 180_000)  // 300 ms after "s", 660 ms after "d"
+        #expect(fixture.keyDown(Key.a) == .swallow)  // held behind the check
+        #expect(fixture.log.resets.isEmpty)
+        let check = try #require(fixture.popJobs().compactMap(\.edit).first)
+        #expect(check.verifyLateFocus && check.replacedText == "dứ")
+    }
+
     /// The worker could not read the new element (no AX element, AX unavailable or timed out): hard boundary.
     @Test func anUnreadableElementIsAHardBoundaryPLTR340() {
         let changes: [(inout FocusSnapshot) -> Void] = [

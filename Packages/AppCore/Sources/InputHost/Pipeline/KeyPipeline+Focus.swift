@@ -55,14 +55,18 @@ enum CaretContinuity {
 
 /// PLT-R340 amendment (product owner, 2026-11-14, T5.5): a focus change the tap discovers after keys of the active
 /// token were composed with the previous snapshot keeps the composition when the new element belongs to the same
-/// process and the change was observed at most `windowNanoseconds` after the token's last key. The first job after
-/// the discovery verifies the new element's text before the caret (`EditJob.verifyLateFocus`).
+/// process and the change was observed at most `windowNanoseconds` after the token's first key (amendment of
+/// 19/11/2026; the last key alone for a previous snapshot whose read timed out). The first job after the discovery
+/// verifies the new element's text before the caret (`EditJob.verifyLateFocus`).
 enum LateFocusChange {
     /// 500 ms: the ax thread observes a focus change that the typing caused (a sheet or an editor taking the key it
     /// was opened by) or that the app reported late within its settle window (last re-read 400 ms after the
     /// notification, `FocusSettle.delays`, PLT-R380) plus scheduling slack; it equals the PLT-R382 typing-pause
     /// threshold, beyond which a key no longer belongs to continuous typing. A change observed later is not part of
-    /// the word and stays a hard boundary.
+    /// the word and stays a hard boundary. Measured from the word's first key when the previous snapshot named the
+    /// same process: the element really changed at most this long before `changedAt`, so a word that began earlier
+    /// went into the previous element (VM run of 19/11/2026, `testhost.native.textView`: the previous field's
+    /// unfinished word was kept, its check failed and the reset landed mid-word).
     static let windowNanoseconds: UInt64 = 500_000_000
 }
 
@@ -116,13 +120,24 @@ extension KeyPipeline {
     /// read (a field handle and AX available), no focus pause, the same engine variant, and the change observed at
     /// most `LateFocusChange.windowNanoseconds` after the token's last key. Everything else stays a hard boundary.
     /// The active-display read runs only on this rare path (a new element while a word is being typed).
+    ///
+    /// Amendment of 19/11/2026: when the previous snapshot named the same process, the change must also be observed
+    /// within the window of the word's first key, because an element of that process really changed then and a
+    /// word begun earlier was typed into the previous one. A word re-opened by Backspace keeps its first key's time,
+    /// and a word whose start is unknown is refused. The timed-out branch keeps the last-key window alone: no
+    /// element changed under the word there, and the next real snapshot can come seconds after its first key.
     func keepsCompositionAcrossLateFocusChange(_ focus: FocusSnapshot, identity: FocusIdentity) -> Bool {
-        let sameProcess = identity.pid == seen.focus.pid || seen.focus.appUnknownAfterTimeout
-        guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess,
+        let sameProcess = identity.pid == seen.focus.pid
+        guard engineDirty, identity.pid != ToggleOverride.noProcess, sameProcess || seen.focus.appUnknownAfterTimeout,
             focus.fieldHandle != nil, focus.field.axAvailability == .available, focus.pause == nil,
             identity.decision.variant == seen.focus.decision.variant, let lastKey = keyState.lastComposedKeyAt,
             focus.changedAt.nanoseconds(since: lastKey) <= LateFocusChange.windowNanoseconds
         else { return false }
+        if sameProcess {
+            guard let wordStart = keyState.wordStartedAt,
+                focus.changedAt.nanoseconds(since: wordStart) <= LateFocusChange.windowNanoseconds
+            else { return false }
+        }
         return !engine.activeDisplay.isEmpty
     }
 
