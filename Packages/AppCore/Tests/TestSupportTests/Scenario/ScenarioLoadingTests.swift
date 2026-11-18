@@ -21,6 +21,15 @@ import Testing
         #expect(scenario.timing == .burst)
         #expect(scenario.layout == nil)
         #expect(scenario.expect.text == "đi")
+        #expect(scenario.readbackOptions == nil)
+    }
+
+    /// PLT-R530 (amended 19/11/2026): how the readback reads the field sits beside `readback`.
+    @Test func decodesReadbackOptions() throws {
+        let json = scenarioJSON(id: "s", extra: #","readbackOptions":{"excludesSelectedCompletion":true}"#)
+        #expect(try decode(json, file: "s.json").readbackOptions?.excludesSelectedCompletion == true)
+        let empty = try decode(scenarioJSON(id: "s", extra: #","readbackOptions":{}"#), file: "s.json")
+        #expect(empty.readbackOptions == Scenario.ReadbackOptions())
     }
 
     @Test func roundTripsThroughJSONEncoder() throws {
@@ -28,7 +37,8 @@ import Testing
             setup: [.init(action: .launch), .init(action: .wait, value: "200")],
             expect: .init(
                 text: "x", paused: true, holderBundleId: bundle("com.example.Holder"),
-                firstKeyAfterReleaseComposed: false))
+                firstKeyAfterReleaseComposed: false),
+            readbackOptions: .init(excludesSelectedCompletion: true))
         let data = try JSONEncoder().encode(scenario)
         #expect(try ScenarioLoader.decode(data, fileName: "sample.scenario.json") == scenario)
     }
@@ -38,6 +48,10 @@ import Testing
         (
             scenarioJSON(id: "s").replacingOccurrences(of: #"{"text":"đi"}"#, with: #"{"text":"x","colour":"red"}"#),
             "unknown key expect.colour"
+        ),
+        (
+            scenarioJSON(id: "s", extra: #","readbackOptions":{"excludesSelectedCompletion":true,"trim":true}"#),
+            "unknown key readbackOptions.trim"
         ),
     ])
     func rejectsUnknownKeysLikeTheSchema(json: String, problem: String) {
@@ -198,6 +212,17 @@ import Testing
             ScenarioValidator.problems(in: makeScenario(readback: .webdriver)) == [
                 "webdriver readback needs an openURL step"
             ])
+    }
+
+    /// Only the `ax` readback reads a selection; on any other readback the declaration would be ignored silently.
+    @Test(arguments: [Scenario.Readback.webdriver, .terminalCapture, .human])
+    func excludingASelectedCompletionNeedsAnAXReadback(readback: Scenario.Readback) {
+        let setup: [Scenario.SetupStep] = readback == .webdriver ? [.init(action: .openURL, value: "{pages}/x")] : []
+        let options = Scenario.ReadbackOptions(excludesSelectedCompletion: true)
+        #expect(
+            ScenarioValidator.problems(in: makeScenario(setup: setup, readback: readback, readbackOptions: options))
+                == ["readbackOptions.excludesSelectedCompletion needs an ax readback"])
+        #expect(ScenarioValidator.problems(in: makeScenario(readbackOptions: options)) == [])
     }
 
     @Test func unknownKeysOnNonObjects() {

@@ -4,7 +4,21 @@
 // "text" as "TextEdit" with "Edit" selected, `launcher.spotlight`) holds the selected completion in its value. The
 // typed text is the part before a selection that runs to the end of the value, the same assumption the
 // `axSelection` strategy makes (PLT-R353). A collapsed selection, or one that ends before the end of the value, is
-// not a completion and keeps the whole value.
+// not a completion and keeps the whole value. `ReadbackRouter` applies this only to a scenario that declares the
+// selection its app's own completion (`readbackOptions.excludesSelectedCompletion`, PLT-R530 amended 19/11/2026):
+// TestHost's completions are deterministic and part of the expected field text (QA-R21).
+
+/// What the `ax` readback reads of a field: its whole `kAXValueAttribute` and its `kAXSelectedTextRangeAttribute`
+/// (nil when the field has none). The reader strips nothing; `ReadbackRouter` decides what is compared.
+public struct AXFieldState: Sendable, Hashable {
+    public var value: String
+    public var selection: AXReadbackText.Selection?
+
+    public init(value: String, selection: AXReadbackText.Selection? = nil) {
+        self.value = value
+        self.selection = selection
+    }
+}
 
 public enum AXReadbackText {
     /// `kAXSelectedTextRangeAttribute` in UTF-16 units.
@@ -15,6 +29,16 @@ public enum AXReadbackText {
             self.location = location
             self.length = length
         }
+    }
+
+    /// The failure focus report's lines for the focused element's selection and character count
+    /// (`kAXNumberOfCharactersAttribute`): numbers only, never text (PLT-R901). They tell a readback that left a
+    /// selected completion out (3 characters, selection 1,2) from a completion the field lost (1 character, 1,0).
+    public static func focusReportLines(selection: Selection?, characters: Int?) -> [String] {
+        [
+            "focused selection: " + (selection.map { "\($0.location),\($0.length)" } ?? "none"),
+            "focused characters: " + (characters.map { String($0) } ?? "none"),
+        ]
     }
 
     public static func typed(value: String, selection: Selection?) -> String {

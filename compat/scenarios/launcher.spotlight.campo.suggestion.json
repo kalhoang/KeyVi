@@ -19,5 +19,8 @@
   "expect": {
     "text": "tiếng"
   },
-  "readback": "ax"
+  "readback": "ax",
+  "readbackOptions": {
+    "excludesSelectedCompletion": true
+  }
 }

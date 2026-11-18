@@ -445,9 +445,12 @@ notification. That part is the unit tests' (fake AX posts nothing) and the Spotl
 `launcher.spotlight.reopen` (runner only, `targetBundleId` Spotlight) types `vieejt`, Escape twice, then opens Spotlight
 again and types `tex` then `xt`; `launcher.spotlight.campo` and `launcher.spotlight.campo.reopen` do the same with
 `targetBundleId` `com.apple.campo`, the panel of macOS 27.2, and `launcher.spotlight.campo.suggestion` types `tieesng`
-(expect `tiếng`). Their `ax` readback, like `launcher.spotlight`'s, returns the value without a selected
-completion that runs to its end (`AXReadbackText`): Spotlight with history shows `text` as `TextEdit` with `Edit`
-selected, which is the completion the extra Backspace of PLT-R420 removes, not text that was typed.
+(expect `tiếng`). These four and `launcher.spotlight` declare `readbackOptions.excludesSelectedCompletion`, so their
+`ax` readback leaves out a selected completion that runs to the end of the value (`AXReadbackText`): Spotlight with
+history shows `text` as `TextEdit` with `Edit` selected, which is the completion the extra Backspace of PLT-R420
+removes, not text that was typed. *Correction of 19/11/2026:* from commit `5c7b8b27` (14/11/2026) the readback left
+such a selection out of every `ax` scenario, which broke `testhost.sheetCell.columnAutocomplete`; since PLT-R530 was
+amended it does so only where the scenario declares it, and no TestHost scenario does (QA-R21, section 10.10).
 
 *Correction of 15/11/2026, evening (W17-D, dev build 20261115f):* with `launcher.spotlight` applied to
 `com.apple.campo`, `tiee` still gave `tieê`. Finding 202 of that day's dev trace (`trace-scan.sh show 202 --date
@@ -585,7 +588,7 @@ independently; the product rows are fixed on branch `fix/v101-late-focus` (1.0.1
 | `testhost.native.textView`, full run | A regression of the PLT-R340 late focus amendment (W8-A, after the run of 13/11). `testhost.native.telex` ends without a separator, so its word stays active, and the harness then focuses the text view through AX, with no key the tap sees. The change was observed within 500 ms of that word's last key, so the word was kept; the worker's check failed and the reset landed one key late, so the next word restarted at its second key (`ieengs` is no syllable and stays as typed) | When the previous snapshot named an element of the same process, the change must also be observed within 500 ms of the word's first key; after a previous snapshot without an element (a timed-out read, the PLT-R381 frontmost fallback) the last-key window stays alone (PLT-R340 amendment of 19/11/2026) | `LateFocusChangeTests` (`aWordThatStartedBeforeTheWindowIsAHardBoundaryPLTR340`, `aWordReopenedByBackspaceIsMeasuredFromItsFirstKeyPLTR340`, `aRealSnapshotAfterATimedOutReadKeepsAnOlderWordPLTR340`, `theFrontmostFallbackKeepsAnOlderWordPLTR340`) |
 | `testhost.native.textView`, control run | TestHost, launched by the run's first scenario, refused observers for about 5 s on the loaded guest. The retries (about 6.3 s) ended, or were dropped while TestHost was momentarily not the owner, so none of TestHost's notifications arrived: the text view reached the tap only through the PLT-R382 read of the first key, which published it after the second key (`tieéng`) | After the scheduled attempts the app is asked every 2 s, at most 30 more times, while its observation is wanted; a skipped attempt keeps the chain; no call while its breaker is open; a publication of an unobserved owner asks again; a best-effort observer without focused-element changes (the probe saw TestHost refuse that name alone while it accepted the others) keeps the chain going until a complete one replaces it (PLT-R380 amendment of 19/11/2026) | `FocusSettleTests` |
 | `testhost.panel.inlineCompletionTwice`, intermittent | A PLT-R389 trigger race: the scenario types `v` 80 to 150 ms after Command+K, which the runner does not treat as a focus shortcut, and the panel's field was published after `v`. The field takes `launcher.spotlight`'s action, whose `lookaheadRevision` is off, so its variant differed from the mirror field's and the late keep was refused: a hard boundary at `i`, `vieejt` | A kept late focus change into a variant that differs only in `lookaheadRevision` continues the word with the new variant's engine when that engine has committed nothing since its last reset (ENG-R1211 amendment of 19/11/2026, ADR 0306) | `LateFocusChangeTests` (`aChangeOfLookaheadRevisionAloneKeepsTheWordPLTR340` and the guards after it), `LookaheadRevisionContinuationTests`, `EngineCatalogTests` |
-| `testhost.sheetCell.columnAutocomplete` | Not the product: since `5c7b8b27` (14/11) the `ax` readback leaves out a selection that runs to the end of the value in every scenario, and the cell rightly ends as `Đức` with `ức` selected (the control run's `screen.png`) | The harness, on its own branch: the readback leaves the selection out only where a scenario asks for it | the harness branch's tests |
+| `testhost.sheetCell.columnAutocomplete` | Not the product: since `5c7b8b27` (14/11) the `ax` readback leaves out a selection that runs to the end of the value in every scenario, and the cell rightly ends as `Đức` with `ức` selected (the control run's `screen.png`) | The harness (branch `fix/v101-ax-readback`, section 10.10): the readback leaves the selection out only where a scenario asks for it | `ReadbackRouterTests`, `ScenarioFilesTests` |
 
 Left for later: a late check that fails still resets the word one key late (PLT-R340, "the hard boundary, applied one
 key late"), so the next word can restart in its middle wherever a late keep is wrong; restarting at the key that
@@ -604,7 +607,7 @@ Content-free records added for these runs (`integration-out/app-diagnostics.json
 Proof plan of `fix/v101-late-focus`, with the VM rules of this section (resource check and watchdog), in this order:
 
 1. twice `scripts/vm/integration-dev.sh`: expect 45 of 46 with this branch alone (`testhost.sheetCell.columnAutocomplete`
-   is the harness row) and 46 of 46 with the harness branch merged too, and a clean privacy scan;
+   is the harness row) and 46 of 46 with the harness branch (section 10.10) merged too, and a clean privacy scan;
 2. three times `scripts/vm/integration-dev.sh --probe --only testhost.native.burst,testhost.native.telex,testhost.native.textView,testhost.panel.inlineCompletionTwice`
    (TestHost warm, as in the full run): `testhost.native.textView` passes, its first key leaves either no late focus
    record or a `focus.lateFocusRefused` with `sinceWordStartUs` above 500000, and no `focus.lateFocusCheckFailed`
@@ -619,3 +622,22 @@ Proof plan of `fix/v101-late-focus`, with the VM rules of this section (resource
 | Run | Commit | Pass | Fail | What it showed |
 |---|---|---|---|---|
 | none yet | | | | written with the fix on 2026-11-19; the integrator runs the steps above |
+
+### 10.10 Readback of a selected completion (2026-11-19)
+
+The first full run of the suite in the VM since 13/11/2026 (`20261118T182610Z-integration`, 19/11/2026 at 01:26 host
+time, commit `851a7c55`, the 1.0.1-beta.1 release, 4096 MB) passed 43 of 46. `testhost.native.textView` and
+`testhost.panel.inlineCompletionTwice` failed in the app's input pipeline and are fixed separately; the third failure
+was the harness:
+
+| Scenario | Root cause | Fix | Tests |
+|---|---|---|---|
+| `testhost.sheetCell.columnAutocomplete` (`Đ` for `Đức`, 2 runs of 2; it passed on 13/11/2026 at `db9e6a1`) | Not the app. The cell completed `D` to `Dức` with `ức` selected; the `axSelection` edit added its extra Backspace for the selection, removed `D` and inserted `Đ`, and the cell completed again to `Đức` with `ức` selected (the control run's probe ends with `selection=1,2 characters=3` on the cell; its `screen.png`, taken after this last scenario, shows `Đức` with `ức` selected and `Dropped keys: 0`). Commit `5c7b8b27` (14/11/2026), written for Spotlight's history completion, made `LiveAXFieldReader` leave a selection running to the end of the value out of every `ax` scenario, so the readback returned `Đ`. No suite run reached the VM between that commit and this run. | `LiveAXFieldReader` returns the whole value and the selection; `ReadbackRouter` leaves the selection out only for a scenario that declares `readbackOptions.excludesSelectedCompletion` (PLT-R530, amended 19/11/2026): the five `launcher.spotlight*` scenarios and the three browser address bars with seeded history (runner only, never run in a VM). The PLT-R422 residue check reads the whole value either way. The failure focus report now ends with `focused selection: <location>,<length>` and `focused characters: <n>` (numbers only), so the next mismatch tells a left-out completion (3 characters, `1,2`) from a lost one (1 character, `1,0`) without the probe. | `ReadbackRouterTests`, `ScenarioFilesTests.noTestHostScenarioExcludesASelectedCompletionQaR21`, `ScenarioFilesTests.historyCompletionsAreDeclaredByTheLaunchersAndAddressBarsPltR530`, `ScenarioRunnerTests.theResidueCheckReadsTheFullTextPltR422`, `AXReadbackTextTests.focusReportLinesCarryNumbersOnlyPltR901` |
+
+The runs of 19/11/2026 are in the table of section 10.9. Proof plan, with the VM rules of this section:
+
+1. `scripts/vm/integration-dev.sh --memory 4096 --only testhost.addressBar.telexStroke,testhost.addressBar.telexTone,testhost.addressBar.vni,testhost.sheetCell.columnAutocomplete`:
+   expect 4 of 4, the cell read back as `Đức` in about 2 s, and a final `screen.png` showing `Đức` with `ức` selected
+   (the address bars end without a selection, so the whole-value readback leaves them as they were);
+2. the full suite of section 10.9 step 1 covers the rest. Record every run in the table of section 10.9. A mismatch's
+   evidence file now gives the selection and character count of the focused field.

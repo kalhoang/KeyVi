@@ -91,6 +91,21 @@ private func runner(driver: FakeDriver = FakeDriver(), readback: any ScenarioRea
         #expect(readback.calls.all.count == 3)
     }
 
+    /// PLT-R422 with PLT-R530: a word's residue is looked for in the field's full text, a declared completion
+    /// included, while the word is compared without it.
+    @Test func aWordsResidueIsLookedForInTheFullText() async {
+        let words = ScenarioRepetitionPlan.words(for: gate)
+        let readings =
+            [ScenarioReading(text: "đi")] + words.map { ScenarioReading(text: $0.text, fullText: $0.text + "x") }
+        let clean = await runner(readback: FixedReadingReadback(readings)).run(repeatingScenario())
+        #expect(clean.outcome == .pass, "\(clean.reason ?? "")")
+        var residue = readings
+        residue[2] = ScenarioReading(text: words[1].text, fullText: words[1].text + "\u{200B}x")
+        let result = await runner(readback: FixedReadingReadback(residue)).run(repeatingScenario())
+        #expect(result.outcome == .fail && result.observedText == words[1].text)
+        #expect(result.reason == "repeat word 2 of 3: leftover placeholder U+200B")
+    }
+
     @Test func aDuplicatedLetterFailsWithoutNamingTheText() async {
         let words = ScenarioRepetitionPlan.words(for: gate)
         let readback = ScriptedReadback(texts: ["đi", "x" + words[0].text])

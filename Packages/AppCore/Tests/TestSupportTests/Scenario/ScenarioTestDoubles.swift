@@ -21,11 +21,11 @@ func bundle(_ raw: String) -> BundleKey { BundleKey(rawValue: raw)! }
 func makeScenario(
     id: String = "sample.scenario", target: String = "com.example.Editor", setup: [Scenario.SetupStep] = [],
     keys: [String] = ["d", "d", "i"], timing: Scenario.TimingProfile = .burst, readback: Scenario.Readback = .ax,
-    expect: Scenario.Expectation = Scenario.Expectation(text: "đi")
+    expect: Scenario.Expectation = Scenario.Expectation(text: "đi"), readbackOptions: Scenario.ReadbackOptions? = nil
 ) -> Scenario {
     Scenario(
         id: id, targetBundleId: bundle(target), setup: setup, keys: keys, timing: timing, method: .telex,
-        expect: expect, readback: readback)
+        expect: expect, readback: readback, readbackOptions: readbackOptions)
 }
 
 enum TestFailure: Error { case injected }
@@ -51,6 +51,21 @@ struct FakeReadback: ScenarioReadback {
     func currentText(of scenario: Scenario) async throws -> String {
         calls.append(scenario.id)
         return try result.get()
+    }
+}
+
+/// A readback that compares a different text from the field's full text (an `ax` readback that left out a declared
+/// completion): returns `readings` in order, then the last one again.
+final class FixedReadingReadback: ScenarioReadback, Sendable {
+    private let readings: [ScenarioReading]
+    private let reads = Mutex(0)
+    init(_ readings: [ScenarioReading]) { self.readings = readings }
+    func currentText(of scenario: Scenario) async throws -> String { try await currentReading(of: scenario).text }
+    func currentReading(of scenario: Scenario) async throws -> ScenarioReading {
+        reads.withLock { count in
+            defer { count += 1 }
+            return readings[min(count, readings.count - 1)]
+        }
     }
 }
 

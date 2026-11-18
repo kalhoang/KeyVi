@@ -205,9 +205,10 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     }
 }
 
-/// Reads the text of an element by accessibility identifier (or the focused element) of an app. Runner only.
+/// Reads the value and the selection of an element by accessibility identifier (or the focused element) of an app.
+/// Runner only.
 public protocol AXFieldReader: Sendable {
-    func text(identifier: String?, in bundle: BundleKey) async throws -> String
+    func field(identifier: String?, in bundle: BundleKey) async throws -> AXFieldState
 }
 
 /// One line from the tester; `nil` when no terminal is attached or input ended.
@@ -220,7 +221,7 @@ public enum HarnessReadbackError: Error, Sendable, Hashable {
     case captureMissing(path: String)
 }
 
-/// Dispatches `currentText(of:)` by the scenario's readback kind.
+/// Dispatches `currentReading(of:)` by the scenario's readback kind.
 public struct ReadbackRouter: ScenarioReadback {
     private let targets: HarnessTargets
     private let ax: (any AXFieldReader)?
@@ -240,6 +241,10 @@ public struct ReadbackRouter: ScenarioReadback {
     }
 
     public func currentText(of scenario: Scenario) async throws -> String {
+        try await currentReading(of: scenario).text
+    }
+
+    public func currentReading(of scenario: Scenario) async throws -> ScenarioReading {
         guard let target = targets.resolve(scenario.targetBundleId) else {
             throw HarnessSetupError.unresolvedTarget(scenario.targetBundleId.rawValue)
         }
@@ -247,15 +252,23 @@ public struct ReadbackRouter: ScenarioReadback {
         switch scenario.readback {
         case .ax:
             guard let ax else { throw HarnessReadbackError.unavailable(.ax) }
-            return try await ax.text(identifier: field, in: target)
+            let state = try await ax.field(identifier: field, in: target)
+            // PLT-R530: the whole value, a selected completion included (testhost.sheetCell.columnAutocomplete
+            // expects "Đức" with "ức" selected), unless the scenario declares a selection at the end the app's own
+            // completion from user history (launcher.spotlight). The residue check reads the whole value (PLT-R422).
+            guard scenario.readbackOptions?.excludesSelectedCompletion == true else {
+                return ScenarioReading(text: state.value)
+            }
+            let typed = AXReadbackText.typed(value: state.value, selection: state.selection)
+            return ScenarioReading(text: typed, fullText: state.value)
         case .webdriver:
-            return try await webDrivers.client(for: target).fieldText(selector: field)
+            return ScenarioReading(text: try await webDrivers.client(for: target).fieldText(selector: field))
         case .terminalCapture:
             guard let terminal else { throw HarnessReadbackError.unavailable(.terminalCapture) }
-            return try terminal.lastLine()
+            return ScenarioReading(text: try terminal.lastLine())
         case .human:
             guard let human else { throw HumanReadbackRequired() }
-            return try human.confirm(scenario)
+            return ScenarioReading(text: try human.confirm(scenario))
         }
     }
 }

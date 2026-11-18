@@ -67,13 +67,15 @@ extension ScenarioRunner {
             stage = label + " typing"
             try await driver.type(repetition.prefix + word.keys, profile: repetition.timing)
             stage = label + " readback " + scenario.readback.rawValue
-            let text = try await readback.currentText(of: scenario)
-            if scenario.expect.noPlaceholderResidue == true, ScenarioVerdict.hasPlaceholderResidue(text) {
-                return RepetitionFailure(reason: label + ": leftover placeholder U+200B", observed: text)
+            let reading = try await readback.currentReading(of: scenario)
+            // PLT-R422 reads the field's full text, a declared completion included (PLT-R530).
+            if scenario.expect.noPlaceholderResidue == true, ScenarioVerdict.hasPlaceholderResidue(reading.fullText) {
+                return RepetitionFailure(reason: label + ": leftover placeholder U+200B", observed: reading.text)
             }
             // Swift `String ==` is canonical equivalence, as for the key script's expected text.
-            if text != word.text {
-                return RepetitionFailure(reason: label + ": observed text differs from the corpus word", observed: text)
+            if reading.text != word.text {
+                return RepetitionFailure(
+                    reason: label + ": observed text differs from the corpus word", observed: reading.text)
             }
         }
         return nil

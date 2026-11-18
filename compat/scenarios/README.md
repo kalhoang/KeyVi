@@ -55,6 +55,13 @@ by DOM class (`testhost-inline-autocomplete`, `testhost-edit-mode-cell`, `testho
   test that appends every entered line to a capture file; keys end with `return`.
 - `seedHistory` values are loopback URLs (`http://<word>.localhost:8000/`) that the runner serves locally, so
   the browser's inline autocomplete has a host starting with the typed letters. Nothing leaves the machine.
+- `expect.text` is the field's whole value, a selected completion included (PLT-R530).
+  `readbackOptions.excludesSelectedCompletion: true` (`ax` readback only) declares that a selection running to the
+  end of the value is the app's own completion from user history and leaves it out of the text compared with
+  `expect.text` and the `repeat` words; the `noPlaceholderResidue` check still reads the whole value. The
+  `launcher.spotlight*` scenarios and the three browser address bars set it, because they expect the typed text.
+  TestHost scenarios never set it (`ScenarioFilesTests`): TestHost completes deterministically, and its completion is
+  part of the expected text (QA-R21), so `testhost.sheetCell.columnAutocomplete` expects `Đức` with `ức` selected.
 - `readback: "human"` scenarios type the keys and then ask the tester to confirm the field. Their `wait` step
   is the time the tester gets to prepare the app (open a sheet, select a shape, connect a remote session). In
   unattended runs they report `needsHuman`, not a failure. They need a `compat/matrix.json` row (PLT-R531).
