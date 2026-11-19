@@ -460,9 +460,9 @@ public struct CorrectionData: Sendable {
 /// VietnameseEngineData and the user's own lists, ENG-R812, ENG-R860).
 public struct Resources: Sendable {
     /// Common English words, lowercase ASCII ("R is English", 8.1).
-    public var english: WordSet
+    public var english: WordSet { didSet { rebuildCorrectionIndex() } }
     /// Words that always stay as typed (`wifi`, `usb`); also count as English.
-    public var techAlways: WordSet
+    public var techAlways: WordSet { didSet { rebuildCorrectionIndex() } }
     /// Shell words restored only in the code context, outside Vietnamese text (rule L9, ENG-R850).
     public var techCodeOnly: WordSet
     /// Code-only words that configuration and protocol text writes capitalized at the start of a line (`host`):
@@ -487,7 +487,12 @@ public struct Resources: Sendable {
     /// (ENG-R1110 (c)). User data: never logged (ENG-R1121).
     public var userNeverCorrect: WordSet
     /// The bundled data of the typo correction (ENG-R1120), 1.1.0; empty without the bundled files.
-    public var correction: CorrectionData
+    public var correction: CorrectionData { didSet { rebuildCorrectionIndex() } }
+    /// The lookup structures of the typo correction (ENG-R1122), derived from `english`, `techAlways` and
+    /// `correction`: built at the end of `init` and rebuilt when one of those three fields is assigned, so it can
+    /// never be stale. The other fields (the user lists, the macros and the memory the host assigns after loading)
+    /// leave it alone, so every copy of a resources value, and every engine of a catalog, shares one index.
+    package private(set) var correctionIndex: CorrectionIndex
 
     /// Resources from the given lists.
     public init(
@@ -511,6 +516,11 @@ public struct Resources: Sendable {
         self.collisionMemory = collisionMemory
         self.userNeverCorrect = userNeverCorrect
         self.correction = correction
+        correctionIndex = CorrectionIndex(english: english, techAlways: techAlways, correction: correction)
+    }
+
+    private mutating func rebuildCorrectionIndex() {
+        correctionIndex = CorrectionIndex(english: english, techAlways: techAlways, correction: correction)
     }
 
     /// No word lists and no macros: the rules that need data never match (tests, and a host without

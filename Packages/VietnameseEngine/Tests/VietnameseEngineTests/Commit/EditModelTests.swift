@@ -103,6 +103,8 @@ struct EditModelTests {
     @Test(.enabled(if: AllocationCounter.isAvailable, "the malloc hook is missing or a sanitizer replaced malloc"))
     func enumerationAllocatesNothingForWordsUpTo24Letters() {
         let words = ["androdi", "documnets", "qwertyuiopasdfghjklzxcvb"]
+        // Steady state: the first call of the process pays one-time runtime costs (metadata, lazy globals).
+        Array("warm".utf8).withUnsafeBufferPointer { model.forEachEdit(of: $0, positionRules: false) { _ in true } }
         for word in words {
             let bytes = Array(word.utf8)
             var sum = 0
