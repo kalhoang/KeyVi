@@ -157,10 +157,11 @@ public enum QACorpus {
         "editing.tsv", "crash-regressions.tsv", "restore-exact.tsv", "layouts.tsv",
     ]
 
-    /// The other files of the corpus folder: spec examples extracted by `Scripts/extract-spec-examples.py`
-    /// and the macro fixture table.
+    /// The other files of the corpus folder: spec examples extracted by `Scripts/extract-spec-examples.py`,
+    /// the macro fixture table and the hand-written rows of 13.12 (`typo-corrections.tsv`, read by the data tests).
     public static let fixtureFiles = [
         "worked-examples.tsv", "commit-decisions.tsv", "restore-toggle.tsv", "commit-fixtures.tsv", macroTableFile,
+        "typo-corrections.tsv",
     ]
 
     /// QA-R4 `english`: the hand list of English words and tech terms that must restore unchanged.
