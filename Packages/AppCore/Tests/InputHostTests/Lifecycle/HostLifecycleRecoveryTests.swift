@@ -161,7 +161,7 @@ import Testing
             script.send(.watchdogTripped(.unexpectedlyDisabled)) == [
                 .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapReenabled),
             ])
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
     }
 
     @Test func oneDisableReportedTwiceCountsOnceTowardTheNotice_PLT_R330() {

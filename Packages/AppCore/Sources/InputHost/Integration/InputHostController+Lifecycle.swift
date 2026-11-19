@@ -49,6 +49,22 @@ extension InputHostController {
         timeoutRecoveryPending = false
     }
 
+    /// PLT-R330: the instant a system disable began, for the `tapRecovered` record of its re-enable: the entry of the
+    /// disabled event's callback, which `CallbackWatchdog` stamps on every callback anyway (nothing is added to the tap
+    /// callback, PLT-R304, PLT-R305), or for a disable only the watchdog found (PLT-R331) the arrival of its report. A
+    /// report while the lifecycle still waits for that disable's live answer is the same disable and keeps the first.
+    func noteSystemDisable(at instant: MonotonicInstant) {
+        guard !lifecycle.awaitsLiveAnswer else { return }
+        tapDisabledAt = instant
+    }
+
+    /// PLT-R306, PLT-R331: a watchdog report on main; an unexpectedly disabled tap starts an outage as a disabled
+    /// event does.
+    func watchdogTripped(_ trip: TapTrip) {
+        if case .unexpectedlyDisabled = trip { noteSystemDisable(at: tapClock.now()) }
+        feed(.watchdogTripped(trip))
+    }
+
     /// PLT-R330 step 1, PLT-R721: the check runs on the monitor's runner, never on main or in the tap callback
     /// (PLT-R304, PLT-R305); its answer comes back through the main hop as `.livePermissions`, read from the
     /// monitor's newest status (a status replaced during its own delivery never acts, PLT-R702).
@@ -130,6 +146,7 @@ extension InputHostController {
         retiredSession = current
         retiredSessionNeverRan = false
         timeoutRecoveryPending = false
+        tapDisabledAt = nil  // an outage that ends in a removal has no recovery to record
         permissionMonitor?.setTapInstalled(false)
         dependencies.logger.log(.lifecycle(.tapRemoved), level: .info)
     }
@@ -140,7 +157,7 @@ extension InputHostController {
             tap: thread, callbacks: channels.callbackWatchdog, snapshots: channels.snapshots,
             scheduler: dependencies.scheduler, clock: tapClock,
             onCallbackReturned: { [weak self] in hop.hop { self?.feed(.callbackExited) } },
-            onTrip: { [weak self] trip in hop.hop { self?.feed(.watchdogTripped(trip)) } })
+            onTrip: { [weak self] trip in hop.hop { self?.watchdogTripped(trip) } })
     }
 
     // MARK: Retry timer
@@ -180,7 +197,16 @@ extension InputHostController {
         guard let kind = HealthEvent.Kind(rawValue: code.rawValue) else { return }
         var detail: HealthEvent.Detail?
         if case .failOpen(let reason) = lifecycle.phase { detail = .failOpen(reason) }
+        if code == .tapRecovered { detail = recoveryDetail() }
         dependencies.health.record(HealthEvent(kind: kind, at: dependencies.wallClock.now(), detail: detail))
+    }
+
+    /// PLT-R330: whole milliseconds from the disable's start (`tapDisabledAt`) to now, right after the re-enable, on the
+    /// tap's clock. A number only (PLT-R901); nil when no start was stamped.
+    private func recoveryDetail() -> HealthEvent.Detail? {
+        defer { tapDisabledAt = nil }
+        guard let start = tapDisabledAt else { return nil }
+        return .tapRecovery(milliseconds: tapClock.now().nanoseconds(since: start) / 1_000_000)
     }
 
     // MARK: Session activity (PLT-R333)

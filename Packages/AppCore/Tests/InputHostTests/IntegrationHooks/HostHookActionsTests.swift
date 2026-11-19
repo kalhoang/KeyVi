@@ -94,6 +94,31 @@ struct HostHookActionsTests {
         #expect(rig.controller.counters.tapRecoveryCount == 1)
     }
 
+    /// PLT-R330: the re-enable after a timeout records how long the tap was off, in whole milliseconds from the disabled
+    /// event as the tap saw it (the entry of its callback, which `CallbackWatchdog` already stamps) to the re-enable,
+    /// so a run tells the outage from the guest's stall (VM run 20261119T011514Z left no record of the re-enable).
+    /// Numbers only (PLT-R901); the tap callback does nothing new (PLT-R304, PLT-R305).
+    @Test func theReenableAfterATimeoutRecordsTheOutageFromTheTapsDisabledEventPLTR330() async throws {
+        let rig = HostRig(hooks: true)
+        await rig.start()
+        defer { rig.stop() }
+        let instruments = try #require(rig.instruments)
+        let delivered = DispatchSemaphore(value: 0)
+        #expect(instruments.tapFactory.simulateTimeout { delivered.signal() })
+        #expect(Self.waited(for: delivered))
+        try await Task.sleep(nanoseconds: 50_000_000)  // the main thread handles the disable 50 ms after the tap saw it
+        rig.controller.drainMainOutbox()
+        rig.settle()
+        let recovered = rig.health.recent(limit: 20).filter { $0.kind == .tapRecovered }
+        #expect(recovered.count == 1)
+        guard case .tapRecovery(let milliseconds)? = recovered.first?.detail else {
+            Issue.record("no outage duration: \(recovered)")
+            return
+        }
+        #expect(milliseconds >= 50 && milliseconds < 10_000)
+        #expect(recovered.first?.bundle == nil && recovered.first?.rule == nil)
+    }
+
     /// QA-R11 permission revoked mid-session (PLT-R730): keys pass untouched after the revocation; restoring it
     /// re-creates the tap without a relaunch (7.3).
     @Test func revokingAccessibilityFailsOpenAndRestoringRecovers_PLT_R730() async throws {

@@ -27,6 +27,7 @@ extension HealthEvent {
     private static func detail(_ fields: [String: String]) -> Detail? {
         if let count = fields["count"] { return Int(count).map(Detail.count) }
         if let duration = fields["durationUs"] { return UInt64(duration).map(Detail.durationMicroseconds) }
+        if let recovery = fields["recoveryMs"] { return UInt64(recovery).map(Detail.tapRecovery(milliseconds:)) }
         if let permission = fields["permission"] {
             guard let kind = PermissionKind(rawValue: permission),
                 let from = fields["from"].flatMap(PermissionState.init(rawValue:)),
