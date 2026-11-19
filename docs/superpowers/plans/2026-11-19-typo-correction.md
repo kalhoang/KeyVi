@@ -457,7 +457,7 @@ S24) and `q11:<alternative text>` (S26; 13.12 has no Tab row), which carry the e
 
 ### Task 5: Hand-off
 
-- [ ] Run `python3 -I docs/architecture/tools/sync_contracts.py` (the included `UserSettings.swift` and `Snapshots.swift` change; `Report.swift` changes in Task 26, A1) and `scripts/lint.sh`; run `scripts/tests/run.sh` (the new `test_correction_policy.py` included); commit `docs(contracts): sync the 1.1.0 API`.
+- [x] Run `python3 -I docs/architecture/tools/sync_contracts.py` (the included `UserSettings.swift` and `Snapshots.swift` change; `Report.swift` changes in Task 26, A1) and `scripts/lint.sh`; run `scripts/tests/run.sh` (the new `test_correction_policy.py` included); commit `docs(contracts): sync the 1.1.0 API`.
 - [ ] Review the stage (signatures only, every suite green on both packages, the app builds), then create `integration/1.1.0` at its head and the four track worktrees from it. The integrator does this after the review; the run of the API stage does not create the branch or the worktrees. Note for the tracks: `sync_contracts.py --check` is red on a track branch that changes an included file until that track re-splices `contracts.md` for its own files (A1 does in Task 27; the other tracks change no included file).
 
 ---
