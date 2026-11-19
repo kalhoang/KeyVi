@@ -879,7 +879,7 @@ issues lines (four visible lines, so the section can be published as it stands, 
 
 ### Task 34: Benchmark baseline and provenance
 
-- [ ] Run `Packages/VietnameseEngine/Scripts/benchmark.sh` on the baseline machine, commit the result under `Benchmarks/results/` and update `Benchmarks/baseline.json` with the `correction` keys (the M4 note of ENG-R1230 applies). Write `docs/provenance/reports/<date>-1.1.0.md` from the template: note N6 answered (the table's origin, the scripts in `spec/reference-model/`, the SCOWL additions), the new files listed for the outside comparison of N1, `THIRD_PARTY_NOTICES.md` cross-checked. Commit `docs(provenance): 1.1.0 review record`.
+- [x] Run `Packages/VietnameseEngine/Scripts/benchmark.sh` on the baseline machine, commit the result under `Benchmarks/results/` and update `Benchmarks/baseline.json` with the `correction` keys (the M4 note of ENG-R1230 applies). Write `docs/provenance/reports/<date>-1.1.0.md` from the template: note N6 answered (the table's origin, the scripts in `spec/reference-model/`, the SCOWL additions), the new files listed for the outside comparison of N1, `THIRD_PARTY_NOTICES.md` cross-checked. Commit `docs(provenance): 1.1.0 review record`.
 
 *Done so far (19/11/2026, 75039097): the benchmark half.* `Scripts/benchmark.sh` ran on the M4 at a 1-minute load average
 of 3.29 before and 3.16 after; ENG-R1122 with the bundled data: 11,000 candidate commits, 8,369 corrected, p99 30.7 µs
@@ -891,6 +891,16 @@ that `main` build the switch-off result is within the gate (p50 +86 ns under the
 +4.9 %), and the switch-on result is within the gate of the switch-off one. The script stops at the first failed
 comparison, so the switch-on run and its comparison were run by hand. The provenance report is still to write: an
 independent reviewer writes it.
+
+*Provenance half (19/11/2026, e721003a, merged as d81eea4a).* An independent clean-side review wrote
+`docs/provenance/reports/2026-11-19-1.1.0.md` over `main..833501bb`: verdict pass with notes, nothing suspect, the
+SCOWL lists byte-identical to the pinned archive, `guard-list.bloom` rebuilt bit for bit, the keyboard table derived
+apart, the shapes and keyings equal to the reference model, every checksum and notice in agreement. Open there: N1 (the
+CLR-R13 comparison, pending as ADR 0010 item 4 allows) and N11, a dated addendum before the tag of `1.1.0-beta.1` for
+everything after `833501bb` under the paths of its section 1: the final fix round (`063c76e8` benchmark script,
+`961d325a` the 18 developer words of `tech-always.txt`, `265d2a9e` baseline date) and the merge of stable 1.0.1. Since
+the final fix round, `Scripts/benchmark.sh` runs both comparisons before it exits, so the switch-on half no longer needs
+a hand run.
 
 ### Task 35: Full gates
 
