@@ -28,6 +28,8 @@ public enum SettingsEdit: Sendable, Hashable {
     case layoutBinding(LayoutModeBinding)  // PLT-R373
     case keepAsTyped(Set<String>)  // ENG-R860, the global entries
     case keepVietnamese(Set<String>)  // ENG-R860, the global entries
+    case neverCorrect(Set<String>)  // PRD-R81, ENG-R1118: one list for every app
+    case typoCorrection(Bool)  // D30 (1.1.0)
     case forgetLearnedWord(LearnedWord)  // ENG-R862 "remove"
     case makeLearnedWordGlobal(LearnedWord)  // ENG-R862 "use in every app"
     case learnCollisionChoices(Bool)  // D28
@@ -56,6 +58,8 @@ public enum SettingsEdit: Sendable, Hashable {
         case .layoutBinding(let value): settings.layoutBinding = .set(value)
         case .keepAsTyped(let value): settings.setGlobalWords(value, in: .keepAsTyped)
         case .keepVietnamese(let value): settings.setGlobalWords(value, in: .keepVietnamese)
+        case .neverCorrect(let value): settings.neverCorrect = value
+        case .typoCorrection(let value): settings.typoCorrection = .set(value)
         case .forgetLearnedWord(let word): settings.forget(word)
         case .makeLearnedWordGlobal(let word): settings.makeGlobal(word)
         case .learnCollisionChoices(let value): settings.learnCollisionChoices = .set(value)
@@ -95,6 +99,8 @@ public enum SettingsEdit: Sendable, Hashable {
         case .layoutBinding: .layoutBinding
         case .keepAsTyped: .keepAsTyped
         case .keepVietnamese: .keepVietnamese
+        case .neverCorrect: .neverCorrect
+        case .typoCorrection: .typoCorrection
         case .forgetLearnedWord(let word), .makeLearnedWordGlobal(let word):
             word.list == .keepAsTyped ? .keepAsTyped : .keepVietnamese
         case .learnCollisionChoices, .forgetLearnedChoice, .clearLearnedChoices: .learnCollisionChoices

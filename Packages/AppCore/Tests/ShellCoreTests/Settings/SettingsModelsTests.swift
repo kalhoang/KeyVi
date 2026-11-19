@@ -113,6 +113,38 @@ import VietnameseEngineData
         #expect(UserWordList.keepVietnamese.edit(["a"]) == .keepVietnamese(["a"]))
     }
 
+    @Test func neverCorrectEntriesAreLettersOnly_PRDR81() {
+        // PRD-R81: lowercase letters without marks (NeverCorrectEntry, the store's rule); anything else is refused
+        // with the list's own message. The keep lists keep their raw-key rule.
+        let list = UserWordList.neverCorrect
+        #expect(list.adding("Androdi", to: []) == .added(["androdi"]))
+        #expect(list.adding(" gramar ", to: ["androdi"]) == .added(["androdi", "gramar"]))
+        for refused in ["android1", "well-known", "việt", "two words", "", String(repeating: "a", count: 65)] {
+            #expect(list.adding(refused, to: []) == .invalid, "\(refused)")
+        }
+        #expect(list.adding("ANDRODI", to: ["androdi"]) == .duplicate)
+        #expect(UserWordList.keepAsTyped.adding("well-known", to: []) == .added(["well-known"]))
+        #expect(UserWordList.keepAsTyped.adding("x y", to: []) == .invalid)
+        #expect(list.invalidMessage == .neverCorrectInvalid)
+        #expect(UserWordList.keepAsTyped.invalidMessage == .listInvalid)
+        #expect(UserWordList.keepVietnamese.invalidMessage == .listInvalid)
+
+        var settings = UserSettings()
+        settings.neverCorrect = ["gramar", "androdi"]
+        #expect(list.entries(in: settings.resolved()) == ["androdi", "gramar"])
+        #expect(list.edit(["a"]) == .neverCorrect(["a"]))
+        #expect(list.restoreList == nil)
+        // The list has no per-app entries (ENG-R1118: one list for every app).
+        settings.learnedWords = [
+            LearnedWord(list: .keepAsTyped, raw: "androdi", app: BundleKey(rawValue: "com.example.editor")!)
+        ]
+        #expect(list.rows(in: settings).map(\.word) == ["androdi", "gramar"])
+        #expect(list.rows(in: settings).allSatisfy { $0.learned == nil })
+        var edited = settings
+        list.edit(["gramar"]).apply(to: &edited)
+        #expect(edited.neverCorrect == ["gramar"] && edited.learnedWords == settings.learnedWords)
+    }
+
     @Test func onlyLatinLayoutsCanBeBoundAndEachToOneMode_PLTR373() {
         let abc = InputSourceID(rawValue: "com.example.keylayout.ABC")!
         let us = InputSourceID(rawValue: "com.example.keylayout.US")!
