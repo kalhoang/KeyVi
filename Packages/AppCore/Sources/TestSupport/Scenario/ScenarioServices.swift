@@ -88,6 +88,30 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         return try? await hooks.state().metrics.focusRefresh.count
     }
 
+    /// Polls the hooks until the T6 count held still for `focusRefreshQuietNanoseconds` and answers it, at most
+    /// `focusRefreshWaitNanoseconds` (on `clock` as well as by the polls, QA-R11). Taken before a focus shortcut:
+    /// the keys before it can still publish a snapshot (the Escape that closes TestHost's panel hands the focus back
+    /// to the mirror field), and a count taken before that snapshot lets it end the wait for the shortcut's own
+    /// (PLT-R530, integration-suite.md section 10.10). A failed request answers the newest count seen; nil without
+    /// hooks or when the first request fails.
+    public func settledFocusRefreshCount() async -> UInt64? {
+        guard let hooks, var last = try? await hooks.state().metrics.focusRefresh.count else { return nil }
+        let start = clock.now().nanoseconds
+        var waited: UInt64 = 0
+        var quiet: UInt64 = 0
+        while quiet < Self.focusRefreshQuietNanoseconds, waited < Self.focusRefreshWaitNanoseconds,
+            clock.now().nanoseconds &- start < Self.focusRefreshWaitNanoseconds
+        {
+            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil,
+                let current = try? await hooks.state().metrics.focusRefresh.count
+            else { return last }
+            waited += Self.focusRefreshPollNanoseconds
+            quiet = current == last ? quiet + Self.focusRefreshPollNanoseconds : 0
+            last = current
+        }
+        return last
+    }
+
     /// Polls the hooks until the T6 count grew past `count` and then held still for `focusRefreshQuietNanoseconds`,
     /// at most `focusRefreshWaitNanoseconds`: the first key must be decided on the new field's rule (PLT-R382
     /// processes a key with the current snapshot, it never waits; the VM runs left the first word untransformed

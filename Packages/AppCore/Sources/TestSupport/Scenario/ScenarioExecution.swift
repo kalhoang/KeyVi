@@ -20,6 +20,9 @@ public protocol ScenarioSetupPerformer: Sendable {
     /// How many focus snapshots the app under test has published (T6 count of its integration hooks); nil when it
     /// cannot be asked. Taken before a focus change, for `awaitFocusRefresh(after:)`.
     func focusRefreshCount() async -> UInt64?
+    /// The count once it held still for a quiet interval, bounded: taken before a focus shortcut, so a snapshot the
+    /// keys before it caused (an Escape closing a panel) cannot end the wait for the shortcut's own (PLT-R530).
+    func settledFocusRefreshCount() async -> UInt64?
     /// Waits, bounded, until the app published a focus snapshot after `count` (nil: returns at once).
     func awaitFocusRefresh(after count: UInt64?) async
 }
@@ -28,6 +31,7 @@ extension ScenarioSetupPerformer {
     public func prepare(_ scenario: Scenario) async throws {}
     public func finish(_ scenario: Scenario) async {}
     public func focusRefreshCount() async -> UInt64? { nil }
+    public func settledFocusRefreshCount() async -> UInt64? { await focusRefreshCount() }
     public func awaitFocusRefresh(after count: UInt64?) async {}
 }
 
@@ -143,7 +147,9 @@ extension ScenarioRunner {
 
     /// Types `keys`. A focus shortcut (Command plus a digit, or a chord in `declared`, the scenario's
     /// `focusShortcuts`) is typed on its own: the runner waits until the app under test published the new focus
-    /// snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key.
+    /// snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key. The count it waits
+    /// from is taken once it held still (`settledFocusRefreshCount`), so a snapshot the keys before the shortcut
+    /// caused (an Escape closing a panel) does not end the wait for the shortcut's own (PLT-R530).
     func type(_ keys: [String], profile: Scenario.TimingProfile, declared: [String] = []) async throws {
         var run: [String] = []
         for key in keys {
@@ -153,7 +159,7 @@ extension ScenarioRunner {
             }
             if !run.isEmpty { try await driver.type(run, profile: profile) }
             run = []
-            let before = await setup.focusRefreshCount()
+            let before = await setup.settledFocusRefreshCount()
             try await driver.type([key], profile: profile)
             await setup.awaitFocusRefresh(after: before)
             clock.sleep(until: MonotonicInstant(nanoseconds: clock.now().nanoseconds &+ Self.shortcutSettleNanoseconds))

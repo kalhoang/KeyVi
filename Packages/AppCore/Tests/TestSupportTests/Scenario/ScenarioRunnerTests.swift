@@ -105,6 +105,27 @@ import Testing
         #expect(undeclared.typed.all == [["command+k", "v", "i"]])
     }
 
+    /// The wait after a focus shortcut is for that shortcut's snapshot, not for one the keys before it caused: the
+    /// Escape that closes TestHost's panel publishes the mirror field's snapshot about 50 ms later, so a count taken
+    /// right after the Escape grew by that snapshot alone and the wait ended before a loaded guest showed the panel
+    /// again (700 ms). The runner lets the count hold still first (PLT-R530, integration-suite.md section 10.10).
+    @Test func aFocusShortcutWaitsForItsOwnSnapshotPltR530() async throws {
+        let clock = ManualClock()
+        let timeline = FocusTimeline(clock: clock, snapshotDelays: ["escape": 50_000_000, "command+k": 700_000_000])
+        let targets = HarnessTargets(
+            testHostBundleID: bundle("org.example.product.dev.testhost"),
+            appUnderTestBundleID: bundle("org.example.product.dev"), pagesDirectory: URL(fileURLWithPath: "/pages"))
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: ClockSleeper(clock: clock), hooks: timeline, clock: clock)
+        var scenario = makeScenario(keys: ["command+k", "v", "escape", "command+k", "i"])
+        scenario.focusShortcuts = ["command+k"]
+        _ = await runner(driver: timeline, setup: router, clock: clock).run(scenario)
+        let panelShown = try #require(timeline.postTimes(of: "command+k").last) + 700_000_000
+        let nextKey = try #require(timeline.postTimes(of: "i").first)
+        #expect(nextKey >= panelShown + ScenarioRunner.shortcutSettleNanoseconds)
+    }
+
     /// The reason names what differed, with the observed state next to the expected one, never the typed text.
     @Test func aFailureNamesTheMismatchedExpectations() {
         let expect = Scenario.Expectation(

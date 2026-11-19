@@ -195,6 +195,43 @@ private let targets = HarnessTargets(
         #expect(sleeper.requests.all == [poll, poll, ScenarioSetupRouter.focusSettleNanoseconds])
     }
 
+    /// The count a focus shortcut waits from is taken once it held still for `focusRefreshQuietNanoseconds`, so a
+    /// snapshot the keys before the shortcut caused (an Escape closing a panel) is in it (PLT-R530).
+    @Test func theFocusBaselineWaitsUntilTheCountHoldsStill() async {
+        let sleeper = RecordingSleeper()
+        let hooks = FocusRefreshHooks([4, 5, 5, 5, 5])
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks)
+        #expect(await router.settledFocusRefreshCount() == 5)
+        #expect(hooks.requestCount == 5, "the first count, then until a new one held still for the quiet interval")
+        #expect(sleeper.requests.all == Array(repeating: ScenarioSetupRouter.focusRefreshPollNanoseconds, count: 4))
+    }
+
+    /// A count that never holds still, a hook request that fails and an app without hooks all end the settle: it is
+    /// bounded like the refresh wait (QA-R11) and answers the newest count it saw.
+    @Test func theFocusBaselineIsBounded() async {
+        let sleeper = RecordingSleeper()
+        let moving = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: FocusRefreshHooks(Array(1...100)))
+        let polls = Int(
+            ScenarioSetupRouter.focusRefreshWaitNanoseconds / ScenarioSetupRouter.focusRefreshPollNanoseconds)
+        #expect(await moving.settledFocusRefreshCount() == UInt64(polls + 1))
+        #expect(sleeper.requests.all.count == polls)
+        let clock = ManualClock()
+        let failing = SlowHooks(count: 7, answered: 1, clock: clock, latencyNanoseconds: 10_000_000)
+        let stopped = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: RecordingSleeper(), hooks: failing, clock: clock)
+        #expect(await stopped.settledFocusRefreshCount() == 7)
+        #expect(failing.requestCount == 2)
+        let none = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: RecordingSleeper())
+        #expect(await none.settledFocusRefreshCount() == nil)
+    }
+
     @Test func taskSleeperSuspendsAndHonoursCancellation() async throws {
         let clock = MachClock()
         let start = clock.now().nanoseconds
