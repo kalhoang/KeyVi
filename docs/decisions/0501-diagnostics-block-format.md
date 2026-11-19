@@ -2,7 +2,9 @@
 
 - Status: accepted, 2026-11-13; amended 2026-11-13 after wave 1 (full v1 key reference, symptom mapping); amended
   2026-11-15 (keys added within v1 under rule 4: `focus.appSource`, `settings.learnCollisionChoices`,
-  `settings.learnedCollisionEntries`, `settings.lookaheadRevision`; closing `#` lines for the reader)
+  `settings.learnedCollisionEntries`, `settings.lookaheadRevision`; closing `#` lines for the reader); amended
+  2026-11-19 (keys added within v1 under rule 4 for the typo correction of 1.1.0, ADR 0323: `settings.typoCorrection`,
+  `settings.neverCorrectEntries`, `counters.corrections`, `counters.correctionUndos`)
 - Requirements: QA-R43, QA-R44, PRD-R45, PRD-R47, PRD-R49, PLT-R381, PLT-R914, PLT-R1202, PLT-R1203, PLT-R1205
 
 ## Context
@@ -80,6 +82,8 @@ settings.restoreHotkey: false
 settings.learnCollisionChoices: true
 settings.learnedCollisionEntries: 37
 settings.lookaheadRevision: true
+settings.typoCorrection: true
+settings.neverCorrectEntries: 2
 settings.interfaceLanguage: vi
 settings.updateChannel: beta
 settings.changed: typingMethod,macrosEnabled
@@ -110,6 +114,8 @@ counters.fallbacks: 0
 counters.echoLosses: 0
 counters.watchdogTrips: 0
 counters.lostWhilePostingBroken: 0
+counters.corrections: 14
+counters.correctionUndos: 1
 conflicts: none
 health.events: 1
 health.event.01: 2026-11-13T09:12:00Z tapTimeout
@@ -203,6 +209,8 @@ comes from (rule 4).
 | `settings.macroCount` | integer | count only (PRD-R33) |
 | `settings.learnCollisionChoices`, `settings.lookaheadRevision` | boolean | D28 (learn which reading of a word that is both English and Vietnamese the user chooses, PLT-R914) and D29 (fix the previous word, PLT-R357). Added 2026-11-15 |
 | `settings.learnedCollisionEntries` | integer | entries of the learned collision memory, a count only, never a word (PLT-R901, PLT-R914); empty while the memory is not loaded. Added 2026-11-15 |
+| `settings.typoCorrection` | boolean | D30 (correct one clearly mistyped English word at its commit, PRD-R80, 1.1.0). Added 2026-11-19 |
+| `settings.neverCorrectEntries` | integer | entries of the never-correct list, a count only, never a word (PRD-R45, PRD-R81); empty when the report was built without it. Added 2026-11-19 |
 | `settings.toggleHotkey` | `modifierTap:<chord>`, `keyCombo:<modifiers>:<keyCode>`, `key:<keyCode>` | no characters |
 | `settings.interfaceLanguage` | `vi`, `en` | |
 | `settings.updateChannel` | `stable`, `beta` | |
@@ -211,6 +219,7 @@ comes from (rule 4).
 | `latency.<metric>.p50Us`, `latency.<metric>.p99Us` | whole microseconds, rounded up to the histogram bucket bound | `<metric>` is `t1`, `t2`, `t3`, `echo`, `t5`, `t6` (02-platform.md 8.1); empty without samples |
 | `latency.<metric>.samples` | integer | |
 | `counters.<name>` | integer | `<name>` is `flushes`, `tapTimeouts`, `fallbacks`, `echoLosses`, `watchdogTrips`, `lostWhilePostingBroken` |
+| `counters.corrections`, `counters.correctionUndos` | integer | words the typo correction changed and corrections the restore key took back since launch (ENG-R1115, ENG-R1117), counts only, never a word (ENG-R1121); empty when the report was built without them. Added 2026-11-19 ([0323](0323-never-correct-list.md)) |
 | `probe.ranAt` | ISO 8601 time | only after the latency probe ran (PLT-R810) |
 | `probe.<profile>.t2.p50Us`, `probe.<profile>.t2.p99Us`, `probe.<profile>.t4.p50Us`, `probe.<profile>.t4.p99Us`, `probe.<profile>.samples` | integer | `<profile>` is `normal`, `fast`, `burst` |
 | `conflicts` | `none`, or a list of bundle IDs | detected conflicting input apps |
