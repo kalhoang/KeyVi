@@ -204,6 +204,30 @@ struct HostControllerLifecycleTests {
         #expect(rig.events.contains { if case .tapInstabilityNotice = $0 { true } else { false } })
     }
 
+    /// PLT-R330, PLT-R331: a disable only the watchdog found starts its outage when the report reaches main, so its
+    /// re-enable is recorded with a duration too; the watchdog's own recovery after a slow callback is no recovery
+    /// from a system disable and records no `tapRecovered`.
+    @Test func aDisableTheWatchdogFoundIsRecordedWithItsDurationPLTR330() async throws {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let handle = try #require(rig.liveHandles.first)
+        handle.systemDisables()
+        rig.controller.watchdogTripped(.unexpectedlyDisabled)
+        rig.settle()  // the live permission check answers through the main hop
+        #expect(handle.isEnabled)
+        let recovered = rig.health.recent(limit: 20).filter { $0.kind == .tapRecovered }
+        #expect(recovered.count == 1)
+        guard case .tapRecovery(let milliseconds)? = recovered.first?.detail else {
+            Issue.record("no outage duration: \(recovered)")
+            return
+        }
+        #expect(milliseconds < 10_000)
+        rig.controller.watchdogTripped(.callbackOverLimit(microseconds: 300_000))
+        rig.controller.feed(.callbackExited)
+        #expect(rig.health.recent(limit: 20).filter { $0.kind == .tapRecovered }.count == 1)
+    }
+
     @Test func watchdogTripDisablesAndTheReturnedCallbackReenables_PLT_R306() async throws {
         let rig = HostRig()
         await rig.start()
