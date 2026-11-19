@@ -12,6 +12,18 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
 - `CommitRule.toneRemoval`, the reason code of the new rule L4a (spec/01-engine.md 8.1, ENG-R411, REG-39). A
   consumer that switches exhaustively over `CommitRule` needs the new case, so this is a source-breaking addition
   and the next tag is `engine-v0.2.0`.
+- The typo correction of spec/01-engine.md section 11A (1.1.0, ENG-R1110 to ENG-R1125): at the commit of a word the
+  engine replaces one clearly mistyped English word with the only word of the correction lexicon one edit away
+  (`androdi` gives `android`, `gramar` gives `grammar`), never a Vietnamese word or a word one key from Vietnamese
+  (`ddi pahir` stays `đi pahir`), only in the general context, at whitespace, Return, Tab or an ASCII closer of prose,
+  with nothing glued before the word. The restore toggle right after the correction, or after Backspace re-opened
+  it, brings back the keys as typed and sends `LearningSignal.neverCorrect`. The public API of the feature:
+  `EngineConfiguration.typoCorrection` (default true; off, every commit is exactly as without the section),
+  `CommitDecision.corrected(CommitRule)`, `LearningSignal.neverCorrect(raw:)`, `CorrectionData`,
+  `ApproximateWordSet`, `Resources.userNeverCorrect` and `Resources.correction`. A consumer that switches
+  exhaustively over `CommitDecision` or `LearningSignal` needs the new cases, so these are source-breaking additions
+  in the same minor bump (`engine-v0.2.0`). The bundled correction data (the guard list, the keyboard neighbours,
+  the unmarked shapes and the Vietnamese keyings, ENG-R1120) is built by `lexicon-builder` and documented with it.
 
 ### Changed
 
