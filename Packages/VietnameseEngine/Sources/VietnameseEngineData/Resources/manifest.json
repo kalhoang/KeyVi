@@ -1,7 +1,7 @@
 {
-  "format": 2,
+  "format": 3,
   "generator": "lexicon-builder",
-  "inputsSHA256": "4e31efe5ede0def9795cbc5bee34209fe817c3ad7a1ff065124fcb5fbdea9f39",
+  "inputsSHA256": "2b6509ca3b15c4586ca3797b88615a4b8e802ec0e56c227449d60cf265c10177",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
     {"name": "tech-always.txt", "bytes": 2174, "entries": 388, "sha256": "9ed38dc89f5407a4c499fca259043c59bab9e9677584c32e0d5447e4cec95640"},
@@ -17,7 +17,11 @@
     {"name": "vi-tail-words.txt", "bytes": 322, "entries": 63, "sha256": "9aceba1ec3e8a9bfa1f462f7096de906deace11249911a41dbc0a14650262cdf"},
     {"name": "vi-tail-particles.txt", "bytes": 155, "entries": 31, "sha256": "ef4e03d1c14a7852445d536c9c840423b9efa76366950a3cf901441dfea7f87a"},
     {"name": "english-pre-guard.txt", "bytes": 172, "entries": 44, "sha256": "b5de644916494e189e73760f5d9c1134983313dd1db09ec0a7da78099e37628b"},
-    {"name": "NOTICES.txt", "bytes": 14272, "sha256": "d98354332ca9e835646da1551bbeab2ba37e7ad97ecba811b3a7d9c012088086"}
+    {"name": "guard-list.bloom", "bytes": 131104, "entries": 77488, "sha256": "04c42dad442b8445585665a185f87f38d685e5ee7380b04f1729302ee947e9f7"},
+    {"name": "keyboard-neighbours.txt", "bytes": 188, "entries": 26, "sha256": "05eda7e6df7c9bc222756aa736f31f50276b0529313c4596e446ab9f77070821"},
+    {"name": "unmarked-shapes.txt", "bytes": 20217, "entries": 3953, "sha256": "7ffdf769a9116f2bb79b43c9352cb4f2179c0f3aa6a80b77159255b799534b64"},
+    {"name": "vietnamese-keyings.txt", "bytes": 176005, "entries": 27277, "sha256": "e591d5e11bf5a5e6453f55faa773fad85554c3278aec89444a0f21baab2174b1"},
+    {"name": "NOTICES.txt", "bytes": 14802, "sha256": "0ad7b8d8482f80aa5470a2ad232a68fbeb484d3eab35d27ff1912065b901b195"}
   ],
   "stats": {
     "englishWords": 40205,
@@ -25,6 +29,10 @@
     "legalDistinctTokens": 1784,
     "attestedFromCorpus": 1678,
     "attestedFromAdditions": 264,
-    "attestedStyleVariants": 13
+    "attestedStyleVariants": 13,
+    "guardListWords": 77488,
+    "guardListBits": 1048576,
+    "unmarkedShapes": 3953,
+    "vietnameseKeyings": 27277
   }
 }

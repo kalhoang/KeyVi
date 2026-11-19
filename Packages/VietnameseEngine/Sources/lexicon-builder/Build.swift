@@ -39,10 +39,15 @@ enum ResourceName {
         phrases, collisionSupplement, boundaryParticles, englishFunctionWords, englishLean, tailWords, tailParticles,
         preGuard,
     ]
+    // The typo correction data (format 3; spec/01-engine.md 11A, ENG-R1120).
+    static let guardList = "guard-list.bloom"
+    static let keyboardNeighbours = "keyboard-neighbours.txt"
+    static let unmarkedShapes = "unmarked-shapes.txt"
+    static let vietnameseKeyings = "vietnamese-keyings.txt"
+    static let correctionData = [guardList, keyboardNeighbours, unmarkedShapes, vietnameseKeyings]
     static let all =
-        [english, techAlways, techCodeOnly, techCodeCapitalized, attested, ambiguity] + collisionLists + [
-            notices, manifest,
-        ]
+        [english, techAlways, techCodeOnly, techCodeCapitalized, attested, ambiguity] + collisionLists
+        + correctionData + [notices, manifest]
 }
 
 struct AttestedResult {
@@ -58,8 +63,8 @@ struct AttestedResult {
 
 enum Builder {
     /// The resource format (data/README.md). 2: the ambiguity table has the `run` and `viKind` columns and the
-    /// collision lists ship (15/11/2026).
-    static let resourceFormat = 2
+    /// collision lists ship (15/11/2026). 3: the typo correction data of ENG-R1120 ships (19/11/2026).
+    static let resourceFormat = 3
 
     static func build(_ layout: Layout) throws -> BuildOutput {
         try InputManifest.verify(layout)
@@ -76,6 +81,8 @@ enum Builder {
         let collision = try CollisionInputs.load(layout)
         try checkCollisionInputs(
             collision, layout: layout, english: english, techAlways: Set(techAlways), attested: attested.syllables)
+        let correction = try correctionData(
+            layout, lexicon: correctionLexicon(english: english, techAlways: techAlways))
 
         var output = BuildOutput()
         let lists: [(String, [String])] = [
@@ -98,6 +105,10 @@ enum Builder {
             output.resources.append((name, Data(joinedLines(words).utf8)))
             entries[name] = words.count
         }
+        for file in correction.files {
+            output.resources.append((file.name, file.data))
+            entries[file.name] = file.entries
+        }
         output.resources.append((ResourceName.notices, Data(try notices(layout).utf8)))
 
         let stats: [(String, Int)] = [
@@ -107,6 +118,10 @@ enum Builder {
             ("attestedFromCorpus", attested.fromCorpus),
             ("attestedFromAdditions", attested.fromAdditions),
             ("attestedStyleVariants", attested.styleVariants),
+            ("guardListWords", correction.guardListWords),
+            ("guardListBits", correction.guardListBits),
+            ("unmarkedShapes", correction.unmarkedShapes),
+            ("vietnameseKeyings", correction.vietnameseKeyings),
         ]
         let inputsDigest = SHA256.hex(of: try FileIO.read(layout.manifestFile))
         output.resources.append(
@@ -116,6 +131,51 @@ enum Builder {
             ))
         output.derived.append((ResourceName.attestedCandidates, Data(candidatesTSV(attested.counts).utf8)))
         return output
+    }
+
+    /// The correction lexicon of spec/01-engine.md 11A: the English lexicon of 8.2 plus the letter-only entries of the
+    /// tech-always list (ENG-R1114).
+    static func correctionLexicon(english: [String: Int], techAlways: [String]) -> Set<String> {
+        Set(english.keys).union(techAlways.filter { $0.utf8.allSatisfy { $0 >= 0x61 && $0 <= 0x7A } })
+    }
+
+    /// The correction lexicon of the pinned inputs.
+    static func correctionLexicon(_ layout: Layout) throws -> Set<String> {
+        correctionLexicon(
+            english: try EnglishLexicon.load(layout),
+            techAlways: try TechList.load(layout.inputs.appendingPathComponent(ResourceName.techAlways)))
+    }
+
+    /// The four files of the typo correction data (ENG-R1120), in manifest order, with their counts.
+    struct CorrectionFiles {
+        var files: [(name: String, data: Data, entries: Int)] = []
+        var guardListWords = 0
+        var guardListBits = 0
+        var unmarkedShapes = 0
+        var vietnameseKeyings = 0
+    }
+
+    /// The guard list (a Bloom filter of the guard words), the checked keyboard neighbours table, the unmarked shapes
+    /// and the Vietnamese keyings (spec/01-engine.md ENG-R1120).
+    static func correctionData(_ layout: Layout, lexicon: Set<String>) throws -> CorrectionFiles {
+        let neighbours = try KeyboardNeighbours.load(
+            layout.inputs.appendingPathComponent(ResourceName.keyboardNeighbours))
+        try KeyboardNeighbours.check(neighbours)
+        let guardFilter = GuardList.filter(try GuardList.words(layout, lexicon: lexicon))
+        let shapes = utf8Sorted(UnmarkedShapes.generate())
+        let keyings = utf8Sorted(VietnameseKeyings.generate())
+        var result = CorrectionFiles()
+        result.files = [
+            (ResourceName.guardList, try GuardList.encode(guardFilter), guardFilter.wordCount),
+            (ResourceName.keyboardNeighbours, Data(KeyboardNeighbours.resourceText(neighbours).utf8), neighbours.count),
+            (ResourceName.unmarkedShapes, Data(joinedLines(shapes).utf8), shapes.count),
+            (ResourceName.vietnameseKeyings, Data(joinedLines(keyings).utf8), keyings.count),
+        ]
+        result.guardListWords = guardFilter.wordCount
+        result.guardListBits = guardFilter.bits.count * 64
+        result.unmarkedShapes = shapes.count
+        result.vietnameseKeyings = keyings.count
+        return result
     }
 
     /// ENG-R850: a capitalized code word only keeps rule L9 for a word that L9 reads, so every entry must be on the

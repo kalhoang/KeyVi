@@ -250,7 +250,7 @@ import VietnameseEngine
         let json = Builder.manifestJSON(
             files, entries: ["a.txt": 1], stats: [("words", 1), ("more", 2)], inputsDigest: "d")
         #expect(
-            json.hasPrefix("{\n  \"format\": 2,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
+            json.hasPrefix("{\n  \"format\": 3,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
         #expect(json.contains("{\"name\": \"a.txt\", \"bytes\": 2, \"entries\": 1, \"sha256\": "))
         #expect(json.contains("{\"name\": \"NOTICES.txt\", \"bytes\": 2, \"sha256\": "))
         let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])

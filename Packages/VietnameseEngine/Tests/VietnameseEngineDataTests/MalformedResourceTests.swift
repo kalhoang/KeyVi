@@ -16,11 +16,14 @@ private func load(_ directory: URL) throws -> Resources {
 
 private func expectLoadError(
     _ expected: LoadError, replacing overrides: [String: String] = [:], removing removed: Set<String> = [],
-    entryOverrides: [String: Int] = [:], manifest: String? = nil, sourceLocation: SourceLocation = #_sourceLocation
+    entryOverrides: [String: Int] = [:], manifest: String? = nil, replacingBinary binary: [String: Data] = [:],
+    removingFile removedFile: String? = nil, sourceLocation: SourceLocation = #_sourceLocation
 ) throws {
     let directory = try ResourceFixture.make(
-        replacing: overrides, removing: removed, entryOverrides: entryOverrides, manifestOverride: manifest)
+        replacing: overrides, removing: removed, entryOverrides: entryOverrides, manifestOverride: manifest,
+        replacingBinary: binary)
     defer { TempDirectory.remove(directory) }
+    if let removedFile { try FileManager.default.removeItem(at: directory.appendingPathComponent(removedFile)) }
     #expect(throws: expected, sourceLocation: sourceLocation) { try load(directory) }
 }
 
@@ -44,6 +47,15 @@ struct MalformedResourceTests {
         #expect(resources.collision.tailWords.contains("rồi") && !resources.collision.tailParticles.contains("rồi"))
         #expect(resources.collision.preGuard.contains("the"))
         #expect(resources.collisionMemory.isEmpty)
+        // The typo correction data (format 3, ENG-R1120).
+        #expect(resources.correction.keyboardNeighbours.count == 26)
+        #expect(resources.correction.keyboardNeighbours["s"] == "weadzx")
+        #expect(resources.correction.unmarkedShapes.contains("truong"))
+        #expect(resources.correction.vietnameseKeyings.contains("phair"))
+        #expect(
+            resources.correction.guardList.mayContain("biden") && resources.correction.guardList.mayContain("kbang"))
+        #expect(resources.correction.guardList.wordCount == 2 && resources.correction.guardList.hashCount == 8)
+        #expect(resources.correction.guardList.bits == GuardListFixture.filter.bits)
     }
 
     @Test func emptyListsAreAllowed() throws {
@@ -67,9 +79,12 @@ struct MalformedResourceTests {
     @Test func manifestProblems() throws {
         try expectLoadError(
             .malformedResource("manifest.json: unsupported format 1"), manifest: "{\"format\": 1, \"files\": []}")
+        // Format 2 (no correction data) is no longer loaded.
+        try expectLoadError(
+            .malformedResource("manifest.json: unsupported format 2"), manifest: "{\"format\": 2, \"files\": []}")
         try expectLoadError(
             .malformedResource("manifest.json has no entry for ambiguity.tsv"),
-            manifest: "{\"format\": 2, \"files\": []}"
+            manifest: "{\"format\": 3, \"files\": []}"
         )
         let directory = try ResourceFixture.make(manifestOverride: "not json")
         defer { TempDirectory.remove(directory) }
@@ -218,6 +233,68 @@ struct MalformedResourceTests {
         try expectLoadError(
             .malformedEntry(resource: "collision-supplement.txt", line: 3, reason: .duplicate),
             replacing: ["collision-supplement.txt": "gif\ncos\ngif\n"])
+    }
+
+    /// ENG-R1120: a broken file of the typo correction data is rejected with a typed error naming it, never loaded as
+    /// an empty or partial structure.
+    @Test func correctionFileProblems() throws {
+        let bloom = "guard-list.bloom"
+        let valid = GuardListFixture.encode(GuardListFixture.filter)
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: 20 bytes, shorter than the 32-byte header"),
+            replacingBinary: [bloom: valid.prefix(20)])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: bad magic"),
+            replacingBinary: [bloom: GuardListFixture.encode(GuardListFixture.filter, magic: "KVGX")])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: unsupported version 2"),
+            replacingBinary: [bloom: GuardListFixture.encode(GuardListFixture.filter, version: 2)])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: 24 bytes of bits, expected 32 for 256 bits"),
+            replacingBinary: [bloom: valid.dropLast(8)])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: 32 bytes of bits, expected 64 for 512 bits"),
+            replacingBinary: [bloom: GuardListFixture.encode(GuardListFixture.filter, bitCount: 512)])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: bit count 8388608 is not a power of two from 64 to 4194304"),
+            replacingBinary: [bloom: GuardListFixture.encode(GuardListFixture.filter, bitCount: 1 << 23)])
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: bit count 200 is not a power of two from 64 to 4194304"),
+            replacingBinary: [bloom: GuardListFixture.encode(GuardListFixture.filter, bitCount: 200)])
+        var noHashes = valid
+        noHashes.replaceSubrange(8..<12, with: [0, 0, 0, 0])
+        try expectLoadError(.malformedResource("guard-list.bloom: hash count 0"), replacingBinary: [bloom: noHashes])
+        var reserved = valid
+        reserved[31] = 1
+        try expectLoadError(
+            .malformedResource("guard-list.bloom: reserved header bytes are not zero"),
+            replacingBinary: [bloom: reserved])
+        try expectLoadError(
+            .integrityMismatch(resource: bloom, detail: "2 entries, expected 3"), entryOverrides: [bloom: 3])
+
+        let table = GuardListFixture.neighboursText
+        try expectLoadError(
+            .malformedResource("keyboard-neighbours.txt: 'a' lists 'q' but 'q' does not list 'a'"),
+            replacing: ["keyboard-neighbours.txt": table.replacingOccurrences(of: "q\twa\n", with: "q\tw\n")])
+        try expectLoadError(
+            .malformedResource("keyboard-neighbours.txt: 25 letters, expected 26"),
+            replacing: ["keyboard-neighbours.txt": table.replacingOccurrences(of: "z\tasx\n", with: "")])
+        try expectLoadError(
+            .malformedEntry(resource: "keyboard-neighbours.txt", line: 1, reason: .wrongFieldCount),
+            replacing: ["keyboard-neighbours.txt": table.replacingOccurrences(of: "a\tqwsz\n", with: "a qwsz\n")])
+        try expectLoadError(
+            .malformedEntry(resource: "keyboard-neighbours.txt", line: 2, reason: .invalidCharacter),
+            replacing: ["keyboard-neighbours.txt": table.replacingOccurrences(of: "b\tghvn\n", with: "b\tghv1\n")])
+        try expectLoadError(
+            .malformedEntry(resource: "keyboard-neighbours.txt", line: 2, reason: .duplicate),
+            replacing: ["keyboard-neighbours.txt": table.replacingOccurrences(of: "b\tghvn\n", with: "a\tqwsz\n")])
+        try expectLoadError(
+            .malformedEntry(resource: "unmarked-shapes.txt", line: 2, reason: .invalidCharacter),
+            replacing: ["unmarked-shapes.txt": "thach\ntruong2\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "vietnamese-keyings.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["vietnamese-keyings.txt": "Phair\n"])
+        try expectLoadError(.missingResource("vietnamese-keyings.txt"), removingFile: "vietnamese-keyings.txt")
     }
 
     @Test func errorsDescribeTheProblem() {
