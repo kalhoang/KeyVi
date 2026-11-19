@@ -113,8 +113,8 @@ extension Harness {
 
     /// The app keeps writing its folder until it exits (debounced settings writes, backup rotation, the flush on
     /// quit, PLT-R1003): the scan reads the folder once the app has quit, so nothing changes or vanishes while it
-    /// is read, and what the quit wrote is scanned too. Restoring the settings starts the app again. A failed quit
-    /// is reported and the scan runs anyway.
+    /// is read, and what the quit wrote is scanned too. Restoring the settings starts the app again only when it was
+    /// running before the run (`AppConfigurator.restore()`). A failed quit is reported and the scan runs anyway.
     func quitBeforeScan(live: any LiveHarnessServices, targets: HarnessTargets) async {
         do {
             try await live.appControl(targets: targets).quit()
