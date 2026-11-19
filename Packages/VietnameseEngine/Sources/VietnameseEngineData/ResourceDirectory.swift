@@ -107,6 +107,11 @@ struct ResourceDirectory {
             preconditionFailure("\(file.rawValue) is not a word list")
         }
         try checkEntryCount(words.count, file: file)
+        // Spec 12.2 (API-stage amendment 5): the generated shapes and keyings are never empty; an empty list would
+        // silently turn off ENG-R1110 (d) and ENG-R1125 even when its manifest row agrees.
+        if words.isEmpty, file == .unmarkedShapes || file == .vietnameseKeyings {
+            throw LoadError.malformedResource("\(file.rawValue): no entry")
+        }
         try Self.checkUnique(words, file: file, firstLine: 1)
         return words
     }

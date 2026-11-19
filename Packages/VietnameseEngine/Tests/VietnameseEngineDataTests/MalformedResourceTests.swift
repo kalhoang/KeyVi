@@ -295,6 +295,12 @@ struct MalformedResourceTests {
             .malformedEntry(resource: "vietnamese-keyings.txt", line: 1, reason: .invalidCharacter),
             replacing: ["vietnamese-keyings.txt": "Phair\n"])
         try expectLoadError(.missingResource("vietnamese-keyings.txt"), removingFile: "vietnamese-keyings.txt")
+        // Spec 12.2 (API-stage amendment 5): the shapes and keyings are generated and never empty. An empty list that
+        // its manifest row agrees with would silently turn off ENG-R1110 (d) and ENG-R1125 (`ddi pahir` -> `đi pair`).
+        try expectLoadError(
+            .malformedResource("unmarked-shapes.txt: no entry"), replacing: ["unmarked-shapes.txt": ""])
+        try expectLoadError(
+            .malformedResource("vietnamese-keyings.txt: no entry"), replacing: ["vietnamese-keyings.txt": ""])
     }
 
     @Test func errorsDescribeTheProblem() {
