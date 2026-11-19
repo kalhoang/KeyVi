@@ -24,7 +24,8 @@ import Testing
 
     @Test func catalogIdentifiersAreTheSnapshot() {
         // Every setting the window shows, its defaults-table row and its settings.json key, in catalog order. A new
-        // setting changes this list on purpose (W11-C added D28 and D29, decision of the product owner, 15/11/2026).
+        // setting changes this list on purpose (W11-C added D28 and D29, decision of the product owner, 15/11/2026;
+        // 1.1.0 adds the never-correct list, PRD-R81, and D30, PRD-R80).
         let snapshot = SettingItem.allCases.map { "\($0.rawValue) \($0.requirement) \($0.settingsKey ?? "-")" }
         #expect(
             snapshot == [
@@ -34,7 +35,8 @@ import Testing
                 "layoutBinding PLT-R373 layoutBinding", "typingMethod D1 typingMethod",
                 "tonePlacement D2 tonePlacement", "englishRestore D4 englishRestore",
                 "keepAsTyped ENG-R860 keepAsTyped", "keepVietnamese ENG-R860 keepVietnamese",
-                "learnCollisionChoices D28 learnCollisionChoices",
+                "neverCorrect PRD-R81 neverCorrect", "learnCollisionChoices D28 learnCollisionChoices",
+                "typoCorrection D30 typoCorrection",
                 "telexStandaloneW D5 telexStandaloneW", "telexBracketKeys D6 telexBracketKeys",
                 "restoreHotkey D8 restoreHotkey", "lookaheadRevision D29 lookaheadRevision",
                 "macrosEnabled D9 macrosEnabled", "updateChannel D21 updateChannel",
@@ -54,7 +56,8 @@ import Testing
             SettingsCatalog.items(in: .general, advanced: true) == [.soundOnSwitch, .clickIconToToggle, .layoutBinding])
         #expect(
             SettingsCatalog.items(in: .typing, advanced: false) == [
-                .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices,
+                .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect,
+                .learnCollisionChoices, .typoCorrection,
             ])
         #expect(
             SettingsCatalog.items(in: .typing, advanced: true) == [
@@ -79,7 +82,9 @@ import Testing
         }
         // Every user-facing default of section 4 that is a real setting is shown somewhere.
         let settings = ["D1", "D2", "D4", "D5", "D6", "D8", "D9", "D11", "D12", "D14", "D15", "D16", "D17", "D18"]
-        for id in settings + ["D19", "D20", "D21", "D28", "D29"] { #expect(shown.contains(id), "\(id) has no control") }
+        for id in settings + ["D19", "D20", "D21", "D28", "D29", "D30"] {
+            #expect(shown.contains(id), "\(id) has no control")
+        }
         #expect(
             HiddenDefault.allCases.map(\.rawValue) == [
                 "D3", "D7", "D10", "D13", "D22", "D23", "D24", "D25", "D26", "D27",
@@ -109,7 +114,7 @@ import Testing
             "macrosEnabled", "toggleHotkey", "rememberPerApp", "showSwitchIndicator", "soundOnSwitch",
             "clickIconToToggle", "interfaceLanguage", "automaticallyCheckForUpdates", "automaticallyInstallUpdates",
             "updateChannel", "layoutBinding", "keepAsTyped", "keepVietnamese", "learnCollisionChoices",
-            "lookaheadRevision",
+            "lookaheadRevision", "typoCorrection", "neverCorrect",
         ]
         for item in SettingItem.allCases where item != .openAtLogin {
             #expect(item.settingsKey.map(known.contains) == true, "\(item)")
@@ -125,7 +130,7 @@ import Testing
             .rememberPerApp(true), .showSwitchIndicator(true), .soundOnSwitch(false), .clickIconToToggle(false),
             .interfaceLanguage(.vietnamese), .automaticallyCheckForUpdates(true), .automaticallyInstallUpdates(true),
             .updateChannel(.stable), .layoutBinding(LayoutModeBinding()), .learnCollisionChoices(true),
-            .lookaheadRevision(true),
+            .lookaheadRevision(true), .typoCorrection(true),
         ]
         for edit in edits {
             var settings = UserSettings()
@@ -136,10 +141,131 @@ import Testing
         var lists = UserSettings()
         SettingsEdit.keepAsTyped(["text"]).apply(to: &lists)
         SettingsEdit.keepVietnamese(["vieetj"]).apply(to: &lists)
+        SettingsEdit.neverCorrect(["androdi"]).apply(to: &lists)
         #expect(lists.keepAsTyped == ["text"] && lists.keepVietnamese == ["vieetj"])
+        #expect(lists.neverCorrect == ["androdi"] && lists.explicitlySetKeys.contains("neverCorrect"))
         #expect(
             SettingsEdit.keepAsTyped([]).item == .keepAsTyped && SettingsEdit.keepVietnamese([]).item == .keepVietnamese
         )
+        #expect(SettingsEdit.neverCorrect([]).item == .neverCorrect)
+    }
+
+    // MARK: 1.1.0: D30 and the never-correct list (PRD-R80, PRD-R81)
+
+    @Test func d30SitsRightUnderD28InTheEnglishSectionAndIsNotAdvanced_PRDR80() throws {
+        // PRD-R80: a main row of the English restore section, right under the D28 row, not under the Advanced
+        // disclosure, so a user who wants it off finds it.
+        let item = SettingItem.typoCorrection
+        #expect(item.pane == .typing && !item.isAdvanced)
+        #expect(item.requirement == "D30" && item.settingsKey == "typoCorrection")
+        #expect(item.title == CatalogText(SettingsText.typoCorrectionTitle))
+        #expect(item.explanation == CatalogText(SettingsText.typoCorrectionExplanation))
+        let english = try #require(SettingsCatalog.sections(in: .typing).last)
+        #expect(english.header == CatalogText(SettingsText.sectionEnglish))
+        let d28 = try #require(english.items.firstIndex(of: .learnCollisionChoices))
+        #expect(english.items.index(after: d28) == english.items.firstIndex(of: .typoCorrection))
+        #expect(english.items.last == .typoCorrection)
+    }
+
+    @Test func theNeverCorrectListIsTheThirdListOfTheEnglishSection_PRDR81() throws {
+        // PRD-R81: under "Giữ nguyên như đã gõ" and "Giữ là tiếng Việt", with the same controls (UserWordList).
+        let item = SettingItem.neverCorrect
+        #expect(item.pane == .typing && !item.isAdvanced)
+        #expect(item.requirement == "PRD-R81" && item.settingsKey == "neverCorrect")
+        #expect(item.title == CatalogText(SettingsText.neverCorrectTitle))
+        #expect(item.explanation == CatalogText(SettingsText.neverCorrectExplanation))
+        let english = try #require(SettingsCatalog.sections(in: .typing).last)
+        let lists = english.items.filter { item in UserWordList.allCases.contains { $0.settingItem == item } }
+        #expect(lists == [.keepAsTyped, .keepVietnamese, .neverCorrect])
+        #expect(UserWordList.allCases.map(\.settingItem) == [.keepAsTyped, .keepVietnamese, .neverCorrect])
+        #expect(english.items.firstIndex(of: .neverCorrect) == english.items.firstIndex(of: .keepVietnamese)! + 1)
+        #expect(UserWordList.neverCorrect.fieldControl == .neverCorrectField)
+        #expect(UserWordList.neverCorrect.addControl == .neverCorrectAdd)
+        #expect(UserWordList.keepAsTyped.fieldControl == .keepAsTypedField)
+        #expect(UserWordList.keepVietnamese.addControl == .keepVietnameseAdd)
+    }
+
+    @Test func d30IsDisabledWhileD4IsOffWithTheSuffix_PRDR80() {
+        // PRD-R80: D30 follows D4, off and shown disabled while English restore is off; its explanation then ends
+        // with the suffix. No other setting depends on another.
+        var user = UserSettings()
+        #expect(SettingItem.typoCorrection.dependsOn == .englishRestore)
+        #expect(SettingItem.typoCorrection.isEnabled(in: user.resolved()))
+        user.englishRestore = .set(false)
+        let off = user.resolved()
+        #expect(!SettingItem.typoCorrection.isEnabled(in: off))
+        #expect(SettingItem.typoCorrection.disabledSuffix == CatalogText(SettingsText.typoCorrectionDisabledSuffix))
+        for item in SettingItem.allCases where item != .typoCorrection {
+            #expect(item.dependsOn == nil && item.disabledSuffix == nil, "\(item)")
+            #expect(item.isEnabled(in: off), "\(item)")
+        }
+    }
+
+    @Test func theExplanationsNameTheKeyAndEndWithTheSuffixWhileD4IsOff_PRDR80_PRDR81() throws {
+        // The rows' text: the app name as the argument, the restore key as PRD-R78 names it, and the D4 suffix.
+        let l = try Localizers()
+        var user = UserSettings()
+        for localizer in [l.vi, l.en] {
+            for item in [SettingItem.typoCorrection, .neverCorrect] {
+                user.restoreHotkey = .unset
+                let escape = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(escape == localizer.format(item.explanation, "{{AppName}}"), "\(item): Escape, the draft")
+                user.restoreHotkey = .set(.keyCombo(modifiers: [.control], keyCode: .space))
+                let other = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(other.contains("Control + ") && other.contains("{{AppName}}"), "\(item): \(other)")
+                #expect(!other.contains("Escape"), "\(item) names another key")
+                user.restoreHotkey = .set(nil)
+                let off = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(off.contains(localizer.string(SettingsText.advanced)), "\(item) says where the key is off")
+                #expect(!off.contains("Escape") && off.contains("{{AppName}}"), "\(item): \(off)")
+                for text in [escape, other, off] { #expect(!text.contains("\n") && !text.contains("%"), "\(text)") }
+            }
+        }
+        // Q10 (answered 19/11/2026, ADR 0010 item 1): every D30 variant says words in all capitals.
+        for key in [
+            SettingsText.typoCorrectionExplanation, .typoCorrectionExplanationOtherKey, .typoCorrectionExplanationNoKey,
+        ] {
+            #expect(
+                l.vi.string(key).contains("từ viết hoa toàn bộ") && l.en.string(key).contains("words in all capitals"))
+        }
+        // While D4 is off, D30's explanation ends with the suffix; the list's never does.
+        user = UserSettings()
+        user.englishRestore = .set(false)
+        let disabled = SettingItem.typoCorrection.explanationText(appName: "A", settings: user.resolved(), l.vi)
+        #expect(disabled.hasSuffix(". Bật Tự khôi phục từ tiếng Anh để dùng."))
+        #expect(
+            SettingItem.typoCorrection.explanationText(appName: "A", settings: user.resolved(), l.en)
+                .hasSuffix(". Turn on Automatic English restore to use this."))
+        #expect(
+            SettingItem.neverCorrect.explanationText(appName: "A", settings: user.resolved(), l.vi)
+                == l.vi.format(SettingItem.neverCorrect.explanation, "A"))
+        // The suffix names the D4 row by its title.
+        #expect(
+            l.vi.string(SettingsText.typoCorrectionDisabledSuffix).contains(
+                l.vi.string(SettingsText.englishRestoreTitle)))
+        #expect(
+            l.en.string(SettingsText.typoCorrectionDisabledSuffix).contains(
+                l.en.string(SettingsText.englishRestoreTitle)))
+    }
+
+    @Test func d30AndTheListNameTheRestoreKeyTheWayPRDR78Does() {
+        // PRD-R80, PRD-R81: Escape by default, another key in words, or that the key is off, as the learned-words
+        // sheet's empty state does (PRD-R78).
+        let d30 = SettingItem.typoCorrection
+        #expect(d30.explanation(restoreHotkey: .key(.escape)) == CatalogText(SettingsText.typoCorrectionExplanation))
+        #expect(
+            d30.explanation(restoreHotkey: .keyCombo(modifiers: [.control], keyCode: .space))
+                == CatalogText(SettingsText.typoCorrectionExplanationOtherKey))
+        #expect(d30.explanation(restoreHotkey: nil) == CatalogText(SettingsText.typoCorrectionExplanationNoKey))
+        let list = SettingItem.neverCorrect
+        #expect(list.explanation(restoreHotkey: .key(.escape)) == CatalogText(SettingsText.neverCorrectExplanation))
+        #expect(
+            list.explanation(restoreHotkey: .key(.returnKey))
+                == CatalogText(SettingsText.neverCorrectExplanationOtherKey))
+        #expect(list.explanation(restoreHotkey: nil) == CatalogText(SettingsText.neverCorrectExplanationNoKey))
+        for item in SettingItem.allCases where item != .typoCorrection && item != .neverCorrect {
+            #expect(item.explanation(restoreHotkey: nil) == item.explanation, "\(item) does not name the key")
+        }
     }
 
     @Test func advancedDisclosureIsCollapsedUntilExpandedAndThenRemembered() {

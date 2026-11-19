@@ -43,8 +43,16 @@ enum SnapshotFixtures {
         return (names ?? []).filter { $0.hasPrefix(storePrefix) }
     }
 
-    /// A store in a new temporary folder with sample word lists, learned words, macros and app modes, so the panes
-    /// show their lists the way a user's would look. App rows use apps of the bundled matrix (no bundle ID here).
+    /// `SNAPSHOT_FIXTURE` (passed as `TEST_RUNNER_SNAPSHOT_FIXTURE`): `englishRestoreOff` renders every variant with
+    /// D4 off, so the Typing pane shows D30 disabled with its suffix (PRD-R80). Run it under its own label, for example
+    /// `TEST_RUNNER_SNAPSHOT_FIXTURE=englishRestoreOff scripts/snapshots/settings.sh --label d4-off --only typing`.
+    static var englishRestoreOff: Bool {
+        ProcessInfo.processInfo.environment["SNAPSHOT_FIXTURE"] == "englishRestoreOff"
+    }
+
+    /// A store in a new temporary folder with sample word lists (the never-correct list of 1.1.0 included, PRD-R81),
+    /// learned words, macros and app modes, so the panes show their lists the way a user's would look. App rows use
+    /// apps of the bundled matrix (no bundle ID here).
     static func store(matrix: MatrixDocument?) async throws -> TemporaryStore {
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent(storePrefix + UUID().uuidString, isDirectory: true)
@@ -58,6 +66,8 @@ enum SnapshotFixtures {
         await store.updateSettings { settings in
             settings.keepAsTyped = ["wifi", "user", "email"]
             settings.keepVietnamese = ["vieetj"]
+            settings.neverCorrect = ["androdi"]
+            if englishRestoreOff { settings.englishRestore = .set(false) }
             if let app = apps.first {
                 settings.learnedWords = [LearnedWord(list: .keepAsTyped, raw: "text", app: app)]
             }

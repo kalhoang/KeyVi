@@ -231,9 +231,13 @@ import Testing
         // The donation block's copy buttons get their control from `DonationDetail.copyControl` (ShellCore).
         let detailControls =
             source.contains("detail.copyControl") ? Set(DonationInfo.standard.details.map(\.copyControl)) : []
+        // The word lists' fields and add buttons get their controls from `UserWordList` (ShellCore).
+        let listFields = source.contains("list.fieldControl") ? Set(UserWordList.allCases.map(\.fieldControl)) : []
+        let listAdds = source.contains("list.addControl") ? Set(UserWordList.allCases.map(\.addControl)) : []
         func check<C: AccessibleControl>(_ type: C.Type, prefix: String) {
             for control in type.allCases {
                 if let control = control as? SettingsControl, noticeControls.contains(control) { continue }
+                if let control = control as? SettingsControl, listFields.union(listAdds).contains(control) { continue }
                 if let control = control as? SupportControl, detailControls.contains(control) { continue }
                 #expect(
                     source.contains("\(prefix).\(control.rawValue)"), "\(prefix).\(control.rawValue) is never shown")

@@ -55,7 +55,7 @@ public enum ReportAssembler {
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
-            userReport: ReportSections.userReport(draft))
+            userReport: ReportSections.userReport(draft), counters: ReportSections.counters(host))
     }
 
     /// Typed projection of the reported app's user override (PLT-R541, ADR 0312): copies strategy, params,

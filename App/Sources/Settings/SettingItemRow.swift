@@ -44,7 +44,12 @@ struct SettingItemRow: View {
             ) { .englishRestore($0) }
         case .keepAsTyped: WordListView(model: model, list: .keepAsTyped)
         case .keepVietnamese: WordListView(model: model, list: .keepVietnamese)
+        case .neverCorrect: WordListView(model: model, list: .neverCorrect)
         case .learnCollisionChoices: LearnCollisionChoicesRow(model: model)
+        case .typoCorrection:
+            ToggleSetting(
+                model: model, item: item, control: SettingsControl.typoCorrection, isOn: settings.typoCorrection
+            ) { .typoCorrection($0) }
         case .telexStandaloneW:
             ToggleSetting(
                 model: model, item: item, control: SettingsControl.standaloneW, isOn: settings.telexStandaloneW
@@ -77,7 +82,8 @@ struct SettingItemRow: View {
     }
 }
 
-/// A row of `SettingSection.rows`: one setting, or the two ENG-R860 word lists side by side.
+/// A row of `SettingSection.rows`: one setting, or the two ENG-R860 word lists side by side (the never-correct list,
+/// PRD-R81, is a row of its own under them).
 struct SettingsSectionRow: View {
     @ObservedObject var model: SettingsWindowModel
     let items: [SettingItem]

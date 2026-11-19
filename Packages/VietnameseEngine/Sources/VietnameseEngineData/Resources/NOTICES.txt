@@ -6,14 +6,21 @@ NOTICES.txt next to the word lists. Applications that bundle these resources mus
 below in their acknowledgements (spec/01-engine.md ENG-R811).
 
 
-1. English word list (english.txt)
-----------------------------------
+1. English word lists (english.txt, guard-list.bloom)
+----------------------------------------------------
 
 english.txt is derived from SCOWL (Spell Checker Oriented Word Lists) release 2020.12.07 by Kevin
 Atkinson, http://wordlist.aspell.net/. Only the lowercase ASCII entries of the "words" lists for
 English, American and British spelling (-ise and -ize) at size levels 10, 20 and 35 are used; they
-were lowercased, filtered and merged by lexicon-builder. The SCOWL copyright and permission notice
-follows verbatim.
+were lowercased, filtered and merged by lexicon-builder.
+
+guard-list.bloom, the guard list of the typo correction, is derived from the same SCOWL release: the
+entries of five letters or more of the "words" lists for the same four spellings at size levels 40,
+50, 55, 60 and 70 and of the "proper-names" lists (English at size levels 35, 40, 50, 60 and 70,
+American at size level 50), lowercased, limited to ASCII letters, without the words of english.txt,
+and stored as a membership filter (a Bloom filter of hashed bits, not the words themselves).
+
+The SCOWL copyright and permission notice follows verbatim.
 
 The collective work is Copyright 2000-2018 by Kevin Atkinson as well
 as any of the copyrights mentioned below:

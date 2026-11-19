@@ -94,6 +94,11 @@ extension KeyPipeline {
         if output.decision != nil { keyState.committedSinceEngineReset = true }
         noteEngineCapture(output)
         noteCollisionSignals(output, focus: focus)  // ENG-R864: a toggle against the rules is a correction
+        // ENG-R1117, ENG-R1118: the toggle right after a correction carries the typed word for the never-correct list.
+        if let learning = output.learning {
+            if case .neverCorrect = learning { context.counters.correctionUndos.increment() }
+            notifyMain(.learning(learning, bundle: focus.app?.bundle))
+        }
         guard case .edit(let edit, _) = output.action, edit.deleteCount > 0 || !edit.insert.isEmpty else { return nil }
         // The toggle rewrote text behind the caret (ENG-R829 undoes a revision of the previous token with an edit
         // that has no active word: its deletion is larger than the empty active display, PLT-R353).
@@ -127,6 +132,7 @@ extension KeyPipeline {
             return passOrHold(key.event, now: key.now, probe: key.probe)
         }
         if case .backspace = input, replaced.isEmpty { noteReentry(output) }
+        if case .corrected? = output.decision { context.counters.corrections.increment() }  // ENG-R1115, a count only
         // ENG-R861, memory only; ENG-R862: attributed to the app typed in (a copy from the snapshot, PLT-R304).
         if let learning = output.learning { notifyMain(.learning(learning, bundle: focus.app?.bundle)) }
         let verdict = apply(output, kind: kind, replaced: replaced, key, focus: focus, inputSource: inputSource)

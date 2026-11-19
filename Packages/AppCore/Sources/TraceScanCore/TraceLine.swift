@@ -70,6 +70,9 @@ public struct TraceLine: Decodable, Sendable, Hashable {
     public var ctx: String?
     public var er: Bool?
     public var mac: Bool?
+    /// Focus lines: the rule's restore key, the variant bit of the typo correction switch (ENG-R1119, 1.1.0; absent on
+    /// older lines, which replay reads as on, like `er`).
+    public var rhk: Bool?
     public var pause: String?
     public var manual: Bool?
     /// Focus lines without an app: NSWorkspace's frontmost application (format version 3).

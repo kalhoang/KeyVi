@@ -69,6 +69,27 @@ private enum PropertyRun {
 }
 
 @Suite("PipelinePropertyTests") struct PipelinePropertyTests {
+    /// The scripted typo correction (a token ending in `nn` is corrected at its commit, and the restore key right after
+    /// undoes it, ENG-R1115, ENG-R1117) is in the random streams, so the properties below hold with corrections and
+    /// their undos in them: some sequences type `nn` right before a committing key.
+    @Test func theScriptedCorrectionIsInTheRandomStreamsProperty() {
+        let committing: Set<UInt16> = [Key.space, Key.comma, Key.returnKey, Key.tab]
+        var found = 0
+        for index in 0..<200 {
+            var generator = RandomEventGenerator(seed: PropertyRun.baseSeed &+ 1_000_003 &+ UInt64(index))
+            var lastTwo: [UInt16] = []
+            for step in generator.sequence(length: PropertyRun.length) {
+                guard case .key(let event) = step, event.kind == .keyDown, event.flags & 0x0018_0000 == 0 else {
+                    continue
+                }
+                let code = event.keyCode.rawValue
+                if committing.contains(code), lastTwo == [Key.n, Key.n] { found += 1 }
+                lastTwo = Array((lastTwo + [code]).suffix(2))
+            }
+        }
+        #expect(found > 0)
+    }
+
     /// PLT-R311, PLT-R312, PLT-R313, PLT-R321, PLT-R730, PLT-R210 over random interleavings of keys, Command
     /// and Option chords, the restore binding, mouse downs, scrolls, focus, settings and input-source changes,
     /// tap-disabled events, secure-input toggles and permission changes.

@@ -26,7 +26,7 @@ import Testing
         let allowed: Set<String> = [
             "formatVersion", "generatedAt", "app", "system", "hostState", "keyboard", "permissions", "tap",
             "secureInput", "focus", "rule", "settings", "reportedAppMode", "latency", "healthEvents",
-            "conflictingInputApps", "userReport",
+            "conflictingInputApps", "userReport", "counters",
         ]
         #expect(Set(object.keys).isSubset(of: allowed))
         #expect(
@@ -194,6 +194,19 @@ import Testing
         let block = try #require(DiagnosticsRenderer.parseIssueBlock(DiagnosticsRenderer.issueBlock(report)))
         #expect(block["settings.learnedCollisionEntries"] == "5")
         #expect(block["settings.learnCollisionChoices"] == "false")
+    }
+
+    /// ENG-R1115, ENG-R1117, ADR 0323 decision 8: the host's correction counts reach the assembled report.
+    @Test func theAssembledReportCarriesTheCorrectionCounters() throws {
+        var host = ReportFixtures.host()
+        host.corrections = 3
+        host.correctionUndos = 1
+        let report = ReportFixtures.report(host: host)
+        #expect(report.counters?.corrections == 3)
+        #expect(report.counters?.correctionUndos == 1)
+        let block = try #require(DiagnosticsRenderer.parseIssueBlock(DiagnosticsRenderer.issueBlock(report)))
+        #expect(block["counters.corrections"] == "3")
+        #expect(block["counters.correctionUndos"] == "1")
     }
 
     @Test func onlyTheReportedAppsMemoryEntryIsIncluded() throws {

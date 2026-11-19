@@ -16,7 +16,7 @@ legal texts keep their own terms (`NOTICES.md`).
 |---|---|---|
 | `inputs/MANIFEST.sha256` | SHA-256 of every file under `inputs/` and `licenses/` (shasum format, paths relative to `data/`) | `lexicon-builder pin` |
 | `inputs/english/SOURCES.tsv` | SCOWL archive URL, SHA-256, size, retrieval date | hand |
-| `inputs/english/scowl-2020.12.07/` | the 12 SCOWL component lists used (ISO-8859-1, verbatim from the archive) | `lexicon-builder import scowl` |
+| `inputs/english/scowl-2020.12.07/` | the 38 SCOWL lists used (ISO-8859-1, verbatim from the archive): the 12 lexicon lists (`words`, levels 10, 20, 35) and the 26 lists of the guard list of the typo correction (`words` levels 40 to 70, `proper-names` 35 to 70; ENG-R1120, docs/decisions/0203-correction-data.md) | `lexicon-builder import scowl` |
 | `inputs/legal/SOURCES.tsv` | legal documents: id, cache file, URL, raw SHA-256 and size, retrieval date, title, number, issuing date, issuer, official page | hand |
 | `inputs/legal/<id>.txt` | extracted UTF-8 NFC text of each document | `lexicon-builder import legal` |
 | `inputs/tech-always.txt` | words that always stay as typed (rule L11) | hand, reviewed by Pa |
@@ -24,6 +24,7 @@ legal texts keep their own terms (`NOTICES.md`).
 | `inputs/tech-code-capitalized.txt` | code-only words that rule L9 still restores in sentence case at a line start (`host`; ENG-R850); every entry must be on `tech-code-only.txt` | hand, decided by Pa |
 | `inputs/attested-additions.txt` | `syllable<TAB>reason` added to the attested list | hand, reviewed by Pa |
 | `inputs/ambiguity.tsv` | `raw  decision  status  display  run  viKind  note` (ENG-R821, ENG-R827) | hand / `ambiguity-candidates --merge` |
+| `inputs/keyboard-neighbours.txt` | the QWERTY neighbours of the typo correction (ENG-R1113), `letter<TAB>neighbours`; `build` fails unless it is symmetric, covers the 26 letters and equals the derivation from the three ANSI letter rows | hand, reviewed with the lists |
 | `inputs/phrases.txt`, `inputs/collision-supplement.txt`, `inputs/boundary-particles.txt`, `inputs/english-function-words.txt`, `inputs/english-lean-neutral.txt`, `inputs/vi-tail-words.txt`, `inputs/english-pre-guard.txt` | the collision lists (spec/01-engine.md 8.2, ENG-R825 to ENG-R828, ENG-R863); each file's header says what it is for | hand, reviewed by Pa |
 | `licenses/` | SCOWL `Copyright` and `README` (verbatim) and `bundled-notices.txt`, the template of `NOTICES.txt` | import / hand |
 | `derived/attested-candidates.tsv` | every legal-text token with its count, before the validity filter | `lexicon-builder build` |
@@ -45,12 +46,12 @@ cd ../..   # run the commands from the repository root (or pass --data-root data
 
 | Command | What it does |
 |---|---|
-| `"$BUILDER" build` | Verifies the inputs against `MANIFEST.sha256`, writes `english.txt`, `tech-always.txt`, `tech-code-only.txt`, `tech-code-capitalized.txt`, `attested.txt`, `ambiguity.tsv`, the eight collision lists (`phrases.txt`, `collision-supplement.txt`, `boundary-particles.txt`, `english-function-words.txt`, `english-lean-neutral.txt`, `vi-tail-words.txt`, `vi-tail-particles.txt`, `english-pre-guard.txt`), `NOTICES.txt`, `manifest.json` into the package resources and `data/derived/attested-candidates.tsv`. `--output DIR` writes `DIR/Resources` and `DIR/derived` instead. It fails when a phrase's Vietnamese reading occurs in `data/corpus/prose-vi.txt`, when a capitalized code word is not on `tech-code-only.txt`, or when a collision-supplement word does not type as its listed display, the display is not attested, or the word is English. |
+| `"$BUILDER" build` | Verifies the inputs against `MANIFEST.sha256`, writes `english.txt`, `tech-always.txt`, `tech-code-only.txt`, `tech-code-capitalized.txt`, `attested.txt`, `ambiguity.tsv`, the eight collision lists (`phrases.txt`, `collision-supplement.txt`, `boundary-particles.txt`, `english-function-words.txt`, `english-lean-neutral.txt`, `vi-tail-words.txt`, `vi-tail-particles.txt`, `english-pre-guard.txt`), the typo correction data (`guard-list.bloom`, `keyboard-neighbours.txt`, `unmarked-shapes.txt`, `vietnamese-keyings.txt`; ENG-R1120), `NOTICES.txt`, `manifest.json` into the package resources and `data/derived/attested-candidates.tsv`. `--output DIR` writes `DIR/Resources` and `DIR/derived` instead. It fails when a phrase's Vietnamese reading occurs in `data/corpus/prose-vi.txt`, when a capitalized code word is not on `tech-code-only.txt`, when a collision-supplement word does not type as its listed display, the display is not attested, or the word is English, when the keyboard neighbours table is not symmetric, misses a letter or differs from the QWERTY rows, when a guard list member is missing, or when `guard-list.bloom` would exceed 512 KB. |
 | `"$BUILDER" check` | CI gate: verifies the pins, rebuilds everything in memory (resources, `derived/`, prose corpus) and fails if any committed file differs. |
 | `"$BUILDER" prose-corpus` | Writes `data/corpus/prose-vi.txt`. `--min-tokens N` (default 250000), `--output FILE` or `-`. |
 | `"$BUILDER" ambiguity-candidates` | ENG-R820: types every English and tech word through the engine (Telex defaults, traditional and modern style; words with a digit also in VNI) and writes the words whose display is a Tier A syllable to `data/derived/ambiguity-candidates.tsv`, most frequent first, with the columns `raw method traditional modern attested source corpus_count merge_as current_row`. Words whose display is not attested are listed too, because rule L8 restores them (docs/decisions/0202). `--merge` adds each candidate without a row as `merge_as` says: `en`/`proposed` for English words with an unattested display and for tech-always words (in the last block, `# [generated en rows]`, with a `[generated:unattested]` or `[generated:tech-always]` token in the note), `vi`/`unreviewed` otherwise (before that block). `build` and `check` fail when a generated row's reason no longer holds. `--fake-engine FILE` (tests) replaces the engine with a `raw  traditional  modern  validity  [telex\|vni]` table; `--output FILE` or `-`. |
 | `"$BUILDER" pin` | Rewrites `inputs/MANIFEST.sha256` from the files on disk. Run after a reviewed change of any input. |
-| `"$BUILDER" import scowl` | Extracts the 12 SCOWL lists, `Copyright` and `README` from the verified archive in `cache/`, then pins. |
+| `"$BUILDER" import scowl` | Extracts the 38 SCOWL lists (the 12 of the lexicon and the 26 of the guard list), `Copyright` and `README` from the verified archive in `cache/`, then pins; a list missing from the archive is fatal. |
 | `"$BUILDER" import legal` | Converts every verified `.doc` in `cache/legal/` with macOS `textutil`, normalises (NFC, `Ð` to `Đ`, line ends, spaces) into `inputs/legal/<id>.txt`, then pins. macOS only. |
 | `"$BUILDER" tokenize [--prose]` | Prints the tokens of standard input, one per line (attested tokeniser, or the case-keeping prose tokeniser). |
 | `data/fetch.sh [--verify-only] [--force]` | Downloads every row of both `SOURCES.tsv` files into `cache/` and checks the pinned SHA-256; a mismatch is kept as `*.mismatch` and fails. |
@@ -101,7 +102,10 @@ Recorded in `docs/decisions/0005-pa-decisions-2026-11-13.md` (Q25 to Q34); the i
 | Attested sources | Keep the legal texts plus reviewed additions. | `inputs/legal/`, `inputs/attested-additions.txt` |
 | Review of the word lists | Later; unreviewed rows behave as `vi` (ENG-R821). Short English words missing from level 35 (`max`) need no change: Telex `max` gives `mã`, the reading the ENG-R821 row wants. | `inputs/ambiguity.tsv`, `derived/ambiguity-candidates.tsv` |
 
-## Resource format 2
+## Resource format 3
+
+Format 3 (19/11/2026) adds the typo correction data of spec/01-engine.md 11A (ENG-R1120) to format 2; formats 1
+and 2 are no longer loaded.
 
 - Word lists: UTF-8, LF, one entry per line, final newline, no blank lines or comments, unique, sorted by
   UTF-8 bytes. English `a-z` (one-letter entries only `a` and `i`); tech lists `a-z0-9` with a letter;
@@ -111,7 +115,19 @@ Recorded in `docs/decisions/0005-pa-decisions-2026-11-13.md` (Q25 to Q34); the i
   never restores the word), `viKind` is `particle`, `function` or `content`.
 - Collision lists: `phrases.txt` holds 2 to 4 lowercase words `a-z` separated by one space; the other lists hold
   one lowercase word per line (ASCII for the English lists and the supplement, NFC Vietnamese letters for
-  `vi-tail-words.txt` and `vi-tail-particles.txt`), sorted by UTF-8 bytes. Format 1 is no longer loaded.
+  `vi-tail-words.txt` and `vi-tail-particles.txt`), sorted by UTF-8 bytes.
+- Typo correction data (ENG-R1120): `keyboard-neighbours.txt` holds 26 lines `letter<TAB>neighbours`, sorted by
+  letter, symmetric; `unmarked-shapes.txt` (every Tier A and Tier B syllable without marks, `truong`) and
+  `vietnamese-keyings.txt` (the usual-order Telex keys of every Tier A syllable with a tone it allows, `phair`)
+  are ASCII word lists like the English lists, generated from the engine's syllable tables (`unmarkedShapes` and
+  `vietnameseKeyings` in the manifest's stats). `guard-list.bloom` is the one binary file: a 32-byte header (`KVGL`,
+  `UInt32` version 1, `UInt32` hashCount, `UInt64` bitCount, `UInt64` wordCount, 4 zero bytes, little-endian),
+  then the filter's bits as `bitCount / 64` little-endian `UInt64` (bit `i` is bit `i & 63` of word `i >> 6`).
+  Its words are the guard words (SCOWL `words` 40 to 70 and `proper-names` 35 to 70, five letters or more,
+  lowercase ASCII, minus the English lexicon and the letter-only tech-always entries), hashed as
+  `ApproximateWordSet` says (FNV-1a 64, double hashing); the builder picks the smallest power-of-two `bitCount` whose
+  analytic false-positive rate is at most 0.4 % with 8 hashes and fails above 512 KB. Its manifest `entries` is the
+  word count (`guardListWords`, `guardListBits` in the stats).
 - `manifest.json`: `format`, `inputsSHA256`, `files[]` (`name`, `bytes`, `entries`, `sha256`), `stats`. The
   loader rejects a file whose size, entry count or SHA-256 differs.
 - `NOTICES.txt`: built from `licenses/bundled-notices.txt`; `@include <file>` lines are replaced by the

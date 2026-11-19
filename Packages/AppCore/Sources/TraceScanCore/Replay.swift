@@ -78,14 +78,13 @@ public final class ReplayEngineFactory {
     }
 
     /// ENG-R1119: the typo correction switch of the recorded engine, rebuilt with the conjunction the host passes
-    /// (InputHost `EngineSettingsMapping.configuration(for:variant:)`): the user's D30 (`typoCorrection` in the
-    /// settings line) AND D4 AND the rule's `englishRestore` AND a restore key (D8, `restoreHotkey` not `none`). A
-    /// settings line without `typoCorrection` was written by a build whose engines never corrected (1.0.x, and 1.1.0
-    /// while the host passes the switch off), so its segments replay with the switch off, as they ran. The rule's
-    /// `restoreHotkey`, the fifth input, is not in the focus line yet: the host track records it and reads it here
-    /// when it wires the switch (plan Task 24).
+    /// (InputHost `EngineSettingsMapping.typoCorrection(_:variant:)`), input for input: the user's D30 (`typoCorrection`
+    /// in the settings line) AND D4 AND the rule's `englishRestore` (`er`) AND the rule's `restoreHotkey` (`rhk`) AND a
+    /// restore key (D8, `restoreHotkey` not `none`). A settings line without `typoCorrection` was written by a build
+    /// whose engines never corrected (1.0.x, and 1.1.0 before the host wired the switch), so its segments replay with
+    /// the switch off, as they ran. `ReplayTypoCorrectionTests` pins the agreement with the host for every combination.
     static func typoCorrection(settings: [String: String], focus: TraceLine?) -> Bool {
-        settings["typoCorrection"] == "true" && autoRestore(settings: settings, focus: focus)
+        settings["typoCorrection"] == "true" && autoRestore(settings: settings, focus: focus) && focus?.rhk != false
             && (settings["restoreHotkey"] ?? "none") != "none"
     }
 }

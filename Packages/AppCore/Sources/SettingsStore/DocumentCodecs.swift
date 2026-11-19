@@ -9,7 +9,8 @@
 // - `encode` overlays the payload on the raw object it was read from, so unknown keys survive at every level
 //   (and so does a known key's value this build cannot read, while that setting is unset):
 //   top level, inside `settings`, `englishRestoreLists`, `onboarding`, and inside each learned word, app, override
-//   and macro entry (matched by word, bundle, rule id and macro id) (PLT-R1002).
+//   and macro entry (matched by word, bundle, rule id and macro id) (PLT-R1002). So a 1.0.x build keeps the 1.1.0
+//   keys `settings.typoCorrection` (D30) and `englishRestoreLists.neverCorrect` (ENG-R1118) through its rewrites.
 // - Neither touches `schemaVersion` / `writtenBy`; the store stamps the envelope.
 
 internal import AppModel
@@ -56,6 +57,8 @@ enum SettingsCodec: DocumentCodec {
         let lists = object["englishRestoreLists"]?.objectValue ?? [:]
         user.keepAsTyped = lowercasedSet(lists[SettingListKey.keepAsTyped])
         user.keepVietnamese = lowercasedSet(lists[SettingListKey.keepVietnamese])
+        // ENG-R1118, PRD-R81 (1.1.0): absent in a 1.0.x file, which then reads as an empty list.
+        user.neverCorrect = Set(arrayItems(lists[SettingListKey.neverCorrect]).compactMap(neverCorrectEntry))
         for item in arrayItems(lists[LearnedWordsCodec.key]) {
             switch LearnedWordsCodec.item(from: item) {
             case .learned(let word): user.learnedWords.insert(word)
@@ -87,6 +90,7 @@ enum SettingsCodec: DocumentCodec {
         var lists = raw["englishRestoreLists"]?.objectValue ?? [:]
         lists[SettingListKey.keepAsTyped] = sortedArray(user.keepAsTyped)
         lists[SettingListKey.keepVietnamese] = sortedArray(user.keepVietnamese)
+        lists[SettingListKey.neverCorrect] = sortedArray(user.neverCorrect)
         lists[LearnedWordsCodec.key] = LearnedWordsCodec.encode(
             user.learnedWords, over: arrayItems(raw["englishRestoreLists"]?[LearnedWordsCodec.key]))
         object["englishRestoreLists"] = .object(lists)
@@ -109,7 +113,17 @@ enum SettingsCodec: DocumentCodec {
         for index in LearnedWordsCodec.unreadableIndexes(in: learned) {
             paths.append("englishRestoreLists.\(LearnedWordsCodec.key)[\(index)]")
         }
+        let neverCorrect = arrayItems(object["englishRestoreLists"]?[SettingListKey.neverCorrect])
+        for (index, item) in neverCorrect.enumerated() where neverCorrectEntry(item) == nil {
+            paths.append("englishRestoreLists.\(SettingListKey.neverCorrect)[\(index)]")
+        }
         return paths
+    }
+
+    /// A never-correct entry as `NeverCorrectEntry` accepts it (lowercase ASCII letters); nil for anything else,
+    /// which is dropped on load and left out of the next rewrite (PRD-R81).
+    private static func neverCorrectEntry(_ value: JSONValue) -> String? {
+        value.stringValue.flatMap(NeverCorrectEntry.normalized)
     }
 
     private static func strings(_ value: JSONValue?) -> [String] {

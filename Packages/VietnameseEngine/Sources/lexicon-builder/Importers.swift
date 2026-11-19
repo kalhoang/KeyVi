@@ -19,6 +19,17 @@ enum Scowl {
         categories.flatMap { category in levels.map { "\(category)-words.\($0)" } }
     }
 
+    /// The sources of the guard list of spec/01-engine.md 11A (ENG-R1120): the `words` lists of sizes 40 to 70 and
+    /// the `proper-names` lists of sizes 10 to 70 of the four components, exactly as the pinned archive holds them.
+    /// The archive has no proper-names list at 10, 20 or 55, none for `british` or `british_z` at or below 70, and
+    /// `american` only at 50, so the proper names are six files (docs/decisions/0203-correction-data.md). A literal
+    /// list, so that a member the archive lacks fails the import instead of being skipped.
+    static let guardListFiles: [String] =
+        categories.flatMap { category in [40, 50, 55, 60, 70].map { "\(category)-words.\($0)" } } + [
+            "english-proper-names.35", "english-proper-names.40", "english-proper-names.50",
+            "english-proper-names.60", "english-proper-names.70", "american-proper-names.50",
+        ]
+
     static let licenseFile = "SCOWL-2020.12.07-Copyright.txt"
     static let readmeFile = "SCOWL-2020.12.07-README.txt"
 
@@ -30,11 +41,18 @@ enum Scowl {
         _ = try source.verifiedData(layout)
         let work = try FileIO.temporaryDirectory("scowl")
         defer { try? FileManager.default.removeItem(at: work) }
-        let members = componentFiles.map { "\(release)/final/\($0)" } + ["\(release)/Copyright", "\(release)/README"]
+        let lists = componentFiles + guardListFiles
+        let members = lists.map { "\(release)/final/\($0)" } + ["\(release)/Copyright", "\(release)/README"]
         let archive = layout.cache.appendingPathComponent(source.file).path
+        let listing = String(decoding: try FileIO.run("/usr/bin/tar", ["-tzf", archive]), as: UTF8.self)
+        let present = Set(listing.split(separator: "\n").map(String.init))
+        let missing = members.filter { !present.contains($0) }
+        guard missing.isEmpty else {
+            throw BuilderError("\(source.file) lacks: \(missing.joined(separator: ", "))")
+        }
         _ = try FileIO.run("/usr/bin/tar", ["-xzf", archive, "-C", work.path] + members)
         let extracted = work.appendingPathComponent(release)
-        for file in componentFiles {
+        for file in lists {
             try FileIO.write(
                 try FileIO.read(extracted.appendingPathComponent("final/\(file)")),
                 to: layout.scowlDirectory.appendingPathComponent(file))

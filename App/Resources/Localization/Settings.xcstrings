@@ -1243,6 +1243,78 @@
         }
       }
     },
+    "settings.control.neverCorrectAdd.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds the word you entered to the list."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm từ vừa nhập vào danh sách."
+          }
+        }
+      }
+    },
+    "settings.control.neverCorrectAdd.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to the never-correct list"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thêm vào danh sách không tự sửa"
+          }
+        }
+      }
+    },
+    "settings.control.neverCorrectField.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type the word in letters without marks, then press Add."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhập từ bằng chữ cái không dấu, rồi bấm Thêm."
+          }
+        }
+      }
+    },
+    "settings.control.neverCorrectField.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New word never to correct"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Từ mới cho danh sách không tự sửa"
+          }
+        }
+      }
+    },
     "settings.control.noticeDismiss.accessibilityHint" : {
       "comment" : "VoiceOver hint (PRD-R66).",
       "extractionState" : "manual",
@@ -2247,6 +2319,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kiểu gõ"
+          }
+        }
+      }
+    },
+    "settings.control.typoCorrection.accessibilityHint" : {
+      "comment" : "VoiceOver hint (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turns the correction of mistyped English words on or off."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật hoặc tắt việc tự sửa từ tiếng Anh gõ nhầm."
+          }
+        }
+      }
+    },
+    "settings.control.typoCorrection.accessibilityLabel" : {
+      "comment" : "VoiceOver label (PRD-R66).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix mistyped words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự sửa từ gõ nhầm"
           }
         }
       }
@@ -4322,19 +4430,19 @@
       }
     },
     "settings.reset.body.all" : {
-      "comment" : "PRD-R26: macros only with the checkbox.",
+      "comment" : "PRD-R26: macros only with the checkbox; the word lists (the never-correct list of PRD-R81 included) and the learned words are cleared.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "All settings, per-app rules and remembered choices go back to their defaults, and the learned words are cleared. Your macro list is kept unless you choose to delete it."
+            "value" : "All settings, per-app rules and remembered choices go back to their defaults, and your word lists (Never correct included) and the learned words are cleared. Your macro list is kept unless you choose to delete it."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định, các từ đã học được xóa. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
+            "value" : "Mọi cài đặt, quy tắc theo ứng dụng và lựa chọn đã nhớ trở về mặc định, các danh sách từ (kể cả danh sách Không tự sửa) và các từ đã học được xóa. Danh sách viết tắt được giữ, trừ khi bạn chọn xóa."
           }
         }
       }
@@ -4394,19 +4502,19 @@
       }
     },
     "settings.reset.body.typing" : {
-      "comment" : "PRD-R26: the learned words of ENG-R862 and PRD-R78 go with the Typing pane.",
+      "comment" : "PRD-R26: the learned words of ENG-R862 and PRD-R78 and the never-correct list of PRD-R81 go with the Typing pane.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The choices in this pane go back to their defaults, and your two word lists and the learned words are cleared. Other panes stay as they are."
+            "value" : "The choices in this pane go back to their defaults, and your three word lists (Never correct included) and the learned words are cleared. Other panes stay as they are."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các lựa chọn trong mục này trở về mặc định, hai danh sách từ của bạn và các từ đã học được xóa. Các mục khác giữ nguyên."
+            "value" : "Các lựa chọn trong mục này trở về mặc định, ba danh sách từ của bạn (kể cả danh sách Không tự sửa) và các từ đã học được xóa. Các mục khác giữ nguyên."
           }
         }
       }
@@ -5491,6 +5599,96 @@
         }
       }
     },
+    "settings.typing.neverCorrect.explanation" : {
+      "comment" : "Never-correct list explanation (PRD-R81), verbatim. %@ is the app name; Escape is the default restore key (D8).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words %@ always leaves as you typed them. A word you take back with Escape is added here."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Những từ %@ luôn giữ như bạn gõ, không sửa. Từ bạn lấy lại bằng phím Escape được thêm vào đây."
+          }
+        }
+      }
+    },
+    "settings.typing.neverCorrect.explanationNoKey" : {
+      "comment" : "Never-correct list explanation when the restore key (D8) is off (PRD-R81, PRD-R78). %@ is the app name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words %@ always leaves as you typed them. A word you take back with the restore-last-word key is added here. That key is off in Advanced options."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Những từ %@ luôn giữ như bạn gõ, không sửa. Từ bạn lấy lại bằng phím khôi phục từ vừa gõ được thêm vào đây. Phím này đang tắt trong Tùy chọn nâng cao."
+          }
+        }
+      }
+    },
+    "settings.typing.neverCorrect.explanationOtherKey" : {
+      "comment" : "Never-correct list explanation when the restore key (D8) is not Escape (PRD-R81, PRD-R78). %1$@ is the app name, %2$@ the key in words.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words %1$@ always leaves as you typed them. A word you take back with the restore-last-word key (%2$@) is added here."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Những từ %1$@ luôn giữ như bạn gõ, không sửa. Từ bạn lấy lại bằng phím khôi phục từ vừa gõ (%2$@) được thêm vào đây."
+          }
+        }
+      }
+    },
+    "settings.typing.neverCorrect.invalid" : {
+      "comment" : "Refused never-correct entry (PRD-R81), verbatim.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letters only, without marks, digits or symbols."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ nhận chữ cái không dấu, không có số hay ký hiệu."
+          }
+        }
+      }
+    },
+    "settings.typing.neverCorrect.title" : {
+      "comment" : "Title of the never-correct list (PRD-R81).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never correct"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không tự sửa"
+          }
+        }
+      }
+    },
     "settings.typing.practice.placeholder" : {
       "comment" : "Placeholder; PLT-R901 nothing is stored.",
       "extractionState" : "manual",
@@ -5667,6 +5865,96 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "hòa (truyền thống)"
+          }
+        }
+      }
+    },
+    "settings.typing.typoCorrection.disabledSuffix" : {
+      "comment" : "Ends the D30 explanation while D4 is off and the row is disabled (PRD-R80), verbatim; it names the D4 row by its title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Automatic English restore to use this."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bật Tự khôi phục từ tiếng Anh để dùng."
+          }
+        }
+      }
+    },
+    "settings.typing.typoCorrection.explanation" : {
+      "comment" : "D30 explanation (PRD-R80), verbatim. %@ is the app name; Escape is the default restore key (D8). Q10 (ADR 0010 item 1): a sentence-case word at a sentence start is corrected, so the copy says \"từ viết hoa toàn bộ\" / \"words in all capitals\"; under the other answer it would say \"từ viết hoa\" / \"capitalised words\" (scripts/tests/test_correction_policy.py).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you mistype an English word (androdi, gramar), %@ replaces it with the one word it can be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything typed in Terminal are never changed. Press Escape right after to get the word you typed back."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ nhầm một từ tiếng Anh (androdi, gramar) thì %@ sửa thành từ đúng (android, grammar) khi bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ."
+          }
+        }
+      }
+    },
+    "settings.typing.typoCorrection.explanationNoKey" : {
+      "comment" : "D30 explanation when the restore key (D8) is off (PRD-R80, PRD-R78): no word is corrected without a key to take it back (ENG-R1119). %@ is the app name. The Q10 words as in the explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you mistype an English word (androdi, gramar), %@ replaces it with the one word it can be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything typed in Terminal are never changed. Words are corrected only while the restore-last-word key is on. That key is off in Advanced options."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ nhầm một từ tiếng Anh (androdi, gramar) thì %@ sửa thành từ đúng (android, grammar) khi bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Chỉ sửa khi phím khôi phục từ vừa gõ được bật. Phím này đang tắt trong Tùy chọn nâng cao."
+          }
+        }
+      }
+    },
+    "settings.typing.typoCorrection.explanationOtherKey" : {
+      "comment" : "D30 explanation when the restore key (D8) is not Escape (PRD-R80, PRD-R78). %1$@ is the app name, %2$@ the key in words. The Q10 words as in the explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you mistype an English word (androdi, gramar), %1$@ replaces it with the one word it can be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything typed in Terminal are never changed. Press the restore-last-word key (%2$@) right after to get the word you typed back."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gõ nhầm một từ tiếng Anh (androdi, gramar) thì %1$@ sửa thành từ đúng (android, grammar) khi bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Nhấn phím khôi phục từ vừa gõ (%2$@) ngay sau đó để lấy lại từ bạn đã gõ."
+          }
+        }
+      }
+    },
+    "settings.typing.typoCorrection.title" : {
+      "comment" : "D30 title (section 4, PRD-R80).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix mistyped words"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự sửa từ gõ nhầm"
           }
         }
       }
