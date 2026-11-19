@@ -261,7 +261,50 @@ struct FocusSnapshotPublicationTests {
         #expect(harness.generation.load() == before.generation.next)
     }
 
-    /// A timeout outside the idle path (a focus notification) still publishes: focus may have moved.
+    /// PLT-R340, review of 19/11/2026: a notification read that finds the published element but times out on its
+    /// attributes would publish the same element with a rule resolved without them (bundle level), a rule-change
+    /// boundary in the middle of the word. It teaches nothing, so nothing is published until the breaker opens
+    /// (PLT-R384), as for an idle read.
+    @Test func anAttributeTimeoutOfThePublishedElementPublishesNothingPLTR340() {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.zaloPID, attributes: F.attributes(), notify: nil)
+        harness.start()
+        let before = harness.snapshot
+        harness.ax.setAttributesTimingOut(pid: F.zaloPID, true)
+        for _ in 0..<2 {
+            harness.clock.advance(byMicroseconds: 1_000_000)
+            harness.ax.post(.focusedElementChanged, from: F.zaloPID)
+            harness.sync()
+        }
+        #expect(harness.generation.load() == before.generation)
+        #expect(harness.snapshot.field.axAvailability == .available)
+        #expect(harness.snapshot.fieldHandle == before.fieldHandle)
+        harness.clock.advance(byMicroseconds: 1_000_000)
+        harness.ax.post(.focusedElementChanged, from: F.zaloPID)  // third timeout in 10 s: the breaker opens
+        harness.sync()
+        #expect(harness.snapshot.field.axAvailability == .timedOut)
+        #expect(harness.generation.load() == before.generation.next)
+    }
+
+    /// Guard: another element found while the attribute read times out is a focus change and is published.
+    @Test func anotherElementWithAnAttributeTimeoutIsStillPublishedPLTR340() throws {
+        let harness = FocusHarness()
+        defer { harness.finish() }
+        harness.ax.focus(pid: F.zaloPID, attributes: F.attributes(), notify: nil)
+        harness.start()
+        let before = harness.snapshot
+        let token = try #require(before.fieldHandle?.token)
+        harness.ax.setAttributesTimingOut(pid: F.zaloPID, true)
+        harness.ax.focus(pid: F.zaloPID, attributes: F.attributes(), notify: .focusedElementChanged, element: 1)
+        harness.sync()
+        #expect(harness.snapshot.generation == before.generation.next)
+        #expect(harness.snapshot.field.axAvailability == .timedOut)
+        #expect(harness.snapshot.fieldHandle.map { $0.token != token } == true)
+    }
+
+    /// An element read that times out outside the idle path (a focus notification) still publishes: focus may have
+    /// moved.
     @Test func notificationTimeoutStillPublishes() {
         let harness = FocusHarness()
         defer { harness.finish() }

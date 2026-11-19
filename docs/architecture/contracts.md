@@ -2200,13 +2200,16 @@ public enum LateFocusReason: UInt16, Sendable, Hashable, CaseIterable {
     /// Kept: a readable element observed within the windows; the first job checks it.
     case window = 1
     /// Kept: as `window`, but the word began right after a Command or Control shortcut or a click (PLT-R389) that the
-    /// tap saw after the previous element was published, so the first-key window did not apply.
+    /// tap saw after the previous element was published, and the change was observed at most 1 s after it, so the
+    /// first-key window did not apply.
     case trigger
-    /// Kept without a check: a snapshot of the same process that names no readable element.
+    /// Kept without a check: a snapshot of the same process that names no readable element, or one without a process
+    /// because its system-wide read timed out or failed.
     case unreadable
     /// Kept: the element the word began in came back (its field token) after a snapshot without one; no focus change.
     case sameElement
-    /// Refused: another process (or, after a timed-out read without an app, nothing to compare with).
+    /// Refused: the new snapshot names a process other than the word's (when the word's reference names one), or no
+    /// process because Accessibility answered that no application has the focus.
     case otherProcess
     /// Refused: no element where a readable one is needed (after a timed-out read without an app).
     case noElement
@@ -15576,6 +15579,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var attributes: [Int32: FocusAttributes] = [:]
         var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
+        var attributesTimingOut: Set<Int32> = []
         var unavailable: Set<Int32> = []
         var observers: [Observer] = []
         var nextObserverID: UInt64 = 1
@@ -15630,6 +15634,13 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func setTimingOut(pid: Int32, _ timingOut: Bool) {
         state.withLock {
             if timingOut { $0.timingOut.insert(pid) } else { $0.timingOut.remove(pid) }
+        }
+    }
+
+    /// Only the attribute read of `pid`'s focused element times out: the element itself is found.
+    public func setAttributesTimingOut(pid: Int32, _ timingOut: Bool) {
+        state.withLock {
+            if timingOut { $0.attributesTimingOut.insert(pid) } else { $0.attributesTimingOut.remove(pid) }
         }
     }
 
@@ -15700,7 +15711,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
         let (timingOut, stored) = state.withLock { state in
             state.lastRequest = request
             state.attributeQueries[element.pid, default: 0] += 1
-            return (state.timingOut.contains(element.pid), state.attributes[element.pid])
+            let timingOut = state.timingOut.contains(element.pid) || state.attributesTimingOut.contains(element.pid)
+            return (timingOut, state.attributes[element.pid])
         }
         if timingOut { return .timedOut }
         guard var attributes = stored else { return .unavailable }

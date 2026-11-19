@@ -90,13 +90,16 @@ public enum LateFocusReason: UInt16, Sendable, Hashable, CaseIterable {
     /// Kept: a readable element observed within the windows; the first job checks it.
     case window = 1
     /// Kept: as `window`, but the word began right after a Command or Control shortcut or a click (PLT-R389) that the
-    /// tap saw after the previous element was published, so the first-key window did not apply.
+    /// tap saw after the previous element was published, and the change was observed at most 1 s after it, so the
+    /// first-key window did not apply.
     case trigger
-    /// Kept without a check: a snapshot of the same process that names no readable element.
+    /// Kept without a check: a snapshot of the same process that names no readable element, or one without a process
+    /// because its system-wide read timed out or failed.
     case unreadable
     /// Kept: the element the word began in came back (its field token) after a snapshot without one; no focus change.
     case sameElement
-    /// Refused: another process (or, after a timed-out read without an app, nothing to compare with).
+    /// Refused: the new snapshot names a process other than the word's (when the word's reference names one), or no
+    /// process because Accessibility answered that no application has the focus.
     case otherProcess
     /// Refused: no element where a readable one is needed (after a timed-out read without an app).
     case noElement

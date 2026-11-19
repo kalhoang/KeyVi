@@ -198,7 +198,9 @@ final class FocusCore {
     /// `idle` is the PLT-R382 revalidation on the first key after a typing pause. When it learns nothing it
     /// publishes nothing: a generation bump would reset the word in progress and make the worker discard edits
     /// in flight (PLT-R316). An AX timeout for the current owner teaches nothing about the focus, so the snapshot
-    /// stays until the breaker opens (PLT-R384), which then publishes the `timedOut` context.
+    /// stays until the breaker opens (PLT-R384), which then publishes the `timedOut` context. A read that is not
+    /// forced keeps the snapshot too when it found the published element and only its attributes timed out
+    /// (`attributesTimedOut`, PLT-R340).
     ///
     /// `ifMoved` (PLT-R389 trigger and overlay reads): when the focused app and element are the published ones the
     /// element's attributes are not read and nothing changes. A Command+C or a click then costs two AX messages
@@ -212,8 +214,9 @@ final class FocusCore {
         deferred.lastReadTimedOut = reading.availability == .timedOut
         if idle, learnedNothing(from: reading, at: started) { return .learnedNothing }
         if reading.elementUnmoved { return .unchanged }
-        let match = matchContext(for: reading)
         let sameElement = current.map { $0.pid == reading.pid && $0.element == reading.element?.element } ?? false
+        if !force, sameElement, attributesTimedOut(reading, at: started) { return .unchanged }
+        let match = matchContext(for: reading)
         let sameContext = !force && sameElement && current?.match == match
         if sameContext, !relabels(reading) { return .unchanged }
         let decision = rules.resolve(match)
@@ -240,6 +243,15 @@ final class FocusCore {
         guard reading.availability == .timedOut, current != nil else { return false }
         guard let pid = reading.pid else { return true }
         return pid == current?.pid && !breaker.isOpen(pid: pid, at: instant)
+    }
+
+    /// PLT-R340, review of 19/11/2026: the published element was found, but its attribute read timed out while the
+    /// breaker stays closed. Resolving without the attributes would republish the same element with a rule that
+    /// could not see the field (a rule-change boundary in the middle of the word), and a timeout teaches nothing
+    /// (PLT-R384), so a read that is not forced keeps the snapshot, as an idle read does (`learnedNothing`).
+    private func attributesTimedOut(_ reading: FocusReading, at instant: MonotonicInstant) -> Bool {
+        guard reading.availability == .timedOut, reading.element != nil, let pid = reading.pid else { return false }
+        return !breaker.isOpen(pid: pid, at: instant)
     }
 
     /// True when a snapshot was published.

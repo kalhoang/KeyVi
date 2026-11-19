@@ -25,9 +25,18 @@ enum LateFocusChange {
     /// earlier went into the previous element (VM run of 19/11/2026, `testhost.native.textView`: the previous field's
     /// unfinished word was kept, its check failed and the reset landed mid-word). Not from the first key when the
     /// word began at most this long after a Command or Control shortcut or a click (PLT-R389, whose new focus can
-    /// come a moment later) that the tap saw after the previous element was observed: the trigger is the known cause
-    /// of the change (VM runs of 19/11/2026 at 28aaa256). Return, Tab and Escape move the focus at once, or nothing.
+    /// come a moment later) that the tap saw after the previous element was observed, and the change came within
+    /// `triggerWindowNanoseconds` of it: the trigger is the known cause of the change (VM runs of 19/11/2026 at
+    /// 28aaa256). Return, Tab and Escape move the focus at once, or nothing.
     static let windowNanoseconds: UInt64 = 500_000_000
+
+    /// 1 s: the longest a trigger (PLT-R389) explains a change after it, from the trigger to the change's
+    /// `changedAt` (review of 19/11/2026). Its own reads end 400 ms after it (`FocusSettle.triggerDelays`); the
+    /// first key after it, at most `windowNanoseconds` later for the waiver to apply, asks for one more read; a
+    /// sheet's own focus notification is re-read up to 400 ms after it came (PLT-R380). T5.5 on a loaded guest saw
+    /// the sheet 700 ms after Command+S; 1 s leaves 300 ms over that and stays twice the typing-pause threshold. A
+    /// change observed later is no longer the trigger's: the first-key window applies again (`textView`).
+    static let triggerWindowNanoseconds: UInt64 = 1_000_000_000
 }
 
 /// What a new focus generation means for the word being typed (`KeyPipeline.judgeFocusChange`).
@@ -67,11 +76,16 @@ extension KeyPipeline {
     /// - A snapshot of the same process without a readable element (no field handle, or AX timed out or failed) that
     ///   passes the other conditions keeps the word without a check, since the worker cannot read it; the next
     ///   snapshot is judged against the element the word began in (`testhost.sheet.commandS`). A check still due from
-    ///   an earlier keep waits for a snapshot with a readable element (review of 19/11/2026).
+    ///   an earlier keep goes with the next job whatever the snapshot; without a readable element the worker fails
+    ///   closed (third review of 19/11/2026: no edit goes out unverified).
+    /// - Third review of 19/11/2026: a snapshot without a process after a timed-out or failed system-wide read
+    ///   (`FocusIdentity.appUnknown`) is judged like the item above, against the word's element.
     /// - The first-key window does not apply to a word that began within the window after a Command or Control
     ///   shortcut or a click (PLT-R389, `FocusRevalidation.mayMoveFocusLater`) the tap saw after the previous
-    ///   element was observed (T5.5 on a slow machine). Return, Tab and Escape move the focus at once (the read they
-    ///   ask for finds their element) or move nothing, so they never waive it (review of 19/11/2026).
+    ///   element was observed (T5.5 on a slow machine), for a change observed within
+    ///   `LateFocusChange.triggerWindowNanoseconds` of it (third review). Return, Tab and Escape move the focus at
+    ///   once (the read they ask for finds their element) or move nothing, so they never waive it (review of
+    ///   19/11/2026).
     /// - Review of 19/11/2026: the element found again after Accessibility answered that no element had the focus,
     ///   with keys of the word composed meanwhile (`ObservedState.noElementAnsweredAt`), is kept with a check
     ///   (`backFromNoElement`): those keys may not have gone into it. Timed-out and failed reads do not count.
@@ -112,12 +126,15 @@ extension KeyPipeline {
     private func lateFocusReason(_ focus: FocusSnapshot, identity: FocusIdentity, against reference: FocusReference)
         -> LateFocusReason
     {
-        let sameProcess = identity.pid != ToggleOverride.noProcess && identity.pid == reference.pid
-        guard identity.pid != ToggleOverride.noProcess, sameProcess || reference.appUnknownAfterTimeout else {
-            return .otherProcess
-        }
+        let named = identity.pid != ToggleOverride.noProcess
+        let sameProcess = named && identity.pid == reference.pid
+        // Review of 19/11/2026: no process because the system-wide read timed out or failed. The focus is unknown
+        // there, not elsewhere, and both threads keep the last element across it, so it is judged like a snapshot of
+        // the word's own process without a readable element (against the word's element, both windows).
+        let ownProcess = sameProcess || identity.appUnknown
+        guard ownProcess || (named && reference.appUnknownAfterTimeout) else { return .otherProcess }
         // Without a readable element the process must be known to be the word's own (no check can confirm it).
-        if !identity.readable && !sameProcess { return focus.fieldHandle == nil ? .noElement : .axUnavailable }
+        if !identity.readable && !ownProcess { return focus.fieldHandle == nil ? .noElement : .axUnavailable }
         if focus.pause != nil { return .paused }
         let variant = identity.decision.variant
         guard variant == seen.focus.decision.variant || engineCanContinue(into: variant) else { return .variant }
@@ -125,10 +142,10 @@ extension KeyPipeline {
         guard let lastKey = keyState.lastComposedKeyAt, focus.changedAt.nanoseconds(since: lastKey) <= window else {
             return .lastKeyWindow
         }
-        let elementChanged = sameProcess && reference.token != nil
+        let elementChanged = ownProcess && reference.token != nil
         let fitsFirstKey = keyState.wordStartedAt.map { focus.changedAt.nanoseconds(since: $0) <= window } == true
         if elementChanged && !fitsFirstKey {
-            guard wordFollowedTrigger(after: reference) else { return .firstKeyWindow }
+            guard wordFollowedTrigger(after: reference, changedAt: focus.changedAt) else { return .firstKeyWindow }
             if identity.readable { return .trigger }
         }
         return identity.readable ? .window : .unreadable
@@ -141,13 +158,16 @@ extension KeyPipeline {
         return lastKey > answered
     }
 
-    /// PLT-R389 shortcut or click before the word: seen after the previous element was observed (otherwise that element may be
-    /// the trigger's own change, a sheet's field), and the word's first key followed it within the window.
-    private func wordFollowedTrigger(after reference: FocusReference) -> Bool {
+    /// PLT-R389 shortcut or click before the word: seen after the previous element was observed (otherwise that
+    /// element may be the trigger's own change, a sheet's field), the word's first key followed it within the window,
+    /// and the change was observed after it within `LateFocusChange.triggerWindowNanoseconds` (review of 19/11/2026:
+    /// a move seconds later, deep into a long word, is not the trigger's).
+    private func wordFollowedTrigger(after reference: FocusReference, changedAt: MonotonicInstant) -> Bool {
         guard let trigger = keyState.lastFocusTriggerAt, let start = keyState.wordStartedAt,
-            trigger > reference.changedAt, start >= trigger
+            trigger > reference.changedAt, start >= trigger, changedAt >= trigger
         else { return false }
         return start.nanoseconds(since: trigger) <= LateFocusChange.windowNanoseconds
+            && changedAt.nanoseconds(since: trigger) <= LateFocusChange.triggerWindowNanoseconds
     }
 
     /// One fixed-size record: microseconds from the word's last and first key to the snapshot's `changedAt` (zero
@@ -173,7 +193,13 @@ extension KeyPipeline {
             keyState.wordReference = nil
         }
         if identity.fieldToken != nil {
-            seen.lastElement = FocusReference(identity)
+            var element = FocusReference(identity)
+            // Review of 19/11/2026: the element found without its attributes resolved a rule that could not see the
+            // field; the one resolved with them stays the element's decision.
+            if !identity.readable, let last = seen.lastElement, last.names(identity) {
+                element.decision = last.decision
+            }
+            seen.lastElement = element
             seen.noElementAnsweredAt = nil
         } else if identity.pid != seen.lastElement?.pid && !identity.appUnknown {
             seen.lastElement = nil  // another process, or AX answered that no application has the focus

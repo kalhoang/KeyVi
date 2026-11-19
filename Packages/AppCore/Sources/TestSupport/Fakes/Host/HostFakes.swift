@@ -25,6 +25,7 @@ public final class FakeAXProvider: AXProvider, Sendable {
         var attributes: [Int32: FocusAttributes] = [:]
         var elements: [Int32: UInt16] = [:]
         var timingOut: Set<Int32> = []
+        var attributesTimingOut: Set<Int32> = []
         var unavailable: Set<Int32> = []
         var observers: [Observer] = []
         var nextObserverID: UInt64 = 1
@@ -79,6 +80,13 @@ public final class FakeAXProvider: AXProvider, Sendable {
     public func setTimingOut(pid: Int32, _ timingOut: Bool) {
         state.withLock {
             if timingOut { $0.timingOut.insert(pid) } else { $0.timingOut.remove(pid) }
+        }
+    }
+
+    /// Only the attribute read of `pid`'s focused element times out: the element itself is found.
+    public func setAttributesTimingOut(pid: Int32, _ timingOut: Bool) {
+        state.withLock {
+            if timingOut { $0.attributesTimingOut.insert(pid) } else { $0.attributesTimingOut.remove(pid) }
         }
     }
 
@@ -149,7 +157,8 @@ public final class FakeAXProvider: AXProvider, Sendable {
         let (timingOut, stored) = state.withLock { state in
             state.lastRequest = request
             state.attributeQueries[element.pid, default: 0] += 1
-            return (state.timingOut.contains(element.pid), state.attributes[element.pid])
+            let timingOut = state.timingOut.contains(element.pid) || state.attributesTimingOut.contains(element.pid)
+            return (timingOut, state.attributes[element.pid])
         }
         if timingOut { return .timedOut }
         guard var attributes = stored else { return .unavailable }
