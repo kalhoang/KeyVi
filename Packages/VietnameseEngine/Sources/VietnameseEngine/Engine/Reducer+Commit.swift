@@ -50,7 +50,8 @@ extension Engine {
             memoryContext: Self.memoryContext(state.history),
             phrases: commitPolicy.collisionRules ? PhraseChain(history: state.history) : PhraseChain(),
             inVietnameseText: configuration.appContext == .code && commitPolicy.isInVietnameseText(state.history),
-            atLineStart: CommitPolicy.isLineStart(state.history))
+            atLineStart: CommitPolicy.isLineStart(state.history),
+            characterBefore: commitPolicy.corrector == nil ? nil : CommitContext.characterBefore(state.history))
         var result = commitResult(for: token, context: context)
         // RV5 of ENG-R828 (ENG-R850): a code-only word that L9 restored as the first word of its line (no token since
         // the start of input, Return, Tab or a reset, only spaces and the openers of prose before it) remembers
@@ -60,9 +61,14 @@ extension Engine {
         {
             result.collision.vietnameseAtLineStart = commitPolicy.keepsVietnameseAfterCodeRule(inputs, context: context)
         }
+        // Section 11A: the typo correction, after the decision and before the edit is formed (ENG-R1110). A commit
+        // never both corrects and revises (ENG-R1116).
+        let corrected = correct(&result, token: token, context: context)
         var action = result.action
         var revision: RevisionReason?
-        if mayRevise, let revised = revisePrevious(result, display: token.display, context: context, &state) {
+        if mayRevise, !corrected,
+            let revised = revisePrevious(result, display: token.display, context: context, &state)
+        {
             revision = revised.reason
             action = .edit(revised.edit, thenPassThrough: true)
         }
@@ -79,6 +85,24 @@ extension Engine {
         return EngineOutput(
             action: action, composingText: "", decision: result.decision, learning: result.learning,
             revision: revision, collisionSignals: signals)
+    }
+
+    /// Section 11A: replaces the decided result with the typo correction when there is one (ENG-R1115: one edit of
+    /// the display, the correction followed by the committing key; `corrected(rule)`; ENG-R1116: English for the
+    /// run, no collision signal and no learning signal). Returns whether it did.
+    private func correct(_ result: inout CommitResult, token: ActiveToken, context: CommitContext) -> Bool {
+        guard let corrector = commitPolicy.corrector, let inputs = result.inputs,
+            let correction = corrector.correction(
+                for: inputs, decision: result.decision, token: token, context: context)
+        else { return false }
+        result.text = correction.text
+        result.decision = .corrected(correction.rule)
+        result.action = .edit(DisplayEdit.edit(from: token.display, to: correction.text), thenPassThrough: true)
+        result.language = .english
+        result.learning = nil
+        result.strongSignal = nil
+        result.collision.listWord = nil
+        return true
     }
 
     /// ENG-R864: the weak signal a committed token gives once its decision is final untouched, nil when the
