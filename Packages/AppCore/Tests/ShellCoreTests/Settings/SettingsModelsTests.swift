@@ -212,6 +212,22 @@ import VietnameseEngineData
         #expect(PaneReset.allCases.map(\.pane) == [.general, .typing, .apps, .macros])
         #expect(SettingsPaneKind.allCases.map(\.paneReset) == [.general, .typing, .apps, .macros, nil, nil, nil])
     }
+
+    @Test func theTypingAndTheFullResetSayTheyClearTheNeverCorrectList_PRDR81() throws {
+        // PRD-R81, PRD-R26: the list is cleared by both resets like the keep lists, and both confirmations say so,
+        // naming the list by its title.
+        let l = try Localizers()
+        for target in [ResetTarget.pane(.typing), .all] {
+            let body = ResetRequest(target: target).body
+            #expect(l.vi.string(body).contains(l.vi.string(SettingsText.neverCorrectTitle)), "\(target)")
+            #expect(l.en.string(body).contains(l.en.string(SettingsText.neverCorrectTitle)), "\(target)")
+            #expect(l.vi.string(body).contains("các từ đã học") && l.en.string(body).contains("learned words"))
+        }
+        for target in [ResetTarget.pane(.general), .pane(.apps), .pane(.macros)] {
+            #expect(
+                !l.vi.string(ResetRequest(target: target).body).contains(l.vi.string(SettingsText.neverCorrectTitle)))
+        }
+    }
 }
 
 @Suite struct StoreNoticePresentationTests {

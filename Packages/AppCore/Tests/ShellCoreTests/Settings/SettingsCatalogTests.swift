@@ -201,6 +201,53 @@ import Testing
         }
     }
 
+    @Test func theExplanationsNameTheKeyAndEndWithTheSuffixWhileD4IsOff_PRDR80_PRDR81() throws {
+        // The rows' text: the app name as the argument, the restore key as PRD-R78 names it, and the D4 suffix.
+        let l = try Localizers()
+        var user = UserSettings()
+        for localizer in [l.vi, l.en] {
+            for item in [SettingItem.typoCorrection, .neverCorrect] {
+                user.restoreHotkey = .unset
+                let escape = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(escape == localizer.format(item.explanation, "{{AppName}}"), "\(item): Escape, the draft")
+                user.restoreHotkey = .set(.keyCombo(modifiers: [.control], keyCode: .space))
+                let other = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(other.contains("Control + ") && other.contains("{{AppName}}"), "\(item): \(other)")
+                #expect(!other.contains("Escape"), "\(item) names another key")
+                user.restoreHotkey = .set(nil)
+                let off = item.explanationText(appName: "{{AppName}}", settings: user.resolved(), localizer)
+                #expect(off.contains(localizer.string(SettingsText.advanced)), "\(item) says where the key is off")
+                #expect(!off.contains("Escape") && off.contains("{{AppName}}"), "\(item): \(off)")
+                for text in [escape, other, off] { #expect(!text.contains("\n") && !text.contains("%"), "\(text)") }
+            }
+        }
+        // Q10 (answered 19/11/2026, ADR 0010 item 1): every D30 variant says words in all capitals.
+        for key in [
+            SettingsText.typoCorrectionExplanation, .typoCorrectionExplanationOtherKey, .typoCorrectionExplanationNoKey,
+        ] {
+            #expect(
+                l.vi.string(key).contains("từ viết hoa toàn bộ") && l.en.string(key).contains("words in all capitals"))
+        }
+        // While D4 is off, D30's explanation ends with the suffix; the list's never does.
+        user = UserSettings()
+        user.englishRestore = .set(false)
+        let disabled = SettingItem.typoCorrection.explanationText(appName: "A", settings: user.resolved(), l.vi)
+        #expect(disabled.hasSuffix(". Bật Tự khôi phục từ tiếng Anh để dùng."))
+        #expect(
+            SettingItem.typoCorrection.explanationText(appName: "A", settings: user.resolved(), l.en)
+                .hasSuffix(". Turn on Automatic English restore to use this."))
+        #expect(
+            SettingItem.neverCorrect.explanationText(appName: "A", settings: user.resolved(), l.vi)
+                == l.vi.format(SettingItem.neverCorrect.explanation, "A"))
+        // The suffix names the D4 row by its title.
+        #expect(
+            l.vi.string(SettingsText.typoCorrectionDisabledSuffix).contains(
+                l.vi.string(SettingsText.englishRestoreTitle)))
+        #expect(
+            l.en.string(SettingsText.typoCorrectionDisabledSuffix).contains(
+                l.en.string(SettingsText.englishRestoreTitle)))
+    }
+
     @Test func d30AndTheListNameTheRestoreKeyTheWayPRDR78Does() {
         // PRD-R80, PRD-R81: Escape by default, another key in words, or that the key is off, as the learned-words
         // sheet's empty state does (PRD-R78).
