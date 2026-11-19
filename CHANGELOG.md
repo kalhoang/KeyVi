@@ -10,6 +10,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.0.1-beta.2] - 2026-11-19
+
 ### Fixed
 
 - When an app moves the focus to another field by itself, the first word you type there loses its marks or gets a wrong one less often ("tieengs" instead of "tiếng").
