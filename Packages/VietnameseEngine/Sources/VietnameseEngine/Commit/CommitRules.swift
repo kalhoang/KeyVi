@@ -80,10 +80,15 @@ package struct CommitContext: Sendable {
     /// Rule L9c may read the learned memory (ENG-R863). Off only where rule L4 asks what the keys of an escaped form
     /// commit on their own: the memory decides collision words, never an escape (ENG-R877, REG-37).
     package var readsMemory = true
+    /// ENG-R1112: the character right before the token's first letter (the newest boundary character of the
+    /// history), nil at the start of the history: the start of a field, of a line after Return or Tab, or after a
+    /// reset (`characterBefore(_:)`). Read only by the typo correction.
+    package var characterBefore: Character?
 
     package init(
         runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
-        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false
+        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false,
+        characterBefore: Character? = nil
     ) {
         self.runIsEnglish = runIsEnglish
         self.boundary = boundary
@@ -91,6 +96,17 @@ package struct CommitContext: Sendable {
         self.phrases = phrases
         self.inVietnameseText = inVietnameseText
         self.atLineStart = atLineStart
+        self.characterBefore = characterBefore
+    }
+
+    /// The character right before a token that starts after `history`: its newest boundary character, or the last
+    /// character of its newest token when no boundary follows it; nil when the history is empty.
+    package static func characterBefore(_ history: History) -> Character? {
+        switch history.last {
+        case .boundary(let character)?: return character
+        case .token(let token)?: return token.committedText.last
+        case nil: return nil
+        }
     }
 }
 
@@ -137,6 +153,10 @@ package struct CommitPolicy: Sendable {
     /// RV5 of ENG-R828 is on: the code context with `lineStartRevision` (the user's D29, ENG-R850). It does not
     /// depend on `lookaheadRevision`, which the rules turn off in every code-context app (PLT-R357).
     package let lineRevision: Bool
+    /// The typo correction of section 11A, nil when `typoCorrection` is off (ENG-R1119), in the `code` context
+    /// (ENG-R1112) or with auto restore off (ENG-R802: the English data is not consulted). The host ANDs D4 in
+    /// anyway; the last two conditions protect consumers that build their own configuration.
+    package let corrector: TypoCorrector?
 
     /// The composition rules of the configuration: rule L4 composes the keys of an escaped form to learn whether
     /// the escape was needed (amended by the product owner on 17/11/2026, REG-37).
@@ -149,6 +169,8 @@ package struct CommitPolicy: Sendable {
         appContext = configuration.appContext
         collisionRules = configuration.lookaheadRevision
         lineRevision = configuration.appContext == .code && configuration.lineStartRevision
+        let corrects = configuration.typoCorrection && configuration.appContext == .general && configuration.autoRestore
+        corrector = corrects ? TypoCorrector(resources: resources, configuration: configuration) : nil
     }
 
     /// "R is English" (8.1): the lowercased word is in the English lexicon or the tech-always list.

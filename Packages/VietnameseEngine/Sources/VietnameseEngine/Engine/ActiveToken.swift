@@ -10,14 +10,28 @@ package enum UserChoice: UInt8, Sendable, Hashable {
     case kept
 }
 
-/// A macro expansion re-opened from history (ENG-R1104): its raw keys are the span as typed plus any key
-/// typed into it since.
-package struct MacroTokenKeys: Sendable, Hashable {
-    package private(set) var raw: [UInt8]
-    /// Keys appended after the expansion; Backspace takes them back first.
-    package private(set) var appendedCount = 0
+/// What a literal token stands for: a macro expansion (ENG-R1104) or a typo correction (ENG-R1115, ENG-R1117).
+package enum LiteralKind: Sendable, Hashable {
+    case macro
+    /// The correction of section 11A and the rule of 8.1 that would have decided the token.
+    case corrected(CommitRule)
+}
 
-    package init(span: [UInt8]) { raw = span }
+/// The keys of a literal token, a macro expansion (ENG-R1104) or a typo correction (ENG-R1115), re-opened from
+/// history: its raw keys are the span as typed plus any key typed into it since.
+package struct LiteralTokenKeys: Sendable, Hashable {
+    package private(set) var raw: [UInt8]
+    /// Keys appended after the expansion or the correction; Backspace takes them back first.
+    package private(set) var appendedCount = 0
+    package let kind: LiteralKind
+
+    package init(span: [UInt8], kind: LiteralKind) {
+        raw = span
+        self.kind = kind
+    }
+
+    /// The keys as typed before the expansion or the correction, without the keys appended since.
+    package var span: ArraySlice<UInt8> { raw.dropLast(appendedCount) }
 
     mutating func append(_ key: UInt8) {
         raw.append(key)
@@ -42,8 +56,12 @@ package struct ActiveToken: Sendable, Hashable {
     /// the toggle can bring the composed form back (ENG-R701, ENG-R704). Cleared by the first Backspace
     /// after which the remaining raw keys compose to the text shown (ENG-R1005).
     package private(set) var restoredByRule = false
-    /// Non-nil for a macro expansion (ENG-R1104); `composition` is then unused.
-    package private(set) var macroKeys: MacroTokenKeys?
+    /// Non-nil for a literal token: a macro expansion (ENG-R1104), whose `composition` is then unused, or a typo
+    /// correction (ENG-R1117), whose `composition` holds the raw keys (so the macro span of ENG-R1102 reads them).
+    package private(set) var literalKeys: LiteralTokenKeys?
+    /// Set when the toggle undid a typo correction (ENG-R1117): the token shows its raw keys as the user's choice,
+    /// and its next commit reports `kept(userChoice)` (rule L1) whatever rule L0 would say.
+    package private(set) var correctionUndone = false
     /// Set when the token is re-opened showing the commit spelling `uơ` of an open `ươ` (ENG-R532,
     /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
     /// display again.
@@ -77,7 +95,15 @@ package struct ActiveToken: Sendable, Hashable {
     /// expansion, literal.
     package init(macroSpan: [UInt8], expansion: String) {
         display = expansion
-        macroKeys = MacroTokenKeys(span: macroSpan)
+        literalKeys = LiteralTokenKeys(span: macroSpan, kind: .macro)
+    }
+
+    /// ENG-R1115, ENG-R1117: the history token of a typo correction: the raw keys of `token` as typed, display = the
+    /// correction, literal, with the rule of 8.1 that would have decided it.
+    package init(correcting token: ActiveToken, correction: String, rule: CommitRule) {
+        composition = token.composition
+        display = correction
+        literalKeys = LiteralTokenKeys(span: token.composition.raw, kind: .corrected(rule))
     }
 
     /// This token re-opened from history with `display` on screen (ENG-R1002); `revisionRestored` is the
@@ -113,22 +139,35 @@ package struct ActiveToken: Sendable, Hashable {
     /// (ENG-R864).
     package var revisionRestored: Bool? { revision?.raw == rawText ? revision?.restored : nil }
 
-    package var isMacro: Bool { macroKeys != nil }
+    package var isMacro: Bool { literalKeys?.kind == .macro }
+
+    /// The rule of a typo correction re-opened from history (ENG-R1117), nil for any other token.
+    package var correctedRule: CommitRule? {
+        guard case .corrected(let rule)? = literalKeys?.kind else { return nil }
+        return rule
+    }
 
     /// The token shows its raw keys: restored by the user, or by a commit rule and not kept since.
     package var showsRawKeys: Bool {
-        !isMacro && (userChoice == .restored || (userChoice == .none && restoredByRule))
+        literalKeys == nil && (userChoice == .restored || (userChoice == .none && restoredByRule))
     }
 
-    /// Literal for the rest of the token: literal mode (4.5), restored (ENG-R701) or a macro expansion
-    /// (ENG-R1104).
-    package var isLiteral: Bool { isMacro || composition.isLiteral || showsRawKeys }
+    /// Literal for the rest of the token: literal mode (4.5), restored (ENG-R701), a macro expansion (ENG-R1104)
+    /// or a typo correction (ENG-R1117).
+    package var isLiteral: Bool { literalKeys != nil || composition.isLiteral || showsRawKeys }
 
-    package var isEmpty: Bool { isMacro ? display.isEmpty : composition.raw.isEmpty }
+    package var isEmpty: Bool { literalKeys != nil ? display.isEmpty : composition.raw.isEmpty }
 
     package var rawText: String {
-        guard let macroKeys else { return composition.rawText }
-        return ASCII.string(macroKeys.raw)
+        guard let literalKeys else { return composition.rawText }
+        return ASCII.string(literalKeys.raw)
+    }
+
+    /// The typed word of a typo correction, lowercased: the keys as typed before the correction, without the keys
+    /// appended since (ENG-R1118); nil for any other token.
+    package var correctedWord: String? {
+        guard let literalKeys, case .corrected = literalKeys.kind else { return nil }
+        return ASCII.string(Array(literalKeys.span), lowercasing: true)
     }
 
     /// The composed form (the display the rules give, whatever the restore flags say).
@@ -141,8 +180,9 @@ package struct ActiveToken: Sendable, Hashable {
     /// ENG-R611). `capsLock` is the key's Caps Lock state (ENG-R906).
     package mutating func append(_ key: UInt8, capsLock: Bool = false, rules: ComposerRules) -> KeyAction {
         showsCommittedSpelling = false
-        if macroKeys != nil {
-            macroKeys?.append(key)
+        if literalKeys != nil {
+            literalKeys?.append(key)
+            if correctedRule != nil { composition.append(key, capsLock: capsLock, rules: rules) }
             display.unicodeScalars.append(Unicode.Scalar(key))
             return .passThrough
         }
@@ -163,9 +203,10 @@ package struct ActiveToken: Sendable, Hashable {
     /// (ENG-R1005). Long literal tails shrink in place (no full render). A macro expansion loses its last
     /// character (ENG-R1104), and a key typed into it since the expansion if there is one.
     package mutating func backspace(rules: ComposerRules) -> KeyAction {
-        if macroKeys != nil {
+        if let keys = literalKeys {
             display.removeLast()
-            macroKeys?.dropAppendedKey()
+            literalKeys?.dropAppendedKey()
+            if correctedRule != nil, keys.appendedCount > 0 { composition.removeLastKey(rules: rules) }
             return .passThrough
         }
         if showsRawKeys {
@@ -206,7 +247,7 @@ package struct ActiveToken: Sendable, Hashable {
     package mutating func toggleRestore(rules: ComposerRules) -> KeyAction? {
         showsCommittedSpelling = false
         signalledRaw = nil
-        if let macroKeys { return restoreMacroSpan(macroKeys, rules: rules) }
+        if let literalKeys { return restoreLiteralSpan(literalKeys, rules: rules) }
         let raw = rawText
         if display != raw {
             // ENG-R701 first branch, ENG-R705: the raw keys exactly as typed.
@@ -225,16 +266,29 @@ package struct ActiveToken: Sendable, Hashable {
         return .edit(edit, thenPassThrough: false)
     }
 
-    /// ENG-R1104: the toggle on a re-opened expansion brings back the span as typed. The token becomes an
-    /// ordinary user-restored token whose raw keys are the span, so it behaves like any restored token
-    /// from then on (literal, kept at commit by L1, never expanded again).
-    private mutating func restoreMacroSpan(_ keys: MacroTokenKeys, rules: ComposerRules) -> KeyAction? {
+    /// ENG-R1104, ENG-R1117: the toggle on a re-opened expansion or correction brings back the keys as typed. The
+    /// token becomes an ordinary user-restored token whose raw keys are those keys, so it behaves like any restored
+    /// token from then on (literal, kept at commit by L1, never expanded or corrected again).
+    private mutating func restoreLiteralSpan(_ keys: LiteralTokenKeys, rules: ComposerRules) -> KeyAction? {
         let raw = rawText
         guard display != raw else { return nil }
         let edit = DisplayEdit.graphemeEdit(from: display, to: raw)
-        self = ActiveToken(
-            composition: Composition(replaying: keys.raw, rules: rules), display: raw, userChoice: .restored,
-            restoredByRule: false)
+        self = Self.restored(keys, rules: rules)
         return .edit(edit, thenPassThrough: false)
+    }
+
+    /// ENG-R1117: this corrected token as the toggle leaves it once it undid the correction (the history token of
+    /// `Engine.undoCorrection`); the token itself for any other token.
+    package func undoingCorrection(rules: ComposerRules) -> ActiveToken {
+        guard let literalKeys, correctedRule != nil else { return self }
+        return Self.restored(literalKeys, rules: rules)
+    }
+
+    private static func restored(_ keys: LiteralTokenKeys, rules: ComposerRules) -> ActiveToken {
+        var token = ActiveToken(
+            composition: Composition(replaying: keys.raw, rules: rules), display: ASCII.string(keys.raw),
+            userChoice: .restored, restoredByRule: false)
+        if case .corrected = keys.kind { token.correctionUndone = true }
+        return token
     }
 }

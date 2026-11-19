@@ -36,9 +36,10 @@ enum FuzzEnvironment {
 }
 
 /// The fuzz campaign of spec 13.6 and QA-R7 / QA-R8: seeded random streams over the full alphabet, every
-/// option combination with and without a random 1,000-trigger macro table, and long tokens up to 100,000
-/// keys. The default `swift test` sends `ENGINE_FUZZ_EVENTS` (1,000,000) stream events plus about 420,000
-/// long-token events, all from fixed seeds; every invariant is checked after every event
+/// option combination with and without a random 1,000-trigger macro table, with the typo correction off (the
+/// 1.0 behaviour) and on with the correction fixture and a random never-correct list (ENG-T54), and long tokens
+/// up to 100,000 keys. The default `swift test` sends `ENGINE_FUZZ_EVENTS` (1,000,000) stream events with the
+/// switch off and as many with it on, plus about 420,000 long-token events, all from fixed seeds; every invariant is checked after every event
 /// (`InvariantChecker`).
 @Suite("Fuzz campaign (13.6, QA-R7, QA-R8)")
 struct FuzzTests {
@@ -47,7 +48,9 @@ struct FuzzTests {
     @Test("Random streams, every option combination (ENG-T30 to ENG-T37)", arguments: Array(combinations.indices))
     func randomStreams(_ index: Int) throws {
         let combination = Self.combinations[index]
-        let events = (FuzzEnvironment.streamEvents + Self.combinations.count - 1) / Self.combinations.count
+        // Each half (the typo correction off, then on, ENG-T54) gets the events of the 1.0 campaign.
+        let half = Self.combinations.count / 2
+        let events = (FuzzEnvironment.streamEvents + half - 1) / half
         let seed = 0x0136_0000 &+ UInt64(index) &+ FuzzEnvironment.seedOffset
         let statistics: FuzzStatistics
         do {
@@ -68,6 +71,34 @@ struct FuzzTests {
             #expect(statistics.restoredCommits > 0, "\(combination)")
         }
         #expect(statistics.longestToken >= 33, "\(combination)")
+        // ENG-T54: the on-half corrects and undoes corrections where section 11A allows it; the off-half never.
+        let configuration = combination.configuration
+        if configuration.typoCorrection, configuration.autoRestore, configuration.appContext == .general,
+            combination.fixtureResources
+        {
+            #expect(statistics.correctedCommits > 0 && statistics.correctionUndos > 0, "\(combination)")
+        } else {
+            #expect(statistics.correctedCommits == 0 && statistics.correctionUndos == 0, "\(combination)")
+        }
+    }
+
+    /// ENG-T54, ENG-R1119: the first half of the combinations is the 1.0 campaign with the switch off, the second
+    /// half the same combinations with it on.
+    @Test("The combinations run the typo correction off and on (ENG-T54)")
+    func combinationsRunTheSwitchOffAndOn() {
+        let half = Self.combinations.count / 2
+        #expect(half == 80)
+        for index in 0..<half {
+            let off = Self.combinations[index]
+            let on = Self.combinations[half + index]
+            #expect(!off.configuration.typoCorrection && off.neverCorrect.isEmpty)
+            #expect(on.configuration.typoCorrection)
+            var expected = on.configuration
+            expected.typoCorrection = false
+            #expect(expected == off.configuration && on.withMacros == off.withMacros)
+            #expect(on.fixtureResources == off.fixtureResources)
+        }
+        #expect(Self.combinations[half...].contains { !$0.neverCorrect.isEmpty })
     }
 
     static let longTokenCases: [(length: Int, vni: Bool, singleKey: Bool)] = {
@@ -118,7 +149,7 @@ struct FuzzTests {
     /// ENG-T33: the same stream gives the same outputs, run after run.
     @Test("Determinism and replay (ENG-T33)")
     func determinism() throws {
-        for index in [0, 17, 72] {
+        for index in [0, 17, 72, 80, 96] {
             let combination = Self.combinations[index]
             let runs = try (0..<2).map { _ in
                 try FuzzCampaign.run(
@@ -160,7 +191,7 @@ struct FuzzTests {
                 #expect(capsLockBrackets == 0, "\(combination)")
             }
         }
-        #expect(bracketCombinations == 32)
+        #expect(bracketCombinations == 64)
     }
 
     @Test("The random macro table has 1,000 triggers, punctuation-only ones included, NFC expansions")

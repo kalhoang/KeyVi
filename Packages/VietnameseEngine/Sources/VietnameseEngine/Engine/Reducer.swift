@@ -20,8 +20,10 @@ extension Engine {
     package func process(_ state: inout EngineState, _ event: EngineEvent) -> EngineOutput {
         let followsToggle = state.previousEventWasRestoreToggle
         let followsRevision = state.previousEventRevised
+        let followsCorrection = state.previousEventCorrected
         state.previousEventWasRestoreToggle = false
         state.previousEventRevised = false
+        state.previousEventCorrected = false
         switch event {
         case .key(let input):
             switch TokenKey.classify(input, rules: rules) {
@@ -36,6 +38,7 @@ extension Engine {
             state.previousEventWasRestoreToggle = true
             state.newestTokenRevisable = false
             if followsRevision, !followsToggle, state.active == nil, let undo = undoRevision(&state) { return undo }
+            if followsCorrection, !followsToggle, state.active == nil, let undo = undoCorrection(&state) { return undo }
             return toggleRestore(&state, followsToggle: followsToggle)
         case .reset:
             // ENG-R1011, ENG-R831: drop the token, the history and the run's language window; edit
@@ -57,14 +60,18 @@ extension Engine {
 
     /// The restore toggle (7.2). ENG-R702: right after another toggle it passes through and changes
     /// nothing. ENG-R703: with no active token, or when neither branch of ENG-R701 applies, it passes
-    /// through so the key keeps its normal meaning.
+    /// through so the key keeps its normal meaning. ENG-R1117: on a re-opened typo correction it brings the
+    /// keys as typed back and carries the never-correct signal of the typed word (ENG-R1118).
     private func toggleRestore(_ state: inout EngineState, followsToggle: Bool) -> EngineOutput {
         guard !followsToggle, var token = state.active else {
             return EngineOutput(action: .passThrough, composingText: state.activeDisplay)
         }
         state.active = nil
+        let correctedWord = token.correctedWord
         let action = token.toggleRestore(rules: rules)
         state.active = token
-        return EngineOutput(action: action ?? .passThrough, composingText: token.display)
+        var output = EngineOutput(action: action ?? .passThrough, composingText: token.display)
+        if action != nil, let correctedWord { output.learning = .neverCorrect(raw: correctedWord) }
+        return output
     }
 }

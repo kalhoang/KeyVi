@@ -16,6 +16,9 @@ public struct FuzzEventSource: Sendable {
     public let bracketKeys: Bool
     /// Triggers of the macro table in use (typed as moves so that expansions are frequent).
     public let triggers: [String]
+    /// Typos typed as moves when the typo correction is on (section 11A), so that corrections, their undo and
+    /// their re-opening are frequent (ENG-T54); empty otherwise, which leaves the streams of 1.0 unchanged.
+    public let typos: [String]
     /// The longest burst of token keys without a boundary.
     public let maximumBurst: Int
 
@@ -35,8 +38,20 @@ public struct FuzzEventSource: Sendable {
         "hoa2n", "nguye64n", "tie61ng", "o@gmail", "u7o7",
     ]
 
-    /// A stream for `configuration` from `seed`; `triggers` are typed as moves, bursts stay within `maximumBurst` keys.
-    public init(seed: UInt64, configuration: EngineConfiguration, triggers: [String] = [], maximumBurst: Int = 4_096) {
+    /// Typos of the 13.12 rows and of the correction fixture's words (`SpecFixtures.correctionResources`): some are
+    /// corrected, some have several fits or none, some are one key from Vietnamese (ENG-R1125), one is in sentence
+    /// case. Plain letters, so the same list serves Telex and VNI.
+    public static let correctionTypos = [
+        "androdi", "whcih", "gramar", "helpp", "Androdi", "thier", "pahir", "htach", "recieve", "abotu", "untill",
+        "wrold", "servet", "hwllo", "tomorow", "okayy", "chihns", "stilll",
+    ]
+
+    /// A stream for `configuration` from `seed`; `triggers` and `typos` are typed as moves, bursts stay within
+    /// `maximumBurst` keys.
+    public init(
+        seed: UInt64, configuration: EngineConfiguration, triggers: [String] = [], typos: [String] = [],
+        maximumBurst: Int = 4_096
+    ) {
         generator = SeededGenerator(seed: seed)
         switch configuration.inputMethod {
         case .telex(let options):
@@ -47,6 +62,7 @@ public struct FuzzEventSource: Sendable {
             bracketKeys = false
         }
         self.triggers = triggers
+        self.typos = typos
         self.maximumBurst = maximumBurst
     }
 
@@ -82,6 +98,7 @@ public struct FuzzEventSource: Sendable {
         case 50..<75 where !triggers.isEmpty: trigger()
         case 75..<90: backspaceRun()
         case 90..<95: pending = [.restoreToggle, .restoreToggle]
+        case 95..<130 where !typos.isEmpty: typo()
         default: pending = [single()]
         }
     }
@@ -125,6 +142,19 @@ public struct FuzzEventSource: Sendable {
         for character in text { pending.append(key(character)) }
         pending.append(boundary())
         if generator.chance(1, in: 6) { pending += [.backspace, .backspace, .restoreToggle] }
+    }
+
+    /// A space, a typo, then a boundary; sometimes the restore toggle (the undo of ENG-R1117) or Backspace (the
+    /// re-opening), followed by the toggle, a letter or a boundary.
+    private mutating func typo() {
+        pending = [key(" ")] + KeyNotation.events(generator.pick(typos)) + [boundary()]
+        switch generator.nextInt(below: 6) {
+        case 0: pending.append(.restoreToggle)
+        case 1: pending += [.backspace, .restoreToggle]
+        case 2: pending += [.backspace, key(generator.pick(FuzzAlphabet.composingLetters)), boundary()]
+        case 3: pending += [.backspace, boundary()]
+        default: break
+        }
     }
 
     /// Backspace runs walk back over boundaries into committed tokens (10.1).

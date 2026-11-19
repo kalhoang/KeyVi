@@ -18,7 +18,15 @@ The check fails (exit status 1) when, after calibration:
   the clock (about 42 ns on Apple silicon), so a slowdown of at most `--noise-floor` nanoseconds (default
   100) is never a failure;
 - the bundled resources, when present, load in more than 50 ms or add more than 8 MB (ENG-R1231);
+- the commits of the typo correction candidates (ENG-T55), when the result has them, exceed 50 µs at p99 or
+  200 µs in the worst case (ENG-R1122) by more than the tolerance. Both read each commit's fastest time over
+  the runs (`p99Stable`, `max`): the candidates are a few thousand commits, so the p99 of one run on a shared
+  machine is decided by preemption, not by the engine;
 - the result does not come from a release build.
+
+`Scripts/benchmark.sh` also runs this check with the result of `--typo-correction off` as the baseline and the
+result of `--typo-correction on` as the result: the ENG-T40 percentiles with the switch on must stay within the
+tolerance of those with it off (ENG-R1122, ENG-R1233).
 """
 
 import argparse
@@ -80,6 +88,21 @@ def main():
           f"{microseconds(budget['max']):>12}")
     if worst > budget["max"] * tolerance:
         failures.append(f"worst case {microseconds(worst)} exceeds {microseconds(budget['max'])}")
+
+    correction = result.get("correction")
+    if correction:
+        p99_key = "p99Stable" if "p99Stable" in correction else "p99"
+        for key, budget_key, label in ((p99_key, "correctionP99", "p99"), ("max", "correctionMax", "max")):
+            calibrated = correction[key] / factor
+            limit = budget.get(budget_key, 50_000 if key == "p99" else 200_000)
+            print(f"{'corr ' + label:<8} {microseconds(correction[key]):>12} {microseconds(calibrated):>12} "
+                  f"{microseconds(limit):>12}")
+            if calibrated > limit * tolerance:
+                failures.append(f"typo correction {label} {microseconds(calibrated)} exceeds {microseconds(limit)}")
+            elif calibrated > limit:
+                print(f"warning: typo correction {label} is over the budget within the tolerance")
+    else:
+        print("note: no typo correction figures; ENG-R1122 not checked")
 
     resources = result["resources"]
     if resources["available"]:
