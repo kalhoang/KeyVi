@@ -902,6 +902,15 @@ everything after `833501bb` under the paths of its section 1: the final fix roun
 the final fix round, `Scripts/benchmark.sh` runs both comparisons before it exits, so the switch-on half no longer needs
 a hand run.
 
+*Control run of the ENG-T40 baseline (19/11/2026, 18:29, load average 3.6 to 4.3).* Release builds of the tags `v1.0.0`
+and `v1.0.1-beta.2` (from `git archive`, no worktree touched) ran the engine benchmark alternately, two runs each:
+stable p99 1.375 to 1.416 µs and p99.9 2.458 to 2.541 µs for both tags, p50 125 ns for both, the reference loop within
+6 % of the baseline's. The code that produced `Benchmarks/baseline.json` on 13/11/2026 no longer meets it on this
+machine, so the failure is the machine's state (the long-running build of another project, a macOS update), not a
+regression of 1.0.1 or 1.1.0. The ENG-T40 keys are re-taken on an idle M4 (load average under 1) from the code of the
+stable 1.0.1 at the merge of Task 36, with the date per key; until then a comparison against a `main` build at the same
+load is the meaningful gate, and it passes (Task 34 above).
+
 ### Task 35: Full gates
 
 - [x] Engine: `swift test` (every suite, fuzz at the per-PR size), `scripts/coverage.sh --package Packages/VietnameseEngine --min 95 --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/'`, `swift run lexicon-builder check`, `python3 -I Packages/VietnameseEngine/Scripts/extract-spec-examples.py --check`, `swift run site-demo-frames --check`.
