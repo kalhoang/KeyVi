@@ -46,6 +46,10 @@ public struct FuzzStatistics: Sendable, Hashable {
     public var restoredCommits = 0
     /// Commits that kept the composed form.
     public var keptCommits = 0
+    /// Commits that corrected the token or re-committed a corrected token (section 11A, ENG-T54).
+    public var correctedCommits = 0
+    /// Undos of a correction by the restore toggle, each with its never-correct signal (ENG-R1117, ENG-R1118).
+    public var correctionUndos = 0
     /// Macro expansions (ENG-R1103).
     public var macroExpansions = 0
     /// Reset events.
@@ -79,6 +83,8 @@ public struct FuzzStatistics: Sendable, Hashable {
         commits += other.commits
         restoredCommits += other.restoredCommits
         keptCommits += other.keptCommits
+        correctedCommits += other.correctedCommits
+        correctionUndos += other.correctionUndos
         macroExpansions += other.macroExpansions
         resets += other.resets
         longestToken = max(longestToken, other.longestToken)
@@ -131,6 +137,14 @@ public struct FuzzStatistics: Sendable, Hashable {
 ///   Backspace deletes at most the active token's display.
 /// - ENG-R828: a commit that revises the previous token deletes at most that token, the one space after it
 ///   and the active token's display.
+/// - ENG-T54, with `typoCorrection` on (section 11A): no correction in `code`; none of a typed word on any list
+///   or within one edit of a Vietnamese keying or an unmarked shape (recomputed here with `EditModel` over the
+///   lists themselves); a correction writes a word of the correction lexicon (ENG-T35 extended), deletes at most
+///   the active token's display, is one edit with the committing key passed through and never comes with a
+///   revision; the toggle right after it gives exactly the raw keys typed (ENG-T32 extended; after Backspace
+///   re-opened a corrected token the restore check above covers it); every `neverCorrect` signal names the
+///   lowercased typed word of its token. With it off: no output carries `corrected` or `neverCorrect`, and a
+///   toggle with no active token passes through unless it undoes a revision (ENG-R703, ENG-R829).
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -179,6 +193,7 @@ public struct InvariantChecker: Sendable {
     private var recentNext = 0
     private var probeGenerator: SeededGenerator
     private let rules: ComposerRules
+    private let edits: EditModel
 
     /// A checker for `engine`; `probeSeed` drives the escape probes (ENG-T36).
     public init(engine: Engine, options: Options = Options(), probeSeed: UInt64 = 0xE5CA_9E00) {
@@ -186,6 +201,7 @@ public struct InvariantChecker: Sendable {
         self.options = options
         session = Session(engine: engine)
         rules = ComposerRules(engine.configuration)
+        edits = EditModel(neighbours: engine.resources.correction.keyboardNeighbours)
         probeGenerator = SeededGenerator(seed: probeSeed)
     }
 
@@ -201,6 +217,7 @@ public struct InvariantChecker: Sendable {
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let fieldBeforeBackspace = fieldTailBeforeBackspace(event, index: index)
         let revisionBound = Self.revisionBound(session.state)
+        let correctionBefore = CorrectionSnapshot(session.state)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = Self.uptimeNanoseconds()
         let cpuStart = Self.hangClockNanoseconds()
@@ -212,7 +229,9 @@ public struct InvariantChecker: Sendable {
         if let before { try checkPureReduce(before, event, output, index: index) }
         try checkEdit(output, produced: produced, index: index)
         try checkRevision(output, bound: revisionBound, index: index)
+        try checkCorrection(event, output, before: correctionBefore, index: index)
         try applyToField(event, output, index: index)
+        try checkCorrectionUndo(event, output, before: correctionBefore, index: index)
         try checkView(index: index)
         try checkBackspace(beforeBackspace, index: index)
         try checkBackspaceOnlyDeletes(fieldBeforeBackspace, output, index: index)
@@ -243,7 +262,9 @@ public struct InvariantChecker: Sendable {
     private func producedCount(before event: EngineEvent) -> (count: Int, exact: Bool) {
         let state = session.state
         var mayDeleteLongToken = false
-        if let token = state.active, token.composition.raw.count > Composition.composingKeyLimit || token.isMacro {
+        if let token = state.active,
+            token.composition.raw.count > Composition.composingKeyLimit || token.literalKeys != nil
+        {
             switch event {
             case .restoreToggle, .backspace: mayDeleteLongToken = true
             case .key(let input):
@@ -461,7 +482,8 @@ public struct InvariantChecker: Sendable {
         if output.composingText != state.activeDisplay {
             throw violation("ENG-R620", "composingText differs from the active display", index)
         }
-        guard let token = state.active, !token.isMacro else { return }
+        // A literal token (a macro expansion or a re-opened correction) shows text its raw keys do not compose.
+        guard let token = state.active, token.literalKeys == nil else { return }
         let composition = token.composition
         statistics.longestToken = max(statistics.longestToken, composition.raw.count)
         let perEvent = composition.raw.count <= options.perEventTokenLimit
@@ -564,7 +586,7 @@ public struct InvariantChecker: Sendable {
     private mutating func checkEscape(index: Int) throws {
         guard probeGenerator.chance(1, in: options.escapeCheckOneIn) else { return }
         let state = session.state
-        guard let token = state.active, !token.isMacro, !token.showsRawKeys, !token.composition.isLiteral,
+        guard let token = state.active, token.literalKeys == nil, !token.showsRawKeys, !token.composition.isLiteral,
             token.composition.raw.count < Composition.composingKeyLimit - 2
         else { return }
         let key = transformKey()
@@ -626,9 +648,12 @@ public struct InvariantChecker: Sendable {
         case .kept?:
             statistics.commits += 1
             statistics.keptCommits += 1
-        case .corrected?: statistics.commits += 1  // section 11A (ENG-R1115)
+        case .corrected?:  // section 11A (ENG-R1115)
+            statistics.commits += 1
+            statistics.correctedCommits += 1
         case nil: break
         }
+        if case .neverCorrect? = output.learning { statistics.correctionUndos += 1 }
         statistics.digest(Self.digest(output))
     }
 
@@ -699,5 +724,147 @@ public struct InvariantChecker: Sendable {
     private static func hex(_ scalar: Unicode.Scalar) -> String {
         let digits = String(scalar.value, radix: 16, uppercase: true)
         return String(repeating: "0", count: max(0, 4 - digits.count)) + digits
+    }
+}
+
+// MARK: - ENG-T54: the typo correction (section 11A)
+
+/// What the correction checks need from the state before an event.
+struct CorrectionSnapshot {
+    /// The active token and the length of its display.
+    let token: ActiveToken?
+    let displayCount: Int
+    /// The previous event was a commit that corrected its token, or revised the token before it, or a toggle.
+    let followsCorrection: Bool
+    let followsRevision: Bool
+    let followsToggle: Bool
+    /// The typed word a toggle may name in a never-correct signal: the re-opened corrected token's, or the one of the
+    /// correction the previous commit made.
+    let undoableWord: String?
+
+    init(_ state: EngineState) {
+        token = state.active
+        displayCount = state.active?.display.count ?? 0
+        followsCorrection = state.previousEventCorrected
+        followsRevision = state.previousEventRevised
+        followsToggle = state.previousEventWasRestoreToggle
+        undoableWord =
+            state.active?.correctedWord
+            ?? (state.previousEventCorrected ? state.history.token(beforeNewest: 1)?.token.correctedWord : nil)
+    }
+}
+
+extension InvariantChecker {
+    /// ENG-T54 for one output: the switch-off half never corrects; with the switch on a correction is made only
+    /// where section 11A allows it and has the shape of ENG-R1115.
+    fileprivate func checkCorrection(
+        _ event: EngineEvent, _ output: EngineOutput, before: CorrectionSnapshot, index: Int
+    ) throws {
+        let configuration = engine.configuration
+        guard configuration.typoCorrection else {
+            try checkSwitchOff(event, output, before: before, index: index)
+            return
+        }
+        if case .neverCorrect(let word)? = output.learning {
+            guard word == before.undoableWord, !word.isEmpty, word.utf8.allSatisfy(ASCII.isLowercaseLetter) else {
+                throw violation("ENG-T54", "a neverCorrect signal does not name its token's typed word", index)
+            }
+        }
+        guard case .corrected? = output.decision, let token = before.token else { return }
+        if configuration.appContext == .code {
+            throw violation("ENG-T54", "a correction in the code context", index)
+        }
+        if output.revision != nil {
+            throw violation("ENG-T54", "a commit both corrects and revises", index)
+        }
+        switch output.action {
+        case .edit(let edit, true):
+            if edit.deleteCount > before.displayCount {
+                throw violation("ENG-T54", "a correction deletes more than the active token's display", index)
+            }
+        case .edit(_, false):
+            throw violation("ENG-T54", "a correction swallows the committing key", index)
+        case .passThrough:
+            // Only the re-commit of a re-opened corrected token, which changes nothing on screen (ENG-R1117).
+            if token.correctedRule == nil { throw violation("ENG-T54", "a correction without an edit", index) }
+        }
+        guard token.correctedRule == nil else { return }
+        try checkCorrectedWord(token.rawText, index: index)
+    }
+
+    /// A freshly corrected typed word: on no list (ENG-R1110 (c)), not one edit from Vietnamese (ENG-R1125), and the
+    /// text written is a word of the correction lexicon (ENG-T35 extended), read from the history when the
+    /// committing key kept it.
+    private func checkCorrectedWord(_ raw: String, index: Int) throws {
+        let resources = engine.resources
+        let word = raw.lowercased()
+        let listed =
+            resources.english.contains(word) || resources.techAlways.contains(word)
+            || resources.techCodeOnly.contains(word) || resources.correction.guardList.mayContain(word)
+            || resources.userKeepRaw.contains(word) || resources.userKeepVietnamese.contains(word)
+            || resources.userNeverCorrect.contains(word) || resources.ambiguity[word] != nil
+            || resources.collision.supplement.contains(word)
+        if listed { throw violation("ENG-T54", "a word of a list was corrected", index) }
+        var vietnamese = false
+        Array(word.utf8).withUnsafeBufferPointer { bytes in
+            edits.forEachEdit(of: bytes, positionRules: false) { edit in
+                let text = String(decoding: edit, as: UTF8.self)
+                vietnamese =
+                    resources.correction.vietnameseKeyings.contains(text)
+                    || resources.correction.unmarkedShapes.contains(text)
+                return !vietnamese
+            }
+        }
+        if vietnamese { throw violation("ENG-T54", "a typed word one edit from Vietnamese was corrected", index) }
+        guard let written = session.state.history.token(beforeNewest: 1)?.committedText.lowercased() else { return }
+        if !(resources.english.contains(written) || resources.techAlways.contains(written)) {
+            throw violation("ENG-T54", "a correction wrote a word outside the correction lexicon", index)
+        }
+    }
+
+    /// ENG-R1119: with the switch off nothing carries the correction, and a toggle with no active token answers as
+    /// ENG-R703 and ENG-R829 say.
+    private func checkSwitchOff(_ event: EngineEvent, _ output: EngineOutput, before: CorrectionSnapshot, index: Int)
+        throws
+    {
+        if case .corrected? = output.decision {
+            throw violation("ENG-T54", "a correction with typoCorrection off", index)
+        }
+        if case .neverCorrect? = output.learning {
+            throw violation("ENG-T54", "a neverCorrect signal with typoCorrection off", index)
+        }
+        guard case .restoreToggle = event, before.token == nil, before.followsToggle || !before.followsRevision
+        else { return }
+        guard output.action == .passThrough else {
+            throw violation("ENG-T54", "a toggle with no active token edited the field", index)
+        }
+    }
+
+    /// ENG-T32 extended: right after a corrected commit the toggle gives exactly the raw keys typed (probed on a copy
+    /// of the session, the field as it is now), and the toggle that does so carries the signal.
+    fileprivate mutating func checkCorrectionUndo(
+        _ event: EngineEvent, _ output: EngineOutput, before: CorrectionSnapshot, index: Int
+    ) throws {
+        // A re-opened correction may be committed again by any key; after a non-ASCII one the toggle passes through
+        // (ENG-R829), as after a revision.
+        guard engine.configuration.typoCorrection, case .corrected? = output.decision,
+            session.state.previousEventCorrected, let token = session.state.history.token(beforeNewest: 1),
+            case .boundary(let boundary)? = session.state.history.entry(beforeNewest: 0), boundary.asciiValue != nil
+        else { return }
+        let raw = token.token.rawText
+        var probe = session
+        let undo = probe.handle(.restoreToggle)
+        guard case .edit(let edit, thenPassThrough: false) = undo.action, edit.deleteCount <= field.count,
+            case .neverCorrect? = undo.learning
+        else {
+            throw violation("ENG-T32", "the toggle after a correction does not undo it", index)
+        }
+        let tail = String(field.suffix(raw.count + token.committedText.count + 1))
+        let undone = String(Array(tail).dropLast(edit.deleteCount)) + edit.insert
+        guard undone.hasSuffix(raw + String(boundary)), probe.state.history.token(beforeNewest: 1)?.committedText == raw
+        else {
+            throw violation("ENG-T32", "the toggle after a correction does not give the raw keys \(raw)", index)
+        }
+        statistics.restoreChecks += 1
     }
 }

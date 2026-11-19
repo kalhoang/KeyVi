@@ -92,7 +92,7 @@ public enum BackspaceProbe {
     static func classify(before: String, after: String, token: ActiveToken?) -> Outcome {
         let expected = String(before.dropLast())
         if after == expected { return .deletedOnly }
-        guard let token, !token.isMacro, !token.showsRawKeys else { return .violation }
+        guard let token, token.literalKeys == nil, !token.showsRawKeys else { return .violation }
         let composition = token.composition
         guard composition.literalStart == nil else { return .violation }
         let letters = composition.letters
