@@ -8,6 +8,8 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+## [1.0.1-beta.2] - 2026-11-19
+
 ### Sửa lỗi
 
 - Khi một ứng dụng tự chuyển sang ô nhập khác, từ đầu tiên bạn gõ ở đó ít bị mất dấu hay sai dấu hơn ("tieengs" thay vì "tiếng").
