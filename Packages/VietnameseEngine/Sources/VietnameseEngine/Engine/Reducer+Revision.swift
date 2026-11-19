@@ -43,4 +43,33 @@ extension Engine {
         }
         return EngineOutput(action: .edit(edit, thenPassThrough: false), composingText: "", collisionSignals: signals)
     }
+
+    /// ENG-R1117: a restore toggle right after a commit that corrected its token puts the keys as typed back; the
+    /// boundary character stays (one edit over the correction and the boundary, as `undoRevision`). The token becomes
+    /// the user's choice (rule L1 if it is re-opened, ENG-R1117), English for the run as a restored token is
+    /// (ENG-R823), and the output carries `neverCorrect` with the typed word (ENG-R1118) and no decision. Nil when
+    /// the history no longer has that shape (a Return or Tab cleared it; every key that commits a correction is
+    /// ASCII, ENG-R1112), so the toggle is handled as usual.
+    func undoCorrection(_ state: inout EngineState) -> EngineOutput? {
+        guard case .boundary(let boundary)? = state.history.entry(beforeNewest: 0), boundary.asciiValue != nil,
+            let corrected = state.history.token(beforeNewest: 1), case .corrected = corrected.decision,
+            let word = corrected.token.correctedWord
+        else { return nil }
+        let raw = corrected.token.rawText
+        let tail = String(boundary)
+        let edit = DisplayEdit.edit(from: corrected.committedText + tail, to: raw + tail)
+        let decision = CommitDecision.restored(.userChoice)
+        let language = TokenLanguage.of(
+            committed: CommittedTextFacts(raw), decision: decision, rawLowercased: word, resources: resources,
+            collisionRules: commitPolicy.collisionRules)
+        state.history.updateToken(beforeNewest: 1) { token in
+            token.committedText = raw
+            token.decision = decision
+            token.token = token.token.undoingCorrection(rules: rules)
+            token.language = language
+        }
+        state.recentLanguages.replace(atDistance: 1, with: language)
+        return EngineOutput(
+            action: .edit(edit, thenPassThrough: false), composingText: "", learning: .neverCorrect(raw: word))
+    }
 }

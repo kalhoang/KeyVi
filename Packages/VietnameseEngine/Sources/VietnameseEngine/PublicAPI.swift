@@ -372,6 +372,9 @@ public struct EngineState: Sendable, Hashable {
     /// The previous event was a commit that revised the token before it; a restore toggle now undoes the
     /// revision (ENG-R829).
     package var previousEventRevised = false
+    /// The previous event was a commit that corrected its token (section 11A) at a boundary that keeps the history;
+    /// a restore toggle now undoes the correction (ENG-R1117).
+    package var previousEventCorrected = false
     /// The weak signals of the newest committed tokens, not yet final (ENG-R864).
     package var pendingSignals = PendingSignals()
 

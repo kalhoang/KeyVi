@@ -35,6 +35,7 @@ extension Engine {
             output = commitToken(token, boundary: boundary, mayRevise: mayRevise, &state)
             state.newestTokenRevisable = true
             state.previousEventRevised = output.revision != nil && !isHard
+            if case .corrected? = output.decision { state.previousEventCorrected = !isHard }
         }
         output.collisionSignals += finishBoundary(boundary, isHard: isHard, &state)
         return output
@@ -72,8 +73,14 @@ extension Engine {
             revision = revised.reason
             action = .edit(revised.edit, thenPassThrough: true)
         }
-        // ENG-R861, ENG-R864: a reported choice is not reported again when the token is re-committed.
-        let stored = result.learning == nil ? token : token.reportingChoice()
+        // ENG-R861, ENG-R864: a reported choice is not reported again when the token is re-committed. ENG-R1115: a
+        // corrected token is kept literal, with its raw keys as typed and the correction as its display.
+        let stored: ActiveToken
+        if corrected, case .corrected(let rule) = result.decision {
+            stored = ActiveToken(correcting: token, correction: result.text, rule: rule)
+        } else {
+            stored = result.learning == nil ? token : token.reportingChoice()
+        }
         let committed = CommittedToken(
             token: stored, committedText: result.text, decision: result.decision, language: result.language,
             languagesBefore: state.recentLanguages, collision: result.collision)
@@ -170,6 +177,23 @@ extension Engine {
             return CommitResult(
                 text: token.display, action: .passThrough, decision: .macro, learning: nil,
                 language: TokenLanguage.ofExpansion(token.display))
+        }
+        // ENG-R1117: a re-opened corrected token is never corrected again: it commits unchanged and reports
+        // `corrected` again; English for the run (ENG-R1116).
+        if let rule = token.correctedRule {
+            return CommitResult(
+                text: token.display, action: .passThrough, decision: .corrected(rule), learning: nil, language: .english
+            )
+        }
+        // ENG-R1117: once the toggle undid the correction the token is the user's choice (rule L1), reported as
+        // `kept(userChoice)` even where rule L0 would decide the keys first; the toggle already sent its signal.
+        if token.correctionUndone, token.userChoice == .restored {
+            let inputs = CommitInputs(token: token, style: rules.toneStyle)
+            var result = CommitResult(
+                text: token.display, action: .passThrough, decision: .kept(.userChoice), learning: nil,
+                language: .english, inputs: inputs)
+            result.collision = collisionFacts(inputs, context: context)
+            return result
         }
         let inputs = CommitInputs(token: token, style: rules.toneStyle)
         let decision = commitPolicy.decide(inputs, context: context)
