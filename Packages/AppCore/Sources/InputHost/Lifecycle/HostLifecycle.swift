@@ -68,6 +68,9 @@ public enum HealthEventKindCode: String, Sendable, Hashable {
     case tapTimeout, tapDisabledByUserInput, tapReenabled, watchdogTrip, postingBroken, permissionTransition
     /// PLT-R330 step 6: the circuit breaker removed a tap the system kept disabling.
     case tapUnstable
+    /// PLT-R330 step 1: the live answer after a system disable re-enabled the tap. The host adds how long the tap was
+    /// off (amended 19/11/2026).
+    case tapRecovered
 }
 
 /// Phases: `starting` until permissions are known and the tap is created, `noPermission`, `running` (the tap
@@ -124,6 +127,9 @@ public struct HostLifecycle: Sendable, Hashable {
     public private(set) var userDisabled = false
     /// The guided test is typing: a pause reason (`paused(diagnosticsTest)`), not a lifecycle phase.
     public var diagnosticsPassThrough: Bool { passThroughDepth > 0 }
+    /// A system disable waits for its live permission answer (PLT-R330 step 1): a further report now is the same
+    /// disable, so the host keeps the instant the first report stamped for the `tapRecovered` record.
+    public var awaitsLiveAnswer: Bool { reenableRequestedAt != nil }
 
     /// Nesting depth of `.diagnosticsPassThrough` calls.
     private var passThroughDepth = 0
@@ -240,13 +246,15 @@ public struct HostLifecycle: Sendable, Hashable {
     }
 
     /// PLT-R330 step 1: the live answer a system disable waited for. Not granted: `permissionsChanged` already
-    /// removed the tap (PLT-R730). Granted: the same tap is enabled again, once for all reports of that disable.
+    /// removed the tap (PLT-R730). Granted: the same tap is enabled again, once for all reports of that disable, and
+    /// the recovery is recorded, so a log shows how long keys bypassed the tap (amended 19/11/2026, VM run
+    /// 20261119T011514Z: three words raw and no record of when the tap came back).
     private mutating func livePermissions(granted: Bool) -> [LifecycleEffect] {
         var effects = permissionsChanged(granted: granted)
         let pending = reenableRequestedAt != nil
         reenableRequestedAt = nil
         guard pending, granted, tapIsInstalled else { return effects }
-        effects.append(.reenableTap)
+        effects += [.reenableTap, .recordHealth(.tapRecovered)]
         return effects
     }
 

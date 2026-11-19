@@ -170,7 +170,8 @@ extension HostStateCode {
 extension HealthEvent.Kind {
     var logCategory: LogCategory {
         switch self {
-        case .tapTimeout, .tapDisabledByUserInput, .tapReenabled, .watchdogTrip, .flush, .tapUnstable: .tap
+        case .tapTimeout, .tapDisabledByUserInput, .tapReenabled, .watchdogTrip, .flush, .tapUnstable, .tapRecovered:
+            .tap
         case .fallbackActivated, .echoLoss, .postingBroken, .placeholderResidue, .pasteRestoreSkipped,
             .generationDiscard:
             .injection
@@ -213,6 +214,7 @@ extension HealthEvent {
             if let holderKind { pairs.append(("holderKind", holderKind.rawValue)) }
             pairs.append(("durationMs", String(duration)))
         case .failOpen(let reason): pairs.append(("failOpen", reason.rawValue))
+        case .tapRecovery(let milliseconds): pairs.append(("recoveryMs", String(milliseconds)))
         }
         return pairs
     }

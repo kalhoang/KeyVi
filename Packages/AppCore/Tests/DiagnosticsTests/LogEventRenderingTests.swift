@@ -165,6 +165,9 @@ enum LogEventCatalog {
         #expect(record.fields["eventAt"] == .string("2027-01-15T08:00:00Z"))
         #expect(HealthEvent.Kind.tapTimeout.logLevel == .error)
         #expect(HealthEvent.Kind.flush.logLevel == .notice)
+        // PLT-R330: the recovery after a system disable is a tap notice; the disable itself is the error.
+        #expect(HealthEvent.Kind.tapRecovered.logLevel == .notice)
+        #expect(HealthEvent.Kind.tapRecovered.logCategory == .tap)
         for kind in HealthEvent.Kind.allCases {
             #expect(
                 LogRecord(event: .health(HealthEvent(kind: kind, at: .distantPast)), level: .info, at: .distantPast)
@@ -182,6 +185,7 @@ enum LogEventCatalog {
                 "holder=com.example.Editor holderKind=application durationMs=9"
             ),
             (.failOpen(.postingBroken), "failOpen=postingBroken"),
+            (.tapRecovery(milliseconds: 1_820), "recoveryMs=1820"),  // PLT-R330, run 20261119T011514Z
         ]
         for (detail, expected) in details {
             #expect(

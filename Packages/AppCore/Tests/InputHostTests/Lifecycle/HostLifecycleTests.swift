@@ -224,7 +224,7 @@ import Testing
             script.send(.tapDisabledBySystem(byTimeout: true)) == [
                 .resetComposition, .requestFlush(.tapDisabled), .recordHealth(.tapTimeout), .checkPermissionsLive,
             ])
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
         #expect(script.phase == .running)
     }
 
@@ -299,7 +299,7 @@ import Testing
         var script = LifecycleScript.running()
         script.send(.sessionActive(false))
         #expect(script.send(.tapDisabledBySystem(byTimeout: true)).last == .checkPermissionsLive)
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
         #expect(script.phase == .sessionInactive)
     }
 

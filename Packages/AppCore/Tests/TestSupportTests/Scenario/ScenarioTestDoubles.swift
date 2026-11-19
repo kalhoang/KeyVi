@@ -83,6 +83,22 @@ final class ChangingReadback: ScenarioReadback, Sendable {
     }
 }
 
+/// A field whose lookup can fail for a moment (VM run 20261119T005934Z: one lookup of the sheet's mirror failed): each
+/// read answers the next scripted result, then the last one again.
+final class FlakyReadback: ScenarioReadback, Sendable {
+    private let results: [Result<String, any Error>]
+    private let reads = Mutex(0)
+    init(_ results: [Result<String, any Error>]) { self.results = results }
+    var readCount: Int { reads.withLock { $0 } }
+    func currentText(of scenario: Scenario) async throws -> String {
+        let result = reads.withLock { count in
+            defer { count += 1 }
+            return results[min(count, results.count - 1)]
+        }
+        return try result.get()
+    }
+}
+
 struct FakeSetup: ScenarioSetupPerformer {
     let steps = Recorder<Scenario.SetupStep>()
     /// The counts `awaitFocusRefresh(after:)` received; `focusRefreshCount()` answers 3.

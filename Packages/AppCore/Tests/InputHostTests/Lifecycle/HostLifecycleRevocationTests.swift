@@ -23,7 +23,7 @@ import Testing
         #expect(!effects.contains(.reenableTap), "never re-enabled on the cached status: \(effects)")
         #expect(effects.contains(.checkPermissionsLive))
         #expect(effects.contains(.resetComposition) && effects.contains(.requestFlush(.tapDisabled)))
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
         #expect(script.phase == .running)
     }
 
@@ -47,7 +47,7 @@ import Testing
         script.send(.tapDisabledBySystem(byTimeout: true))
         script.advance(by: .milliseconds(100))
         script.send(.watchdogTripped(.unexpectedlyDisabled))  // the same disable, seen by the watchdog
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
         #expect(script.send(.livePermissions(.granted)) == [])
     }
 
@@ -55,8 +55,44 @@ import Testing
         var script = LifecycleScript.running()
         script.send(.sessionActive(false))
         #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.checkPermissionsLive))
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
         #expect(script.phase == .sessionInactive)
+    }
+
+    /// PLT-R330: the re-enable that follows the live answer is recorded (`tapRecovered`), so a log shows when keys
+    /// stopped bypassing the tap (VM run 20261119T011514Z, `testhost.commonWords.telex`: three words raw, and nothing
+    /// said when the tap came back).
+    @Test(arguments: [
+        LifecycleInput.tapDisabledBySystem(byTimeout: true), .tapDisabledBySystem(byTimeout: false),
+        .watchdogTripped(.unexpectedlyDisabled),
+    ])
+    func theReenableAfterTheLiveAnswerIsRecordedPLTR330(_ disable: LifecycleInput) {
+        var script = LifecycleScript.running()
+        script.send(disable)
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
+    }
+
+    /// Only a re-enable after a system disable is a recovery: the watchdog's own recovery and a session activation
+    /// record no `tapRecovered`, and neither does a live answer that removes the tap.
+    @Test func onlyTheReenableAfterASystemDisableIsRecordedAsARecoveryPLTR330() {
+        var script = LifecycleScript.running()
+        script.send(.watchdogTripped(.callbackOverLimit(microseconds: 300_000)))
+        #expect(!script.send(.callbackExited).contains(.recordHealth(.tapRecovered)))
+        script.send(.sessionActive(false))
+        #expect(!script.send(.sessionActive(true)).contains(.recordHealth(.tapRecovered)))
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        #expect(!script.send(.livePermissions(.denied)).contains(.recordHealth(.tapRecovered)))
+    }
+
+    /// The host stamps the start of an outage only at the first report of a disable; the lifecycle says whether a
+    /// disable is still waiting for its live answer (the same disable when it is).
+    @Test func theLifecycleSaysWhileADisableWaitsForItsLiveAnswerPLTR330() {
+        var script = LifecycleScript.running()
+        #expect(!script.lifecycle.awaitsLiveAnswer)
+        script.send(.tapDisabledBySystem(byTimeout: true))
+        #expect(script.lifecycle.awaitsLiveAnswer)
+        script.send(.livePermissions(.granted))
+        #expect(!script.lifecycle.awaitsLiveAnswer)
     }
 
     @Test func aRevocationThatRemovedTheTapMeanwhileLeavesNothingToReenable() {
@@ -90,7 +126,7 @@ import Testing
         var script = LifecycleScript.running()
         for _ in 0..<4 {
             #expect(script.send(.tapDisabledBySystem(byTimeout: true)).contains(.checkPermissionsLive))
-            #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+            #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
             script.advance(by: HostLifecycle.breakerWindow + .seconds(1))
         }
         #expect(script.phase == .running)
@@ -189,7 +225,7 @@ import Testing
         #expect(!effects.contains(.removeTap), "\(effects)")
         #expect(!effects.contains(.recordHealth(.tapUnstable)))
         #expect(script.phase == .running)
-        #expect(script.send(.livePermissions(.granted)) == [.reenableTap])
+        #expect(script.send(.livePermissions(.granted)) == [.reenableTap, .recordHealth(.tapRecovered)])
     }
 
     @Test func anAnswerThatNeverComesBecomesAVisibleFailOpen() {

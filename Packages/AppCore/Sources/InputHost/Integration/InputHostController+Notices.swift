@@ -33,6 +33,8 @@ extension InputHostController {
         case .tapDisabled(let byTimeout):
             // PLT-R330: the lifecycle resets and replays now, and re-enables only after a live permission check.
             if byTimeout { timeoutRecoveryPending = true }
+            // The disabled event's own callback is the newest the tap entered: the tap stays off until the re-enable.
+            noteSystemDisable(at: channels.callbackWatchdog.lastCallbackEntry ?? tapClock.now())
             feed(.tapDisabledBySystem(byTimeout: byTimeout))
         case .learning(let signal, let bundle):
             noteLearning(signal, in: bundle)

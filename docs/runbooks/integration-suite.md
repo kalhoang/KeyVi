@@ -746,6 +746,46 @@ the VM rules of this section, in this order:
    every run passes; a late focus change kept inside one of these words shows `focus.lateFocusKept` and no
    `focus.lateFocusCheckFailed`.
 
+Runs on the merged main (`563bbd57`), with the VM rules of this section:
+
+| Run | Commit | Pass | Fail | What it showed |
+|---|---|---|---|---|
+| `20261119T005934Z-integration` (full suite) | `563bbd57` | 43 | 3 | `testhost.privacyCanary.paste` gave `anaryzanaryzqx ` (expect `kanaryzqx `); `testhost.sheet.commandS` ended in its readback with `no accessibility element with identifier testhost.sheet.mirror`, while the evidence file shows the sheet's name field focused with 5 characters and the caret at 5 (`đường`, as far as the records tell); `testhost.web.composer` gave `vieetj`, with `focus.lateFocusRefused` and `reason` `axUnavailable` at its second key |
+| `20261119T011514Z-integration` (full suite) | `563bbd57` | 45 | 1 | `testhost.commonWords.telex` left words 48 to 50 as typed (`phatj suwj thowif`), with `health.tapTimeout`, `health.flush` with `count` 0 and the notes `tap disabled by timeout` and `key released that the tap never saw pressed` in the same second; `testhost.sheet.commandS` passed in 4.3 s (2.7 to 2.9 s before `563bbd57`) |
+| `20261119T013243Z-integration` (`--probe --only` of step 1 above) | `563bbd57` | 3 | 1 | `testhost.native.burst` gave `nguyênx nguyeenx nguyeenx` while TestHost stalled right after its launch: the probe's observer was refused with -25204 for about 0.5 s, then all 25 characters landed at once at 21.9 s, and the app logged `health.flush` with `count` 5 (no tap timeout and no fail open in that session) |
+| `20261119T014541Z-integration`, `20261119T015522Z-integration` (`--probe --only` of step 1 above) | `563bbd57` | 4 | 0 | both pass |
+| `20261119T020431Z-integration` (the control run's command of the first table, `--probe --only` of six scenarios) | `563bbd57` | 6 | 0 | all pass; `testhost.sheet.commandS` read back `đường` in 2.6 s |
+
+Root causes of these failures, from the run logs, the probe, the evidence files, the fixed key plan of seed
+1592642302 and `git diff 28aaa256..563bbd57`, none a regression of the branches merged since `28aaa256` (the same guest
+timing gives the same result there):
+
+| Scenario | Verdict | Cause |
+|---|---|---|
+| `testhost.sheet.commandS` (readback), `20261119T005934Z` | Harness, pre-existing | One lookup of `testhost.sheet.mirror` missed during the readback on the loaded guest (most likely TestHost not answering AX for about 2 s right after the typing), and the runner ended the scenario at the first failed read, where a wrong text is read again for up to 2 s. Fixed in the harness (section 10.10) |
+| `testhost.web.composer` (`vieetj`), `20261119T005934Z` | Pre-existing, guest latency | The word began under a snapshot without a process after a timed-out system-wide read; the read of its first key named TestHost with an element whose attributes could not be read, which against that app-less reference is `axUnavailable`, a hard boundary at `i`, and `ieetj` has no onset, so it stays as typed |
+| `testhost.privacyCanary.paste` (`anaryzanaryzqx `), `20261119T005934Z` | Pre-existing, guest latency (the PLT-R462 class) | TestHost handled the Command+V of the first two paste edits more than 480 ms late, after the 400 ms restore and after the third edit's write, so they pasted the restored (empty) clipboard and the third edit's text: the transient item and the restore follow the worker's clock, not the target's consumption |
+| `testhost.commonWords.telex` (three words as typed), `20261119T011514Z` | Pre-existing, guest stall | macOS disabled the tap by timeout (the first spontaneous `health.tapTimeout` in the 20 runs on disk); every key bypassed the tap until the PLT-R330 recovery (a main hop, the live permission check, a main hop) enabled it again, at least 1.82 s; the flush lost nothing (`count` 0). The re-enable is now recorded with its duration (`health.tapRecovered`, field `recoveryMs`: whole milliseconds from the disabled event's callback to the re-enable; PLT-R330 amendment of 19/11/2026, `HostLifecycleLiveReenableTests.theReenableAfterTheLiveAnswerIsRecordedPLTR330`, `HostHookActionsTests.theReenableAfterATimeoutRecordsTheOutageFromTheTapsDisabledEventPLTR330`), so the next such run tells the recovery from the stall |
+| `testhost.native.burst` (`nguyênx nguyeenx nguyeenx`), `20261119T013243Z` | Pre-existing, guest stall | TestHost did not take events for several seconds right after its launch; with no tap timeout and no fail open in the session, `count` 5 is the worker's liveness ceiling (PLT-R314) abandoning five edits while the target did not consume them: a garbled word instead of a stalled keyboard, as designed |
+
+Parked after 1.0.1-beta.2 (the late focus code of the product is frozen for that release):
+
+- `testhost.web.composer`: judge a word begun under a snapshot without a process (after a timed-out or failed
+  system-wide read) against the last element both threads kept (`lastElement`), so an unreadable element of that
+  process keeps the word (`reason` `unreadable`) instead of `axUnavailable`.
+- `testhost.privacyCanary.paste`: tie the paste strategy's next write and its restore to the target's consumption
+  (a bounded readback of the previous insertion where the field is readable, or lazily provided pasteboard data), the
+  PLT-R462 class.
+- `testhost.sheet.commandS` at human speed: the sheet's field read more than 1 s after Command+S is refused with
+  `firstKeyWindow`; after an unreadable keep that followed the trigger, accept the next readable element of that
+  process for up to 3 s after the trigger, still checked.
+- Faster tap recovery after a system disable: ask the live permission check straight from the tap's disabled
+  notification and enable the tap from the permission runner (two main hops fewer), once `health.tapRecovered` shows
+  that the recovery, not the stall, dominates. The gap from the previous tap callback to the disabled event is not
+  recorded: keeping it needs one more store in the tap callback.
+- A record for the boundary of the same element whose rule changed (the tap's same-element path resets the word
+  without any record when the decision differs).
+
 ### 10.10 Readback of a selected completion (2026-11-19)
 
 The first full run of the suite in the VM since 13/11/2026 (`20261118T182610Z-integration`, 19/11/2026 at 01:26 host
@@ -828,3 +868,20 @@ Proof, with the VM rules of this section: five times `scripts/vm/integration-dev
 testhost.panel.inlineCompletionTwice,testhost.sheet.commandS`: both pass every time, `dry-run.log` shows `focus
 shortcuts: command+k` under the panel scenario only; with `--probe`, each focus notification of the panel's field in
 `probe.log` comes at least 300 ms before the first change of that field.
+
+#### A readback that fails for a moment (2026-11-19)
+
+`testhost.sheet.commandS` ended in run `20261119T005934Z` with `readback ax: no accessibility element with identifier
+testhost.sheet.mirror` (section 10.9): one lookup of the mirror missed on the loaded guest, and the runner ended the
+scenario at the first failed read, while a wrong text is read again for up to 2 s. The miss gave no reason: the walk
+dropped the error of the read that pruned it.
+
+| Part | Change | Tests |
+|---|---|---|
+| Runner | `ScenarioRunner.settledReading` treats a failed read like a wrong text until the same 2 s deadline: it keeps the newest text read and returns it at the deadline, and rethrows the newest error only when no read succeeded. A read that needs a person (`HumanReadbackRequired`) is never repeated. A readback that always fails reports its error after 2 s instead of at once; matching and differing texts behave as before | `ScenarioRunnerTests.aReadThatFailsOnceIsReadAgainWithinTheSettleTimePltR530`, `ScenarioRunnerTests.aReadThatAlwaysFailsRethrowsTheNewestErrorAtTheSettleTimePltR530`, `ScenarioRunnerTests.theNewestTextWinsOverALaterFailedReadPltR530`, `ScenarioRunnerTests.aReadThatNeedsAPersonIsNotReadAgainPltR530` |
+| AX lookup | The walk by identifier (`AXIdentifierLookup`, which `AX.find` runs over the live attributes) keeps the first `AXIdentifier` or `AXChildren` read of a container that failed, and the `elementNotFound` message ends with it, for example `no accessibility element with identifier testhost.sheet.mirror (AXChildren of AXApplication: -25204)`. No value and an unsupported attribute are not failures, and what the walk finds is unchanged. The setup lookup that waits up to 5 s names the failure of its last walk | `AXIdentifierLookupTests` |
+
+Proof, with the VM rules of this section: the next full runs (section 10.9 step 3 of the proof plan on the merged
+main). A readback miss of `testhost.sheet.commandS` that still ends the scenario after 2 s now names its AX error:
+-25204 (`kAXErrorCannotComplete`, which the harness's 1 s messaging timeout returns) means TestHost did not answer,
+and no suffix means a tree without the mirror.

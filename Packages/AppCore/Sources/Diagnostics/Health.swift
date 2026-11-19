@@ -15,7 +15,10 @@ public struct HealthEvent: Sendable, Hashable, Codable {
             secureInputBursts,
             /// PLT-R330 step 6: the system kept disabling the tap, so it was removed (fail open) instead of
             /// re-enabled again (`.failOpen` detail).
-            tapUnstable
+            tapUnstable,
+            /// PLT-R330 step 1 (amended 19/11/2026): the tap was enabled again after a system disable, once the live
+            /// permission check answered (`.tapRecovery` detail: how long keys bypassed the tap).
+            tapRecovered
     }
 
     public enum Detail: Sendable, Hashable, Codable {
@@ -25,6 +28,8 @@ public struct HealthEvent: Sendable, Hashable, Codable {
         case fallback(from: InjectionStrategy, to: InjectionStrategy)
         case secureInput(holder: BundleKey?, holderKind: SecureInputHolder.Kind?, durationMilliseconds: UInt64)
         case failOpen(FailOpenReason)
+        /// Whole milliseconds from the disabled event, as the tap saw it, to the re-enable (`tapRecovered`).
+        case tapRecovery(milliseconds: UInt64)
     }
 
     public var kind: Kind

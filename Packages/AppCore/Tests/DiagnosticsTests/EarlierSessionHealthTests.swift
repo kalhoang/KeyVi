@@ -24,6 +24,7 @@ import Testing
             .fallback(from: .axReplace, to: .backspaceReplace),
             .secureInput(holder: bundle, holderKind: .application, durationMilliseconds: 900),
             .secureInput(holder: nil, holderKind: nil, durationMilliseconds: 5), .failOpen(.watchdog),
+            .tapRecovery(milliseconds: 1_820),
         ]
         let kinds = HealthEvent.Kind.allCases
         let total = kinds.count + details.count

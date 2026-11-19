@@ -150,6 +150,9 @@ public final class InputHostController {
     var retryGeneration: UInt64 = 0
     /// A timeout disabled the tap; its re-enable counts as a recovery for the integration hooks (QA-R11).
     var timeoutRecoveryPending = false
+    /// PLT-R330: when the system disable the lifecycle waits on began, on the tap's clock; the `tapRecovered` record
+    /// of its re-enable measures from it. Set by the first report of a disable (`noteSystemDisable`).
+    var tapDisabledAt: MonotonicInstant?
 
     var lifecycle = HostLifecycle()
     var lifecycleGeneration: UInt64 = 0

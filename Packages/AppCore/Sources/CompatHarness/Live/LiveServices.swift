@@ -21,7 +21,8 @@ enum LiveError: Error, CustomStringConvertible {
     case eventCreationFailed
     case appNotFound(String)
     case appNotRunning(String)
-    case elementNotFound(String)
+    /// The identifier, and the first container read of the walk that failed (named in the message, PLT-R530).
+    case elementNotFound(String, AXIdentifierLookup.Failure? = nil)
     case axFailure(String, Int32)
     case inputSourceNotFound(String)
     case unsupported(String)
@@ -31,7 +32,8 @@ enum LiveError: Error, CustomStringConvertible {
         case .eventCreationFailed: "CGEvent creation failed"
         case .appNotFound(let bundle): "no application with bundle id " + bundle
         case .appNotRunning(let bundle): "application not running: " + bundle
-        case .elementNotFound(let identifier): "no accessibility element with identifier " + identifier
+        case .elementNotFound(let identifier, let failure):
+            AXIdentifierLookup.notFoundMessage(identifier, failure: failure)
         case .axFailure(let call, let code): call + " failed with AXError \(code)"
         case .inputSourceNotFound(let source): "input source not enabled: " + source
         case .unsupported(let what): "not supported yet: " + what
