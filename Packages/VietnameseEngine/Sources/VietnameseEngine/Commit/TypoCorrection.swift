@@ -147,8 +147,51 @@ package struct TypoCorrector: Sendable {
     // MARK: ENG-R1113, ENG-R1114, ENG-R1125: the edit search
 
     /// The one word of the correction lexicon that fits `word` (ENG-R1114), nil when none or several do, or when one
-    /// edit reaches Vietnamese (ENG-R1125).
+    /// edit reaches Vietnamese (ENG-R1125). The fits are searched first (the edits of ENG-R1113 with the position
+    /// rules, stopping at the second distinct word), then, for a word with exactly one fit, every edit without them
+    /// for a Vietnamese keying or shape (stopping at the first); the result is the same in either order, and most
+    /// candidates have no fit or several, so the second pass rarely runs. Every edit is checked against the
+    /// prefilter before its lookup. Nothing here allocates until the fit is turned into the correction's text
+    /// (ENG-R1122).
     private func onlyFit(_ word: String) -> String? {
-        nil
+        let fit = word.utf8.withContiguousStorageIfAvailable { bytes in
+            withUnsafeTemporaryAllocation(of: UInt8.self, capacity: EditModel.maximumLength + 1) { first in
+                let count = firstOfTheOnlyFit(bytes, into: first)
+                guard count > 0, !isWithinOneEditOfVietnamese(bytes) else { return String?.none }
+                return String(decoding: UnsafeBufferPointer(rebasing: first[..<count]), as: UTF8.self)
+            }
+        }
+        return fit ?? nil
+    }
+
+    /// Writes the one fit of `word` into `first` and returns its length; 0 when no word or several distinct words fit.
+    private func firstOfTheOnlyFit(_ word: UnsafeBufferPointer<UInt8>, into first: UnsafeMutableBufferPointer<UInt8>)
+        -> Int
+    {
+        var count = 0
+        var several = false
+        edits.forEachEdit(of: word, positionRules: true) { edit in
+            guard edit.count >= CorrectionPolicy.minimumFitLetters, index.mightHold(edit), index.lexiconContains(edit)
+            else { return true }
+            if count == 0 {
+                _ = first.initialize(from: edit)
+                count = edit.count
+                return true
+            }
+            if edit.elementsEqual(UnsafeBufferPointer(rebasing: first[..<count])) { return true }
+            several = true
+            return false
+        }
+        return several ? 0 : count
+    }
+
+    /// ENG-R1125: one edit of `word`, without the position rules, gives a Vietnamese keying or an unmarked shape.
+    private func isWithinOneEditOfVietnamese(_ word: UnsafeBufferPointer<UInt8>) -> Bool {
+        var found = false
+        edits.forEachEdit(of: word, positionRules: false) { edit in
+            found = index.mightHold(edit) && index.isVietnameseKeyingOrShape(edit)
+            return !found
+        }
+        return found
     }
 }
