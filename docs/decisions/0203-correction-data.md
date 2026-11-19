@@ -258,5 +258,6 @@ fits (a one-key typo of `frontend` may now be corrected to it); the guard list i
 finds no new candidate. `TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` lost its known issue (zero
 corrections in every W11 file) and `developerWordsAreNeverCorrected` pins the 18 words.
 
-The words are reviewed by the product owner with the list, as every tech-always entry is (plan open question 6). If
-the review prefers the other remedy, the block moves to a new guard input and the tests stay as they are.
+The words are reviewed by the product owner with the list, as every tech-always entry is (plan open question 6): the
+product owner accepted them on 20/11/2026 ([ADR 0010](0010-pa-decisions-2026-11-19.md) item 6), after checking that
+none of them types a Vietnamese syllable.

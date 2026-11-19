@@ -954,9 +954,9 @@ during most of them.
   words corrected (the six above, their inflections, `bundlers`, `diffed`, `esports`, `initializers`, `structs`);
   they are the last block of `data/inputs/tech-always.txt`, `lexicon-builder build` and `check` are green,
   `knownW11Corrections` and the marker are gone (zero corrections in every W11 file) and
-  `developerWordsAreNeverCorrected` pins the 18 words (ADR 0203 section 10, the W11 row of ENG-R1124). Left before
-  `1.1.0-beta.1`: the product owner's review of the 18 words (question 6) and the Task 35 rerun at the stable 1.0.1
-  merge.
+  `developerWordsAreNeverCorrected` pins the 18 words (ADR 0203 section 10, the W11 row of ENG-R1124). The product owner
+  accepted the 18 words on 20/11/2026 (ADR 0010 item 6); left before `1.1.0-beta.1`: the Task 35 rerun at the stable
+  1.0.1 merge.
 
 ---
 
@@ -988,7 +988,8 @@ during most of them.
 Each item names the plan's default (what is built now) and what the other answer changes. *(19/11/2026: the product
 owner accepted the defaults of items 1, 2 and 3, `docs/decisions/0010-pa-decisions-2026-11-19.md`; items 4 and 5
 stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed. Item 6 was
-added on 19/11/2026 after the E2b gates with the bundled data.)*
+added on 19/11/2026 after the E2b gates with the bundled data. 19 and 20/11/2026: the product owner accepted items 4
+and 6 as built, ADR 0010 items 5 and 6; item 5 is followed as written.)*
 
 1. **Q10, a capitalised word at a sentence start (ENG-R1111).** Default: corrected (`Androdi` gives `Android`;
    `Biden` at a sentence start would become `Bidden` once, until the restore key teaches the never-correct list).
@@ -1023,5 +1024,5 @@ added on 19/11/2026 after the E2b gates with the bundled data.)*
    new word). The other answer: a new pinned input of reviewed developer words for the guard list (its provenance and
    notice, the 512 KB gate unchanged), which keeps tech-always for words with a 1.0 restore reason and leaves the 1.0
    data untouched.
-   *(19/11/2026, the final fix round: the default is built, 18 words on tech-always, Task 36; the product owner's
-   review of the words stays open.)*
+   *(19/11/2026, the final fix round: the default is built, 18 words on tech-always, Task 36. 20/11/2026: the
+   product owner accepted the 18 words, ADR 0010 item 6.)*
