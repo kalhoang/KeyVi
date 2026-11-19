@@ -403,25 +403,6 @@ import VietnameseEngine
         #expect(fixture.popJobs().compactMap(\.edit).map(\.insertion) == ["â"])
     }
 
-    /// A pending check that meets a snapshot without a readable element waits for a readable one: no job carries it
-    /// with no field to read, and the element found again is checked.
-    @Test func aPendingCheckWaitsForAReadableElementPLTR340() throws {
-        let fixture = PipelineFixture()
-        fixture.keyDown(Key.a)
-        fixture.completeJobs()
-        publish(fixture, generation: 2, after: 0)  // another field, readable: kept, check pending
-        fixture.keyUp(Key.a)
-        publish(fixture, generation: 3, after: 0, change: Self.timedOutRead)
-        fixture.press(Key.s)
-        let unread = fixture.completeJobs().compactMap(\.edit)
-        #expect(!unread.contains { $0.verifyLateFocus && $0.field == nil })
-        #expect(fixture.log.resets.isEmpty)
-        publish(fixture, generation: 4) { $0.fieldHandle = FieldHandle(pid: 100, token: 2, element: nil) }
-        fixture.press(Key.d)
-        let checked = fixture.popJobs().compactMap(\.edit).filter(\.verifyLateFocus)
-        #expect(checked.count == 1 && checked.first?.field?.token == 2)
-    }
-
     // MARK: Item 4: reason codes
 
     /// The structural checks name what refused the change (another process, no element or AX after a timed-out read

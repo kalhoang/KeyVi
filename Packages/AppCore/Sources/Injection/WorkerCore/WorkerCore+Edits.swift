@@ -215,10 +215,16 @@ extension WorkerCore {
 
     /// A first late focus read that started within the settle window may end after it (two bounded calls, the
     /// second timing out); the second read still runs, at once, when the first ended at most one call timeout after
-    /// the window, so the key held behind the check waits at most 50 + 30 + 60 = 140 ms (PLT-R314: 150 ms).
-    private func secondReadFits(after settled: MonotonicInstant) -> Bool {
-        let latest = settled.nanoseconds &+ InjectionTiming.nanoseconds(InjectionTiming.axCallTimeout)
-        return services.clock.now().nanoseconds <= latest
+    /// the window. Review of 19/11/2026: the window runs from the later of the key and the worker's last posted
+    /// event, while PLT-R314 measures the key held behind the check from the key itself, so the second read (two
+    /// bounded calls, after the rest of the window) also has to end within `livenessCeiling` of the job's key:
+    /// otherwise the liveness flush would reset the word after a check that matched.
+    private func secondReadFits(after settled: MonotonicInstant, for job: EditJob) -> Bool {
+        let now = services.clock.now().nanoseconds
+        let call = InjectionTiming.nanoseconds(InjectionTiming.axCallTimeout)
+        guard now <= settled.nanoseconds &+ call else { return false }
+        let ceiling = job.createdAt.nanoseconds &+ InjectionTiming.nanoseconds(configuration.livenessCeiling)
+        return max(now, settled.nanoseconds) &+ 2 &* call <= ceiling
     }
 
     /// PLT-R340 amendment (2026-11-14): after a focus change the tap discovered late and kept the composition, the
@@ -238,8 +244,9 @@ extension WorkerCore {
     /// discovery, with nothing posted since its key, 50 + 60 ms = 110 ms after the key in all, within the 150 ms
     /// ceiling of PLT-R314. The window is judged when the first read starts; a slow first read that ends after it
     /// (review of 19/11/2026: about 60 ms in a busy app) is read again at once if it ended at most one call timeout
-    /// after the window (`secondReadFits`), 140 ms at most. A focus change seen after the wait discards the job
-    /// (PLT-R316).
+    /// after the window (`secondReadFits`), 140 ms at most. The second read runs only when it can end within the
+    /// PLT-R314 ceiling of the job's key (third review of 19/11/2026); otherwise the check fails. A focus change seen
+    /// after the wait discards the job (PLT-R316).
     func lateFocusCheck(_ job: EditJob) -> LateFocusCheck {
         guard job.verifyLateFocus else { return .matches }
         // A revision carries no replaced text (PLT-R357): its token is the current display, after the separator.
@@ -253,7 +260,9 @@ extension WorkerCore {
         let window = settleDeadline(for: job)
         let first = read()
         if first == .matches { return .matches }
-        guard first.mayCatchUp, let settled = window, secondReadFits(after: settled) else { return .mismatch }
+        guard first.mayCatchUp, let settled = window, secondReadFits(after: settled, for: job) else {
+            return .mismatch
+        }
         if services.clock.now() < settled { services.clock.sleep(until: settled) }
         let second = read()
         if job.generation < focusGeneration.load() { return .staleGeneration }

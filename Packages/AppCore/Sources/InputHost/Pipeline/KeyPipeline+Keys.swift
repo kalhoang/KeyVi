@@ -177,7 +177,7 @@ extension KeyPipeline {
     ) -> TapVerdict {
         // PLT-R340 amendment: a key without an edit still verifies a kept late focus change; it is held behind the
         // check (or consumed) like any key while a job is in flight.
-        if lateFocusCheckDue(focus), !Self.deliversEdit(output),
+        if keyState.lateFocusCheckPending, !Self.deliversEdit(output),
             !pushLateFocusCheck(replaced: replaced, key, focus: focus, inputSource: inputSource)
         {
             return queueFull(key.event, now: key.now)
@@ -257,23 +257,18 @@ extension KeyPipeline {
             keyCodes: JobKeyCodes(trigger: key.event.keyCode, firstCharacter: firstCharacter, paste: seen.pasteKeyCode),
             trigger: trigger, verifyBeforeApply: verifies,
             wordStartedNearFocusChange: wordStartedNearFocusChange(focus), createdAt: key.now, isProbe: key.probe,
-            verifyLateFocus: takeLateFocusCheck(focus),
+            verifyLateFocus: takeLateFocusCheck(),
             revision: revises ? RevisionEdit(previous: keyState.lastCommit, currentDisplay: replaced) : nil,
             caretEpoch: context.queue.caretEpoch)
     }
 
-    /// PLT-R340 amendment: the first job after a kept late focus change carries the check.
-    private func takeLateFocusCheck(_ focus: FocusSnapshot) -> Bool {
-        guard lateFocusCheckDue(focus) else { return false }
+    /// PLT-R340 amendment: the first job after a kept late focus change carries the check, whatever the snapshot it
+    /// is built on (review of 19/11/2026): without a readable element the worker fails closed (the key passes, the
+    /// word is reset), so no edit goes out unverified into whatever has the focus.
+    private func takeLateFocusCheck() -> Bool {
+        guard keyState.lateFocusCheckPending else { return false }
         keyState.lateFocusCheckPending = false
         return true
-    }
-
-    /// A pending check waits while the focus names no readable element (a snapshot of the same process kept the
-    /// word without one): the worker could read nothing, and the element the word is in may come back (review of
-    /// 19/11/2026, PLT-R340).
-    private func lateFocusCheckDue(_ focus: FocusSnapshot) -> Bool {
-        keyState.lateFocusCheckPending && focus.isReadableForLateFocusCheck
     }
 
     /// The engine answered with an edit that deletes or inserts something.

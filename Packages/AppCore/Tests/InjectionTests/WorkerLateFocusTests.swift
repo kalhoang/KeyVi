@@ -135,6 +135,29 @@ private func catchingUpRig(
         #expect(rig.clock.now() >= Fixture.start.advanced(byMicroseconds: cost))
     }
 
+    /// Review of 19/11/2026: the window runs from the worker's last posted event when that came after the key, but
+    /// PLT-R314 measures the held key from the key itself. With the previous edit posted 20 ms after the key, a first
+    /// read that ends 100 ms after it still started in the window, yet a second read (two calls of 30 ms) could end
+    /// 160 ms after the key and the liveness flush would reset the word after a matching check. The second read runs
+    /// only when it can end within the ceiling (150 ms after the key); a faster first read keeps it.
+    @Test(arguments: [(80_000 as UInt64, false), (40_000 as UInt64, true)])
+    func theSecondReadEndsWithinTheLivenessCeilingOfTheKeyPLTR314(cost: UInt64, readsAgain: Bool) {
+        let clock = Mutex<ManualClock?>(nil)
+        let reads = Mutex(0)
+        let rig = catchingUpRig(lagMilliseconds: 20, timesOut: [1]) { read in
+            reads.withLock { $0 = read }
+            if read == 1 { clock.withLock { $0?.advance(byMicroseconds: cost) } }
+        }
+        clock.withLock { $0 = rig.clock }
+        rig.clock.advance(byMicroseconds: 20_000)  // the previous edit posts its last event 20 ms after the key
+        rig.pushEdit { Fixture.job(sequence: $0, deleteCount: 0, insertion: " ") }
+        let edit = rig.pushEdit { lateFocusJob($0) }
+        rig.run()
+        #expect(rig.outcome(edit) == (readsAgain ? .executed : .passedThroughByFallback))
+        #expect(reads.withLock { $0 } == (readsAgain ? 2 : 1))
+        #expect(rig.feedback.compositionResetCount == (readsAgain ? 0 : 1))
+    }
+
     /// Bounded: one more read only. An app still behind when the window ends fails the check (the key passes and
     /// the word is reset), and a first read that already ends after the window is not repeated.
     @Test func theSecondReadIsTheLastPLTR340() {

@@ -111,7 +111,8 @@ struct FocusIdentity: Equatable {
     /// changed (PLT-R340 late focus change, amendment of 2026-11-15).
     var appUnknownAfterTimeout: Bool
     /// No app, because the system-wide focus read timed out or failed: the focus is unknown there, not elsewhere, so
-    /// the last element survives it, as on the ax thread (`FocusCore.keepsLastElement`, PLT-R340, PLT-R384).
+    /// the last element survives it, as on the ax thread (`FocusCore.keepsLastElement`, PLT-R340, PLT-R384), and
+    /// mid-word it is judged like a snapshot of the word's process without a readable element.
     var appUnknown: Bool
     /// No element although AX answered (no focused element, the PLT-R381 frontmost fallback): keys typed while this
     /// held did not go into the last element (PLT-R340 amendment of 19/11/2026, review).
