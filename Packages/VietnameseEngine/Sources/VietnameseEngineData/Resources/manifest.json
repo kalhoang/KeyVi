@@ -1,7 +1,7 @@
 {
   "format": 2,
   "generator": "lexicon-builder",
-  "inputsSHA256": "79d63a03d6da41327a29caa10de03fc3bea56b46e9ec6ce2af531c21bb3925c8",
+  "inputsSHA256": "4e31efe5ede0def9795cbc5bee34209fe817c3ad7a1ff065124fcb5fbdea9f39",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
     {"name": "tech-always.txt", "bytes": 2174, "entries": 388, "sha256": "9ed38dc89f5407a4c499fca259043c59bab9e9677584c32e0d5447e4cec95640"},
