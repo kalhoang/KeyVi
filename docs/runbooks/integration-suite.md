@@ -746,7 +746,7 @@ the VM rules of this section, in this order:
    every run passes; a late focus change kept inside one of these words shows `focus.lateFocusKept` and no
    `focus.lateFocusCheckFailed`.
 
-Runs on the merged main (`563bbd57`), with the VM rules of this section:
+Runs on the merged main (`563bbd57`, then `7a4c06b6` with the readback retry and the tap recovery record), with the VM rules of this section:
 
 | Run | Commit | Pass | Fail | What it showed |
 |---|---|---|---|---|
@@ -755,6 +755,9 @@ Runs on the merged main (`563bbd57`), with the VM rules of this section:
 | `20261119T013243Z-integration` (`--probe --only` of step 1 above) | `563bbd57` | 3 | 1 | `testhost.native.burst` gave `nguyênx nguyeenx nguyeenx` while TestHost stalled right after its launch: the probe's observer was refused with -25204 for about 0.5 s, then all 25 characters landed at once at 21.9 s, and the app logged `health.flush` with `count` 5 (no tap timeout and no fail open in that session) |
 | `20261119T014541Z-integration`, `20261119T015522Z-integration` (`--probe --only` of step 1 above) | `563bbd57` | 4 | 0 | both pass |
 | `20261119T020431Z-integration` (the control run's command of the first table, `--probe --only` of six scenarios) | `563bbd57` | 6 | 0 | all pass; `testhost.sheet.commandS` read back `đường` in 2.6 s |
+| `20261119T031151Z-integration` (full suite) | `7a4c06b6` | 45 | 1 | `testhost.commonWords.vni` gave `thanh2` for one word of 200 (`thành`): a `health.flush` with `count` 0 and no tap timeout in that minute, so a key held behind a slow edit was replayed as typed when the worker passed the 150 ms ceiling of PLT-R314 (guest latency, the class of the 13/11 commonWords failures); the tap recovery record `health.tapRecovered` appears after the `tapTimeout.recovery` scenario |
+| `20261119T032823Z-integration` (full suite) | `7a4c06b6` | 46 | 0 | all pass, privacy scan clean: the integration run of the release gate for `1.0.1-beta.2` (the tag `v1.0.1-beta.2` is `a02772bb`, which adds only the changelog headings to `7a4c06b6`) |
+| `20261119T034456Z-integration` (the control run's command of the first table) | `7a4c06b6` | 6 | 0 | all pass |
 
 Root causes of these failures, from the run logs, the probe, the evidence files, the fixed key plan of seed
 1592642302 and `git diff 28aaa256..563bbd57`, none a regression of the branches merged since `28aaa256` (the same guest
