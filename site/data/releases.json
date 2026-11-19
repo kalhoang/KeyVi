@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.0.1-beta.2",
+      "build": 1000102,
+      "channel": "beta",
+      "date": "2026-11-19",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.0.1-beta.2.dmg",
+      "sha256": "263ba12b48fe419edade0f93c34029a4f243a79c3a58254c490793315b72d2af",
+      "size": 9555558,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "### Sửa lỗi\n\n- Khi một ứng dụng tự chuyển sang ô nhập khác, từ đầu tiên bạn gõ ở đó ít bị mất dấu hay sai dấu hơn (\"tieengs\" thay vì \"tiếng\").\n- KeyVi nay tiếp tục theo dõi một ứng dụng đã từ chối thông báo chuyển ô nhập trong vài giây đầu sau khi mở, nên các lần chuyển ô trong ứng dụng đó không còn bị bỏ sót cho tới khi bạn chuyển sang ứng dụng khác.\n- Trong các ứng dụng phản hồi chậm, từ bạn gõ ít bị tách đôi hay mất dấu hơn, chẳng hạn sau khi ngừng gõ một lúc hoặc ngay sau khi một phím tắt như Command+S hay Command+K mở hộp thoại lưu hay khung tìm kiếm (\"nguyeẽn\" thay vì \"nguyễn\", \"đuơngf\" thay vì \"đường\").",
+        "en": "### Fixed\n\n- When an app moves the focus to another field by itself, the first word you type there loses its marks or gets a wrong one less often (\"tieengs\" instead of \"tiếng\").\n- KeyVi now keeps watching an app that refused its focus notifications for a few seconds after it launched, so moves between that app's fields are no longer missed until you switch apps.\n- In apps that answer slowly, a word splits in two or loses its marks less often, for example after a short pause or right after a shortcut such as Command+S or Command+K opens a save dialog or a search panel (\"nguyeẽn\" instead of \"nguyễn\", \"đuơngf\" instead of \"đường\")."
+      }
+    },
+    {
       "version": "1.0.1-beta.1",
       "build": 1000101,
       "channel": "beta",
