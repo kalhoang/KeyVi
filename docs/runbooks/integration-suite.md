@@ -707,8 +707,10 @@ test in `LateFocusBoundsTests`, `WorkerLateFocusTests` or `FocusSnapshotPublicat
   readable element (the same conditions, against the word's element; `reason` `unreadable` when kept); Accessibility
   answering that no application has the focus stays `otherProcess` (`anAppLessSnapshotAfterAFailedReadKeepsTheWordPLTR340`
   and the two after it). Accepted exposure, as for the same-process keep: an app that takes the focus by itself, with
-  no key or click the tap sees, while that read times out and within 500 ms of a word's first key, gets that word's
-  edits until its own snapshot arrives.
+  no key or click the tap sees, while that read times out and within 500 ms of a word's first key, gets the rest of
+  that word's edits until the next read (the first key after a 500 ms pause, a shortcut, a click, an overlay
+  notification or an activation): a timed-out read schedules no settle re-read and the owner's observer is removed
+  (review of the third round, 19/11/2026).
 - The check's second read runs only when it can end within 150 ms of the check's key (PLT-R314), since the settle
   window can start at the worker's last posted event; otherwise the check fails at once instead of the liveness flush
   resetting the word after a match (`theSecondReadEndsWithinTheLivenessCeilingOfTheKeyPLTR314`).
