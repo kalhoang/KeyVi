@@ -63,6 +63,24 @@ struct HostDecisionMapperTests {
         #expect(HostDecisionMapping.ignoring(mapped).overlay)
     }
 
+    /// ENG-R1119: the rule's `features.restoreHotkey` reaches the engine variant as well as the tap's restore binding,
+    /// so a rule that turns the key off (the Spotlight shape: an overlay panel whose Escape closes it) gets an engine
+    /// without typo correction. Also through the per-app "ignore" choice, which keeps the variant.
+    @Test func aRuleWithTheRestoreKeyOffGivesAVariantWithoutIt() {
+        var panel = decision()
+        panel.engineContext = .general
+        panel.overlay = true
+        panel.features = ResolvedFeatures(
+            autoCapitalize: false, macros: true, englishRestore: true, restoreHotkey: false)
+        let mapped = HostDecisionMapper.map(panel, engine: .native, optedIntoPaste: false)
+        #expect(!mapped.variant.restoreHotkey && !mapped.restoreHotkeyEnabled)
+        #expect(mapped.variant.englishRestore && mapped.variant.appContext == .general)
+        #expect(!HostDecisionMapping.ignoring(mapped).variant.restoreHotkey)
+        panel.features.restoreHotkey = true
+        let editor = HostDecisionMapper.map(panel, engine: .native, optedIntoPaste: false)
+        #expect(editor.variant.restoreHotkey && editor.restoreHotkeyEnabled)
+    }
+
     @Test func byEngineBecomesConcrete() {
         #expect(
             HostDecisionMapper.map(decision(), engine: .native, optedIntoPaste: false).requireTextFocus == .whenKnown)
@@ -81,7 +99,9 @@ struct HostDecisionMapperTests {
         #expect(mapped.plan.parameters.interEventDelayUs == 1_500)
         #expect(mapped.plan.parameters.inlineCompletion == .axSelection)
         #expect(mapped.plan.parameters.pasteOptedIn == false)
-        #expect(mapped.variant == EngineVariant(appContext: .code, englishRestore: false, macros: false))
+        #expect(
+            mapped.variant
+                == EngineVariant(appContext: .code, englishRestore: false, macros: false, restoreHotkey: false))
         #expect(mapped.restoreHotkeyEnabled == false)
         #expect(mapped.verifyReentry == .never)
         #expect(mapped.rule == RuleID(rawValue: "test.rule"))

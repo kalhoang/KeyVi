@@ -13,10 +13,12 @@ public import SettingsStore
 public import VietnameseEngine
 internal import VietnameseEngineData
 
-/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, D28, D29, the macros and the two user word lists
-/// of the focused app. The learned collision memory is not part of it: a new memory snapshot bumps only
-/// `EngineCatalog.memoryRevision` (ENG-R865). `EngineCatalog.revision` changes exactly when this value changes, so a hotkey, UI-language or
-/// update-channel change keeps the word being typed (PRD-R27, the W1-F1 contract on `EngineCatalog.revision`).
+/// The engine-affecting part of the settings: D1, D2, D4, D5, D6, D9, D28, D29, D30, the on or off state of D8, the
+/// macros, the two user word lists of the focused app and the never-correct list. The learned collision memory is not
+/// part of it: a new memory snapshot bumps only `EngineCatalog.memoryRevision` (ENG-R865). `EngineCatalog.revision`
+/// changes exactly when this value changes, so a hotkey, UI-language or update-channel change keeps the word being
+/// typed (PRD-R27, the W1-F1 contract on `EngineCatalog.revision`). D8 is an engine input by its on or off state only
+/// (ENG-R1119: with the key off no word is corrected): rebinding it to another key keeps the revision and the word.
 public struct EngineInputs: Sendable, Hashable {
     public var typingMethod: TypingMethod
     public var tonePlacement: TonePlacement
@@ -28,11 +30,17 @@ public struct EngineInputs: Sendable, Hashable {
     public var learnCollisionChoices: Bool
     /// D29, ANDed per variant with the rule's `features.lookaheadRevision` (ENG-R829, PLT-R357).
     public var lookaheadRevision: Bool
+    /// D30, ANDed with D4, D8 on and the variant's `englishRestore` and `restoreHotkey` (ENG-R1119).
+    public var typoCorrection: Bool
+    /// D8 on or off (`restoreHotkey != nil`); the binding itself stays out (ENG-R1119, PRD-R27).
+    public var restoreKeyEnabled: Bool
     /// NFC-normalised (`MacroNormalization`). Content: never logged.
     public var macros: [StoredMacro]
     /// The focused app's lists: the global entries plus the words learned in that app (ENG-R862). Content.
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
+    /// ENG-R1118: per user, the same in every app, so a focus change never touches it. Content: never logged.
+    public var neverCorrect: Set<String>
 
     /// With the global lists only (no focused app).
     public init(settings: EffectiveSettings, macros: [StoredMacro]) {
@@ -51,9 +59,12 @@ public struct EngineInputs: Sendable, Hashable {
         macrosEnabled = settings.macrosEnabled
         learnCollisionChoices = settings.learnCollisionChoices
         lookaheadRevision = settings.lookaheadRevision
+        typoCorrection = settings.typoCorrection
+        restoreKeyEnabled = settings.restoreHotkey != nil
         self.macros = MacroNormalization.normalized(macros)
         keepAsTyped = wordLists.keepAsTyped
         keepVietnamese = wordLists.keepVietnamese
+        neverCorrect = settings.neverCorrect
     }
 
     var wordLists: UserWordLists { UserWordLists(keepAsTyped: keepAsTyped, keepVietnamese: keepVietnamese) }
@@ -230,9 +241,7 @@ public final class TapSettingsPublisher: Sendable {
         var rebuiltMacros = false
         state.effective = effective
         if memoryOnly, let table = state.macroTable {
-            let resources = bundledResources(&state)
-            var attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
-            attached.collisionMemory = state.memory
+            let attached = attachedResources(&state, inputs: inputs, macros: table)
             state.catalog = EngineBridge.catalog(
                 settings: effective, resources: attached, revision: state.revision, memoryRevision: state.memoryRevision
             )
@@ -249,9 +258,7 @@ public final class TapSettingsPublisher: Sendable {
                 state.macroIssues = issues
                 rebuiltMacros = true
             }
-            let resources = bundledResources(&state)
-            var attached = EngineBridge.resources(wordLists: inputs.wordLists, macros: table) { resources }
-            attached.collisionMemory = state.memory
+            let attached = attachedResources(&state, inputs: inputs, macros: table)
             state.catalog = EngineBridge.catalog(
                 settings: effective, resources: attached, revision: state.revision, memoryRevision: state.memoryRevision
             )
@@ -264,6 +271,17 @@ public final class TapSettingsPublisher: Sendable {
             restoreHotkey: effective.restoreHotkey, macrosInEnglishMode: EnglishModeMacros.effective(effective),
             rememberPerApp: effective.rememberPerApp)
         return Built(snapshot: snapshot, rebuilt: rebuilt, rebuiltMacros: rebuiltMacros, issues: state.macroIssues)
+    }
+
+    /// The bundled lists with the user's lists (the focused app's keep lists, the never-correct list), the macros and
+    /// the learned memory attached. One value for the whole catalog: the engines share it (ENG-R1120).
+    private func attachedResources(_ state: inout State, inputs: EngineInputs, macros: MacroTable) -> Resources {
+        let bundled = bundledResources(&state)
+        var attached = EngineBridge.resources(
+            wordLists: inputs.wordLists, neverCorrect: inputs.neverCorrect, macros: macros
+        ) { bundled }
+        attached.collisionMemory = state.memory
+        return attached
     }
 
     private func finish(_ built: Built) -> TapSettingsPublication {

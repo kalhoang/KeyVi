@@ -88,6 +88,7 @@ public enum DevRecorderSettings {
             "telexBracketKeys": String(settings.telexBracketKeys),
             "macrosEnabled": String(settings.macrosEnabled),
             "macrosInEnglishMode": String(settings.macrosInEnglishMode),
+            "typoCorrection": String(settings.typoCorrection),  // D30 (1.1.0): replay rebuilds the switch, ENG-R1119
             "enabledMacros": String(state.macros.filter(\.enabled).count),
             "restoreHotkey": settings.restoreHotkey.map { String(describing: $0) } ?? "none",
             "toggleHotkey": String(describing: settings.toggleHotkey),

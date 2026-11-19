@@ -166,6 +166,9 @@ public struct DevFocusRecord: Sendable, Hashable {
     public var engineContext: String
     public var englishRestore: Bool
     public var macros: Bool
+    /// The rule's `features.restoreHotkey`, the variant bit of the typo correction switch (ENG-R1119, 1.1.0); replay
+    /// rebuilds the switch from it and the settings line.
+    public var restoreHotkey: Bool
     public var pause: String?
     /// When AX names no focused application: the frontmost application's bundle ID from NSWorkspace, so typing in
     /// an app the focus reader cannot name can be attributed (written only then; 2026-11-15).
@@ -175,8 +178,8 @@ public struct DevFocusRecord: Sendable, Hashable {
     public init(
         generation: UInt64, bundle: String?, role: String?, subrole: String?, rule: String?, strategy: String,
         requireTextFocus: String, axAvailability: String, secure: Bool, mode: String, modeSource: String,
-        engineContext: String, englishRestore: Bool, macros: Bool, pause: String?, frontmost: String? = nil,
-        at: MonotonicInstant
+        engineContext: String, englishRestore: Bool, macros: Bool, restoreHotkey: Bool = true, pause: String?,
+        frontmost: String? = nil, at: MonotonicInstant
     ) {
         self.generation = generation
         self.bundle = bundle
@@ -192,6 +195,7 @@ public struct DevFocusRecord: Sendable, Hashable {
         self.engineContext = engineContext
         self.englishRestore = englishRestore
         self.macros = macros
+        self.restoreHotkey = restoreHotkey
         self.pause = pause
         self.frontmost = frontmost
         self.at = at

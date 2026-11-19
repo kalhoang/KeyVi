@@ -74,6 +74,7 @@ struct RestoreHotkeyDefaultTests {
         ("com.apple.dt.Xcode", .native, false),
         ("tv.parsec.www", .native, false),
         ("com.apple.TextEdit", .native, true),
+        ("com.apple.Spotlight", .native, false),
     ])
     func shippedRulesReachTheTapDecision(bundle: String, engine: EngineFingerprint, enabled: Bool) throws {
         try expectTapDecision(bundle: bundle, engine: engine, domClasses: [], enabled: enabled)
@@ -97,5 +98,7 @@ struct RestoreHotkeyDefaultTests {
         context.domClasses = domClasses
         let decision = HostDecisionMapping.map(rules.resolve(context), engine: engine, optedIntoPaste: false)
         #expect(decision.restoreHotkeyEnabled == enabled)
+        // ENG-R1119: the same feature selects the engine variant, so no word is corrected where the key is off.
+        #expect(decision.variant.restoreHotkey == enabled)
     }
 }
