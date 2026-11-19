@@ -118,6 +118,10 @@ struct PlainTextReport {
             field(labels.learnedCollisionEntries, String(entries))  // count only (PLT-R914)
         }
         field(labels.lookaheadRevision, flag(settings.lookaheadRevision))  // D29
+        field(labels.typoCorrection, flag(settings.typoCorrection))  // D30 (1.1.0)
+        if let entries = settings.neverCorrectEntries {
+            field(labels.neverCorrectEntries, String(entries))  // count only (PRD-R45, PRD-R81)
+        }
         field(labels.interfaceLanguage, settings.interfaceLanguage.rawValue)
         field(labels.channel, settings.updateChannel.rawValue)
         field(labels.changedSettings, joined(settings.explicitlySetKeys))
@@ -139,6 +143,8 @@ struct PlainTextReport {
         }
         section(labels.counters)
         for (name, value) in BlockFields.counters(metrics) { field(name, String(value)) }
+        if let corrections = report.counters?.corrections { field(labels.corrections, String(corrections)) }
+        if let undos = report.counters?.correctionUndos { field(labels.correctionUndos, String(undos)) }
         guard let probe = report.latency.probe else { return }
         section(labels.latencyTest)
         field(labels.generatedAt, probe.ranAt.formatted(.iso8601))

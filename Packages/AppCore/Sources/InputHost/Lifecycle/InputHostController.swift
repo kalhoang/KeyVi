@@ -376,7 +376,7 @@ public final class InputHostController {
             enabledSources: dependencies.inputSources.enabledSources(),
             secureInput: channels.snapshots.secureInput.load(),
             permissions: latestPermissions ?? Self.unknownPermissions, tapEnabled: session?.thread.isEnabled ?? false,
-            conflicts: conflicts)
+            conflicts: conflicts, corrections: counters.correctionCount, correctionUndos: counters.correctionUndoCount)
     }
 }
 
@@ -391,4 +391,7 @@ public struct HostReportContext: Sendable {
     public var permissions: PermissionStatus
     public var tapEnabled: Bool
     public var conflicts: [ConflictingInput]
+    /// `HostCounters` since launch (ENG-R1115, ENG-R1117, 1.1.0): counts only, for the report (ADR 0323).
+    public var corrections: UInt64 = 0
+    public var correctionUndos: UInt64 = 0
 }

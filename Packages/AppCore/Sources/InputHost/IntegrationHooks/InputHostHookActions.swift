@@ -79,6 +79,7 @@ public final class InputHostHookActions: IntegrationHookActions {
                 firstKeyAfterSecureInputReleaseComposed: host.counters.firstKeyAfterSecureInputReleaseComposed,
                 tapRecoveries: host.counters.tapRecoveryCount,
                 engineResetsAfterTapRecovery: host.counters.engineResetsAfterTapRecoveryCount,
+                corrections: host.counters.correctionCount, correctionUndos: host.counters.correctionUndoCount,
                 metrics: metrics.snapshot())
         }
     }
