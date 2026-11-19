@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Content-led pages: changelog, privacy, donate, 404. Each opens with the shared page head (lib/pages/head.mjs).
 import { kit } from "../context.mjs";
-import { renderMarkdown } from "../markdown.mjs";
+import { renderMarkdown, slugifyHeading } from "../markdown.mjs";
 import { routePath } from "../routes.mjs";
 import { esc } from "../util.mjs";
 import { pageHead } from "./head.mjs";
@@ -13,6 +13,23 @@ const RELEASE_HEADING = /^\[?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)\]?(?:\s|$)/;
 export function changelogHeadingId(depth, text) {
   const match = depth === 2 ? RELEASE_HEADING.exec(text.trim()) : null;
   return match ? `v${match[1]}` : undefined;
+}
+
+/**
+ * Heading ids for one rendering of the changelog: release headings get `v<version>`, and a group heading under a
+ * release (`### Fixed`) gets `v<version>-<slug>`, so the same group name in two releases does not repeat an id.
+ * The returned function keeps the current release, so make a new one for each rendering.
+ */
+export function changelogHeadingIds() {
+  let release;
+  return (depth, text) => {
+    const id = changelogHeadingId(depth, text);
+    if (id) {
+      release = id;
+      return id;
+    }
+    return release && depth > 2 ? `${release}-${slugifyHeading(text)}` : undefined;
+  };
 }
 
 /**
@@ -33,7 +50,7 @@ export function renderChangelog(ctx, lang) {
   const m = c.changelog;
   // The page owns the h1. Brand tokens ({{AppName}}) are filled as plain text; the renderer escapes them.
   const source = releaseSections(p(ctx.data.changelog[lang]));
-  const releases = source ? renderMarkdown(source, { baseLevel: 1, headingId: changelogHeadingId }) : `<p class="muted">${esc(m.empty)}</p>`;
+  const releases = source ? renderMarkdown(source, { baseLevel: 1, headingId: changelogHeadingIds() }) : `<p class="muted">${esc(m.empty)}</p>`;
   const body = `
     ${pageHead(esc(m.h1), esc(m.lede))}
     <div class="prose changelog">${releases}</div>

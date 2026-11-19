@@ -3,7 +3,7 @@
 // emphasis, links. All text is HTML-escaped first; only https/relative/anchor links are emitted.
 import { esc } from "./util.mjs";
 
-function slugifyHeading(text) {
+export function slugifyHeading(text) {
   return text
     .normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/gi, "d")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
