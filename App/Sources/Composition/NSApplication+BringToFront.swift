@@ -6,11 +6,18 @@
 
 import AppKit
 
+/// The application delegate that owns the window presence (`AppMain`). Named by a protocol so that this file compiles
+/// without the entry point: the SettingsSnapshots bundle of project.yml builds `App/Sources` without `AppMain.swift`.
+@MainActor
+protocol WindowPresenceOwner: AnyObject {
+    var windowPresence: WindowPresenceController? { get }
+}
+
 extension NSApplication {
     /// `activate()` (cooperative activation) from macOS 14; `activate(ignoringOtherApps:)` on macOS 12 and 13,
     /// where `activate()` does not exist (ADR 0315).
     func bringToFront() {
-        (delegate as? AppMain)?.windowPresence?.willActivateForWindow()
+        (delegate as? WindowPresenceOwner)?.windowPresence?.willActivateForWindow()
         if #available(macOS 14, *) {
             activate()
         } else {

@@ -9,7 +9,7 @@ import ShellCore
 
 @main
 @MainActor
-final class AppMain: NSObject, NSApplicationDelegate {
+final class AppMain: NSObject, NSApplicationDelegate, WindowPresenceOwner {
     private var environment: AppEnvironment?
     private(set) var windowPresence: WindowPresenceController?
     private var mainMenu: MainMenuController?
