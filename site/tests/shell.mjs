@@ -8,7 +8,7 @@ import { analyticsCspAdditions, analyticsScriptTag, loadAnalyticsHosts, parseAna
 import { loadBrand } from "../lib/brand.mjs";
 import { adaptHeaders, extendCsp, headersForPath, parseHeaders, serializeHeaders } from "../lib/headers.mjs";
 import { verifyBadge } from "../lib/layout.mjs";
-import { changelogHeadingId, releaseSections } from "../lib/pages/simple.mjs";
+import { changelogHeadingId, changelogHeadingIds, releaseSections } from "../lib/pages/simple.mjs";
 import { LANGS, ROUTES, routePath } from "../lib/routes.mjs";
 import { modernToneWords, siteToneOffenders, toneOffendersInFiles } from "../lib/tone.mjs";
 import { SITE_DIR, ROOT_DIR, walk, attrs, isReleaseNotesPage, sha256Base64, contrast, apcaLc, thirdPartyOrigins, cspOf, assertFingerprinted } from "./helpers.mjs";
@@ -186,6 +186,16 @@ export async function runShellChecks(check, fixtures) {
     assert.equal(changelogHeadingId(2, "v2.0.0"), "v2.0.0");
     assert.equal(changelogHeadingId(2, "[Unreleased]"), undefined);
     assert.equal(changelogHeadingId(3, "[1.2.0] - 2026-12-01"), undefined);
+  });
+
+  await check("changelog heading ids: a group heading is unique per release (v<version>-<slug>), so two releases can both have Fixed", () => {
+    const ids = changelogHeadingIds();
+    assert.equal(ids(2, "[1.0.1-beta.2] - 2026-11-19"), "v1.0.1-beta.2");
+    assert.equal(ids(3, "Fixed"), "v1.0.1-beta.2-fixed");
+    assert.equal(ids(2, "[1.0.1-beta.1] - 2026-11-18"), "v1.0.1-beta.1");
+    assert.equal(ids(3, "Fixed"), "v1.0.1-beta.1-fixed");
+    assert.equal(ids(3, "Sửa lỗi"), "v1.0.1-beta.1-sua-loi");
+    assert.equal(changelogHeadingIds()(3, "Fixed"), undefined);
   });
 
   await check("changelog page: only release sections reach visitors, never the contributor preamble or Unreleased", () => {
