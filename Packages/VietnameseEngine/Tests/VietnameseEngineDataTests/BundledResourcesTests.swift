@@ -66,6 +66,22 @@ struct BundledResourcesTests {
         #expect(!resources.userKeepRaw.contains("thoi"))
     }
 
+    /// ENG-R1118: the host's never-correct list reaches the engine through `bundled` and `load(from:)`. The correction
+    /// data of ENG-R1120 is empty until the data track builds its files (the neighbours table then has 26 entries).
+    @Test func passesTheNeverCorrectListThrough() throws {
+        let resources = try Resources.bundled(
+            userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]), userNeverCorrect: WordSet(["androdi"]))
+        #expect(resources.userNeverCorrect.contains("androdi"))
+        #expect(!resources.userKeepRaw.contains("androdi"))
+        #expect(resources.correction.keyboardNeighbours.isEmpty)
+        let loaded = try Resources.load(
+            from: TestPaths.committedResources, userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]),
+            userNeverCorrect: WordSet(["gramar"]))
+        #expect(loaded.userNeverCorrect.contains("gramar"))
+        let withoutTheList = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+        #expect(!withoutTheList.userNeverCorrect.contains("androdi"))
+    }
+
     @Test func bundledNoticesCarryTheScowlNotice() throws {
         // ENG-R811: the app shows the SCOWL notice in its acknowledgements.
         let notices = try Resources.bundledNotices()

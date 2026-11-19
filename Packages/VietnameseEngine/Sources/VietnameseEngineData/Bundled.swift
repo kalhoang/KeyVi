@@ -46,22 +46,24 @@ extension Resources {
     }
 
     /// Loads the resources shipped in this package's bundle (`Bundle.module`) and adds the host's
-    /// user lists (ENG-R860), macros (section 11) and learned collision memory (ENG-R865).
+    /// user lists (ENG-R860), macros (section 11), learned collision memory (ENG-R865) and never-correct list
+    /// (ENG-R1118).
     public static func bundled(
         userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
-        collisionMemory: CollisionMemorySnapshot = .empty
+        collisionMemory: CollisionMemorySnapshot = .empty, userNeverCorrect: WordSet = WordSet([])
     ) throws -> Resources {
         guard let directory = bundledDirectory else { throw LoadError.missingResource("Resources") }
         return try load(
             from: directory, userKeepRaw: userKeepRaw, userKeepVietnamese: userKeepVietnamese, macros: macros,
-            collisionMemory: collisionMemory)
+            collisionMemory: collisionMemory, userNeverCorrect: userNeverCorrect)
     }
 
     /// Loads resource files in the bundled format from `directory` (manifest.json plus the lists).
     /// Used by `bundled` and by tests that need deliberately broken or tiny resource sets.
+    /// The correction data of section 11A (ENG-R1120) is empty until the files of resource format 3 are built.
     public static func load(
         from directory: URL, userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
-        collisionMemory: CollisionMemorySnapshot = .empty
+        collisionMemory: CollisionMemorySnapshot = .empty, userNeverCorrect: WordSet = WordSet([])
     ) throws -> Resources {
         let files = try ResourceDirectory(directory)
         let ambiguity = try files.ambiguityTable()
@@ -84,7 +86,8 @@ extension Resources {
             ambiguity: ambiguity.decisions,
             userKeepRaw: userKeepRaw,
             userKeepVietnamese: userKeepVietnamese,
-            macros: macros, collision: collision, collisionMemory: collisionMemory)
+            macros: macros, collision: collision, collisionMemory: collisionMemory,
+            userNeverCorrect: userNeverCorrect, correction: .empty)
     }
 
     /// The notices the host must show in its acknowledgements (ENG-R811): SCOWL's copyright and
