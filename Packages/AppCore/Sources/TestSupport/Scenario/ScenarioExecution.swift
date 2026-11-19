@@ -169,18 +169,37 @@ extension ScenarioRunner {
         if !run.isEmpty { try await driver.type(run, profile: profile) }
     }
 
-    /// The field's reading, read again every poll while its text differs from the expectation, until the settle time
-    /// passed. A scenario without an expected text, and a person's readback, are read once.
+    /// The field's reading, read again every poll while its text differs from the expectation or the read failed, until
+    /// the settle time passed. A failed read counts like a wrong text: one lookup that missed on a loaded guest ended
+    /// `testhost.sheet.commandS` in VM run 20261119T005934Z. At the deadline the newest text read is returned, or,
+    /// when no read succeeded, the newest error is thrown. A read that needs a person (`HumanReadbackRequired`) is never
+    /// repeated. A scenario without an expected text, and a person's readback, are read once (PLT-R530).
     func settledReading(of scenario: Scenario) async throws -> ScenarioReading {
-        var reading = try await readback.currentReading(of: scenario)
-        guard let expected = scenario.expect.text, scenario.readback != .human else { return reading }
+        guard let expected = scenario.expect.text, scenario.readback != .human else {
+            return try await readback.currentReading(of: scenario)
+        }
+        var latest = try await attemptReading(of: scenario)
+        var newest = try? latest.get()
         let deadline = clock.now().nanoseconds &+ Self.readbackSettleNanoseconds
-        while reading.text != expected, clock.now().nanoseconds < deadline {
+        while (try? latest.get())?.text != expected, clock.now().nanoseconds < deadline {
             let next = min(deadline, clock.now().nanoseconds &+ Self.readbackPollNanoseconds)
             clock.sleep(until: MonotonicInstant(nanoseconds: next))
-            reading = try await readback.currentReading(of: scenario)
+            latest = try await attemptReading(of: scenario)
+            newest = (try? latest.get()) ?? newest
         }
-        return reading
+        if let newest { return newest }
+        return try latest.get()
+    }
+
+    /// One read of the field: its reading, or the error it failed with. Only `HumanReadbackRequired` is thrown.
+    private func attemptReading(of scenario: Scenario) async throws -> Result<ScenarioReading, any Error> {
+        do {
+            return .success(try await readback.currentReading(of: scenario))
+        } catch let human as HumanReadbackRequired {
+            throw human
+        } catch {
+            return .failure(error)
+        }
     }
 }
 

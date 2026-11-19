@@ -54,6 +54,56 @@ import Testing
                 == 1 + Int(ScenarioRunner.readbackSettleNanoseconds / ScenarioRunner.readbackPollNanoseconds))
     }
 
+    /// VM run 20261119T005934Z (`testhost.sheet.commandS`): one lookup of the sheet's mirror failed while the guest was
+    /// loaded, and that single error ended the scenario. A failed read is read again like a wrong text, within the
+    /// same settle time (PLT-R530).
+    @Test func aReadThatFailsOnceIsReadAgainWithinTheSettleTimePltR530() async {
+        let clock = ManualClock()
+        let field = FlakyReadback([.failure(TestFailure.injected), .success("đi")])
+        let result = await runner(readback: field, clock: clock).run(makeScenario())
+        #expect(result.outcome == .pass && result.observedText == "đi")
+        #expect(field.readCount == 2)
+        #expect(result.durationSeconds == Double(ScenarioRunner.readbackPollNanoseconds) / 1_000_000_000)
+    }
+
+    /// A read that never succeeds rethrows its newest error once the settle time passed (PLT-R530, QA-R21).
+    @Test func aReadThatAlwaysFailsRethrowsTheNewestErrorAtTheSettleTimePltR530() async {
+        let clock = ManualClock()
+        let field = FlakyReadback([.failure(TestFailure.injected), .failure(LookupFailure(description: "newest"))])
+        let result = await runner(readback: field, clock: clock).run(makeScenario())
+        #expect(result.outcome == .fail && result.observedText == nil)
+        #expect(result.reason == "readback ax: newest")
+        #expect(result.durationSeconds == Double(ScenarioRunner.readbackSettleNanoseconds) / 1_000_000_000)
+        #expect(
+            field.readCount
+                == 1 + Int(ScenarioRunner.readbackSettleNanoseconds / ScenarioRunner.readbackPollNanoseconds))
+    }
+
+    /// The newest text read wins over failed reads after it: the verdict compares that text (PLT-R530).
+    @Test func theNewestTextWinsOverALaterFailedReadPltR530() async {
+        let clock = ManualClock()
+        let field = FlakyReadback([
+            .success("dd"), .failure(TestFailure.injected), .success("ddi"), .failure(TestFailure.injected),
+        ])
+        let result = await runner(readback: field, clock: clock).run(makeScenario())
+        #expect(result.outcome == .fail && result.observedText == "ddi")
+        #expect(result.reason == "observed state differs from expect (text)")
+        #expect(result.durationSeconds == Double(ScenarioRunner.readbackSettleNanoseconds) / 1_000_000_000)
+    }
+
+    /// A read that needs a person is never read again, whether it comes first or after a failed read.
+    @Test func aReadThatNeedsAPersonIsNotReadAgainPltR530() async {
+        let first = FlakyReadback([.failure(HumanReadbackRequired(reason: "read it")), .success("đi")])
+        let result = await runner(readback: first, clock: ManualClock()).run(makeScenario())
+        #expect(result.outcome == .needsHuman && result.reason == "needs a person: read it")
+        #expect(first.readCount == 1 && result.durationSeconds == 0)
+        let later = FlakyReadback([
+            .failure(TestFailure.injected), .failure(HumanReadbackRequired()), .success("đi"),
+        ])
+        let afterFailure = await runner(readback: later, clock: ManualClock()).run(makeScenario())
+        #expect(afterFailure.outcome == .needsHuman && later.readCount == 2)
+    }
+
     /// PLT-R422 with PLT-R530: a declared completion is left out of the compared text, not of the residue check,
     /// which reads the field's full text (a placeholder inside the selected tail still fails).
     @Test func theResidueCheckReadsTheFullTextPltR422() async {
@@ -294,4 +344,9 @@ import Testing
                 observation: observed)
                 == .fail)
     }
+}
+
+/// An error with a fixed description, to tell which of several failed reads a reason reports.
+private struct LookupFailure: Error, CustomStringConvertible {
+    var description: String
 }
