@@ -123,38 +123,49 @@ struct CorrectionDataTests {
     /// ENG-R1120: the new data adds at most 1 MB resident, the guard list at most 512 KB of it.
     ///
     /// The gate reads the heap storage the loaded `CorrectionData` owns, from the loaded values themselves (the
-    /// guard bits, the bucket storage of each word set at its actual capacity, the neighbours table), because that
-    /// figure is exact and the same on every run. Live malloc bytes are process-wide: other suites allocate on other
-    /// threads while this one runs, and replacing `Resources.correction` rebuilds whatever the engine derives from it,
-    /// so a malloc reading can drift by hundreds of kilobytes either way and must not decide a known issue. The plan's
-    /// malloc measurement (the resources loaded from the bundled directory and from a copy whose four correction files
-    /// are minimal, no assignment to `Resources.correction`, the median of five interleaved loads) is printed next to
-    /// the gate as the cross-check.
+    /// guard bits, the packed arrays of the shapes and keyings at their actual capacity, the neighbours table), plus
+    /// what the correction index the engine derives from the resources owns beyond the sets it shares (its prefilter
+    /// tables and its byte-keyed tables of the long words), because that figure is exact and the same on every run.
+    /// Live malloc bytes are process-wide: other suites allocate on other threads while this one runs, so a malloc
+    /// reading can drift by hundreds of kilobytes either way. The plan's malloc measurement (the resources loaded from
+    /// the bundled directory and from a copy whose four correction files are minimal, no assignment to
+    /// `Resources.correction`, the median of five interleaved loads) is printed next to the gate as the cross-check.
     ///
-    /// Known issue (19/11/2026, docs/decisions/0203-correction-data.md section 6): 1.30 MB. `CorrectionData` holds the
-    /// shapes and the keyings as `WordSet`s, whose `Set<String>` takes 65,536 buckets of 16 bytes for the 27,277
-    /// keyings alone (1 MB). The named fallback, a sorted array of packed `UInt64` (5 bits per letter, the longest
-    /// keying has 9 letters), changes the type of the two `CorrectionData` fields in `PublicAPI.swift`, which the data
-    /// track does not own; it is requested from the logic track and the integration. Once the data takes the packed
-    /// form, `footprint` must account for the new storage (and for any index the engine derives from it), the known
-    /// issue stops occurring and this test fails until the marker is removed.
+    /// 19/11/2026: 1.30 MB while the shapes and keyings were `WordSet`s (a `Set<String>` gave the 27,277 keyings
+    /// 65,536 buckets of 16 bytes); the packed sets of the sixth amendment of spec 12.2 bring it under 1 MB
+    /// (docs/decisions/0203-correction-data.md section 6).
     @Test func correctionDataStaysWithinItsResidentBudget() throws {
-        let footprint = Self.Footprint(try Self.bundledCorrection())
+        let resources = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+        let footprint = Self.Footprint(resources.correction, index: resources.correctionIndex)
         let measured = try Self.measuredResidentDelta()
         print(
-            "ENG-R1120 measurement (debug): correction data owns \(footprint.total) bytes "
+            "ENG-R1120 measurement (debug): correction data and index own \(footprint.total) bytes "
                 + "(\(String(format: "%.2f", Double(footprint.total) / 1_048_576)) MB: guard list bits "
                 + "\(footprint.guardBits), keyings \(footprint.keyings), shapes \(footprint.shapes), neighbours "
-                + "\(footprint.neighbours)); live malloc cross-check, full minus minimal correction files, median "
-                + "\(measured.median) bytes of five loads \(measured.samples)")
+                + "\(footprint.neighbours), index \(footprint.index)); live malloc cross-check, full minus minimal "
+                + "correction files, median \(measured.median) bytes of five loads \(measured.samples)")
         #expect(footprint.guardBits <= 512 * 1024)
-        withKnownIssue("ENG-R1120: the shapes and keyings as WordSet exceed 1 MB until they take the packed form") {
-            #expect(footprint.total <= 1_048_576, "the correction data owns \(footprint.total) bytes, more than 1 MB")
-        }
+        #expect(footprint.total <= 1_048_576, "the correction data owns \(footprint.total) bytes, more than 1 MB")
     }
 
-    /// The footprint helper reads the real capacities: a set built with spare room counts its spare buckets.
+    /// Spec 12.2 (sixth amendment): the correction index reads the loaded shapes and keyings in place, never a second
+    /// copy, and every bundled word packs, so no byte-keyed table of long Vietnamese words exists.
+    @Test func theIndexReadsTheShapesAndKeyingsInPlace() throws {
+        let resources = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+        let index = resources.correctionIndex
+        #expect(index.shapes.sharesStorage(with: resources.correction.unmarkedShapes))
+        #expect(index.keyings.sharesStorage(with: resources.correction.vietnameseKeyings))
+        #expect(!index.keyings.sharesStorage(with: resources.correction.unmarkedShapes))
+        #expect(index.longVietnameseByteCount == 0)
+    }
+
+    /// The footprint helpers read the real capacities: a set built with spare room counts its spare buckets.
     @Test func theFootprintFollowsTheSetCapacity() {
+        let packed = PackedWordSet(["thach", "truong"])
+        #expect(Self.Footprint.bytes(of: packed) == packed.packed.capacity * 8)
+        #expect(Self.Footprint.bytes(of: PackedWordSet.empty) == 0)
+        let withOthers = PackedWordSet(["thach", "abcdefghijklmnopq"])
+        #expect(Self.Footprint.bytes(of: withOthers) == withOthers.packed.capacity * 8 + 2 * 16 + 8 + 32 + 32)
         #expect(Self.Footprint.bytes(of: WordSet([])) == 0)
         let small = Self.Footprint.bytes(of: WordSet(["thach", "truong"]))
         let large = Self.Footprint.bytes(of: WordSet((0..<1000).map { "w\($0)" }))
@@ -165,19 +176,26 @@ struct CorrectionDataTests {
         #expect(long == 2 * 16 + 8 + 32 + 32)
     }
 
-    /// The heap storage a `CorrectionData` owns, from its loaded values.
+    /// The heap storage a `CorrectionData` and the correction index derived from it own.
     struct Footprint {
         let guardBits: Int
         let keyings: Int
         let shapes: Int
         let neighbours: Int
-        var total: Int { guardBits + keyings + shapes + neighbours }
+        let index: Int
+        var total: Int { guardBits + keyings + shapes + neighbours + index }
 
-        init(_ correction: CorrectionData) {
+        init(_ correction: CorrectionData, index: CorrectionIndex) {
             guardBits = correction.guardList.bits.count * MemoryLayout<UInt64>.stride
             keyings = Self.bytes(of: correction.vietnameseKeyings)
             shapes = Self.bytes(of: correction.unmarkedShapes)
             neighbours = Self.bytes(ofTable: correction.keyboardNeighbours)
+            self.index = index.ownedByteCount
+        }
+
+        /// A packed set: its array at its actual capacity, and the ordinary set of the words that do not pack.
+        static func bytes(of set: PackedWordSet) -> Int {
+            set.packed.capacity * MemoryLayout<UInt64>.stride + bytes(of: set.others)
         }
 
         /// A native `Set` keeps its load at or under 3/4 with a power-of-two bucket count: 16 bytes per bucket (a

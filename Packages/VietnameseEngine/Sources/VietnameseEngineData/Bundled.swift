@@ -80,8 +80,8 @@ extension Resources {
             preGuard: WordSet(try files.wordList(.preGuard)))
         let correction = CorrectionData(
             guardList: try files.guardList(), keyboardNeighbours: try files.neighbours(),
-            unmarkedShapes: WordSet(try files.wordList(.unmarkedShapes)),
-            vietnameseKeyings: WordSet(try files.wordList(.vietnameseKeyings)))
+            unmarkedShapes: try files.packedWordList(.unmarkedShapes),
+            vietnameseKeyings: try files.packedWordList(.vietnameseKeyings))
         return Resources(
             english: WordSet(try files.wordList(.english)),
             techAlways: WordSet(try files.wordList(.techAlways)),

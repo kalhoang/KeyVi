@@ -116,6 +116,24 @@ struct ResourceDirectory {
         return words
     }
 
+    /// The unmarked shapes or the Vietnamese keyings as a packed set (spec 12.2, sixth amendment), with the checks of
+    /// `wordList`: parsed on raw bytes and packed line by line, so the sorted file becomes the set's sorted array in
+    /// storage of exactly its line count, without a `String` per word or a hash (ENG-R1120, ENG-R1231). A file in
+    /// another order takes the general path (`wordList`, then a sort).
+    func packedWordList(_ file: ResourceFile) throws -> PackedWordSet {
+        let data = try verifiedData(file)
+        guard let parsed = try Self.packedLines(data, file: file) else {
+            return PackedWordSet(try wordList(file))
+        }
+        try checkEntryCount(parsed.count, file: file)
+        // Spec 12.2 (API-stage amendment 5): never empty, as in `wordList`.
+        if parsed.count == 0 { throw LoadError.malformedResource("\(file.rawValue): no entry") }
+        if let line = parsed.duplicateLine {
+            throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .duplicate)
+        }
+        return PackedWordSet(packed: parsed.packed, others: WordSet(parsed.others))
+    }
+
     /// Rows `raw  decision  status  display  run  viKind  note` -> the language used by rule L11 (ENG-R821):
     /// `en` and `vi` rows apply as decided when proposed or reviewed; unreviewed rows behave as `vi`. `run: vi`
     /// rows are exempt from rule L10 and `viKind` is the kind of the Vietnamese reading (ENG-R827).
@@ -331,6 +349,70 @@ struct ResourceDirectory {
                 line += 1
             }
             return words
+        }
+    }
+
+    /// The lines of a list of lowercase words `a-z` (the format of `asciiLines` without digits), each packed when it
+    /// fits (`PackedWordSet.pack`) and kept as text otherwise. Nil when the file is not strictly ascending, so the
+    /// caller takes the general path; within an ascending file an equal neighbour is the first duplicate.
+    private static func packedLines(_ data: Data, file: ResourceFile) throws -> PackedLines? {
+        try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> PackedLines? in
+            let bytes = buffer.bindMemory(to: UInt8.self)
+            var result = PackedLines()
+            result.packed.reserveCapacity(bytes.reduce(0) { $1 == 0x0A ? $0 + 1 : $0 })
+            var start = 0
+            var line = 1
+            while start < bytes.count {
+                var end = start
+                while end < bytes.count, bytes[end] != 0x0A {
+                    guard bytes[end] >= 0x61 && bytes[end] <= 0x7A else {
+                        throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
+                    }
+                    end += 1
+                }
+                guard end < bytes.count else {
+                    throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .missingFinalNewline)
+                }
+                guard end > start else {
+                    throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .emptyLine)
+                }
+                let word = UnsafeBufferPointer(rebasing: bytes[start..<end])
+                guard result.append(word, line: line) else { return nil }
+                start = end + 1
+                line += 1
+            }
+            return result
+        }
+    }
+
+    /// The packed words of an ascending list and the words that do not pack, as `packedLines` reads them.
+    private struct PackedLines {
+        var packed: [UInt64] = []
+        var others: [String] = []
+        var duplicateLine: Int?
+        /// The lines read, duplicates included (the manifest counts lines).
+        var count = 0
+
+        /// Adds a line; false when it breaks the ascending order of the packed words or of the others.
+        mutating func append(_ word: UnsafeBufferPointer<UInt8>, line: Int) -> Bool {
+            count += 1
+            if let value = PackedWordSet.pack(utf8: word) {
+                if let last = packed.last, last >= value {
+                    guard last == value else { return false }
+                    duplicateLine = duplicateLine ?? line
+                    return true
+                }
+                packed.append(value)
+            } else {
+                let text = String(decoding: word, as: UTF8.self)
+                if let last = others.last, last >= text {
+                    guard last == text else { return false }
+                    duplicateLine = duplicateLine ?? line
+                    return true
+                }
+                others.append(text)
+            }
+            return true
         }
     }
 

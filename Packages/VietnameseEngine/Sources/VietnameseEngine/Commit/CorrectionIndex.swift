@@ -3,7 +3,8 @@
 // The lookup structures of the typo correction (section 11A, ENG-R1122), derived from `Resources.english`,
 // `Resources.techAlways` and `Resources.correction` when the resources are built, and rebuilt when one of those three
 // fields is assigned (`Resources`, PublicAPI.swift). A resources value and every copy of it share one index, so the
-// engines of a catalog share it too.
+// engines of a catalog share it too. The index reads the packed shapes and keyings of the correction data in place
+// (spec 12.2, sixth amendment) and owns only its prefilter and the tables of the long words (ENG-R1120).
 //
 // Why the index can never be stale: the same prefilter gates the ENG-R1125 pass, so a stale index would not only
 // miss corrections but also let `pahir` become `pair` (a keying missing from the prefilter is never looked up).
@@ -17,13 +18,16 @@ package final class CorrectionIndex: Sendable {
     /// One bit per lowercase bigram that starts such a word (`^ab`) and one per bigram that ends one (`yz$`).
     private let starts: [UInt64]
     private let ends: [UInt64]
-    /// The correction lexicon (ENG-R1114) and the Vietnamese sets (ENG-R1125): the lists themselves for words of a
-    /// small string's length, and byte-keyed tables for the longer words.
+    /// The correction lexicon (ENG-R1114): the lists themselves for words of a small string's length, and a
+    /// byte-keyed table for the longer words.
     private let english: WordSet
     private let techAlways: WordSet
     private let longLexicon: ByteWordTable
-    private let shapes: WordSet
-    private let keyings: WordSet
+    /// The Vietnamese sets (ENG-R1125, ENG-R1110 (d)): the packed sets of the correction data, read in place (they
+    /// share its arrays, never a second copy, spec 12.2 sixth amendment), and a byte-keyed table of their words of
+    /// letters only that do not pack (more than twelve letters; none in the bundled data).
+    let shapes: PackedWordSet
+    let keyings: PackedWordSet
     private let longVietnamese: ByteWordTable
 
     /// The index of `english`, `techAlways` and the shapes and keyings of `correction`. Allocates while it builds
@@ -31,8 +35,10 @@ package final class CorrectionIndex: Sendable {
     package init(english: WordSet, techAlways: WordSet, correction: CorrectionData) {
         var prefilter = Prefilter()
         let longLexiconWords = prefilter.insert([english, techAlways], longerThan: Self.smallStringBytes)
+        prefilter.insert(packed: correction.unmarkedShapes)
+        prefilter.insert(packed: correction.vietnameseKeyings)
         let longVietnameseWords = prefilter.insert(
-            [correction.unmarkedShapes, correction.vietnameseKeyings], longerThan: Self.smallStringBytes)
+            [correction.unmarkedShapes.others, correction.vietnameseKeyings.others], longerThan: 0)
         trigrams = prefilter.trigrams
         starts = prefilter.starts
         ends = prefilter.ends
@@ -80,15 +86,22 @@ package final class CorrectionIndex: Sendable {
         return english.contains(word) || techAlways.contains(word)
     }
 
-    /// Membership in the Vietnamese keyings or the unmarked shapes (ENG-R1125, ENG-R1110 (d)), the same way as
-    /// `lexiconContains`.
+    /// Membership in the Vietnamese keyings or the unmarked shapes (ENG-R1125, ENG-R1110 (d)): a binary search of
+    /// the packed sets for a word of at most twelve letters, the byte-keyed table for a longer one. Allocates nothing.
     package func isVietnameseKeyingOrShape(_ candidate: UnsafeBufferPointer<UInt8>) -> Bool {
-        guard !candidate.isEmpty, Self.isLetters(candidate) else { return false }
-        guard candidate.count <= Self.smallStringBytes else { return longVietnamese.contains(candidate) }
-        guard candidate.count <= max(keyings.maximumUTF8Count, shapes.maximumUTF8Count) else { return false }
-        let word = String(decoding: candidate, as: UTF8.self)
-        return keyings.contains(word) || shapes.contains(word)
+        guard let value = PackedWordSet.pack(utf8: candidate) else { return longVietnamese.contains(candidate) }
+        return keyings.contains(packed: value) || shapes.contains(packed: value)
     }
+
+    /// The heap bytes the index owns beyond the sets it reads in place: the prefilter's bit tables and the byte-keyed
+    /// tables of the long words (ENG-R1120 counts them with the correction data).
+    var ownedByteCount: Int {
+        (trigrams.capacity + starts.capacity + ends.capacity) * MemoryLayout<UInt64>.stride + longLexicon.byteCount
+            + longVietnamese.byteCount
+    }
+
+    /// The bytes of the table of the Vietnamese words that do not pack (zero for the bundled data).
+    var longVietnameseByteCount: Int { longVietnamese.byteCount }
 
     /// The UTF-8 length up to which a `String` is stored inline, without a heap allocation.
     private static let smallStringBytes = 15
@@ -123,20 +136,37 @@ package final class CorrectionIndex: Sendable {
         /// buffers, so the bundled lists index within the load budget of ENG-R1231 in a debug build too.
         mutating func insert(_ sets: [WordSet], longerThan limit: Int) -> [[UInt8]] {
             var long: [[UInt8]] = []
-            trigrams.withUnsafeMutableBufferPointer { trigrams in
-                starts.withUnsafeMutableBufferPointer { starts in
-                    ends.withUnsafeMutableBufferPointer { ends in
-                        let tables = Tables(trigrams: trigrams, starts: starts, ends: ends)
-                        for set in sets {
-                            for word in set.storage {
-                                let inserted = word.utf8.withContiguousStorageIfAvailable(tables.insert) ?? false
-                                if inserted, word.utf8.count > limit { long.append(Array(word.utf8)) }
-                            }
-                        }
+            withTables { tables in
+                for set in sets {
+                    for word in set.storage {
+                        let inserted = word.utf8.withContiguousStorageIfAvailable(tables.insert) ?? false
+                        if inserted, word.utf8.count > limit { long.append(Array(word.utf8)) }
                     }
                 }
             }
             return long
+        }
+
+        /// Adds the bigrams and trigrams of every packed word of `set`, unpacked into a stack buffer (no `String`).
+        mutating func insert(packed set: PackedWordSet) {
+            withTables { tables in
+                withUnsafeTemporaryAllocation(of: UInt8.self, capacity: PackedWordSet.maximumLetters) { buffer in
+                    for value in set.packed {
+                        let count = PackedWordSet.unpack(value, into: buffer)
+                        _ = tables.insert(UnsafeBufferPointer(rebasing: buffer[..<count]))
+                    }
+                }
+            }
+        }
+
+        private mutating func withTables(_ body: (Tables) -> Void) {
+            trigrams.withUnsafeMutableBufferPointer { trigrams in
+                starts.withUnsafeMutableBufferPointer { starts in
+                    ends.withUnsafeMutableBufferPointer { ends in
+                        body(Tables(trigrams: trigrams, starts: starts, ends: ends))
+                    }
+                }
+            }
         }
 
         private struct Tables {
@@ -214,6 +244,9 @@ private struct ByteWordTable: Sendable {
         }
         return false
     }
+
+    /// The heap bytes of the store and the slots.
+    var byteCount: Int { store.capacity + slots.capacity * MemoryLayout<UInt32>.stride }
 
     private func matches(_ bytes: UnsafeBufferPointer<UInt8>, at offset: Int) -> Bool {
         var index = 0

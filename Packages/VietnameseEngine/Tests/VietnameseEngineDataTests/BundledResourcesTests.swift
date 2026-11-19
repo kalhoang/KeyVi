@@ -6,8 +6,9 @@
 
 import Foundation
 import Testing
-import VietnameseEngine
 import VietnameseEngineData
+
+@testable import VietnameseEngine
 
 #if canImport(Darwin)
 import Darwin
@@ -96,6 +97,9 @@ struct BundledResourcesTests {
             #expect(correction.vietnameseKeyings.contains(keying), "\(keying)")
         }
         #expect(!correction.unmarkedShapes.contains("android") && !correction.vietnameseKeyings.contains("gamar"))
+        // Spec 12.2 (sixth amendment): packed sets, every bundled word packed (none longer than twelve letters).
+        #expect(correction.unmarkedShapes.count == 3_953 && correction.vietnameseKeyings.count == 27_277)
+        #expect(correction.unmarkedShapes.packed.count == 3_953 && correction.vietnameseKeyings.packed.count == 27_277)
         // `Biden` is a proper name of size 50, `quixotic` a word of size 40; `android` is in the lexicon (size 35),
         // so the guard list does not hold it.
         #expect(correction.guardList.mayContain("biden") && correction.guardList.mayContain("quixotic"))
