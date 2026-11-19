@@ -165,11 +165,12 @@ import VietnameseEngine
     }
 
     @Test func missingVariantsFallBackToTheDefault() {
-        let special = Engine(configuration: EngineConfiguration(toneStyle: .modern), resources: .empty)
+        let special = Engine(
+            configuration: EngineConfiguration(toneStyle: .modern, typoCorrection: false), resources: .empty)
         let catalog = EngineCatalog(engines: [.default: special])
         for variant in Self.allVariants { #expect(catalog.engine(for: variant).configuration.toneStyle == .modern) }
         let empty = EngineCatalog(engines: [:])
-        #expect(empty.engine(for: .default).configuration == EngineConfiguration())
+        #expect(empty.engine(for: .default).configuration == EngineConfiguration(typoCorrection: false))
     }
 
     /// PRD-R27: the publisher's revision travels with the catalog; without one the tap treats every settings

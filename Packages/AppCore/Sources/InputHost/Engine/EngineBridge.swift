@@ -71,12 +71,13 @@ public struct EngineCatalog: Sendable {
     /// hard boundary instead of resetting the word being typed (ENG-R1211).
     public let memoryRevision: UInt64
 
-    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
+    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog, without
+    /// data, so without restore and without typo correction, ENG-R1119).
     public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil, memoryRevision: UInt64 = 0)
     {
         let fallback =
             engines[.default] ?? engines.values.first
-            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
+            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
         self.revision = revision
         self.memoryRevision = memoryRevision

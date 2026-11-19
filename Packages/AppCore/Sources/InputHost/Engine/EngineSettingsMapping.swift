@@ -45,7 +45,11 @@ enum EngineSettingsMapping {
             lookaheadRevision: variant.lookaheadRevision && settings.lookaheadRevision,
             // ENG-R829, ENG-R850 (REG-36): RV5 of the code context follows D29 alone; the rule flag above is off in
             // every code-context app, and RV5 only completes rule L9's line condition there.
-            lineStartRevision: settings.lookaheadRevision)
+            lineStartRevision: settings.lookaheadRevision,
+            // ENG-R1119: off in the API stage of 1.1.0, whatever the settings, until the host track passes the
+            // conjunction D30 AND D4 AND the rule's englishRestore AND its restoreHotkey AND D8 on (plan Task 24).
+            // TraceScanCore `ReplayEngineFactory.typoCorrection(settings:focus:)` rebuilds the same switch.
+            typoCorrection: false)
     }
 
     /// ENG-R865: the learned memory is looked up only where English restore runs (D4 and the rule's

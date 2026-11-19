@@ -132,7 +132,8 @@ import VietnameseEngine
         let inputMethod: InputMethod = method == .telex ? .telex(TelexOptions()) : .vni
         var session = Session(
             engine: Engine(
-                configuration: EngineConfiguration(inputMethod: inputMethod, autoRestore: false), resources: .empty))
+                configuration: EngineConfiguration(inputMethod: inputMethod, autoRestore: false, typoCorrection: false),
+                resources: .empty))
         var text: [Character] = []
         for character in keys {
             switch session.handle(.key(KeyInput(character))).action {

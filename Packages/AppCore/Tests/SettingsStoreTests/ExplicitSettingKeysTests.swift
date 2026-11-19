@@ -17,10 +17,11 @@ private let settingNames = [
     "macrosEnabled", "macrosInEnglishMode", "toggleHotkey", "rememberPerApp", "firstSeenAppMode",
     "showSwitchIndicator", "soundOnSwitch", "clickIconToToggle", "interfaceLanguage", "automaticallyCheckForUpdates",
     "automaticallyInstallUpdates", "updateChannel", "layoutBinding", "learnCollisionChoices", "lookaheadRevision",
+    "typoCorrection",
 ]
 
 /// The user lists, reported by name when non-empty.
-private let listNames = ["keepAsTyped", "keepVietnamese", "optedInRules"]
+private let listNames = ["keepAsTyped", "keepVietnamese", "neverCorrect", "optedInRules"]
 
 /// Every setting explicitly set, most of them to their default value (set-to-default still counts, PRD-R6).
 private func everythingSet() -> UserSettings {
@@ -47,6 +48,7 @@ private func everythingSet() -> UserSettings {
     user.layoutBinding = .set(LayoutModeBinding(enabled: true))
     user.learnCollisionChoices = .set(false)  // D28
     user.lookaheadRevision = .set(defaults.lookaheadRevision)  // D29
+    user.typoCorrection = .set(false)  // D30
     return user
 }
 
@@ -56,6 +58,7 @@ private func everythingSet() -> UserSettings {
         #expect(user.explicitlySetKeys == settingNames)
         user.keepAsTyped = ["mas"]
         user.keepVietnamese = ["tieng"]
+        user.neverCorrect = ["androdi"]  // ENG-R1118
         user.optedInRules = [RuleID(rawValue: "chat.paste")!]
         #expect(user.explicitlySetKeys == settingNames + listNames)
     }
@@ -82,7 +85,9 @@ private func everythingSet() -> UserSettings {
     @Test func noValuesAreReportedPLTR901() {
         var user = everythingSet()
         user.keepVietnamese = ["canary-4711"]
+        user.neverCorrect = ["canaryneverfourseven"]
         #expect(!user.explicitlySetKeys.joined(separator: ",").contains("4711"))
+        #expect(!user.explicitlySetKeys.joined(separator: ",").contains("canarynever"))
         #expect(!user.explicitlySetKeys.joined(separator: ",").contains("beta"))
         #expect(UserSettings().explicitlySetKeys.isEmpty)
     }

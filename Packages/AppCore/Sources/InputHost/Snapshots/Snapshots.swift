@@ -98,19 +98,27 @@ public struct EngineVariant: Sendable, Hashable {
     /// The rule allows revising the previous word (`features.lookaheadRevision`, PLT-R357); the engine gets it
     /// ANDed with the user's D29 (ENG-R829).
     public var lookaheadRevision: Bool
-    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true) {
+    /// The rule leaves the restore key on (`features.restoreHotkey`, PLT-R353): the typo correction is made only where
+    /// the key can undo it, so the engine gets D30 ANDed with it, D4, `englishRestore` and D8 (ENG-R1119, 1.1.0).
+    public var restoreHotkey: Bool
+    public init(
+        appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true,
+        restoreHotkey: Bool = true
+    ) {
         self.appContext = appContext
         self.englishRestore = englishRestore
         self.macros = macros
         self.lookaheadRevision = lookaheadRevision
+        self.restoreHotkey = restoreHotkey
     }
 
-    public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)
+    public static let `default` = EngineVariant(
+        appContext: .general, englishRestore: true, macros: true, lookaheadRevision: true, restoreHotkey: true)
 
     /// The two variants differ in `lookaheadRevision` and nothing else (ENG-R1211 amendment of 19/11/2026).
     public func differsOnlyInLookaheadRevision(from other: EngineVariant) -> Bool {
         lookaheadRevision != other.lookaheadRevision && appContext == other.appContext
-            && englishRestore == other.englishRestore && macros == other.macros
+            && englishRestore == other.englishRestore && macros == other.macros && restoreHotkey == other.restoreHotkey
     }
 }
 

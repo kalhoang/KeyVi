@@ -58,6 +58,7 @@ enum SettingFields {
         field("layoutBinding", \.layoutBinding, .general),
         field("learnCollisionChoices", \.learnCollisionChoices, .typing),  // D28
         field("lookaheadRevision", \.lookaheadRevision, .typing),  // D29
+        field("typoCorrection", \.typoCorrection, .typing),  // D30 (1.1.0)
     ]
 
     static let keys: Set<String> = Set(all.map(\.key))
@@ -98,6 +99,7 @@ enum SettingListKey {
     static let keepAsTyped = "keepAsTyped"
     static let keepVietnamese = "keepVietnamese"
     static let learnedWords = "learnedWords"  // ENG-R862, inside `englishRestoreLists`
+    static let neverCorrect = "neverCorrect"  // ENG-R1118, inside `englishRestoreLists` (1.1.0)
     static let optedInRules = "optedInRules"
     static let onboarding = "onboarding"
 }

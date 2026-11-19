@@ -16,8 +16,12 @@ extension DevEngineIdentity {
         }
         return digest { vni in
             let method: InputMethod = vni ? .vni : .telex(TelexOptions())
+            // The engine as the product runs it by default, typo correction included (D30 on, ENG-R1119), so a build
+            // whose correction differs gets another identity; the scanner uses the same configuration.
             var session = Session(
-                engine: Engine(configuration: EngineConfiguration(inputMethod: method), resources: resources))
+                engine: Engine(
+                    configuration: EngineConfiguration(inputMethod: method, typoCorrection: true), resources: resources)
+            )
             return { character in
                 switch session.handle(.key(KeyInput(character))).action {
                 case .passThrough: .passThrough

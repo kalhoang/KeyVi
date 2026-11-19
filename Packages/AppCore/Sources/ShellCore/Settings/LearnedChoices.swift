@@ -166,7 +166,8 @@ public enum LearnedChoiceReading {
 
     private static func engine(_ method: InputMethod, _ style: ToneStyle) -> Engine {
         Engine(
-            configuration: EngineConfiguration(inputMethod: method, toneStyle: style, autoRestore: false),
+            configuration: EngineConfiguration(
+                inputMethod: method, toneStyle: style, autoRestore: false, typoCorrection: false),
             resources: .empty)
     }
 }

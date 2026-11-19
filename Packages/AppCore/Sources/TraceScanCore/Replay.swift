@@ -37,8 +37,11 @@ public final class ReplayEngineFactory {
     /// `DevEngineIdentity.ofLinkedEngine`). A trace written by another identity is not replayed.
     public private(set) lazy var identity: String = DevEngineIdentity.digest { [resources] vni in
         let method: InputMethod = vni ? .vni : .telex(TelexOptions())
+        // The configuration of InputHost `DevEngineIdentity.ofLinkedEngine`: the product's default, typo correction
+        // on (D30, ENG-R1119), so that the identity follows the engines the app runs.
         var session = Session(
-            engine: Engine(configuration: EngineConfiguration(inputMethod: method), resources: resources))
+            engine: Engine(
+                configuration: EngineConfiguration(inputMethod: method, typoCorrection: true), resources: resources))
         return { character in
             switch session.handle(.key(KeyInput(character))).action {
             case .passThrough: .passThrough
@@ -60,12 +63,30 @@ public final class ReplayEngineFactory {
                     bracketKeys: settings["telexBracketKeys"] == "true"))
         let configuration = EngineConfiguration(
             inputMethod: inputMethod, toneStyle: tone == "modern" ? .modern : .traditional,
-            autoRestore: settings["englishRestore"] != "false" && focus?.er != false,
-            appContext: focus?.ctx == "code" ? .code : .general)
+            autoRestore: Self.autoRestore(settings: settings, focus: focus),
+            appContext: focus?.ctx == "code" ? .code : .general,
+            typoCorrection: Self.typoCorrection(settings: settings, focus: focus))
         if let engine = engines[configuration] { return engine }
         let engine = Engine(configuration: configuration, resources: resources)
         engines[configuration] = engine
         return engine
+    }
+
+    /// D4 AND the rule's `features.englishRestore`, as the host passes `autoRestore`.
+    static func autoRestore(settings: [String: String], focus: TraceLine?) -> Bool {
+        settings["englishRestore"] != "false" && focus?.er != false
+    }
+
+    /// ENG-R1119: the typo correction switch of the recorded engine, rebuilt with the conjunction the host passes
+    /// (InputHost `EngineSettingsMapping.configuration(for:variant:)`): the user's D30 (`typoCorrection` in the
+    /// settings line) AND D4 AND the rule's `englishRestore` AND a restore key (D8, `restoreHotkey` not `none`). A
+    /// settings line without `typoCorrection` was written by a build whose engines never corrected (1.0.x, and 1.1.0
+    /// while the host passes the switch off), so its segments replay with the switch off, as they ran. The rule's
+    /// `restoreHotkey`, the fifth input, is not in the focus line yet: the host track records it and reads it here
+    /// when it wires the switch (plan Task 24).
+    static func typoCorrection(settings: [String: String], focus: TraceLine?) -> Bool {
+        settings["typoCorrection"] == "true" && autoRestore(settings: settings, focus: focus)
+            && (settings["restoreHotkey"] ?? "none") != "none"
     }
 }
 
