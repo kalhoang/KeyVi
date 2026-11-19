@@ -52,22 +52,27 @@ enum AX {
         return AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success ? value : nil
     }
 
-    /// Depth-first search for `AXIdentifier == identifier` below `root`.
-    static func find(_ identifier: String, in root: AXUIElement, depth: Int = 0) -> AXUIElement? {
-        if attribute(root, kAXIdentifierAttribute) as? String == identifier { return root }
-        guard depth < maximumDepth, let children = attribute(root, kAXChildrenAttribute) as? [AXUIElement] else {
-            return nil
-        }
-        for child in children {
-            if let found = find(identifier, in: child, depth: depth + 1) { return found }
-        }
-        return nil
+    /// One attribute read with its `AXError` code, for a walk that reports why it missed.
+    static func read<Value>(_ element: AXUIElement, _ name: String, as type: Value.Type) -> AXAttributeRead<Value> {
+        var value: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, name as CFString, &value)
+        return AXAttributeRead(value: value as? Value, code: result.rawValue)
+    }
+
+    /// Depth-first search for `AXIdentifier == identifier` below `root`, with the first container read that failed
+    /// (`AXIdentifierLookup`: a miss names it, PLT-R530).
+    static func find(_ identifier: String, in root: AXUIElement) -> AXIdentifierLookup.Outcome<AXUIElement> {
+        AXIdentifierLookup.find(
+            identifier, in: root, maximumDepth: maximumDepth,
+            identifierOf: { read($0, kAXIdentifierAttribute, as: String.self) },
+            childrenOf: { read($0, kAXChildrenAttribute, as: [AXUIElement].self) })
     }
 
     static func element(_ identifier: String?, in bundle: BundleKey) throws -> AXUIElement {
         let app = try application(bundle)
         if let identifier {
-            guard let found = find(identifier, in: app) else { throw LiveError.elementNotFound(identifier) }
+            let lookup = find(identifier, in: app)
+            guard let found = lookup.found else { throw LiveError.elementNotFound(identifier, lookup.firstFailure) }
             return found
         }
         guard let focused = attribute(app, kAXFocusedUIElementAttribute), CFGetTypeID(focused) == AXUIElementGetTypeID()
@@ -78,13 +83,19 @@ enum AX {
     /// Lookup by identifier, retried for up to `elementWaitNanoseconds` while the app starts or builds its window:
     /// `launch` returns once the process runs, before its controls exist (the first VM run failed `setSecureInput`
     /// right after TestHost's launch, integration-suite.md section 10).
+    /// A lookup that misses for the whole wait names the failed container read of its last walk, if any.
     static func element(_ identifier: String, in bundle: BundleKey, sleeper: any HarnessSleeper) async throws
         -> AXUIElement
     {
+        var failure: AXIdentifierLookup.Failure?
         let found = try await HarnessPolling.firstValue(timeoutNanoseconds: elementWaitNanoseconds, sleeper: sleeper) {
-            try? element(identifier, in: bundle)
+            () -> AXUIElement? in
+            guard let app = try? application(bundle) else { return nil }
+            let lookup = find(identifier, in: app)
+            failure = lookup.firstFailure
+            return lookup.found
         }
-        guard let found else { throw LiveError.elementNotFound(identifier) }
+        guard let found else { throw LiveError.elementNotFound(identifier, failure) }
         return found
     }
 
