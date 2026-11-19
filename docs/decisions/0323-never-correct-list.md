@@ -51,7 +51,12 @@
    another key is not an engine input and keeps the revision and the word being typed (PRD-R27). The list is the same
    in every app (`UserSettings.neverCorrect`), so a focus change, which republishes only when the focused app's keep
    lists differ (ENG-R862), never republishes for it; the engines get it as `Resources.userNeverCorrect` from both
-   `EngineBridge.resources` entry points.
+   `EngineBridge.resources` entry points. Accepted cost (final review of 1.1.0, 19/11/2026): each correction taken
+   back with the restore key teaches the list, so it rebuilds the catalog (about 0.9 ms in a debug build with the
+   bundled data) and the first key after the publish takes a `configurationChanged` hard boundary, which drops the
+   engine's history. The publish almost always lands before the next key; if a busy main thread lets it land between
+   two keys of the next word, that word is split (`tieeng` can show `tieếng`). Holding a list-only change for the next
+   word boundary, as the learned-memory swap waits (ENG-R865), is left for a later release.
 7. **Replay follows the host.** The dev recorder writes D30 in the settings line and the rule's restore key in the
    focus line (`rhk`, optional, so the trace format version stays). `ReplayEngineFactory.typoCorrection` rebuilds the
    same conjunction from the recorded inputs; a trace without D30 replays with the switch off, as engines without the
