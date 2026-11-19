@@ -21,10 +21,11 @@ public struct PackedWordSet: Sendable {
     /// The words that do not pack; empty for the bundled shapes and keyings.
     let others: WordSet
 
-    /// The longest word that packs: 12 letters of 5 bits fill 60 of the 64 bits. Computed rather than stored, so a
-    /// debug build reads them without a lazy-global check in the loops of the load (ENG-R1231).
-    static var maximumLetters: Int { 12 }
-    private static var bitsPerLetter: Int { 5 }
+    /// The longest word that packs: 12 letters of 5 bits fill 60 of the 64 bits. The byte-buffer form of `pack` and
+    /// `letterCode` write these two numbers as literals, because a debug build reads a static constant through a
+    /// lazy accessor and they run for every byte of the load (ENG-R1231); `PackedWordSetTests` keeps the forms equal.
+    static let maximumLetters = 12
+    private static let bitsPerLetter = 5
 
     /// A set of `words` (compared byte for byte, so callers pass lowercased words); duplicates are ignored and the
     /// words may come in any order.

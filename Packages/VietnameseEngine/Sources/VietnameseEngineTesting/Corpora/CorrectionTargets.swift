@@ -15,6 +15,7 @@ public enum TypoKind: String, CaseIterable, Sendable, CustomStringConvertible {
     /// One key replaced by a QWERTY neighbour (ENG-R1113).
     case neighbour
 
+    /// The kind's name, as the test output prints it.
     public var description: String { rawValue }
 
     /// The four kinds of ENG-T57 (ENG-R1124: transposition, omission, insertion, neighbouring key).
