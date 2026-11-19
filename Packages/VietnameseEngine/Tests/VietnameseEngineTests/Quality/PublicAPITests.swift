@@ -51,6 +51,9 @@ struct PublicAPITests {
         requireHashable(CollisionSignal.self)
         requireHashable(CollisionSignal.Strength.self)
         requireHashable(RevisionReason.self)
+        // The typo correction API of section 11A (ENG-R1115, ENG-R1118, ENG-R1120), 1.1.0.
+        requireSendable(CorrectionData.self)
+        requireSendable(ApproximateWordSet.self)
     }
 
     @Test("Defaults: Telex with standalone w on and brackets off, traditional, auto restore on, history 16")
@@ -64,6 +67,7 @@ struct PublicAPITests {
         #expect(configuration.historyLimit == 16)  // ENG-R1001
         #expect(configuration.lookaheadRevision)  // ENG-R829
         #expect(configuration.lineStartRevision)  // ENG-R850, RV5 of ENG-R828
+        #expect(configuration.typoCorrection)  // ENG-R1119: a consumer that says nothing gets the correction
         #expect(EngineConfiguration(historyLimit: 0).historyLimit == 1)  // 12.2: minimum 1
         #expect(EngineState.initial.historyCount == 0 && EngineState.initial.activeDisplay.isEmpty)
         #expect(MacroTable.empty.triggerCount == 0)  // ENG-R110: the engine ships with an empty table
@@ -71,14 +75,15 @@ struct PublicAPITests {
 
     @Test("ENG-R450 no other engine option in v1")
     func closedOptionSet() {
-        let configurationFields = Mirror(reflecting: EngineConfiguration()).children.compactMap(\.label)
+        let configurationFields = Mirror(reflecting: EngineConfiguration(typoCorrection: true)).children
+            .compactMap(\.label)
         // ENG-R829: `lookaheadRevision` is the host's switch for the collision rules, and `lineStartRevision` its
-        // switch for RV5 of the code context (ENG-R850); neither is a user option of the composition (ENG-R450 is
-        // about composition options).
+        // switch for RV5 of the code context (ENG-R850); ENG-R1119: `typoCorrection` is its switch for section 11A.
+        // None is a user option of the composition (ENG-R450 is about composition options).
         #expect(
             configurationFields == [
                 "inputMethod", "toneStyle", "autoRestore", "appContext", "historyLimit", "lookaheadRevision",
-                "lineStartRevision",
+                "lineStartRevision", "typoCorrection",
             ])
         let telexFields = Mirror(reflecting: TelexOptions()).children.compactMap(\.label)
         #expect(telexFields == ["standaloneW", "bracketKeys"])
@@ -86,12 +91,43 @@ struct PublicAPITests {
 
     @Test("ENG-R1211 an engine's configuration cannot change; a new engine is created instead")
     func configurationIsFixed() {
-        let engine = Engine(configuration: EngineConfiguration(toneStyle: .modern), resources: .empty)
+        let engine = Engine(
+            configuration: EngineConfiguration(toneStyle: .modern, typoCorrection: false), resources: .empty)
         #expect(engine.configuration.toneStyle == .modern)
         var session = Session(engine: engine)
         _ = session.handle(.key(KeyInput("a")))
-        let restarted = Session(engine: Engine(configuration: EngineConfiguration(), resources: .empty))
+        let restarted = Session(
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty))
         #expect(restarted.state == .initial)
+    }
+
+    @Test("ENG-R1118, ENG-R1120: resources carry the never-correct list and the correction data, empty by default")
+    func resourcesCarryTheNeverCorrectListAndCorrectionData() {
+        #expect(!Resources.empty.userNeverCorrect.contains("androdi"))
+        #expect(Resources.empty.correction.keyboardNeighbours.isEmpty)
+        #expect(!Resources.empty.correction.guardList.mayContain("android"))
+        #expect(!Resources.empty.correction.unmarkedShapes.contains("truong"))
+        #expect(!Resources.empty.correction.vietnameseKeyings.contains("phair"))
+        let correction = CorrectionData(
+            guardList: ApproximateWordSet(exactly: ["biden"]), keyboardNeighbours: ["q": "wa", "a": "qwsz"],
+            unmarkedShapes: WordSet(["truong"]), vietnameseKeyings: WordSet(["phair"]))
+        let resources = Resources(
+            english: WordSet(["android"]), techAlways: WordSet([]), techCodeOnly: WordSet([]),
+            attestedSyllables: WordSet([]), ambiguity: [:], userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]),
+            userNeverCorrect: WordSet(["androdi"]), correction: correction)
+        #expect(resources.userNeverCorrect.contains("androdi"))
+        #expect(resources.correction.guardList.mayContain("biden"))
+        #expect(resources.correction.keyboardNeighbours["q"] == "wa")
+        #expect(resources.correction.unmarkedShapes.contains("truong"))
+        #expect(resources.correction.vietnameseKeyings.contains("phair"))
+    }
+
+    @Test("ENG-R1115: a corrected commit names the 8.1 rule and is not a restore")
+    func correctedDecisionNamesItsRule() {
+        #expect(CommitDecision.corrected(.unchanged).rule == .unchanged)
+        #expect(CommitDecision.corrected(.invalid).rule == .invalid)
+        #expect(!CommitDecision.corrected(.invalid).restores)
+        #expect(LearningSignal.neverCorrect(raw: "androdi") != .preferredRaw(raw: "androdi"))
     }
 }
 

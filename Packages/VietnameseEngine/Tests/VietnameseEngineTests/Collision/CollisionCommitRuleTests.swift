@@ -59,7 +59,9 @@ struct CollisionCommitRuleTests {
         #expect(F.decisions(driver).last == .kept(.ambiguityTable))
         // Without the exemption (lookaheadRevision off) the English run restores it.
         #expect(
-            try F.field("tricky tows ", configuration: EngineConfiguration(lookaheadRevision: false)) == "tricky tows ")
+            try F.field(
+                "tricky tows ", configuration: EngineConfiguration(lookaheadRevision: false, typoCorrection: false))
+                == "tricky tows ")
     }
 
     @Test("ENG-R823: an unchanged English-lean word (`the`, `my`) counts as English")
@@ -68,7 +70,9 @@ struct CollisionCommitRuleTests {
         #expect(try F.field("The car ") == "The car ")
         #expect(try F.field("my car ") == "my car ")
         // Off, `the` is neutral and the row keeps `cả`.
-        #expect(try F.field("The car ", configuration: EngineConfiguration(lookaheadRevision: false)) == "The cả ")
+        #expect(
+            try F.field("The car ", configuration: EngineConfiguration(lookaheadRevision: false, typoCorrection: false))
+                == "The cả ")
         // A Vietnamese token in the window still wins.
         #expect(try F.field("dduwowcj the car ") == "được the cả ")
     }
@@ -127,16 +131,18 @@ struct CollisionCommitRuleTests {
     @Test("ENG-R863: with auto restore off a vote for English keeps the display and names L9c")
     func memoryWithAutoRestoreOff() throws {
         let memory = F.resources(memory: CollisionMemorySnapshot([.init(word: "cos", context: nil, choice: .english)]))
-        let driver = try F.driver("cos ", configuration: EngineConfiguration(autoRestore: false), resources: memory)
+        let driver = try F.driver(
+            "cos ", configuration: EngineConfiguration(autoRestore: false, typoCorrection: false), resources: memory)
         #expect(driver.field.string == "có " && F.decisions(driver).last == .kept(.learned))
         let car = F.resources(memory: CollisionMemorySnapshot([.init(word: "car", context: nil, choice: .english)]))
-        let kept = try F.driver("car ", configuration: EngineConfiguration(autoRestore: false), resources: car)
+        let kept = try F.driver(
+            "car ", configuration: EngineConfiguration(autoRestore: false, typoCorrection: false), resources: car)
         #expect(kept.field.string == "cả " && F.decisions(kept).last == .kept(.learned))
     }
 
     @Test("ENG-R829: L9c does not depend on lookaheadRevision; L9a and L9b do")
     func memoryWithoutTheContextRules() throws {
-        let off = EngineConfiguration(lookaheadRevision: false)
+        let off = EngineConfiguration(lookaheadRevision: false, typoCorrection: false)
         let memory = F.resources(memory: CollisionMemorySnapshot([.init(word: "car", context: nil, choice: .english)]))
         #expect(try F.field("car ", configuration: off, resources: memory) == "car ")
         #expect(try F.field("tricky as.", configuration: off) == "tricky as.")
@@ -157,7 +163,8 @@ struct CollisionCommitRuleTests {
 
     @Test("ENG-R802: with auto restore off L9b keeps the token, names itself and is neutral")
     func phraseWithAutoRestoreOff() throws {
-        let driver = try F.driver("dduwowcj has been ", configuration: EngineConfiguration(autoRestore: false))
+        let driver = try F.driver(
+            "dduwowcj has been ", configuration: EngineConfiguration(autoRestore: false, typoCorrection: false))
         #expect(driver.field.string == "được há bên ")
         #expect(F.decisions(driver)[2] == .kept(.phrase))
         #expect(driver.state.history.token(beforeNewest: 1)?.language == .neutral)
@@ -193,7 +200,9 @@ struct CollisionCommitRuleTests {
         let empty = F.resources(lists: .empty)
         for keys in ["tricky as.", "dduwowcj has been ", "tricky tows ", "The car ", "dduwowcj as hell "] {
             let on = try F.field(keys, resources: empty)
-            let off = try F.field(keys, configuration: EngineConfiguration(lookaheadRevision: false), resources: empty)
+            let off = try F.field(
+                keys, configuration: EngineConfiguration(lookaheadRevision: false, typoCorrection: false),
+                resources: empty)
             #expect(on == off, "\(keys)")
         }
     }

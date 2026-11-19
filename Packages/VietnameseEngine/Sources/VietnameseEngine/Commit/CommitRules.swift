@@ -45,16 +45,18 @@ package struct CommitInputs: Sendable {
 }
 
 extension CommitDecision {
-    /// The decision writes the raw keys (`R`) instead of the composed form (`C`).
+    /// The decision writes the raw keys (`R`) instead of the composed form (`C`). False for a typo correction, which
+    /// writes a word of the lexicon (ENG-R1115).
     package var restores: Bool {
         if case .restored = self { return true }
         return false
     }
 
-    /// The rule that decided, nil for a macro expansion.
+    /// The rule that decided, nil for a macro expansion; for a typo correction the rule of 8.1 that would have
+    /// decided the token (ENG-R1115).
     package var rule: CommitRule? {
         switch self {
-        case .kept(let rule), .restored(let rule): return rule
+        case .kept(let rule), .restored(let rule), .corrected(let rule): return rule
         case .macro: return nil
         }
     }

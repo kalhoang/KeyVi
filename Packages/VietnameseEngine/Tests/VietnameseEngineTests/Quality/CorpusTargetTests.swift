@@ -75,7 +75,8 @@ struct CorpusTargetTests {
 
     @Test("ENG-R874: in VNI, words without digits are never changed")
     func vniWithoutDigits() throws {
-        let engine = Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: Self.resources)
+        let engine = Engine(
+            configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false), resources: Self.resources)
         var telexSpellings: [String] = []
         GeneratedCorpus.forEachOrderCase { generated in
             if generated.method == .telex, generated.style == .traditional, generated.kind == .order(.o1) {
@@ -97,7 +98,8 @@ struct CorpusTargetTests {
     func vniStreamsPassThrough() throws {
         var generator = SeededGenerator(seed: 874)
         let keys = FuzzAlphabet.letters + FuzzAlphabet.punctuation + FuzzAlphabet.spaces + FuzzAlphabet.hardBoundaries
-        let engine = Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: Self.resources)
+        let engine = Engine(
+            configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false), resources: Self.resources)
         for _ in 0..<50 {
             var driver = EngineDriver(engine: engine)
             var plain = SimulatedTextField()
@@ -114,7 +116,9 @@ struct CorpusTargetTests {
 
     @Test("Non-goals: no Quick Telex, no auto-capitalisation, no VIQR, no multi-syllable segmentation")
     func nonGoals() throws {
-        func typed(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+        func typed(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+            throws -> String
+        {
             var driver = EngineDriver(configuration: configuration, resources: SpecFixtures.commitResources())
             try driver.type(keys)
             return driver.field.string

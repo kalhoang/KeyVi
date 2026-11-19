@@ -8,9 +8,11 @@ import VietnameseEngineTesting
 /// with the 13.9 fixture resources, history), each named after its REG id.
 @Suite("Regressions REG-01 to REG-39 (13.5)")
 struct RegressionTests {
-    private let vni = EngineConfiguration(inputMethod: .vni)
+    private let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
-    private func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+    private func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+        throws -> String
+    {
         try Committing.text(keys, configuration)
     }
 
@@ -25,7 +27,8 @@ struct RegressionTests {
     @Test("REG-02 tokens longer than 32 keys restore and commit exactly", arguments: [33, 64, 1_000, 100_000])
     func reg02(length: Int) {
         let keys = "as" + String(repeating: "t", count: length - 2)
-        var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: Committing.fixtures))
+        var session = Session(
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: Committing.fixtures))
         for key in keys { _ = session.handle(.key(KeyInput(key))) }
         let output = session.handle(.key(KeyInput(" ")))
         // `át...` is not a syllable: L5 restores the raw keys, all of them.
@@ -41,7 +44,7 @@ struct RegressionTests {
 
     @Test("REG-03 English restore is on by default and needs no download")
     func reg03() throws {
-        #expect(EngineConfiguration().autoRestore)
+        #expect(EngineConfiguration(typoCorrection: false).autoRestore)
         for word in ["text", "user", "case", "wifi", "USB"] {
             #expect(try Committing.text(word + " ", resources: .empty) == word + " ", "\(word)")
         }
@@ -63,7 +66,8 @@ struct RegressionTests {
 
     @Test("REG-06 output is NFC with precomposed letters only")
     func reg06() throws {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: Committing.fixtures)
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: Committing.fixtures)
         try driver.send(KeyNotation.events("Vieetj Nam dduwowcj ngh thuowr huow quowrn DDawsk text ⌫ ⎋ "))
         for output in driver.outputs {
             guard case .edit(let edit, _) = output.action else { continue }
@@ -109,7 +113,7 @@ struct RegressionTests {
     @Test("REG-11 tone position for uy, xoáy and giúp")
     func reg11() throws {
         #expect(try text("thuyr ") == "thủy ")
-        #expect(try text("thuyr ", EngineConfiguration(toneStyle: .modern)) == "thuỷ ")
+        #expect(try text("thuyr ", EngineConfiguration(toneStyle: .modern, typoCorrection: false)) == "thuỷ ")
         #expect(try text("xoays ") == "xoáy ")
         #expect(try text("gisup ") == "giúp ")
         #expect(try text("gi1up ", vni) == "giúp ")
@@ -140,7 +144,7 @@ struct RegressionTests {
     @Test("REG-15 brackets stay brackets by default")
     func reg15() throws {
         #expect(try text("[[ ]] a[b] ") == "[[ ]] a[b] ")
-        let brackets = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)))
+        let brackets = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false)
         #expect(try Committing.driver("[", brackets).field.string == "ơ")
         #expect(try Committing.driver("]", brackets).field.string == "ư")
     }
@@ -183,7 +187,7 @@ struct RegressionTests {
         for (keys, word) in [("hw", "hư"), ("thw", "thư"), ("chw", "chư")] {
             #expect(try Committing.driver(keys).field.string == word, "\(keys)")
         }
-        let off = EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false)))
+        let off = EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false)), typoCorrection: false)
         #expect(try Committing.driver("w", off).field.string == "w")
         #expect(try text("tuw ", off) == "tư ")
     }
@@ -342,7 +346,7 @@ struct RegressionTests {
     @Test("REG-35 a code-only word after Vietnamese words keeps its Vietnamese display in the code context")
     func reg35() throws {
         // ENG-R850 as amended on 15/11/2026: the product owner's message in iTerm2 (code context).
-        let code = EngineConfiguration(appContext: .code)
+        let code = EngineConfiguration(appContext: .code, typoCorrection: false)
         #expect(try Committing.text("Suwar looxi chinhs tar\"", code) == "Sửa lỗi chính tả\"")
         #expect(try Committing.text("moo tar ", code) == "mô tả ")
         // A command still keeps its keys at the start of a line and after a code word.
@@ -355,10 +359,11 @@ struct RegressionTests {
         // The product owner's retest in iTerm2, where the rules turn `lookaheadRevision` off (PLT-R357). `Tar` starts a
         // sentence: in sentence case at the line start and committed by a space, L9 leaves it to the rules after it,
         // at its own commit (ENG-R850 as amended by the product owner on 16/11/2026), whatever D29 says.
-        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false)
         let sentence = try Committing.driver("Tar thuwr cais nayf ", terminal)
         #expect(sentence.field.string == "Tả thử cái này " && sentence.outputs.allSatisfy { $0.revision == nil })
-        let d29Off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        let d29Off = EngineConfiguration(
+            appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false)
         #expect(try Committing.text("Tar thuwr cais nayf ", d29Off) == "Tả thử cái này ")
         // Typed in lowercase, RV5 of ENG-R828 revises it once the next word is Vietnamese.
         #expect(try Committing.text("tar thuwr cais nayf ", terminal) == "tả thử cái này ")
@@ -387,7 +392,7 @@ struct RegressionTests {
         // The product owner's decision of 18/11/2026: for a code-only word whose keys are not English (`chown`, `chơn` by
         // L7) L9 is evaluated right after L5, so it follows the line as `tar` does. Before, L7 decided first and
         // `sudo chown -R` gave `sudo chơn -R`.
-        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+        let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false)
         #expect(try Committing.text("sudo chown -R ", terminal) == "sudo chown -R ")
         #expect(try Committing.text("ls; chown ", terminal) == "ls; chown ")
         #expect(try Committing.text("chown thuwr ", terminal) == "chơn thử ")

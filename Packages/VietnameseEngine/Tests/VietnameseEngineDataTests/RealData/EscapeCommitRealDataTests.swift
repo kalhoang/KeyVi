@@ -15,7 +15,9 @@ import VietnameseEngineTesting
 
 @Suite("Rule L4 with the bundled data (ENG-R801, REG-37)")
 struct EscapeCommitRealDataTests {
-    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+        throws -> String
+    {
         var driver = EngineDriver(configuration: configuration, resources: try RealData.resources())
         try driver.send(KeyNotation.events(keys))
         return driver.field.string
@@ -24,8 +26,9 @@ struct EscapeCommitRealDataTests {
     /// The configurations of the sweep: the default, the code context as the terminal rules set it (PLT-R357) and
     /// the collision rules off (ENG-R829).
     static let configurations = [
-        EngineConfiguration(), EngineConfiguration(appContext: .code, lookaheadRevision: false),
-        EngineConfiguration(lookaheadRevision: false),
+        EngineConfiguration(typoCorrection: false),
+        EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
+        EngineConfiguration(lookaheadRevision: false, typoCorrection: false),
     ]
 
     @Test(
@@ -109,7 +112,8 @@ struct EscapeCommitRealDataTests {
 
     @Test("ENG-R804: every row of 13.9.5", arguments: rows)
     func row(_ row: Row) throws {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: try RealData.resources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: try RealData.resources())
         try driver.send(KeyNotation.events(row.keys + " "))
         #expect(driver.field.string == row.text, "\(row.id): \(driver.field.string.debugDescription)")
         #expect(driver.outputs.contains { $0.decision?.rule == .escape }, "\(row.id): L4 decided a word")

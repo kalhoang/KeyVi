@@ -24,7 +24,8 @@ struct GeneratedCorpusCompositionTests {
             var engines: [EngineConfiguration: Engine] = [:]
             for method in CorpusMethod.allCases {
                 for style in [ToneStyle.traditional, .modern] {
-                    let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+                    let configuration = EngineConfiguration(
+                        inputMethod: method.inputMethod, toneStyle: style, typoCorrection: false)
                     engines[configuration] = Engine(configuration: configuration, resources: .empty)
                 }
             }

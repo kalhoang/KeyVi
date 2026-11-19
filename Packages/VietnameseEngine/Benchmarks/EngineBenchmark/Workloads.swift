@@ -68,7 +68,8 @@ enum Workloads {
             return Workload(
                 name: "prose-\(method.rawValue)",
                 engine: Engine(
-                    configuration: EngineConfiguration(inputMethod: method.inputMethod), resources: resources),
+                    configuration: EngineConfiguration(inputMethod: method.inputMethod, typoCorrection: false),
+                    resources: resources),
                 events: events)
         }
     }
@@ -94,11 +95,13 @@ enum Workloads {
         }
         return [
             Workload(
-                name: "typists-telex", engine: Engine(configuration: EngineConfiguration(), resources: resources),
+                name: "typists-telex",
+                engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources),
                 events: telex),
             Workload(
                 name: "typists-vni",
-                engine: Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: resources),
+                engine: Engine(
+                    configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false), resources: resources),
                 events: vni),
         ]
     }
@@ -114,7 +117,9 @@ enum Workloads {
     /// toggles, resets and bursts of up to 4,096 keys), Telex defaults and VNI alternating in blocks.
     static func fuzz(resources: Resources, events count: Int, seed: UInt64) -> [Workload] {
         let triggers = resources.macros.triggers
-        return [EngineConfiguration(), EngineConfiguration(inputMethod: .vni)].enumerated().map {
+        return [
+            EngineConfiguration(typoCorrection: false), EngineConfiguration(inputMethod: .vni, typoCorrection: false),
+        ].enumerated().map {
             index, configuration in
             var source = FuzzEventSource(
                 seed: seed &+ UInt64(index), configuration: configuration, triggers: triggers, maximumBurst: 4_096)
@@ -132,7 +137,8 @@ enum Workloads {
         for index in 0..<length { events.append(.key(KeyInput(pattern[index % pattern.count]))) }
         events.append(ending)
         return Workload(
-            name: "long-\(length)", engine: Engine(configuration: EngineConfiguration(), resources: resources),
+            name: "long-\(length)",
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources),
             events: events)
     }
 }

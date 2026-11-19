@@ -85,7 +85,8 @@ struct FuzzTests {
     @Test("Long tokens up to 100,000 keys (REG-02)", arguments: Array(longTokenCases.indices))
     func longTokens(_ index: Int) throws {
         let testCase = Self.longTokenCases[index]
-        let configuration = EngineConfiguration(inputMethod: testCase.vni ? .vni : .telex(TelexOptions()))
+        let configuration = EngineConfiguration(
+            inputMethod: testCase.vni ? .vni : .telex(TelexOptions()), typoCorrection: false)
         let seed = 0x0136_1000 &+ UInt64(index) &+ FuzzEnvironment.seedOffset
         do {
             let statistics = try FuzzCampaign.longToken(

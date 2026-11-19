@@ -12,8 +12,9 @@ import VietnameseEngineTesting
 @Suite("Commit, history and macro properties (13.6)")
 struct CommitPropertyTests {
     static let configurations: [EngineConfiguration] = [
-        EngineConfiguration(), EngineConfiguration(inputMethod: .vni), EngineConfiguration(historyLimit: 2),
-        EngineConfiguration(autoRestore: false, appContext: .code),
+        EngineConfiguration(typoCorrection: false), EngineConfiguration(inputMethod: .vni, typoCorrection: false),
+        EngineConfiguration(historyLimit: 2, typoCorrection: false),
+        EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false),
     ]
     static let seeds: [UInt64] = Array(1...6)
 
@@ -89,7 +90,7 @@ struct CommitPropertyTests {
     func deterministicReplay(seed: UInt64) {
         var generator = SeededGenerator(seed: seed)
         let events = RandomEvents.events(count: 3_000, using: &generator)
-        let engine = Engine(configuration: EngineConfiguration(), resources: Self.resources)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: Self.resources)
         var session = Session(engine: engine)
         var state = EngineState.initial
         for event in events {

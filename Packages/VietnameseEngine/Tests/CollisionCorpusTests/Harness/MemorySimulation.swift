@@ -76,7 +76,7 @@ struct MemorySimulation {
     private func engine(_ snapshot: CollisionMemorySnapshot) -> Engine {
         var withMemory = resources
         withMemory.collisionMemory = snapshot
-        return Engine(configuration: EngineConfiguration(), resources: withMemory)
+        return Engine(configuration: EngineConfiguration(typoCorrection: false), resources: withMemory)
     }
 
     private func isListWord(_ word: String) -> Bool {

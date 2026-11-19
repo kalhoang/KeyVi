@@ -8,7 +8,8 @@ import VietnameseEngineTesting
 /// docs/decisions/0005-pa-decisions-2026-11-13.md).
 @Suite("Bracket letters under Caps Lock and in all-caps words (ENG-R906)")
 struct BracketCaseTests {
-    static let brackets = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)))
+    static let brackets = EngineConfiguration(
+        inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false)
 
     /// Types `keys` with Caps Lock on: letters arrive uppercase, as the host delivers them (ENG-R902), and every
     /// key carries the Caps Lock state. `⌫` is Backspace.

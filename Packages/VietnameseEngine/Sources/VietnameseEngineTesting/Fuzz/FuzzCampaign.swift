@@ -43,7 +43,7 @@ public struct FuzzCombination: Sendable, Hashable, CustomStringConvertible {
                             let index = result.count
                             let configuration = EngineConfiguration(
                                 inputMethod: method, toneStyle: style, autoRestore: autoRestore, appContext: context,
-                                historyLimit: historyLimits[index % historyLimits.count])
+                                historyLimit: historyLimits[index % historyLimits.count], typoCorrection: false)
                             result.append(
                                 FuzzCombination(
                                     configuration: configuration, withMacros: withMacros,

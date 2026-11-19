@@ -15,7 +15,8 @@ import VietnameseEngineTesting
 @Suite("ENG-R850: rule L9 follows the line, with the bundled data")
 struct CodeContextRealDataTests {
     static let configurations = [
-        EngineConfiguration(appContext: .code), EngineConfiguration(appContext: .code, lookaheadRevision: false),
+        EngineConfiguration(appContext: .code, typoCorrection: false),
+        EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
     ]
 
     /// The field after typing `keys` from an empty field.
@@ -123,13 +124,15 @@ struct CodeContextRealDataTests {
             #expect(try Self.field(keys, configuration).field.string == expected, "\(keys.debugDescription)")
         }
         // The general context never reaches L9: `chown`, `ef` and `awk` keep `chơn`, `è` and `ăk` there.
-        #expect(try Self.field("sudo chown -R ", EngineConfiguration()).field.string == "sudo chơn -R ")
+        #expect(
+            try Self.field("sudo chown -R ", EngineConfiguration(typoCorrection: false)).field.string == "sudo chơn -R "
+        )
     }
 
     @Test("REG-38: in VNI no code-only word reaches L9 (plain letters, digit words show no syllable)")
     func vniNeverReachesTheCodeRule() throws {
         let resources = try RealData.resources()
-        let vni = EngineConfiguration(inputMethod: .vni, appContext: .code)
+        let vni = EngineConfiguration(inputMethod: .vni, appContext: .code, typoCorrection: false)
         var reached: [String] = []
         for word in try RealData.codeOnlyWords() {
             var driver = EngineDriver(configuration: vni, resources: resources)

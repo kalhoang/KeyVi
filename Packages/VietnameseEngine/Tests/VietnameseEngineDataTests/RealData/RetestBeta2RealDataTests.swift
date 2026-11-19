@@ -15,7 +15,8 @@ import VietnameseEngineTesting
 struct RetestBeta2RealDataTests {
     static func driver(toneStyle: ToneStyle = .traditional) throws -> EngineDriver {
         EngineDriver(
-            configuration: EngineConfiguration(toneStyle: toneStyle), resources: try RealData.resources())
+            configuration: EngineConfiguration(toneStyle: toneStyle, typoCorrection: false),
+            resources: try RealData.resources())
     }
 
     @Test("Item 21, PRD-R79: after a Vietnamese phrase, hell revises á back to as and the toggle undoes it")

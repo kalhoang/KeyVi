@@ -81,7 +81,8 @@ struct HistoryTests {
 
     @Test func emptyHistoryBackspacePassesThrough() throws {
         // ENG-R1004.
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: Committing.fixtures)
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: Committing.fixtures)
         let output = try driver.send(.backspace)
         #expect(output.action == .passThrough && output.composingText.isEmpty && driver.state == .initial)
     }
@@ -101,11 +102,11 @@ struct HistoryTests {
         let words = String(repeating: "ban ", count: 40)
         #expect(try Committing.driver(words).state.historyCount == 16)
         for limit in [1, 3, 16, 100] {
-            let driver = try Committing.driver(words, EngineConfiguration(historyLimit: limit))
+            let driver = try Committing.driver(words, EngineConfiguration(historyLimit: limit, typoCorrection: false))
             #expect(driver.state.historyCount == min(limit, 40), "limit \(limit)")
         }
         // Backspace walks back only over what the history holds, then passes through.
-        var driver = try Committing.driver("ba nam ", EngineConfiguration(historyLimit: 1))
+        var driver = try Committing.driver("ba nam ", EngineConfiguration(historyLimit: 1, typoCorrection: false))
         #expect(driver.state.historyCount == 1)
         try driver.send(KeyNotation.events("⌫⌫⌫⌫⌫"))  // space, m, a, n, space
         #expect(driver.field.string == "ba" && driver.state.activeDisplay.isEmpty)
@@ -118,13 +119,14 @@ struct HistoryTests {
         // ENG-R1001 ("never a crash"), ENG-T30: a host may pass a huge limit to mean "unlimited"; the
         // entry bound (limit x 64) saturates instead of overflowing on the first commit.
         #expect(History.entryLimit(forTokens: limit) == .max)
-        var driver = try Committing.driver("ban nam, ⌫⌫", EngineConfiguration(historyLimit: limit))
+        var driver = try Committing.driver(
+            "ban nam, ⌫⌫", EngineConfiguration(historyLimit: limit, typoCorrection: false))
         #expect(driver.field.string == "ban nam" && driver.state.activeDisplay == "nam")
         try driver.type(" ")
         #expect(driver.field.string == "ban nam " && driver.state.historyCount == 2)
         // The limit is a public property, so it can also be set after the initialiser; the fuzz checker
         // computes the same bound.
-        var configuration = EngineConfiguration()
+        var configuration = EngineConfiguration(typoCorrection: false)
         configuration.historyLimit = limit
         var checker = InvariantChecker(engine: Engine(configuration: configuration, resources: .empty))
         try checker.send(KeyNotation.events("ban nam  ⌫⌫⌫"))
@@ -132,7 +134,9 @@ struct HistoryTests {
     }
 
     @Test func longBoundaryRunsStayBounded() throws {
-        var session = Session(engine: Engine(configuration: EngineConfiguration(historyLimit: 2), resources: .empty))
+        var session = Session(
+            engine: Engine(
+                configuration: EngineConfiguration(historyLimit: 2, typoCorrection: false), resources: .empty))
         for _ in 0..<5_000 { _ = session.handle(.key(KeyInput("!"))) }
         #expect(session.state.history.entries.count <= 2 * History.entriesPerToken)
         for _ in 0..<5_000 { _ = session.handle(.backspace) }
@@ -174,7 +178,7 @@ struct ResetTests {
 @Suite("History internals")
 struct HistoryInternalsTests {
     private func committed(_ keys: String) -> CommittedToken {
-        let rules = ComposerRules(EngineConfiguration())
+        let rules = ComposerRules(EngineConfiguration(typoCorrection: false))
         let composition = Composition(replaying: Array(keys.utf8), rules: rules)
         let display = composition.display(style: .traditional)
         let token = ActiveToken(composition: composition, display: display, userChoice: .none, restoredByRule: false)
@@ -218,7 +222,7 @@ struct HistoryInternalsTests {
     @Test func backspaceWithATokenLastInTheHistory() {
         // Defensive path of ENG-R1003: a history that ends with a token (no boundary after it) re-opens the
         // token and deletes into it.
-        let engine = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         var state = EngineState.initial
         state.history.record(committed("vieejt"), limit: 16)
         let (next, output) = engine.reduce(state, .backspace)

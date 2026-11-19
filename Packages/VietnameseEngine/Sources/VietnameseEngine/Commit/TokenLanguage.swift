@@ -32,7 +32,8 @@ package enum TokenLanguage: UInt8, Sendable, Hashable {
         resources: Resources, collisionRules: Bool = true
     ) -> TokenLanguage {
         switch decision {
-        case .restored: return .english
+        // ENG-R1116: a corrected token is English for the run, the engine put an English word there.
+        case .restored, .corrected: return .english
         case .kept(.ambiguityTable), .kept(.defaultVietnamese), .kept(.boundaryParticle), .kept(.phrase),
             .kept(.learned):
             return .neutral

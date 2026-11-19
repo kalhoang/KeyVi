@@ -58,7 +58,8 @@ public enum EnglishCorpusCheck {
     /// Types every word after each seed and reports the words whose committed text changed. `configuration`
     /// defaults to the spec's defaults (Telex, collision rules on, ENG-R829).
     public static func run(
-        words: [String], resources: Resources, configuration: EngineConfiguration = EngineConfiguration(),
+        words: [String], resources: Resources,
+        configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
         englishSeed: String = "and", vietnameseSeed: String = "vieejt"
     ) -> EnglishCorpusReport {
         let engine = Engine(configuration: configuration, resources: resources)
@@ -136,7 +137,7 @@ public enum ProseCorpusCheck {
     ) -> Report {
         let configuration = EngineConfiguration(
             inputMethod: method.inputMethod, toneStyle: style, appContext: appContext,
-            lookaheadRevision: lookaheadRevision)
+            lookaheadRevision: lookaheadRevision, typoCorrection: false)
         let engine = Engine(configuration: configuration, resources: resources)
         var session = Session(engine: engine)
         var tokens = 0

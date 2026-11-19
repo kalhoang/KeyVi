@@ -11,7 +11,8 @@ import VietnameseEngineTesting
 @Suite("Re-opened restored token with the bundled data (ENG-R1005)")
 struct ReopenedRestoredRealDataTests {
     private static func text(_ keys: String) throws -> String {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: try RealData.resources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: try RealData.resources())
         try driver.send(KeyNotation.events(keys))
         return driver.field.string
     }

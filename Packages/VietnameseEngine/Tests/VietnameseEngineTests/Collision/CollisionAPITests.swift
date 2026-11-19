@@ -107,7 +107,8 @@ struct CollisionAPITests {
         let macro = RevisionEvidence(
             inputs: CommitInputs(token: ActiveToken(), style: .traditional), decision: .macro, text: "", phraseWord: 0)
         #expect(!macro.isFixed)
-        let policy = CommitPolicy(resources: CollisionFixture.resources(), configuration: EngineConfiguration())
+        let policy = CommitPolicy(
+            resources: CollisionFixture.resources(), configuration: EngineConfiguration(typoCorrection: false))
         #expect(!policy.isStrictEnglish(macro) && !policy.isVietnameseEvidence(macro))
     }
 }

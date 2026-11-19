@@ -19,7 +19,7 @@ struct EnglishRunRealDataTests {
         sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         var driver = EngineDriver(
-            configuration: EngineConfiguration(lookaheadRevision: lookaheadRevision),
+            configuration: EngineConfiguration(lookaheadRevision: lookaheadRevision, typoCorrection: false),
             resources: try RealData.resources())
         try driver.type(keys)
         let field = driver.field.string

@@ -43,7 +43,8 @@ struct RestoreToggleTests {
         // ENG-R704: `test` + space commits `test ` (L11); Backspace re-opens `test` in its restored state;
         // the toggle shows `tét` and marks the token user-kept; the next space keeps it (L1) and emits the
         // learning signal of ENG-R861.
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: SpecFixtures.commitResources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: SpecFixtures.commitResources())
         try driver.type("test ")
         #expect(driver.field.string == "test " && driver.outputs.last?.decision == .restored(.ambiguityTable))
         try driver.send(.backspace)
@@ -58,7 +59,8 @@ struct RestoreToggleTests {
 
     @Test func e02bThenCommitKeepsTheUserChoice() throws {
         // E02b continued: the user-kept `việ` commits as the user chose (L1).
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: SpecFixtures.commitResources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: SpecFixtures.commitResources())
         try driver.type("vieejt")
         try driver.send(.restoreToggle)
         try driver.send(.backspace)
@@ -72,7 +74,7 @@ struct RestoreToggleTests {
 
     @Test func restoredTokenIsLiteralForTheRestOfTheToken() throws {
         // ENG-R701: user-restored means literal for the rest of the token.
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.type("vieejt")
         try driver.send(.restoreToggle)
         try driver.type("s")
@@ -91,7 +93,7 @@ struct RestoreToggleTests {
         // ENG-R701 second branch for a token that a commit rule restored and Backspace re-opened
         // (ENG-R704): it shows its raw keys, the toggle brings the composed form back and marks it
         // user-kept.
-        let configuration = EngineConfiguration()
+        let configuration = EngineConfiguration(typoCorrection: false)
         let rules = ComposerRules(configuration)
         let composition = Composition(replaying: Array("test".utf8), rules: rules)
         var token = ActiveToken(composition: composition, display: "test", userChoice: .none, restoredByRule: true)
@@ -106,7 +108,7 @@ struct RestoreToggleTests {
     }
 
     @Test func toggleWithoutTokenPassesThrough() throws {
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.send(.restoreToggle)
         #expect(driver.outputs.last?.action == .passThrough)
         try driver.type("ban ")
@@ -117,7 +119,7 @@ struct RestoreToggleTests {
 
     @Test func vniRestoreReproducesDigits() throws {
         // ENG-R705, REG-05.
-        var driver = EngineDriver(configuration: EngineConfiguration(inputMethod: .vni))
+        var driver = EngineDriver(configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false))
         try driver.type("vie65t")
         try driver.send(.restoreToggle)
         #expect(driver.field.string == "vie65t")

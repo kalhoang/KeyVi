@@ -23,8 +23,9 @@ struct EngineBenchmarkTests {
     /// literal or are restored at a punctuation boundary, Backspace runs that re-open committed tokens,
     /// macro expansions and restore toggles.
     static func workload() -> [(Engine, [EngineEvent])] {
-        let telex = Engine(configuration: EngineConfiguration(), resources: resources)
-        let vni = Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: resources)
+        let telex = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
+        let vni = Engine(
+            configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false), resources: resources)
         var telexEvents: [EngineEvent] = []
         var vniEvents: [EngineEvent] = []
         GeneratedCorpus.forEachOrderCase { generated in

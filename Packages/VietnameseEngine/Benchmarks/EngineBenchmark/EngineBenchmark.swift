@@ -141,7 +141,7 @@ struct EngineBenchmark {
 
         // The first engine of the process builds the generated tables (Engine.init).
         let coldStart = Timing.clock.now
-        let probe = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let probe = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         let coldInit = Double(Timing.nanoseconds(coldStart.duration(to: Timing.clock.now))) / 1e6
         sink &+= probe.configuration.historyLimit
 

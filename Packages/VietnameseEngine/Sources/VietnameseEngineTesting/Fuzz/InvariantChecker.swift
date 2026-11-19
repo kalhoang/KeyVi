@@ -626,6 +626,7 @@ public struct InvariantChecker: Sendable {
         case .kept?:
             statistics.commits += 1
             statistics.keptCommits += 1
+        case .corrected?: statistics.commits += 1  // section 11A (ENG-R1115)
         case nil: break
         }
         statistics.digest(Self.digest(output))
@@ -650,6 +651,7 @@ public struct InvariantChecker: Sendable {
         case .kept(let rule)?: mix(5 &+ UInt64(String(describing: rule).utf8.count))
         case .restored(let rule)?: mix(6 &+ UInt64(String(describing: rule).utf8.count))
         case nil: mix(7)
+        case .corrected(let rule)?: mix(8 &+ UInt64(String(describing: rule).utf8.count))
         }
         return hash
     }

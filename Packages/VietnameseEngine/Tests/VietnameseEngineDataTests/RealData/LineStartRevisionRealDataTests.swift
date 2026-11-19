@@ -18,7 +18,8 @@ import VietnameseEngineTesting
 struct LineStartRevisionRealDataTests {
     /// The shipped terminal configuration (PLT-R357), and the code context with every collision rule on.
     static let configurations = [
-        EngineConfiguration(appContext: .code, lookaheadRevision: false), EngineConfiguration(appContext: .code),
+        EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
+        EngineConfiguration(appContext: .code, typoCorrection: false),
     ]
 
     static func driver(_ keys: String, _ configuration: EngineConfiguration) throws -> EngineDriver {
@@ -28,7 +29,8 @@ struct LineStartRevisionRealDataTests {
     }
 
     /// D29 off in the terminal configuration (`lineStartRevision`, ENG-R829).
-    static let d29Off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+    static let d29Off = EngineConfiguration(
+        appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false)
 
     @Test("REG-36: the product owner's sentence in iTerm2 gives Tả thử cái này, decided at the first word's commit")
     func productOwnerSentence() throws {
@@ -199,7 +201,7 @@ struct LineStartRevisionRealDataTests {
 
     @Test("ENG-R829: Escape right after the revision gives the keys back and a strong English signal")
     func undo() throws {
-        var driver = try Self.driver("tar thuwr ", EngineConfiguration(appContext: .code))
+        var driver = try Self.driver("tar thuwr ", EngineConfiguration(appContext: .code, typoCorrection: false))
         let output = try driver.send(.restoreToggle)
         #expect(driver.field.string == "tar thử ")
         #expect(

@@ -5,9 +5,9 @@ import VietnameseEngineTesting
 
 /// Helpers shared by the composition rule tests.
 enum Typing {
-    static let telex = EngineConfiguration()
-    static let modern = EngineConfiguration(toneStyle: .modern)
-    static let vni = EngineConfiguration(inputMethod: .vni)
+    static let telex = EngineConfiguration(typoCorrection: false)
+    static let modern = EngineConfiguration(toneStyle: .modern, typoCorrection: false)
+    static let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
     /// Types `keys` (`⌫` is Backspace) through the simulated field and returns the driver.
     static func driver(_ keys: String, _ configuration: EngineConfiguration = telex) throws -> EngineDriver {
@@ -99,8 +99,10 @@ struct HornCompositionTests {
 /// Options (4.8), escapes (4.7) and literal mode (4.5).
 @Suite("Composition: options, escapes and literal mode (4.5 to 4.8)")
 struct OptionAndEscapeTests {
-    static let noStandaloneW = EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false)))
-    static let brackets = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)))
+    static let noStandaloneW = EngineConfiguration(
+        inputMethod: .telex(TelexOptions(standaloneW: false)), typoCorrection: false)
+    static let brackets = EngineConfiguration(
+        inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false)
 
     @Test func standaloneWOff() throws {
         #expect(try Typing.display("w", Self.noStandaloneW) == "w")

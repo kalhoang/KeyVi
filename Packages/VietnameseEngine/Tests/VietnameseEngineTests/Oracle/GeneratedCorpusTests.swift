@@ -105,7 +105,9 @@ struct GeneratedCorpusTests {
         #expect(thuo?.expectedCommitted == "thuở")
         #expect(thuo?.events.count == 6)
         #expect(
-            thuo?.configuration == EngineConfiguration(inputMethod: .telex(TelexOptions()), toneStyle: .traditional))
+            thuo?.configuration
+                == EngineConfiguration(
+                    inputMethod: .telex(TelexOptions()), toneStyle: .traditional, typoCorrection: false))
     }
 
     @Test func variantCasesUseTraditionalTelex() {

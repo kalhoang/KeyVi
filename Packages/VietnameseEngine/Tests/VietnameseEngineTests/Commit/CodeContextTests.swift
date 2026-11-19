@@ -11,8 +11,9 @@ import VietnameseEngineTesting
 /// (`defaultVietnamese`); `chown` is not English, so the rules after L9 keep it by L7 (`notEnglish`).
 @Suite("Rule L9 follows the line (ENG-R850, REG-35)")
 struct CodeContextTests {
-    static let code = EngineConfiguration(appContext: .code)
-    static let codeWithoutRevision = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+    static let code = EngineConfiguration(appContext: .code, typoCorrection: false)
+    static let codeWithoutRevision = EngineConfiguration(
+        appContext: .code, lookaheadRevision: false, typoCorrection: false)
 
     /// Keys and the field they leave in the code context when L9 restores the last token: at the start of
     /// the input or of a line, after an English word, after a code word shown as typed, after a code
@@ -107,7 +108,7 @@ struct CodeContextTests {
 
     @Test("ENG-R802: with auto restore off L9 names itself and keeps; in Vietnamese text L11 decides")
     func autoRestoreOff() throws {
-        let off = EngineConfiguration(autoRestore: false, appContext: .code)
+        let off = EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false)
         #expect(try Committing.text("tar ", off) == "tả ")
         #expect(try Committing.decision("tar ", off) == .kept(.codeContext))
         #expect(try Committing.decision("vieejt tar ", off) == .kept(.defaultVietnamese))
@@ -171,7 +172,8 @@ struct CodeContextTests {
         // Shell lines keep it, and with D29 off it stays as typed.
         #expect(try Committing.text("chown xf ", Self.code) == "chown xf ")
         #expect(try Committing.text("chown thuwr.", Self.code) == "chown thử.")
-        let d29Off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        let d29Off = EngineConfiguration(
+            appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false)
         #expect(try Committing.text("chown thuwr ", d29Off) == "chown thử ")
     }
 
@@ -182,10 +184,10 @@ struct CodeContextTests {
         }
         #expect(try Committing.text("sudo chown ") == "sudo chơn ")
         // VNI letters are plain: `chown` is typed unchanged (L0).
-        let vniCode = EngineConfiguration(inputMethod: .vni, appContext: .code)
+        let vniCode = EngineConfiguration(inputMethod: .vni, appContext: .code, typoCorrection: false)
         #expect(try Committing.decision("chown ", vniCode) == .kept(.unchanged))
         // ENG-R802: L9 names itself and keeps the display.
-        let off = EngineConfiguration(autoRestore: false, appContext: .code)
+        let off = EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false)
         #expect(try Committing.text("chown ", off) == "chơn ")
         #expect(try Committing.decision("chown ", off) == .kept(.codeContext))
     }

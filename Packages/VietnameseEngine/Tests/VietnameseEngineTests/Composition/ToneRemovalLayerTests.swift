@@ -10,8 +10,8 @@ import VietnameseEngineTesting
 /// product owner: `daauszz` gave `dâuz` where `dau` was expected (REG-34).
 @Suite("Tone removal by layers (ENG-R411)")
 struct ToneRemovalLayerTests {
-    private static let telex = EngineConfiguration()
-    private static let vni = EngineConfiguration(inputMethod: .vni)
+    private static let telex = EngineConfiguration(typoCorrection: false)
+    private static let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
     private static func display(_ keys: String, _ configuration: EngineConfiguration = telex) throws -> String {
         var driver = EngineDriver(configuration: configuration)

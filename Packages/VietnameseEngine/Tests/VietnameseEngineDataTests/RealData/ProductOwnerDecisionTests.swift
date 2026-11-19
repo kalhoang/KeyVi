@@ -11,8 +11,8 @@ import VietnameseEngineTesting
 
 @Suite("Data decisions of the product owner with the bundled data")
 struct ProductOwnerDecisionTests {
-    static let vni = EngineConfiguration(inputMethod: .vni)
-    static let code = EngineConfiguration(appContext: .code)
+    static let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
+    static let code = EngineConfiguration(appContext: .code, typoCorrection: false)
     /// No previous token, a Vietnamese seed (`việt`) and an English seed (`and`, ENG-R823).
     static let telexSeeds = ["", "vieejt ", "and "]
     static let vniSeeds = ["", "vie65t ", "and "]
@@ -34,9 +34,14 @@ struct ProductOwnerDecisionTests {
         #expect(resources.attestedSyllables.contains("ĩ"))
         #expect(resources.techAlways.contains("xix"))
         for seed in Self.telexSeeds {
-            #expect(try Self.committed("IX ", after: seed, EngineConfiguration()) == "Ĩ ", "\(seed)")
-            #expect(try Self.committed("aamf ix ", after: seed, EngineConfiguration()) == "ầm ĩ ", "\(seed)")
-            #expect(try Self.committed("XIX ", after: seed, EngineConfiguration()) == "XIX ", "\(seed)")
+            #expect(
+                try Self.committed("IX ", after: seed, EngineConfiguration(typoCorrection: false)) == "Ĩ ", "\(seed)")
+            #expect(
+                try Self.committed("aamf ix ", after: seed, EngineConfiguration(typoCorrection: false)) == "ầm ĩ ",
+                "\(seed)")
+            #expect(
+                try Self.committed("XIX ", after: seed, EngineConfiguration(typoCorrection: false)) == "XIX ", "\(seed)"
+            )
         }
     }
 
@@ -50,7 +55,9 @@ struct ProductOwnerDecisionTests {
         // `quartz` is English, so L4a restores it; `Amazon`, `Arizona` and `booze` remove a mark before more letters, so
         // the rules after L4a restore them as before; `hertz` (not in the lexicon) is the known cost (ENG-R411).
         for seed in Self.telexSeeds {
-            #expect(try Self.committed(keys, after: seed, EngineConfiguration()) == expected, "\(seed)")
+            #expect(
+                try Self.committed(keys, after: seed, EngineConfiguration(typoCorrection: false)) == expected, "\(seed)"
+            )
         }
         #expect(try Self.committed("vie65t0 ", after: "", Self.vni) == "viêt ")
     }
@@ -78,7 +85,9 @@ struct ProductOwnerDecisionTests {
     func chonIsAttested() throws {
         #expect(try RealData.resources().attestedSyllables.contains("chơn"))
         for seed in Self.telexSeeds {
-            #expect(try Self.committed("chown ", after: seed, EngineConfiguration()) == "chơn ", "\(seed)")
+            #expect(
+                try Self.committed("chown ", after: seed, EngineConfiguration(typoCorrection: false)) == "chơn ",
+                "\(seed)")
         }
         // The code context: since the product owner's decision of 18/11/2026 (REG-38) rule L9 is evaluated right after
         // L5 for `chown`, a code-only word whose keys are not English, so it keeps its keys outside Vietnamese text and

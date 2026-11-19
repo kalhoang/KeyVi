@@ -10,10 +10,11 @@ import VietnameseEngineTesting
 @Suite("Composition properties (ENG-R601, 13.6)")
 struct CompositionPropertyTests {
     static let configurations: [EngineConfiguration] = [
-        EngineConfiguration(),
-        EngineConfiguration(toneStyle: .modern),
-        EngineConfiguration(inputMethod: .vni),
-        EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false, bracketKeys: true))),
+        EngineConfiguration(typoCorrection: false),
+        EngineConfiguration(toneStyle: .modern, typoCorrection: false),
+        EngineConfiguration(inputMethod: .vni, typoCorrection: false),
+        EngineConfiguration(
+            inputMethod: .telex(TelexOptions(standaloneW: false, bracketKeys: true)), typoCorrection: false),
     ]
     static let seeds: [UInt64] = Array(1...8)
 
@@ -36,7 +37,7 @@ struct CompositionPropertyTests {
     func determinism(seed: UInt64) {
         var generator = SeededGenerator(seed: seed)
         let events = RandomEvents.events(count: 2_000, using: &generator)
-        let engine = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         var first = Session(engine: engine)
         var second = Session(engine: engine)
         var state = EngineState.initial

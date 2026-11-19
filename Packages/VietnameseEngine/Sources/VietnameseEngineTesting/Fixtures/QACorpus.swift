@@ -112,7 +112,7 @@ public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
         return EngineConfiguration(
             inputMethod: inputMethod, toneStyle: options.contains("modern") ? .modern : .traditional,
             autoRestore: !options.contains("no-auto-restore"), appContext: options.contains("code") ? .code : .general,
-            historyLimit: historyLimit)
+            historyLimit: historyLimit, typoCorrection: false)
     }
 
     /// The 13.9 fixture resources (or empty ones), with `macros` unless the row says `no-macros`, the
