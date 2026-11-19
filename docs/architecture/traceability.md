@@ -180,7 +180,7 @@ PLT-R201, PLT-R203, PLT-R204, PLT-R301, PLT-R303, PLT-R304, PLT-R305, PLT-R306, 
 | PLT-R521 | Identical signatures fail CI; runtime tie | `RulesLinter`, `RuleSet` | U, L | W1-C |  |
 | PLT-R522 | User overrides outrank shipped rules | `RuleSet` | U | W1-C |  |
 | PLT-R523 | Resolution on ax thread on focus change only | `FocusTracker` | U | W1-E |  |
-| PLT-R530 | Scenario file format | `TestSupport/Scenario`, `compat/schema/scenario.schema.json`, `compat/scenarios/` | U, C | W2-E1 |  |
+| PLT-R530 | Scenario file format; declared focus shortcuts wait for the app's focus snapshot (amended 19/11/2026) | `TestSupport/Scenario`, `compat/schema/scenario.schema.json`, `compat/scenarios/` | U (`ScenarioRunnerTests.aDeclaredFocusShortcutWaitsLikeCommandDigitPltR530`, `ScenarioRunnerTests.aFocusShortcutWaitsForItsOwnSnapshotPltR530`, `ScenarioSetupRouterTests.theFocusBaselineWaitsUntilTheCountHoldsStill`, `ScenarioFilesTests.onlyThePanelReopeningWaitsForItsFocusShortcutT55`), C | W2-E1 |  |
 | PLT-R531 | Manual scenarios need fresh matrix rows | `RulesLinter`, `compat/matrix.json` | L, M | W1-C; Pa | **Pa** |
 | PLT-R540 | Override mechanism and scopes | `CompatibilityModeChoice`, `GuidedTestRunner`, rule import | U | W1-G, W2-B, W2-C |  |
 | PLT-R541 | rule-overrides.json listed, exported, in reports | `SettingsStore`, `ReportAssembler`, `ReportedOverride`, ADR 0312 | U | W1-B, W1-G |  |
