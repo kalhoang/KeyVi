@@ -26,11 +26,14 @@ import Testing
         var size: NSSize
         var advanced = false
         var legacyLayout = false
+        /// D4 off in the variant's store: D30 shows disabled with its suffix (PRD-R80).
+        var englishRestoreOff = false
 
         var fileName: String {
             var parts = [pane.rawValue, language == .vietnamese ? "vi" : "en", dark ? "dark" : "light", sizeName]
             if advanced { parts.append("advanced") }
             if legacyLayout { parts.append("macos12-layout") }
+            if englishRestoreOff { parts.append("d4-off") }
             return parts.joined(separator: "-") + ".png"
         }
     }
@@ -80,6 +83,14 @@ import Testing
             }
         }
         #if !SETTINGS_SNAPSHOT_BASELINE
+        // PRD-R80: the whole Typing pane with D4 off, D30 disabled with its suffix (1.1.0; not in the baseline sources).
+        for language in [InterfaceLanguage.vietnamese, .english] {
+            let full = NSSize(width: SettingsWindowController.defaultSize.width, height: 1_400)
+            result.append(
+                Variant(
+                    pane: .typing, language: language, dark: false, sizeName: "full", size: full,
+                    englishRestoreOff: true))
+        }
         for pane in SettingsPaneKind.allCases {
             for language in [InterfaceLanguage.vietnamese, .english] {
                 result.append(
@@ -101,7 +112,7 @@ import Testing
         var manifest: [String] = []
         let selected = Self.variants().filter { variant in Self.only.map(variant.fileName.contains) ?? true }
         for variant in selected {
-            let store = try await SnapshotFixtures.store(matrix: matrix)
+            let store = try await SnapshotFixtures.store(matrix: matrix, englishRestoreOff: variant.englishRestoreOff)
             do {
                 try await render(variant, store: store.store, matrix: matrix, into: folder)
             } catch {
