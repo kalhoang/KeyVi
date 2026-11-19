@@ -233,24 +233,30 @@ it.
 - The resident budget was over (section 6); the fallback was requested rather than built, and the logic track built
   it (the packed sets, section 6).
 
-## 10. Open: developer words outside every list
+## 10. Developer words outside every list
 
 The engine's gates with the bundled data (19/11/2026, `Packages/VietnameseEngine/TRACEABILITY.md` rows ENG-T50 to
-ENG-T57) meet every target of ENG-R1124 but one: the W11 corpus (13.11) holds four developer words that are in no
+ENG-T57) met every target of ENG-R1124 but one: the W11 corpus (13.11) holds four developer words that were in no
 bundled list, neither the lexicon (SCOWL sizes 10 to 35), the tech lists nor the guard list (SCOWL sizes 40 to 70 and
-names), and each is one edit from exactly one English word, so section 11A corrects it: `frontend` gives `fronted`
-(CS0153, CS0232), `backend` gives `backed` (CS0232), `rebase` gives `debase` (CS0173), `debounce` gives `denounce`
-(CS0219). The engine follows the spec; the data contradicts the W11 row (zero corrections).
-`TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` pins these five corrections as a known issue and fails on
-any other. A probe of 145 common developer words on the same day found two more, `upsert` (to `upset`) and `rebased`
-(to `debased`).
+names), and each is one edit from exactly one English word, so section 11A corrected it: `frontend` gave `fronted`
+(CS0153, CS0232), `backend` gave `backed` (CS0232), `rebase` gave `debase` (CS0173), `debounce` gave `denounce`
+(CS0219). The engine followed the spec; the data contradicted the W11 row (zero corrections). A probe of 145 common
+developer words on the same day found two more, `upsert` (to `upset`) and `rebased` (to `debased`).
 
-Two remedies, both data changes for the data track and the product owner: add the words to the tech-always list
-(which also decides how 1.0 restores them; these four are restored by L5 already, so their 1.0 output does not move),
-or add a reviewed list of developer words to the guard list's inputs (a new pinned input with its provenance, the
-guard list's notice and its size gate unchanged). Either way the W11 known issue then stops occurring and the test
-fails until its marker is removed.
+Two remedies were open, both data changes: add the words to the tech-always list (which also decides how 1.0 restores
+them), or add a reviewed list of developer words to the guard list's inputs (a new pinned input with its provenance,
+the guard list's notice and its size gate unchanged).
 
-The gap is a gate for 1.1.0: no `1.1.0-beta.1` while the marker stays (the plan of 19/11/2026, Task 36 and open
-question 6, `docs/superpowers/plans/2026-11-19-typo-correction.md`). The data change covers at least the six words
-above, so the probe's two words are not left behind by a fix of the corpus's four.
+**Decision (19/11/2026, the final fix round of 1.1.0): the plan's default, the tech-always list.** A second probe of
+303 developer terms with their inflections, typed in Telex and VNI, lowercase after `vieejt ` and in sentence case at
+the start, found 18 words corrected: `backend`, `bundlers`, `debounce`, `debounced`, `debounces`, `debouncing`,
+`diffed`, `esports`, `frontend`, `initializers`, `rebase`, `rebased`, `rebases`, `rebasing`, `structs`, `upsert`,
+`upserting`, `upserts`. They form the last block of `data/inputs/tech-always.txt`. The composition of each is invalid in
+both methods, so rule L5 already restored them in 1.0: listing them moves no 1.0 output, and none composes a
+Vietnamese syllable that rule L11 would then restore (the list's Telex check). The correction lexicon gains them as
+fits (a one-key typo of `frontend` may now be corrected to it); the guard list is unchanged (77,488 words), and `ambiguity-candidates`
+finds no new candidate. `TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` lost its known issue (zero
+corrections in every W11 file) and `developerWordsAreNeverCorrected` pins the 18 words.
+
+The words are reviewed by the product owner with the list, as every tech-always entry is (plan open question 6). If
+the review prefers the other remedy, the block moves to a new guard input and the tests stay as they are.

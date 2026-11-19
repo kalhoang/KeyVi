@@ -115,14 +115,8 @@ struct TypoCorrectionCorpusGateTests {
 
     /// The W11 corpus in both tone orders and its three adversarial sets (13.11), each sentence typed from an empty
     /// field with the switch on (`{RET}` is Return). The fixtures are read from the checkout, like the prose corpus.
-    ///
-    /// Known issue (19/11/2026, an open data question for the product owner): four developer words of the W11 corpus
-    /// are in no bundled list (not in the lexicon of SCOWL sizes 10 to 35, the tech lists or the guard list of SCOWL
-    /// sizes 40 to 70 and names), so each is exactly one edit from one English word and is corrected as section 11A
-    /// says (`frontend` gives `fronted` in CS0153 and CS0232, `backend` gives `backed` in CS0232, `rebase` gives
-    /// `debase` in CS0173, `debounce` gives `denounce` in CS0219). The engine follows the spec; the bundled data
-    /// contradicts the W11 row of ENG-R1124 (zero corrections). Any other correction fails; once the data holds the
-    /// words, the marker fails until it is removed.
+    /// Its developer words (`frontend`, `backend`, `rebase`, `debounce`) were in no bundled list until 19/11/2026 and
+    /// were corrected (`frontend` gave `fronted`); the tech-always list now holds them (ADR 0203 section 10).
     @Test(
         "ENG-T51: the W11 corpus and its three sets",
         arguments: ["corpus-tone-last", "corpus-tone-after-vowel", "set-adversarial", "set-stress", "set-held-out"])
@@ -143,23 +137,34 @@ struct TypoCorrectionCorpusGateTests {
             "[ENG-T51] W11 \(file): \(lines.count) sentences, \(corrected.count) corrected"
                 + (corrected.isEmpty ? "" : ":\n" + RealData.listing(corrected)))
         #expect(lines.count >= 40)
-        let known = corrected.filter(Self.knownW11Corrections.contains)
-        let unexpected = corrected.filter { !Self.knownW11Corrections.contains($0) }
-        #expect(unexpected.isEmpty, "\(file): \(unexpected)")
-        if file.hasPrefix("corpus-") {
-            withKnownIssue("ENG-R1124 W11 row: four developer words are in no bundled list (open data question)") {
-                #expect(known.isEmpty, "\(file): \(known)")
-            }
-            #expect(Set(known) == Self.knownW11Corrections, "\(file): \(known)")
-        }
+        #expect(corrected.isEmpty, "\(file): \(corrected)")
     }
 
-    /// The corrections the bundled data of 19/11/2026 makes in each W11 corpus file (both tone orders type the same
-    /// words): sentence id, raw keys, the word left.
-    static let knownW11Corrections: Set<String> = [
-        "CS0153 frontend -> fronted", "CS0173 rebase -> debase", "CS0219 debounce -> denounce",
-        "CS0232 backend -> backed", "CS0232 frontend -> fronted",
+    /// Developer words a probe of 303 common developer terms (19/11/2026) found corrected to another English word
+    /// with the data of that day (`upsert` gave `upset`, `structs` gave `struts`, `esports` gave `exports`), the four
+    /// of the W11 corpus among them, with the inflections that were corrected too (ENG-R1124, W11 row; ADR 0203
+    /// section 10). None of them is corrected, in Telex and VNI, lowercase after `vieejt ` and in sentence case at
+    /// the start of the input.
+    static let developerWords = [
+        "backend", "bundlers", "debounce", "debounced", "debounces", "debouncing", "diffed", "esports", "frontend",
+        "initializers", "rebase", "rebased", "rebases", "rebasing", "structs", "upsert", "upserting", "upserts",
     ]
+
+    @Test("ENG-T51: developer words outside the 1.0 lists are never corrected", arguments: CorpusMethod.allCases)
+    func developerWordsAreNeverCorrected(_ method: CorpusMethod) throws {
+        let resources = try RealData.resources()
+        let configuration = Self.configuration(method)
+        let corrected =
+            CorrectionCheck.corrections(
+                of: Self.developerWords, resources: resources, configuration: configuration, after: "vieejt ")
+            + CorrectionCheck.corrections(
+                of: Self.developerWords.map { $0.prefix(1).uppercased() + $0.dropFirst() }, resources: resources,
+                configuration: configuration)
+        print(
+            "[ENG-T51] developer words in \(method): \(Self.developerWords.count) words, \(corrected.count) corrected"
+                + (corrected.isEmpty ? "" : ":\n" + RealData.listing(corrected)))
+        #expect(corrected.isEmpty)
+    }
 
     // MARK: The word lists
 

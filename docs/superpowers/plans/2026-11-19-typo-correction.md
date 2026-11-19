@@ -931,6 +931,14 @@ during most of them.
   and the words no longer correct), the W11 row of ENG-R1124 in `TRACEABILITY.md` reads zero corrections, and Task 35
   is rerun.
 
+  *Data change done (19/11/2026, the final fix round): the plan's default.* A probe of 303 developer terms found 18
+  words corrected (the six above, their inflections, `bundlers`, `diffed`, `esports`, `initializers`, `structs`);
+  they are the last block of `data/inputs/tech-always.txt`, `lexicon-builder build` and `check` are green,
+  `knownW11Corrections` and the marker are gone (zero corrections in every W11 file) and
+  `developerWordsAreNeverCorrected` pins the 18 words (ADR 0203 section 10, the W11 row of ENG-R1124). Left before
+  `1.1.0-beta.1`: the product owner's review of the 18 words (question 6) and the Task 35 rerun at the stable 1.0.1
+  merge.
+
 ---
 
 ## Spec coverage
@@ -996,3 +1004,5 @@ added on 19/11/2026 after the E2b gates with the bundled data.)*
    new word). The other answer: a new pinned input of reviewed developer words for the guard list (its provenance and
    notice, the 512 KB gate unchanged), which keeps tech-always for words with a 1.0 restore reason and leaves the 1.0
    data untouched.
+   *(19/11/2026, the final fix round: the default is built, 18 words on tech-always, Task 36; the product owner's
+   review of the words stays open.)*

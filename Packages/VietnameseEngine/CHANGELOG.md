@@ -65,6 +65,11 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   context and VNI do not change. With the bundled data L9 now reaches `awk`, `chown`, `ef`, `host`, `tar` and `tee`;
   the prose corpus and the W11 corpus in the code context do not move. Spec rows B035o to B035t (`chown` joins the
   13.9 fixture code-only list) and K26 to K32.
+- Bundled data: 18 developer words on the tech-always list (406 entries), `frontend`, `backend`, `rebase`,
+  `debounce`, `upsert`, `structs` and their corrected inflections among them (ENG-R1124, the W11 row;
+  docs/decisions/0203-correction-data.md section 10). The typo correction changed each into another English word
+  one edit away (`frontend` gave `fronted`, `upsert` gave `upset`); listed, they are words of the correction lexicon
+  and stay as typed. Their compositions are invalid, so rule L5 already restored them and no 1.0 output moves.
 - Bundled data: the phrases `day off`, `sale off` and `a mess` (product owner, 18/11/2026; 330 phrases). The phrase
   evidence of rule L4 (ENG-R804 (a)) now keeps the word typed in `day off`, `a mess` and `Ê có sale off`, which kept
   the escapes `day of`, `a mes` and `sale of`; `ok off`, `50% off`, `mess up`, `off topic` and `Off the record` keep

@@ -30,10 +30,12 @@ avif
 aws
 azure
 b5
+backend
 bitbucket
 bluetooth
 bmp
 bootstrap
+bundlers
 bz2
 canva
 cccd
@@ -54,10 +56,15 @@ csv
 dart
 deb
 debian
+debounce
+debounced
+debounces
+debouncing
 dell
 deno
 dhcp
 diff
+diffed
 discord
 django
 dll
@@ -72,6 +79,7 @@ dropbox
 dvi
 dylib
 epub
+esports
 exe
 exynos
 facebook
@@ -87,6 +95,7 @@ flv
 fps
 fpt
 freebsd
+frontend
 ftp
 ftps
 gb
@@ -133,6 +142,7 @@ ide
 ig
 imac
 imap
+initializers
 instagram
 intel
 intellij
@@ -264,6 +274,10 @@ rails
 ram
 reactjs
 realme
+rebase
+rebased
+rebases
+rebasing
 reddit
 redis
 restful
@@ -297,6 +311,7 @@ srt
 ssd
 ssh
 ssl
+structs
 studio
 supabase
 svelte
@@ -332,6 +347,9 @@ ui
 uikit
 unity
 unreal
+upsert
+upserting
+upserts
 url
 urls
 usb
