@@ -873,6 +873,13 @@ is left to the integration.
 ### Task 36: Hand-off to the release track
 
 - [ ] The integration branch stays unmerged until stable 1.0.1 is published: ADR 0009 (1.1.0 is built during the 72 h beta of 1.0.1) is the source of the sequencing, QA-R29 of the cadence. While the beta runs, every 1.0.1 fix that lands on `main` is merged into `integration/1.1.0` with `--no-ff`; when stable 1.0.1 is tagged, merge `main` at that tag into `integration/1.1.0` and rerun Task 35 in full before any 1.1.0 beta. The release of 1.1.0 then follows `docs/runbooks/release.md` (a `1.1.0-beta.1` first); the tart integration run (QA-R12) and the Tier 1 manual pass are the product owner's window and are not part of this plan.
+- [ ] **Beta gate, the W11 developer words (ENG-R1124, open question 6).** No `1.1.0-beta.1` while
+  `TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` still carries its `withKnownIssue` marker. The product
+  owner answers question 6, the data track makes the data change it names (ADR 0203 section 10) and runs
+  `lexicon-builder build` and `check`; the change covers at least `frontend`, `backend`, `rebase`, `rebased`,
+  `debounce` and `upsert`. Then `knownW11Corrections` and the marker are removed (the test fails while the marker stays
+  and the words no longer correct), the W11 row of ENG-R1124 in `TRACEABILITY.md` reads zero corrections, and Task 35
+  is rerun.
 
 ---
 
@@ -891,7 +898,7 @@ is left to the integration.
 | ENG-R1121 | 1 (`coreIsClean`), 16, 26 |
 | ENG-R1122 | 11, 12, 17, 22 |
 | ENG-R1123 | 20 (zero corrections on the Vietnamese corpora; no pattern ships) |
-| ENG-R1124 | 20, 21 |
+| ENG-R1124 | 20, 21, 36 (the W11 beta gate) |
 | ENG-T50 to ENG-T57 | 19; 20; 21; 21; 16 and 22; 17 and 22; 10; 20 |
 | Q10, Q11 (one named place) | 1, 4, 14, 19, 29 |
 | PRD-R4A, D30 default | 3, 28, 29, 30 |
@@ -903,7 +910,8 @@ is left to the integration.
 
 Each item names the plan's default (what is built now) and what the other answer changes. *(19/11/2026: the product
 owner accepted the defaults of items 1, 2 and 3, `docs/decisions/0010-pa-decisions-2026-11-19.md`; items 4 and 5
-stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed.)*
+stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed. Item 6 was
+added on 19/11/2026 after the E2b gates with the bundled data.)*
 
 1. **Q10, a capitalised word at a sentence start (ENG-R1111).** Default: corrected (`Androdi` gives `Android`;
    `Biden` at a sentence start would become `Bidden` once, until the restore key teaches the never-correct list).
@@ -928,3 +936,13 @@ stay open. The text of items 1 to 3 is kept as the record of what the other answ
    (`correction.p99`, `correction.max`) are baselined on the M4 as the 13/11/2026 decision allows for ENG-R1230.
    The other answers: a 1.1.0 beta before stable 1.0.1 (two betas in flight, against ADR 0009 item 1's intent), or
    a baseline on the Intel machine of ENG-R1230 (later, when it is available).
+6. **Developer words outside every list (ENG-R1124, W11 row; ADR 0203 section 10).** The W11 corpus types four
+   developer words that are in no bundled list, and the engine corrects them as section 11A says: `frontend` gives
+   `fronted`, `backend` gives `backed`, `rebase` gives `debase`, `debounce` gives `denounce`; a probe of 145 developer
+   words found `upsert` (to `upset`) and `rebased` (to `debased`) as well. The target users meet these words in tech
+   chat, so Task 36 holds the beta until this is answered. Default: add the words, plus a reviewed set of similar
+   developer terms, to `data/inputs/tech-always.txt` (the list the product owner already reviews; these words are
+   restored by L5 in 1.0 already, so the 1.0 output does not move, and the list's Telex check still applies to each
+   new word). The other answer: a new pinned input of reviewed developer words for the guard list (its provenance and
+   notice, the 512 KB gate unchanged), which keeps tech-always for words with a 1.0 restore reason and leaves the 1.0
+   data untouched.

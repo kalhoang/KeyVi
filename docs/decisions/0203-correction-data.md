@@ -251,3 +251,6 @@ or add a reviewed list of developer words to the guard list's inputs (a new pinn
 guard list's notice and its size gate unchanged). Either way the W11 known issue then stops occurring and the test
 fails until its marker is removed.
 
+The gap is a gate for 1.1.0: no `1.1.0-beta.1` while the marker stays (the plan of 19/11/2026, Task 36 and open
+question 6, `docs/superpowers/plans/2026-11-19-typo-correction.md`). The data change covers at least the six words
+above, so the probe's two words are not left behind by a fix of the corpus's four.
