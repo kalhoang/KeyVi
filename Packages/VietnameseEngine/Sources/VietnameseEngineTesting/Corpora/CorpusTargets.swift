@@ -118,6 +118,8 @@ public enum ProseCorpusCheck {
         public let differences: [ChangedWord]
         /// Commits that revised the previous word (ENG-R828); the W11 prose gate expects none.
         public let revisions: Int
+        /// Words whose commit the typo correction changed (ENG-T51 expects none; empty with the switch off).
+        public let corrected: [ChangedWord]
         /// The share of words typed exactly (ENG-R873).
         public var identicalShare: Double {
             tokens > 0 ? Double(tokens - differences.count) / Double(tokens) : 1
@@ -130,35 +132,41 @@ public enum ProseCorpusCheck {
     /// Types `text` with `order` in `method` and compares each word with the source. `style` is the typist's
     /// tone-style setting (spec 5.2); the keys are the same in both styles, only the placement differs.
     /// `lookaheadRevision` is the configuration switch of the collision rules (ENG-R829); `appContext` is the
-    /// host's app context (ENG-R850).
+    /// host's app context (ENG-R850); `typoCorrection` the switch of section 11A (ENG-R1119), off for the 1.0
+    /// gates and on for ENG-T51.
     public static func run(
         text: String, method: CorpusMethod, order: CorpusOrder, style: ToneStyle = .traditional,
-        lookaheadRevision: Bool = true, appContext: AppContext = .general, resources: Resources
+        lookaheadRevision: Bool = true, appContext: AppContext = .general, typoCorrection: Bool = false,
+        resources: Resources
     ) -> Report {
         let configuration = EngineConfiguration(
             inputMethod: method.inputMethod, toneStyle: style, appContext: appContext,
-            lookaheadRevision: lookaheadRevision, typoCorrection: false)
+            lookaheadRevision: lookaheadRevision, typoCorrection: typoCorrection)
         let engine = Engine(configuration: configuration, resources: resources)
         var session = Session(engine: engine)
         var tokens = 0
         var revisions = 0
         var differences: [ChangedWord] = []
+        var corrected: [ChangedWord] = []
         for (word, separator) in split(text) {
             var field = SimulatedTextField()
             var decision: CommitDecision?
+            var correction: CommitDecision?
             for key in keys(for: word, method: method, order: order) + separator {
                 let event = EngineEvent.key(KeyInput(key))
                 let output = session.handle(event)
                 try? field.apply(event, output)
                 if let made = output.decision { decision = made }
+                if case .corrected? = output.decision { correction = output.decision }
                 if output.revision != nil { revisions += 1 }
             }
             guard !word.isEmpty else { continue }
             tokens += 1
             let typed = String(field.string.dropLast(separator.count))
             if typed != word { differences.append(ChangedWord(word: word, committed: typed, decision: decision)) }
+            if correction != nil { corrected.append(ChangedWord(word: word, committed: typed, decision: correction)) }
         }
-        return Report(tokens: tokens, differences: differences, revisions: revisions)
+        return Report(tokens: tokens, differences: differences, revisions: revisions, corrected: corrected)
     }
 
     /// The keys that type `word`: the generated sequence for a Tier A syllable, in the word's case

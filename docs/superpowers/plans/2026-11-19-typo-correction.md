@@ -670,10 +670,10 @@ bundled data of E1 merged into `integration/1.1.0`.
 **Files:**
 - Modify: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionExampleTests.swift` (enable `rowsWithTheSwitchOn`), `Tests/VietnameseEngineTests/Corpus/typo-corrections.tsv` (the API stage filled `decision` and `signal`: a correction names the rule the engine of 1.0.1 decides with the switch off, the other rows that engine's decision; this task confirms them with the switch on)
 
-- [ ] **Step 0: Take E1's data.** In the E2 worktree, `git merge --no-ff integration/1.1.0` (E1 merged there by Task 31's first merge; CLR-R12: never a rebase), `swift run lexicon-builder check`, and the engine suite green before anything else.
-- [ ] **Step 1: Enable `rowsWithTheSwitchOn(row)`**: for every row, apply `setup`, type `keys`, assert `driver.field.string == expected`, the last commit's decision equals `decision`, the outputs' `learning` equals `signal`, and for the undo rows (S68 to S73) the toggle's edit as Task 15 specifies. `after:S68` rows run S68 first and add the signal's word to `userNeverCorrect` for the second part.
-- [ ] **Step 2: Run.** Expected: 84 green rows. A red row is either a bug (fix the engine) or a spec row the bundled data contradicts (report it with the engine's text; never edit `expected` to match).
-- [ ] **Step 3: Commit.** `test(engine): the 84 rows of 13.12 pass with the bundled data (ENG-T50)`
+- [x] **Step 0: Take E1's data.** In the E2 worktree, `git merge --no-ff integration/1.1.0` (E1 merged there by Task 31's first merge; CLR-R12: never a rebase), `swift run lexicon-builder check`, and the engine suite green before anything else.
+- [x] **Step 1: Enable `rowsWithTheSwitchOn(row)`**: for every row, apply `setup`, type `keys`, assert `driver.field.string == expected`, the last commit's decision equals `decision`, the outputs' `learning` equals `signal`, and for the undo rows (S68 to S73) the toggle's edit as Task 15 specifies. `after:S68` rows run S68 first and add the signal's word to `userNeverCorrect` for the second part.
+- [x] **Step 2: Run.** Expected: 84 green rows. A red row is either a bug (fix the engine) or a spec row the bundled data contradicts (report it with the engine's text; never edit `expected` to match).
+- [x] **Step 3: Commit.** `test(engine): the 84 rows of 13.12 pass with the bundled data (ENG-T50)`
 
 ### Task 20: Zero-change corpora (ENG-T51) and the Vietnamese typos (ENG-T57)
 
@@ -681,25 +681,25 @@ bundled data of E1 merged into `integration/1.1.0`.
 - Create: `Sources/VietnameseEngineTesting/Corpora/CorrectionTargets.swift` (`CorrectionCheck.run(words:resources:configuration:) -> [ChangedWord]` counting `corrected` outputs; `TypoGenerator(seed:)` with the five kinds; `VietnameseTypoCheck` for ENG-T57)
 - Create: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionCorpusGateTests.swift`
 
-- [ ] **Step 1: Write the tests** (each prints every corrected token, `RealData.listing`):
+- [x] **Step 1: Write the tests** (each prints every corrected token, `RealData.listing`):
   - `proseCorpusIsNeverCorrected(method, order, style)` (the `ProseCorpusGateTests.cases`): zero `corrected`.
   - `unmarkedProseIsNeverCorrected`: every token of the prose corpus with its marks removed, typed as plain letters after a space and at a line start: zero.
   - `generatedAndW11CorporaAreNeverCorrected`: the generated corpus (both methods, both styles) and the W11 corpus with its three sets: zero.
   - `everyWordListIsNeverCorrected`: the English lexicon, tech-always, code-only and the guard list's input words, each in Telex and VNI, lowercase after `vieejt ` and in sentence case at the start of the input: zero.
   - `vietnameseTyposAreAlmostNeverCorrectedToEnglish_ENGT57`: every distinct word of the prose corpus typed in Telex with the tone key last and, as a second run, as plain letters, one random edit of each kind (seed `18112026`), after `vieejt `; among the typos of 5 or more keys whose source is Tier A or Tier B, at most 0.1 % corrected; the list printed; typos of English words of the corpus not counted.
-- [ ] **Step 2: Run.** Expected: green; the ENG-T57 figures go into the TRACEABILITY row with the seed.
-- [ ] **Step 3: Commit.** `test(engine): zero-change corpora and Vietnamese typo gate (ENG-T51, ENG-T57)`
+- [x] **Step 2: Run.** Expected: green; the ENG-T57 figures go into the TRACEABILITY row with the seed.
+- [x] **Step 3: Commit.** `test(engine): zero-change corpora and Vietnamese typo gate (ENG-T51, ENG-T57)`
 
 ### Task 21: Injected typos (ENG-T52) and rare words (ENG-T53)
 
 **Files:**
 - Create: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionTargetTests.swift`
 
-- [ ] **Step 1: Write the tests**:
+- [x] **Step 1: Write the tests**:
   - `injectedTyposAreCorrectedToTheirSource_ENGT52(kind)` (arguments: transposition, deletion, insertion, doubling, neighbouring key): 6,000 lexicon words of at least five letters, seed `18112026`, one edit each, typed after a space; corrected to the source at least 80, 50, 70, 90 and 80 %; corrected to another word at most 1.5 %; the counts printed.
   - `rareWordsAreRarelyCorrected_ENGT53`: every word of `/usr/share/dict/words` with five or more ASCII letters outside the English lexicon and the guard filter (the spec's denominator, ENG-T53 and ENG-R1124; the tech lists stay in it, where they are never corrected because they are lists, ENG-R1110 (c)), typed lowercase after a space: at most 3.5 % corrected, the list printed; skipped when the file is absent.
-- [ ] **Step 2: Run.** Expected: green. Record the figures.
-- [ ] **Step 3: Commit.** `test(engine): injected typos and rare words gates (ENG-T52, ENG-T53)`
+- [x] **Step 2: Run.** Expected: green. Record the figures.
+- [x] **Step 3: Commit.** `test(engine): injected typos and rare words gates (ENG-T52, ENG-T53)`
 
 ### Task 22: E2b gates with the bundled data (fuzz, benchmark) and traceability
 
@@ -707,9 +707,23 @@ bundled data of E1 merged into `integration/1.1.0`.
 - Create: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionFuzzTests.swift` (this test target depends on `VietnameseEngineData` and `VietnameseEngineTesting`, so the bundled data reaches `FuzzCampaign` without touching the frozen `Package.swift`)
 - Modify: `Packages/VietnameseEngine/TRACEABILITY.md`, `Benchmarks/results/**` is Integration's (Task 34); this task records the figures in its report
 
-- [ ] **Step 1: Fuzz with the bundled data (ENG-T54).** `TypoCorrectionFuzzTests.randomStreamsWithTheBundledData`: the on-half of `FuzzCombination.all` (the general and code contexts, both methods, auto restore on) through `FuzzCampaign.run(..., resources: Resources.bundled(userKeepRaw:userKeepVietnamese:userNeverCorrect: <the combination's random list>))` at the per-PR size, every ENG-T54 invariant of Task 16 checked against the real keyings, shapes and guard list. Expected: zero violations.
-- [ ] **Step 2: Release benchmark (ENG-T55).** `Scripts/benchmark.sh` on the baseline machine with the bundled data: `correction.p99` at most 50 µs and `correction.max` at most 200 µs (the adversarial candidates included), the ENG-T40 percentiles within the threshold between `--typo-correction off` and `on`. If p99 fails, the named next step is a packed trie of the correction lexicon for insertions (prefix-pruned), built in `CorrectionIndex`, decided here and recorded in the TRACEABILITY row of ENG-R1122. The figures go to the integration report; Task 34 commits the result file and the baseline keys.
-- [ ] **Step 3: Traceability.** Fill the remaining rows of section 11A of `TRACEABILITY.md` (ENG-R1120, ENG-R1123, ENG-R1124, ENG-T50 to ENG-T57) with the real suite names, the measured figures and seeds (E1's report supplies the data rows), and amend the ENG-R122 row (the typo correction now ships). Run `check-traceability.py` and `TraceabilityTests`. Commit `test(engine): fuzz and benchmark with the bundled data; traceability of the gates`.
+- [x] **Step 1: Fuzz with the bundled data (ENG-T54).** `TypoCorrectionFuzzTests.randomStreamsWithTheBundledData`: the on-half of `FuzzCombination.all` (the general and code contexts, both methods, auto restore on) through `FuzzCampaign.run(..., resources: Resources.bundled(userKeepRaw:userKeepVietnamese:userNeverCorrect: <the combination's random list>))` at the per-PR size, every ENG-T54 invariant of Task 16 checked against the real keyings, shapes and guard list. Expected: zero violations.
+- [x] **Step 2: Release benchmark (ENG-T55).** `Scripts/benchmark.sh` on the baseline machine with the bundled data: `correction.p99` at most 50 µs and `correction.max` at most 200 µs (the adversarial candidates included), the ENG-T40 percentiles within the threshold between `--typo-correction off` and `on`. If p99 fails, the named next step is a packed trie of the correction lexicon for insertions (prefix-pruned), built in `CorrectionIndex`, decided here and recorded in the TRACEABILITY row of ENG-R1122. The figures go to the integration report; Task 34 commits the result file and the baseline keys.
+- [x] **Step 3: Traceability.** Fill the remaining rows of section 11A of `TRACEABILITY.md` (ENG-R1120, ENG-R1123, ENG-R1124, ENG-T50 to ENG-T57) with the real suite names, the measured figures and seeds (E1's report supplies the data rows), and amend the ENG-R122 row (the typo correction now ships). Run `check-traceability.py` and `TraceabilityTests`. Commit `test(engine): fuzz and benchmark with the bundled data; traceability of the gates`.
+
+*(Track E2b, 19/11/2026, on `feat/v110-engine-logic`: done. Step 0 was the merge of `integration/1.1.0`; the engine
+suite was green except the load-time test of ENG-R1231 (52 to 58 ms of thread CPU in debug) and the 1 MB known issue
+of ENG-R1120. Before Task 19 the track added the packed shapes and keyings (`PackedWordSet`, spec 12.2 sixth
+amendment, ADR 0203 section 6: 0.38 MB instead of 1.30 MB) and brought the load back to 22 to 24 ms (ADR 0203
+section 5). Task 19: the 84 rows pass with no engine change; S72 checks each part's signal, the undo rows check the
+minimal edits. Task 20: ENG-T57 uses the four kinds the spec names (no doubling); every Vietnamese corpus, the W11 sets
+and every word list give zero corrections, but each W11 corpus file has five corrections of four developer words in no
+bundled list, pinned as a known issue for a data decision (ADR 0203 section 10). Task 21: every ENG-T52 rate and
+ENG-T53 hold (doubling 90.13 % against 90 %). Task 22: the bundled-data fuzz has no violation; the release benchmark
+holds ENG-R1122 on the gated fastest-run figures (p99 30.9 to 42.0 µs, max 35.6 to 49.8 µs, four runs at load
+average 6 to 9; the median-of-runs p99 was over 50 µs in three of them) and the switch-on comparison, while the comparison
+with `Benchmarks/baseline.json` fails for this branch and for `main` alike at load average 6 to 9 (the figures are
+in TRACEABILITY.md; the result files and the baseline keys stay with Task 34). The packed trie was not needed.)*
 
 ---
 
@@ -859,6 +873,13 @@ is left to the integration.
 ### Task 36: Hand-off to the release track
 
 - [ ] The integration branch stays unmerged until stable 1.0.1 is published: ADR 0009 (1.1.0 is built during the 72 h beta of 1.0.1) is the source of the sequencing, QA-R29 of the cadence. While the beta runs, every 1.0.1 fix that lands on `main` is merged into `integration/1.1.0` with `--no-ff`; when stable 1.0.1 is tagged, merge `main` at that tag into `integration/1.1.0` and rerun Task 35 in full before any 1.1.0 beta. The release of 1.1.0 then follows `docs/runbooks/release.md` (a `1.1.0-beta.1` first); the tart integration run (QA-R12) and the Tier 1 manual pass are the product owner's window and are not part of this plan.
+- [ ] **Beta gate, the W11 developer words (ENG-R1124, open question 6).** No `1.1.0-beta.1` while
+  `TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` still carries its `withKnownIssue` marker. The product
+  owner answers question 6, the data track makes the data change it names (ADR 0203 section 10) and runs
+  `lexicon-builder build` and `check`; the change covers at least `frontend`, `backend`, `rebase`, `rebased`,
+  `debounce` and `upsert`. Then `knownW11Corrections` and the marker are removed (the test fails while the marker stays
+  and the words no longer correct), the W11 row of ENG-R1124 in `TRACEABILITY.md` reads zero corrections, and Task 35
+  is rerun.
 
 ---
 
@@ -877,7 +898,7 @@ is left to the integration.
 | ENG-R1121 | 1 (`coreIsClean`), 16, 26 |
 | ENG-R1122 | 11, 12, 17, 22 |
 | ENG-R1123 | 20 (zero corrections on the Vietnamese corpora; no pattern ships) |
-| ENG-R1124 | 20, 21 |
+| ENG-R1124 | 20, 21, 36 (the W11 beta gate) |
 | ENG-T50 to ENG-T57 | 19; 20; 21; 21; 16 and 22; 17 and 22; 10; 20 |
 | Q10, Q11 (one named place) | 1, 4, 14, 19, 29 |
 | PRD-R4A, D30 default | 3, 28, 29, 30 |
@@ -889,7 +910,8 @@ is left to the integration.
 
 Each item names the plan's default (what is built now) and what the other answer changes. *(19/11/2026: the product
 owner accepted the defaults of items 1, 2 and 3, `docs/decisions/0010-pa-decisions-2026-11-19.md`; items 4 and 5
-stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed.)*
+stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed. Item 6 was
+added on 19/11/2026 after the E2b gates with the bundled data.)*
 
 1. **Q10, a capitalised word at a sentence start (ENG-R1111).** Default: corrected (`Androdi` gives `Android`;
    `Biden` at a sentence start would become `Bidden` once, until the restore key teaches the never-correct list).
@@ -914,3 +936,13 @@ stay open. The text of items 1 to 3 is kept as the record of what the other answ
    (`correction.p99`, `correction.max`) are baselined on the M4 as the 13/11/2026 decision allows for ENG-R1230.
    The other answers: a 1.1.0 beta before stable 1.0.1 (two betas in flight, against ADR 0009 item 1's intent), or
    a baseline on the Intel machine of ENG-R1230 (later, when it is available).
+6. **Developer words outside every list (ENG-R1124, W11 row; ADR 0203 section 10).** The W11 corpus types four
+   developer words that are in no bundled list, and the engine corrects them as section 11A says: `frontend` gives
+   `fronted`, `backend` gives `backed`, `rebase` gives `debase`, `debounce` gives `denounce`; a probe of 145 developer
+   words found `upsert` (to `upset`) and `rebased` (to `debased`) as well. The target users meet these words in tech
+   chat, so Task 36 holds the beta until this is answered. Default: add the words, plus a reviewed set of similar
+   developer terms, to `data/inputs/tech-always.txt` (the list the product owner already reviews; these words are
+   restored by L5 in 1.0 already, so the 1.0 output does not move, and the list's Telex check still applies to each
+   new word). The other answer: a new pinned input of reviewed developer words for the guard list (its provenance and
+   notice, the 512 KB gate unchanged), which keeps tech-always for words with a 1.0 restore reason and leaves the 1.0
+   data untouched.

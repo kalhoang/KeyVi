@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import Testing
-import VietnameseEngine
 import VietnameseEngineTesting
+
+@testable import VietnameseEngine
 
 extension CorrectionIndex {
     fileprivate func mightHold(_ word: String) -> Bool {
@@ -130,6 +131,25 @@ struct CorrectionIndexTests {
             #expect(allocations == 0, "\(word.count) letters")
             #expect((found & 2 != 0) == (word == long || word == "android"))
         }
+    }
+
+    /// Spec 12.2 (sixth amendment): the index reads the shapes and keyings of the correction data in place and owns
+    /// only its prefilter and the byte-keyed tables of the words longer than a small string (ENG-R1120).
+    @Test func theIndexReadsThePackedSetsInPlaceAndOwnsOnlyItsTables() {
+        let data = SpecFixtures.correctionData
+        let index = CorrectionIndex(english: WordSet(["android"]), techAlways: WordSet([]), correction: data)
+        #expect(index.shapes.sharesStorage(with: data.unmarkedShapes))
+        #expect(index.keyings.sharesStorage(with: data.vietnameseKeyings))
+        let tables = (26 * 26 * 26 + 63) / 64 * 8 + 2 * (26 * 26 + 63) / 64 * 8
+        #expect(index.ownedByteCount >= tables && index.ownedByteCount < tables + 1_024)
+        #expect(index.longVietnameseByteCount == 0)
+        let long = String(repeating: "abcdefghij", count: 3) + "k"
+        let withLong = CorrectionIndex(
+            english: WordSet([]), techAlways: WordSet([]),
+            correction: CorrectionData(
+                guardList: .empty, keyboardNeighbours: [:], unmarkedShapes: PackedWordSet([long]),
+                vietnameseKeyings: .empty))
+        #expect(withLong.longVietnameseByteCount > long.utf8.count)
     }
 
     @Test func emptyResourcesHaveAnEmptyIndex() {

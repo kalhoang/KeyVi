@@ -166,6 +166,13 @@ struct MalformedResourceTests {
         try expectLoadError(
             .malformedEntry(resource: "attested.txt", line: 1, reason: .missingFinalNewline),
             replacing: ["attested.txt": "á"])
+        try expectLoadError(
+            .malformedEntry(resource: "attested.txt", line: 3, reason: .missingFinalNewline),
+            replacing: ["attested.txt": "á\nđi\nhoà"])
+        // LF line ends only (data/README.md): a CR stays in its line, where the entry check rejects it.
+        try expectLoadError(
+            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["attested.txt": "á\r\nđi\r\n"])
         let directory = try ResourceFixture.make()
         defer { TempDirectory.remove(directory) }
         try Data([0x61, 0xFF, 0x0A]).write(to: directory.appendingPathComponent("attested.txt"))
@@ -301,6 +308,38 @@ struct MalformedResourceTests {
             .malformedResource("unmarked-shapes.txt: no entry"), replacing: ["unmarked-shapes.txt": ""])
         try expectLoadError(
             .malformedResource("vietnamese-keyings.txt: no entry"), replacing: ["vietnamese-keyings.txt": ""])
+    }
+
+    /// Spec 12.2 (sixth amendment): the shapes and keyings load as packed sets, straight from the sorted files. A list
+    /// in another order still loads (sorted once), a duplicate is reported on its line in either order, and a word
+    /// longer than twelve letters is kept beside the packed words.
+    @Test func shapesAndKeyingsLoadAsPackedSets() throws {
+        func loaded(_ shapes: String) throws -> PackedWordSet {
+            let directory = try ResourceFixture.make(replacing: ["unmarked-shapes.txt": shapes])
+            defer { TempDirectory.remove(directory) }
+            return try load(directory).correction.unmarkedShapes
+        }
+        let sorted = try loaded("thach\ntruong\n")
+        #expect(sorted.count == 2 && sorted.contains("thach") && sorted.contains("truong") && !sorted.contains("thac"))
+        let unsorted = try loaded("truong\nthach\n")
+        #expect(unsorted.count == 2 && unsorted.contains("thach") && unsorted.contains("truong"))
+        let long = try loaded("abcdefghijklmn\nthach\n")
+        #expect(long.count == 2 && long.contains("abcdefghijklmn") && long.contains("thach"))
+        try expectLoadError(
+            .malformedEntry(resource: "unmarked-shapes.txt", line: 2, reason: .duplicate),
+            replacing: ["unmarked-shapes.txt": "thach\nthach\ntruong\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "unmarked-shapes.txt", line: 3, reason: .duplicate),
+            replacing: ["unmarked-shapes.txt": "truong\nthach\ntruong\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "vietnamese-keyings.txt", line: 3, reason: .duplicate),
+            replacing: ["vietnamese-keyings.txt": "abcdefghijklmn\nphair\nabcdefghijklmn\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "vietnamese-keyings.txt", line: 2, reason: .emptyLine),
+            replacing: ["vietnamese-keyings.txt": "phair\n\nphis\n"])
+        try expectLoadError(
+            .malformedEntry(resource: "vietnamese-keyings.txt", line: 1, reason: .missingFinalNewline),
+            replacing: ["vietnamese-keyings.txt": "phair"])
     }
 
     @Test func errorsDescribeTheProblem() {

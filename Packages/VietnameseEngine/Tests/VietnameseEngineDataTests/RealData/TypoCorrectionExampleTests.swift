@@ -4,14 +4,15 @@
 // Tests/VietnameseEngineTests/Corpus/typo-corrections.tsv; `tableMatchesTheSpec` keeps their ids and texts equal to the
 // spec's table. With the switch off every row gives the text the 1.0 rules leave (ENG-R1119: as if section 11A were
 // absent), checked against the current engine. With the switch on every row gives the spec's text, decision and
-// signal: that test is enabled by the logic track once the correction exists (plan of 19/11/2026, Task 19). Rows S23,
+// signal (ENG-T50, enabled by the logic track, plan of 19/11/2026, Task 19). Rows S23,
 // S24 and S26 depend on the open questions Q10 and Q11 of spec section 15: `CorrectionPolicy` decides which of their
 // two texts applies, and `theSpecRowsFollowThePolicy` keeps the spec in step with it.
 
 import Foundation
 import Testing
-import VietnameseEngine
 import VietnameseEngineTesting
+
+@testable import VietnameseEngine
 
 @Suite("13.12 typo correction with the bundled data")
 struct TypoCorrectionExampleTests {
@@ -164,36 +165,79 @@ struct TypoCorrectionExampleTests {
 
     // MARK: The switch on (ENG-T50)
 
-    @Test(
-        "ENG-T50: with the switch on each row gives the spec's text, decision and signal",
-        .disabled("E2 Task 19 enables it once the correction exists"), arguments: rows)
+    /// ENG-T50 (plan of 19/11/2026, Task 19): every row with the switch on and the bundled data. An `after:` row
+    /// types its first row, then its own keys in a new engine whose never-correct list holds the first row's signal
+    /// word; each part's signal is checked against its own row (S68 carries `neverCorrect(androdi)`, S72 none). The
+    /// undo rows S68 to S71 and S73 also check that every edit is minimal (ENG-R611): it equals what `DisplayEdit`
+    /// gives for the text it deletes and the text it inserts, and the toggle of S68, S69 and S71 swaps the correction
+    /// for the keys.
+    @Test("ENG-T50: with the switch on each row gives the spec's text, decision and signal", arguments: rows)
     func rowsWithTheSwitchOn(_ row: Row) throws {
         var field = ""
-        var outputs: [EngineOutput] = []
         var neverCorrect: [String] = []
         if row.setup.hasPrefix("after:") {
             let id = String(row.setup.dropFirst("after:".count))
             let first = try #require(Self.rows.first { $0.id == id }, "\(row.id): no row \(id)")
             let before = try Self.type(first, typoCorrection: true)
             field = before.field.string
-            outputs = before.outputs
+            Self.expectSignal(of: first, in: before.outputs, part: "\(row.id), first part \(id)")
             if case .neverCorrect(let raw)? = Self.signal(first.signal) { neverCorrect = [raw] }
         }
         let driver = try Self.type(row, typoCorrection: true, neverCorrect: neverCorrect)
         field += driver.field.string
-        outputs += driver.outputs
         #expect(field == row.expectedUnderThePolicy, "\(row.id): \(field.debugDescription)")
         if row.alternative == nil || row.expectedUnderThePolicy == row.expected,
             let expected = Self.decision(row.decision)
         {
-            #expect(driver.outputs.compactMap(\.decision).last == expected, "\(row.id)")
+            #expect(
+                driver.outputs.compactMap(\.decision).last == expected,
+                "\(row.id): \(String(describing: driver.outputs.compactMap(\.decision).last))")
         }
+        Self.expectSignal(of: row, in: driver.outputs, part: row.id)
+        if Self.undoRows.contains(row.id) { try Self.expectMinimalEdits(row) }
+    }
+
+    /// The rows of the undo and the re-opening (Task 15 of the plan; ENG-R1117). S72 types no undo: its first part
+    /// is S68.
+    static let undoRows: Set<String> = ["S68", "S69", "S70", "S71", "S73"]
+
+    /// The outputs of one typed row carry the row's signal, or no `neverCorrect` when it names none.
+    static func expectSignal(of row: Row, in outputs: [EngineOutput], part: String) {
         let signals = outputs.compactMap(\.learning)
-        if let signal = Self.signal(row.signal) {
-            #expect(signals.contains(signal), "\(row.id): \(signals)")
+        if let signal = signal(row.signal) {
+            #expect(signals.contains(signal), "\(part): \(signals)")
         } else {
-            #expect(!signals.contains { if case .neverCorrect = $0 { true } else { false } }, "\(row.id): \(signals)")
+            #expect(!signals.contains { if case .neverCorrect = $0 { true } else { false } }, "\(part): \(signals)")
         }
+    }
+
+    /// ENG-R611 for every edit of the row: the deleted text (the end of the field before the event) and the inserted
+    /// text share no first character, as `DisplayEdit.edit(from:to:)` gives it. A toggle that undoes a correction
+    /// (S68, S69 first toggle, S71) replaces the corrected text with the typed keys in one edit, without passing the
+    /// key through.
+    static func expectMinimalEdits(_ row: Row) throws {
+        // The undo rows are Telex rows of the general context without a setup.
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: true), resources: try RealData.resources())
+        var undoEdits = 0
+        for event in try KeyNotation.events(row.keys) {
+            let before = driver.field.string
+            let output = try driver.send(event)
+            guard case .edit(let edit, let passThrough) = output.action else { continue }
+            let deleted = String(before.suffix(edit.deleteCount))
+            #expect(edit == DisplayEdit.edit(from: deleted, to: edit.insert), "\(row.id): \(event) \(edit)")
+            if event == .restoreToggle, case .neverCorrect? = output.learning {
+                let after = String(before.dropLast(edit.deleteCount)) + edit.insert
+                #expect(!passThrough, "\(row.id): the undo passes the toggle through")
+                #expect(after.hasPrefix("androdi") && before.hasPrefix("android"), "\(row.id): \(before) -> \(after)")
+                #expect(
+                    edit == DisplayEdit.edit(from: before, to: after),
+                    "\(row.id): \(edit) is not the minimal edit of \(before.debugDescription) to \(after.debugDescription)"
+                )
+                undoEdits += 1
+            }
+        }
+        #expect(undoEdits == (["S68", "S69", "S71"].contains(row.id) ? 1 : 0), "\(row.id): \(undoEdits) undo edits")
     }
 
     // MARK: Running a row

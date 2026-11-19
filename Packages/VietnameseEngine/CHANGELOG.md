@@ -24,8 +24,29 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   exhaustively over `CommitDecision` or `LearningSignal` needs the new cases, so these are source-breaking additions
   in the same minor bump (`engine-v0.2.0`). The bundled correction data (the guard list, the keyboard neighbours,
   the unmarked shapes and the Vietnamese keyings, ENG-R1120) is built by `lexicon-builder` and documented with it.
+- `PackedWordSet` (spec 12.2, sixth amendment): the type of `CorrectionData.unmarkedShapes` and `vietnameseKeyings`.
+  Each word of 1 to 12 letters `a` to `z` is one `UInt64` (5 bits per letter) in a sorted array searched by halves;
+  any other word is kept beside it in an ordinary set. As `WordSet`s the two lists took 1.30 MB resident, over the
+  1 MB of ENG-R1120; packed, the correction data and the engine's index of it take 0.38 MB, and the index reads the
+  two sets in place. `CorrectionData` keeps an initialiser that takes `WordSet`s and packs them, so callers written
+  against the earlier 1.1.0 API compile unchanged; code that reads the two fields as `WordSet`s needs
+  `PackedWordSet`, whose `contains(_:)` is the same.
+- Resource format 3 (`VietnameseEngineData`, docs/decisions/0203-correction-data.md): `manifest.json` says
+  `"format": 3` and four files follow the collision lists: `guard-list.bloom` (a 32-byte `KVGL` header, then the
+  Bloom filter's bits: the SCOWL words of sizes 40 to 70 and the proper names, 77,488 words, 2^20 bits, 8 hashes),
+  `keyboard-neighbours.txt`, `unmarked-shapes.txt` (3,953) and `vietnamese-keyings.txt` (27,277). The loader reads
+  format 3 only and refuses formats 1 and 2. Problems are reported with the existing `Resources.LoadError` cases.
 
 ### Changed
+
+- The loader refuses an empty `unmarked-shapes.txt` or `vietnamese-keyings.txt` with
+  `malformedResource("<file>: no entry")`, even when its manifest row agrees: the lists are generated and never empty
+  (spec 12.2, the fifth amendment of 1.1.0), and an empty one would silently turn off ENG-R1110 (d) and ENG-R1125.
+- The loader splits the UTF-8 lists (the attested syllables, the ambiguity table, the phrases, the neighbours table)
+  on the LF byte instead of on characters: a CR before the LF now stays in its line and fails the entry check
+  (`invalidCharacter`) instead of `missingFinalNewline`. With the packed shapes and keyings and the raw-pointer
+  parsing, `Resources.bundled` takes 22 to 24 ms of CPU in a debug build (52 to 58 ms on the merged 1.1.0 branch
+  before, against the 50 ms of ENG-R1231) and 10 to 15 ms in a release build.
 
 - Rule L4a, the tone removal at commit (product owner, 18/11/2026, Q9 of spec section 15): when the last key of a
   token is a tone-removal key (Telex `z`, VNI `0`) that removed the tone or the letter marks, the commit keeps the
