@@ -65,6 +65,7 @@ The full public API, with DocC comments, is in `Sources/VietnameseEngine/PublicA
 | `Sources/VietnameseEngine/Generated/LetterTable.swift` (146 letters, ENG-R301) | `python3 -I Scripts/generate-letter-table.py` | `--check` |
 | `Tests/VietnameseEngineTests/Corpus/{worked-examples,commit-decisions,restore-toggle,commit-fixtures}.tsv` (spec 13.8 to 13.10) | `python3 -I Scripts/extract-spec-examples.py` | `--check` |
 | `Tests/VietnameseEngineTests/Corpus/layouts.tsv` (QA-R4 layouts) | `python3 -I Scripts/generate-layout-corpus.py` | `--check` |
+| `Sources/VietnameseEngineData/Resources/` (resource format 3: the word lists of 8.2, the collision lists and the typo correction data of ENG-R1120, `guard-list.bloom`, `keyboard-neighbours.txt`, `unmarked-shapes.txt`, `vietnamese-keyings.txt`) | `swift run lexicon-builder build` from the pinned inputs in `data/` (`data/README.md`) | `swift run lexicon-builder check` |
 
 Never edit these files by hand; change the spec or the generator and regenerate. The other QA-R4 corpus
 files are hand curated (one case per line; format in their headers and in

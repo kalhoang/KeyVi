@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-// Reading and validating the resource files written by lexicon-builder (format 1, data/README.md):
-// UTF-8, LF line ends, one entry per line, final newline, no blank lines, entries unique.
+// Reading and validating the resource files written by lexicon-builder (format 3, data/README.md):
+// UTF-8, LF line ends, one entry per line, final newline, no blank lines, entries unique; the guard list of the typo
+// correction is the one binary file (a 32-byte header, then the filter's bits).
 // manifest.json records size, entry count and SHA-256 of every file; a mismatch is an error so that a
 // truncated or hand-edited bundle never loads silently.
 
@@ -31,6 +32,11 @@ enum ResourceFile: String, CaseIterable {
     case tailWords = "vi-tail-words.txt"
     case tailParticles = "vi-tail-particles.txt"
     case preGuard = "english-pre-guard.txt"
+    // The typo correction data (format 3; spec/01-engine.md 11A, ENG-R1120).
+    case guardList = "guard-list.bloom"
+    case keyboardNeighbours = "keyboard-neighbours.txt"
+    case unmarkedShapes = "unmarked-shapes.txt"
+    case vietnameseKeyings = "vietnamese-keyings.txt"
 }
 
 /// The ambiguity table as the loader returns it (ENG-R821, ENG-R827).
@@ -55,8 +61,8 @@ struct ResourceManifest: Decodable {
     let files: [File]
 
     /// Format 2 (15/11/2026): the ambiguity table has the `run` and `viKind` columns and the collision lists
-    /// ship.
-    static let supportedFormat = 2
+    /// ship. Format 3 (19/11/2026): the typo correction data of ENG-R1120 ships too.
+    static let supportedFormat = 3
     static let fileName = "manifest.json"
 }
 
@@ -93,12 +99,19 @@ struct ResourceDirectory {
         case .techAlways, .techCodeOnly, .techCodeCapitalized:
             words = try Self.asciiLines(data, file: file, allowDigits: true)
         case .attested, .tailWords, .tailParticles: words = try Self.syllableLines(data, file: file)
-        case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard:
+        case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard,
+            .unmarkedShapes, .vietnameseKeyings:
             words = try Self.asciiLines(data, file: file, allowDigits: false)
         case .phrases: words = try Self.phraseLines(data, file: file)
-        case .ambiguity, .notices: preconditionFailure("\(file.rawValue) is not a word list")
+        case .ambiguity, .notices, .guardList, .keyboardNeighbours:
+            preconditionFailure("\(file.rawValue) is not a word list")
         }
         try checkEntryCount(words.count, file: file)
+        // Spec 12.2 (API-stage amendment 5): the generated shapes and keyings are never empty; an empty list would
+        // silently turn off ENG-R1110 (d) and ENG-R1125 even when its manifest row agrees.
+        if words.isEmpty, file == .unmarkedShapes || file == .vietnameseKeyings {
+            throw LoadError.malformedResource("\(file.rawValue): no entry")
+        }
         try Self.checkUnique(words, file: file, firstLine: 1)
         return words
     }
@@ -151,6 +164,91 @@ struct ResourceDirectory {
         }
         try checkEntryCount(result.decisions.count, file: file)
         return result
+    }
+
+    // MARK: Typo correction data (ENG-R1120)
+
+    /// The guard list: a 32-byte header (`KVGL`, `UInt32` version 1, `UInt32` hashCount, `UInt64` bitCount,
+    /// `UInt64` wordCount, 4 zero bytes, all little-endian), then `bitCount / 64` little-endian `UInt64`. `bitCount` is
+    /// a power of two of at least 64 and the bits take at most 512 KB (ENG-R1120); the manifest's entry count is the
+    /// word count.
+    func guardList() throws -> ApproximateWordSet {
+        let file = ResourceFile.guardList
+        let data = try verifiedData(file)
+        let header = GuardListHeader.headerBytes
+        func problem(_ detail: String) -> LoadError { .malformedResource("\(file.rawValue): \(detail)") }
+        guard data.count >= header else {
+            throw problem("\(data.count) bytes, shorter than the \(header)-byte header")
+        }
+        let bytes = [UInt8](data.prefix(header))
+        func integer<T: FixedWidthInteger>(_ type: T.Type, at offset: Int) -> T {
+            var value: T = 0
+            for index in 0..<MemoryLayout<T>.size { value |= T(bytes[offset + index]) << (8 * index) }
+            return value
+        }
+        guard Array(bytes[0..<4]) == GuardListHeader.magic else { throw problem("bad magic") }
+        let version = integer(UInt32.self, at: 4)
+        guard version == GuardListHeader.version else { throw problem("unsupported version \(version)") }
+        let hashCount = Int(integer(UInt32.self, at: 8))
+        guard (1...GuardListHeader.maximumHashCount).contains(hashCount) else {
+            throw problem("hash count \(hashCount)")
+        }
+        let bitCount = integer(UInt64.self, at: 12)
+        guard bitCount >= 64, bitCount & (bitCount - 1) == 0, bitCount <= GuardListHeader.maximumBits else {
+            throw problem("bit count \(bitCount) is not a power of two from 64 to \(GuardListHeader.maximumBits)")
+        }
+        let wordCount = integer(UInt64.self, at: 20)
+        guard bytes[28..<32].allSatisfy({ $0 == 0 }) else { throw problem("reserved header bytes are not zero") }
+        guard data.count - header == Int(bitCount / 8) else {
+            throw problem("\(data.count - header) bytes of bits, expected \(bitCount / 8) for \(bitCount) bits")
+        }
+        guard wordCount <= UInt64(Int.max) else { throw problem("word count \(wordCount)") }
+        try checkEntryCount(Int(wordCount), file: file)
+        // The bits are copied as a block (ENG-R1231: the load budget); the file is little-endian.
+        var bits = [UInt64](repeating: 0, count: Int(bitCount / 64))
+        bits.withUnsafeMutableBytes { destination in
+            data.withUnsafeBytes { source in
+                destination.copyMemory(from: UnsafeRawBufferPointer(rebasing: source[header...]))
+            }
+        }
+        #if _endian(big)
+        for index in bits.indices { bits[index] = UInt64(littleEndian: bits[index]) }
+        #endif
+        return ApproximateWordSet(bits: bits, hashCount: hashCount, wordCount: Int(wordCount))
+    }
+
+    /// The keyboard neighbours of ENG-R1113: `letter<TAB>neighbours` lines, one per letter `a-z`; the table must cover
+    /// the 26 letters and be symmetric (ENG-R1120 (3)).
+    func neighbours() throws -> [Character: String] {
+        let file = ResourceFile.keyboardNeighbours
+        let lines = try Self.utf8Lines(try verifiedData(file), file: file)
+        var table: [Character: String] = [:]
+        for (index, line) in lines.enumerated() {
+            let number = index + 1
+            let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard fields.count == 2 else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .wrongFieldCount)
+            }
+            guard fields[0].utf8.count == 1, let letter = fields[0].first, Self.isASCIILetter(letter),
+                !fields[1].isEmpty, fields[1].allSatisfy(Self.isASCIILetter), !fields[1].contains(letter)
+            else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .invalidCharacter)
+            }
+            guard table.updateValue(String(fields[1]), forKey: letter) == nil else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .duplicate)
+            }
+        }
+        try checkEntryCount(table.count, file: file)
+        guard table.count == 26 else {
+            throw LoadError.malformedResource("\(file.rawValue): \(table.count) letters, expected 26")
+        }
+        for (letter, neighbours) in table.sorted(by: { $0.key < $1.key }) {
+            for neighbour in neighbours where table[neighbour]?.contains(letter) != true {
+                throw LoadError.malformedResource(
+                    "\(file.rawValue): '\(letter)' lists '\(neighbour)' but '\(neighbour)' does not list '\(letter)'")
+            }
+        }
+        return table
     }
 
     func notices() throws -> String {
@@ -301,10 +399,26 @@ struct ResourceDirectory {
         }
     }
 
+    private static func isASCIILetter(_ character: Character) -> Bool {
+        guard let value = character.asciiValue else { return false }
+        return value >= 0x61 && value <= 0x7A
+    }
+
     private static func isTechEntry(_ bytes: String.UTF8View) -> Bool {
         !bytes.isEmpty && bytes.allSatisfy { ($0 >= 0x61 && $0 <= 0x7A) || ($0 >= 0x30 && $0 <= 0x39) }
             && bytes.contains { $0 >= 0x61 && $0 <= 0x7A }
     }
+}
+
+/// The layout of `guard-list.bloom` (data/README.md, resource format 3).
+enum GuardListHeader {
+    static let magic = Array("KVGL".utf8)
+    static let version: UInt32 = 1
+    static let headerBytes = 32
+    /// More bit positions per word than this only slows a lookup down; the builder writes 8.
+    static let maximumHashCount = 64
+    /// ENG-R1120: at most 512 KB of bits.
+    static let maximumBits: UInt64 = 512 * 1024 * 8
 }
 
 /// Lowercase letters allowed in attested syllables: the 12 vowel letters with any of the six tones,

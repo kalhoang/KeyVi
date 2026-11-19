@@ -31,7 +31,9 @@ protocol CandidateTyper {
 struct EngineTyper: CandidateTyper {
     func display(typing raw: String, method: CandidateMethod, style: ToneStyle) -> String {
         let inputMethod: InputMethod = method == .telex ? .telex(TelexOptions()) : .vni
-        let configuration = EngineConfiguration(inputMethod: inputMethod, toneStyle: style)
+        // The active display of one token over empty resources, which the typo correction of section 11A cannot change;
+        // the switch is named off like every configuration outside the core (ENG-R1119).
+        let configuration = EngineConfiguration(inputMethod: inputMethod, toneStyle: style, typoCorrection: false)
         var session = Session(engine: Engine(configuration: configuration, resources: .empty))
         for character in raw { _ = session.handle(.key(KeyInput(character))) }
         // A word that a boundary split into several tokens (a digit in Telex) has no single display.

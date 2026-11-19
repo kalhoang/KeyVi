@@ -60,7 +60,8 @@ extension Resources {
 
     /// Loads resource files in the bundled format from `directory` (manifest.json plus the lists).
     /// Used by `bundled` and by tests that need deliberately broken or tiny resource sets.
-    /// The correction data of section 11A (ENG-R1120) is empty until the files of resource format 3 are built.
+    /// Resource format 3 includes the correction data of section 11A (ENG-R1120): the guard list, the keyboard
+    /// neighbours, the unmarked shapes and the Vietnamese keyings.
     public static func load(
         from directory: URL, userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
         collisionMemory: CollisionMemorySnapshot = .empty, userNeverCorrect: WordSet = WordSet([])
@@ -77,6 +78,10 @@ extension Resources {
             englishLean: WordSet(try files.wordList(.englishLean)), tailWords: WordSet(tailWords),
             tailParticles: WordSet(try files.wordList(.tailParticles)),
             preGuard: WordSet(try files.wordList(.preGuard)))
+        let correction = CorrectionData(
+            guardList: try files.guardList(), keyboardNeighbours: try files.neighbours(),
+            unmarkedShapes: WordSet(try files.wordList(.unmarkedShapes)),
+            vietnameseKeyings: WordSet(try files.wordList(.vietnameseKeyings)))
         return Resources(
             english: WordSet(try files.wordList(.english)),
             techAlways: WordSet(try files.wordList(.techAlways)),
@@ -87,7 +92,7 @@ extension Resources {
             userKeepRaw: userKeepRaw,
             userKeepVietnamese: userKeepVietnamese,
             macros: macros, collision: collision, collisionMemory: collisionMemory,
-            userNeverCorrect: userNeverCorrect, correction: .empty)
+            userNeverCorrect: userNeverCorrect, correction: correction)
     }
 
     /// The notices the host must show in its acknowledgements (ENG-R811): SCOWL's copyright and

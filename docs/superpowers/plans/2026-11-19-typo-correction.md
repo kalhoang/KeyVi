@@ -480,12 +480,12 @@ files `{english,american,british,british_z}-words.{40,50,55,60,70}` and the 6 pr
 20, none at 55, and none for `british` or `british_z` at or below 70; the review of 19/11/2026 listed the archive and
 Step 4 confirms it). The spec's "proper names 10 to 70" therefore covers six files in practice; ADR 0203 says so.
 
-- [ ] **Step 1: Write the failing tests**: `Scowl.guardListFiles` equals that 26-name list exactly; `Scowl.componentFiles` (the lexicon) is unchanged (12 files); `importArchive` throws on a missing guard member (a fixture archive without one file); `EnglishLexicon.load` on a layout that also holds a `words.40` file returns the same dictionary as before (no word above level 35).
-- [ ] **Step 2: Run, see them fail.**
-- [ ] **Step 3: Implement** `Scowl.guardListFiles` as the literal list, and extend `importArchive` to extract them; a missing member is fatal (a list dropped by mistake must not pass unnoticed).
-- [ ] **Step 4: Fetch and import**: `data/fetch.sh` (verifies the pinned SHA-256), then `lexicon-builder import scowl`, then check `git status data/` shows only the 26 new files and `MANIFEST.sha256`. Record the file list and byte counts for the ADR of Task 9.
-- [ ] **Step 5: Run `swift test --filter VietnameseEngineDataTests` and `lexicon-builder check`.** Expected: `check` fails only because `manifest.json` records the inputs digest (fixed by the build of Task 8); every test green.
-- [ ] **Step 6: Commit.** `feat(data): pin the SCOWL words 40 to 70 and proper names for the guard list`
+- [x] **Step 1: Write the failing tests**: `Scowl.guardListFiles` equals that 26-name list exactly; `Scowl.componentFiles` (the lexicon) is unchanged (12 files); `importArchive` throws on a missing guard member (a fixture archive without one file); `EnglishLexicon.load` on a layout that also holds a `words.40` file returns the same dictionary as before (no word above level 35).
+- [x] **Step 2: Run, see them fail.**
+- [x] **Step 3: Implement** `Scowl.guardListFiles` as the literal list, and extend `importArchive` to extract them; a missing member is fatal (a list dropped by mistake must not pass unnoticed).
+- [x] **Step 4: Fetch and import**: `data/fetch.sh` (verifies the pinned SHA-256), then `lexicon-builder import scowl`, then check `git status data/` shows only the 26 new files and `MANIFEST.sha256`. Record the file list and byte counts for the ADR of Task 9.
+- [x] **Step 5: Run `swift test --filter VietnameseEngineDataTests` and `lexicon-builder check`.** Expected: `check` fails only because `manifest.json` records the inputs digest (fixed by the build of Task 8); every test green.
+- [x] **Step 6: Commit.** `feat(data): pin the SCOWL words 40 to 70 and proper names for the guard list`
 
 ### Task 7: Keyboard neighbours input and the shapes and keyings generators
 
@@ -499,9 +499,9 @@ Step 4 confirms it). The spec's "proper names 10 to 70" therefore covers six fil
 - `enum UnmarkedShapes { static func generate() -> Set<String> }` from `SyllableTables.extendedPairs` (package access, same package): each pair's letters with `ă â` to `a`, `ê` to `e`, `ô ơ` to `o`, `ư` to `u`, `đ` to `d`, tone ignored.
 - `enum VietnameseKeyings { static func generate() -> Set<String> }` from `SyllableTables.standardPairs` and each pair's allowed tones, producing **the keying set** defined once here, in the spec's terms (ENG-R1125), and computed independently by Task 10's oracle: for each Tier A syllable (onset, rhyme, allowed tone), (i) the onset keys (`đ` as `dd`); (ii) the vowel letters each as its keys, a marked letter as its two keys (`aa aw ee oo ow uw`), with `ươ` written both as `uwow` and as `uow`; (iii) when the rhyme's first vowel letter is `ư` and the onset is a consonant other than `q`, additionally the standalone form, that `ư` as `w` alone (`thw` for `thư`, `twngf` for `từng`, and with (ii) `thwowng` for `thương`); (iv) the coda letters; (v) the tone key (`s f r x j`, none for the level tone) last and, when a coda exists, also right before the coda. Every combination of (ii), (iii) and (v) is a keying; nothing else is (`gamar` is not: free order is not the usual order).
 
-- [ ] **Step 1: Write the failing tests**: `theNeighboursTableIsSymmetricCoversTheAlphabetAndEqualsTheDerivation` (`load` of the input equals `derived()`; `derived()` lists each letter's neighbours in the spec's order, `["q"] == "wa"`, `["s"] == "weadzx"`, `["m"] == "jkn"`, and `check` compares the two tables as sets per letter); `anAsymmetricTableFailsTheBuild`; `shapesHoldTheSpecExamples` (`truong`, `nguoi`, `khong`, `thuong`, `chuop`, `thach`, `gruop`, `glong` present; `android` absent; every shape matches `^[a-z]+$`); `keyingsHoldTheSpecExamples` (`phair`, `phis`, `chinhs`, `thieeus`, `hoanf` present; `thuwowngf`, `thuowngf`, `thwowngf` and `thuwowfng` all present for `thường`; `gamar` absent because it is not the usual order; count printed).
-- [ ] **Step 2: Run, see them fail. Step 3: Implement. Step 4: Run, green.** Record the shape and keying counts (the spec quotes 27,367 keyings on 18/11/2026; a different count is reported, not hidden).
-- [ ] **Step 5: Commit.** `feat(data): keyboard neighbours input and the shape and keying generators`
+- [x] **Step 1: Write the failing tests**: `theNeighboursTableIsSymmetricCoversTheAlphabetAndEqualsTheDerivation` (`load` of the input equals `derived()`; `derived()` lists each letter's neighbours in the spec's order, `["q"] == "wa"`, `["s"] == "weadzx"`, `["m"] == "jkn"`, and `check` compares the two tables as sets per letter); `anAsymmetricTableFailsTheBuild`; `shapesHoldTheSpecExamples` (`truong`, `nguoi`, `khong`, `thuong`, `chuop`, `thach`, `gruop`, `glong` present; `android` absent; every shape matches `^[a-z]+$`); `keyingsHoldTheSpecExamples` (`phair`, `phis`, `chinhs`, `thieeus`, `hoanf` present; `thuwowngf`, `thuowngf`, `thwowngf` and `thuwowfng` all present for `thường`; `gamar` absent because it is not the usual order; count printed).
+- [x] **Step 2: Run, see them fail. Step 3: Implement. Step 4: Run, green.** Record the shape and keying counts (the spec quotes 27,367 keyings on 18/11/2026; a different count is reported, not hidden).
+- [x] **Step 5: Commit.** `feat(data): keyboard neighbours input and the shape and keying generators`
 
 ### Task 8: Build, format 3 and the loader
 
@@ -517,10 +517,10 @@ Step 4 confirms it). The spec's "proper names 10 to 70" therefore covers six fil
 - Guard words: lowercase `a-z` entries of 5 letters or more (shorter words are never looked up, ENG-R1111) from every guard list file, minus the correction lexicon (the English lexicon and the letter-only tech-always entries).
 - `keyboard-neighbours.txt`: 26 lines `letter<TAB>neighbours`, sorted; `unmarked-shapes.txt` and `vietnamese-keyings.txt`: format-2 ASCII word lists (sorted, final newline).
 
-- [ ] **Step 1: Write the failing tests**: `buildTwiceGivesIdenticalBytesEqualToTheCommittedResources` (existing; now covers the four files), `checkPassesOnTheCommittedOutputs`, `theGuardListHoldsNoLexiconWordAndNothingShorterThanFive` (`GuardList.words` against `EnglishLexicon.load`), `theGuardFilterIsUnder512KB`, `MalformedResourceTests.correctionFileProblems` (a truncated `.bloom`, a bad magic, an asymmetric table, a 25-line table, a shape with a digit each throw the named `LoadError`), `BundledResourcesTests.loadsTheCorrectionData` (`correction.keyboardNeighbours.count == 26`, `unmarkedShapes.contains("truong")`, `vietnameseKeyings.contains("phair")`, `guardList.mayContain(<a proper name of the input, lowercased>)`, `!guardList.mayContain("android")`); the `keyboardNeighbours.isEmpty` assertion that Task 2 left in `passesTheNeverCorrectListThrough` is replaced by `count == 26`.
-- [ ] **Step 2: Run, see them fail. Step 3: Implement.** `Builder.build` writes the four files in manifest order after the collision lists and before `NOTICES.txt`; the loader validates every file through the manifest as today.
-- [ ] **Step 4: Build the resources** (`lexicon-builder build`, then `pin` is not needed; `check` must pass) and run `swift test --filter VietnameseEngineDataTests`. Expected: green, `english.txt` byte-identical to before (`git diff --stat` shows only the new files, `manifest.json`, `NOTICES.txt`).
-- [ ] **Step 5: Commit** inputs, manifest and resources together: `feat(data): build the guard list, neighbours, shapes and keyings (resource format 3)`
+- [x] **Step 1: Write the failing tests**: `buildTwiceGivesIdenticalBytesEqualToTheCommittedResources` (existing; now covers the four files), `checkPassesOnTheCommittedOutputs`, `theGuardListHoldsNoLexiconWordAndNothingShorterThanFive` (`GuardList.words` against `EnglishLexicon.load`), `theGuardFilterIsUnder512KB`, `MalformedResourceTests.correctionFileProblems` (a truncated `.bloom`, a bad magic, an asymmetric table, a 25-line table, a shape with a digit each throw the named `LoadError`), `BundledResourcesTests.loadsTheCorrectionData` (`correction.keyboardNeighbours.count == 26`, `unmarkedShapes.contains("truong")`, `vietnameseKeyings.contains("phair")`, `guardList.mayContain(<a proper name of the input, lowercased>)`, `!guardList.mayContain("android")`); the `keyboardNeighbours.isEmpty` assertion that Task 2 left in `passesTheNeverCorrectListThrough` is replaced by `count == 26`.
+- [x] **Step 2: Run, see them fail. Step 3: Implement.** `Builder.build` writes the four files in manifest order after the collision lists and before `NOTICES.txt`; the loader validates every file through the manifest as today.
+- [x] **Step 4: Build the resources** (`lexicon-builder build`, then `pin` is not needed; `check` must pass) and run `swift test --filter VietnameseEngineDataTests`. Expected: green, `english.txt` byte-identical to before (`git diff --stat` shows only the new files, `manifest.json`, `NOTICES.txt`).
+- [x] **Step 5: Commit** inputs, manifest and resources together: `feat(data): build the guard list, neighbours, shapes and keyings (resource format 3)`
 
 ### Task 9: Measurement scripts and the data decision record
 
@@ -529,10 +529,10 @@ Step 4 confirms it). The spec's "proper names 10 to 70" therefore covers six fil
 - Modify: `spec/reference-model/README.md` (the two scripts, what they measured on 18/11/2026 and how to re-run them)
 - Create: `docs/decisions/0203-correction-data.md`: the guard list sources (the exact 26 files of Task 6, why proper names are six files, the licence check: the SCOWL `Copyright` file, included whole in `data/licenses/bundled-notices.txt`, covers levels 40 to 70 and the Census names; the README's note on COCA-derived additions is recorded), the Bloom filter and its parameters with the figures the build gives (the review of 19/11/2026 computed, from the pinned archive and the plan's hashing: 77,488 guard words of five or more letters outside the correction lexicon, `2^20` bits = 128 KB at `hashCount = 8`, 0.157 % false positives on 100,000 random strings; the ADR records what the build measures and any difference), resource format 3, the origin of the QWERTY table (provenance N6), the shape and keying counts, the measurement scripts and the figures they give at this commit, and the five 12.2 amendments of the API stage (listed under "Interfaces between tracks").
 
-- [ ] **Step 1: Rebuild the model** from the design note's description and the spec; `--self-check` must pass on every 13.12 row that does not need the engine's composition (the rows whose `expected_off` is the typed word).
-- [ ] **Step 2: Run `correction_measure.py --seed 18112026`** and compare with the design note's table (85.7, 95.2, 86.7, 57.5, 75.8 %; 0, 0, 0.05, 1.32, 1.20 %; 3.42 % rare words without the guard list; 1 of 3,371 and 0 of 579 Vietnamese typos). Differences are recorded in the ADR with their cause (the model is a cross-check; ENG-T52, ENG-T53 and ENG-T57 on the engine are the gates).
-- [ ] **Step 3: Run `python3 -I scripts/tests/test_licences_and_wording.py`** (SPDX first line, README needles). Expected: green.
-- [ ] **Step 4: Commit.** `docs(data): record the correction data sources, the model scripts and the measurements`
+- [x] **Step 1: Rebuild the model** from the design note's description and the spec; `--self-check` must pass on every 13.12 row that does not need the engine's composition (the rows whose `expected_off` is the typed word).
+- [x] **Step 2: Run `correction_measure.py --seed 18112026`** and compare with the design note's table (85.7, 95.2, 86.7, 57.5, 75.8 %; 0, 0, 0.05, 1.32, 1.20 %; 3.42 % rare words without the guard list; 1 of 3,371 and 0 of 579 Vietnamese typos). Differences are recorded in the ADR with their cause (the model is a cross-check; ENG-T52, ENG-T53 and ENG-T57 on the engine are the gates).
+- [x] **Step 3: Run `python3 -I scripts/tests/test_licences_and_wording.py`** (SPDX first line, README needles). Expected: green.
+- [x] **Step 4: Commit.** `docs(data): record the correction data sources, the model scripts and the measurements`
 
 ### Task 10: Resident budget gates
 
@@ -541,13 +541,20 @@ Step 4 confirms it). The spec's "proper names 10 to 70" therefore covers six fil
 - Create: `Packages/VietnameseEngine/Sources/VietnameseEngineTesting/Oracle/KeyingOracle.swift` (`public enum KeyingOracle { public static func keyings(onset: String, rhyme: String, tone: Tone) -> Set<String> }`: the keying set of Task 7's Interfaces computed from the oracle's side, out of `KeySequenceGenerator.keys(onset:rhyme:tone:method: .telex, order:)` for `.o1` and `.o2` (which write `ươ` as `uow` only), `CorpusVariant.explicitUwow` (the ENG-T03 `uwow` spelling, O1 only) and two new helpers written here: the O2 `uwow` form (tone before the coda) and the standalone-`w` form for a leading `ư` after a consonant other than `q`. Nothing in `VietnameseEngineTesting` produced the last two before; `ENG-T03` is not a standalone-`w` variant.)
 - Modify: `Tests/VietnameseEngineDataTests/BundledResourcesTests.swift`
 
-- [ ] **Step 1: Write the tests** (ENG-T56 data half):
+- [x] **Step 1: Write the tests** (ENG-T56 data half):
   - `guardListFalsePositivesStayUnder0_5Percent`: 100,000 random lowercase strings of 5 to 12 letters (seeded generator), at most 500 `mayContain` true.
   - `theGuardFilterNeverForgetsAnInputWord`: every word of `GuardList.words(layout, lexicon:)` answers true (`@testable import lexicon_builder`).
   - `shapesAndKeyingsEqualAnIndependentComputation`: shapes from `SpecFixtures.allStandardSyllables` and the Tier B pairs spelled by `SyllableOracle.spell` with the marks stripped; keyings as the union of `KeyingOracle.keyings` over every Tier A syllable and allowed tone; both equal the bundled sets exactly (differences printed). The builder (Task 7, `SyllableTables`) and the oracle (`SpecFixtures`, `KeySequenceGenerator`) are the two independent computations ENG-T56 asks for; a difference is a bug in one of them, never a reason to drop a form the spec requires.
   - `correctionDataStaysWithinItsResidentBudget`: resident memory of loading the resources with and without the four files differs by at most 1 MB and the guard filter's `bits` by at most 512 KB (the measurement style of `staysWithinLoadTimeAndMemoryBudget`). If it fails, the named fallback is a packed `[UInt64]` sorted array for the keyings (5 bits per letter) before a parser; record the choice in ADR 0203.
-- [ ] **Step 2: Run them.** Expected: green; the printed counts and the resident delta go into the ADR and E1's report (for the TRACEABILITY rows ENG-R1120 and ENG-T56 that E2 owns).
-- [ ] **Step 3: Commit.** `test(data): gate the correction data on size, false positives and the independent computation`
+- [x] **Step 2: Run them.** Expected: green; the printed counts and the resident delta go into the ADR and E1's report (for the TRACEABILITY rows ENG-R1120 and ENG-T56 that E2 owns).
+- [x] **Step 3: Commit.** `test(data): gate the correction data on size, false positives and the independent computation`
+
+*(Track E1, 19/11/2026: done on `feat/v110-engine-data`; Task 10 was committed before Task 9 so that ADR 0203 names
+suites that exist. Figures and departures are in `docs/decisions/0203-correction-data.md`: 27,277 keyings (the spec's
+27,367 came from a model that also wrote the standalone `w` without an onset), and the resident budget of ENG-R1120 is
+over at 1.30 MB because the shapes and keyings are `WordSet`s; the packed fallback changes `PublicAPI.swift` and is
+left to E2 and the integration, with the 1 MB assertion of `correctionDataStaysWithinItsResidentBudget` marked as a
+known issue until then.)*
 
 ---
 

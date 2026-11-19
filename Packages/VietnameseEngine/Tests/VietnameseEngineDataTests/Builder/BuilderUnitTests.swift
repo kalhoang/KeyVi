@@ -75,6 +75,70 @@ import VietnameseEngine
         #expect(words["x"] == nil)
     }
 
+    // MARK: SCOWL members: the lexicon and the guard list (ENG-R1120)
+
+    /// ENG-R1120: the guard list reads the SCOWL "words" lists of sizes 40 to 70 and the "proper-names" lists of sizes
+    /// 10 to 70 of the four components. The pinned archive holds no proper-names list at 10, 20 or 55, none for
+    /// `british` or `british_z` at or below 70, and `american` only at 50, so the spec's sources are these 26 members
+    /// (docs/decisions/0203-correction-data.md).
+    @Test func guardListFilesAreTheTwentySixMembersOfThePinnedArchive() {
+        let words = ["english", "american", "british", "british_z"].flatMap { category in
+            [40, 50, 55, 60, 70].map { "\(category)-words.\($0)" }
+        }
+        let names = [
+            "english-proper-names.35", "english-proper-names.40", "english-proper-names.50", "english-proper-names.60",
+            "english-proper-names.70", "american-proper-names.50",
+        ]
+        #expect(Scowl.guardListFiles == words + names)
+        #expect(Scowl.guardListFiles.count == 26)
+        #expect(Set(Scowl.guardListFiles).isDisjoint(with: Scowl.componentFiles))
+    }
+
+    @Test func lexiconComponentFilesAreUnchanged() {
+        #expect(
+            Scowl.componentFiles == [
+                "english-words.10", "english-words.20", "english-words.35", "american-words.10", "american-words.20",
+                "american-words.35", "british-words.10", "british-words.20", "british-words.35", "british_z-words.10",
+                "british_z-words.20", "british_z-words.35",
+            ])
+    }
+
+    /// The English lexicon (8.2) stays at levels 10, 20 and 35 of the `words` lists when the guard list's members sit
+    /// next to them in the same directory.
+    @Test func englishLexiconReadsNoGuardListMember() throws {
+        let root = try MiniDataRoot.make()
+        defer { TempDirectory.remove(root) }
+        let layout = Layout(dataRoot: root.appendingPathComponent("data"), resources: root)
+        let before = try EnglishLexicon.load(layout)
+        try write("zebra\nquixotic\n", to: layout.scowlDirectory.appendingPathComponent("english-words.40"))
+        try write("Biden\n", to: layout.scowlDirectory.appendingPathComponent("english-proper-names.50"))
+        #expect(try EnglishLexicon.load(layout) == before)
+    }
+
+    /// `import scowl` extracts the guard list's members with the lexicon's, and a member missing from the archive is
+    /// fatal: a list dropped by mistake must not pass unnoticed (ENG-R810, ENG-R1120).
+    @Test func importArchiveExtractsTheGuardMembersAndFailsWithoutOne() throws {
+        let root = try MiniDataRoot.make()
+        defer { TempDirectory.remove(root) }
+        let layout = Layout(dataRoot: root.appendingPathComponent("data"), resources: root)
+        try ScowlArchiveFixture.install(in: layout, omitting: nil)
+        try Scowl.importArchive(layout)
+        for file in Scowl.componentFiles + Scowl.guardListFiles {
+            let text = try String(
+                contentsOf: layout.scowlDirectory.appendingPathComponent(file), encoding: .isoLatin1)
+            #expect(text == "\(file)\n", "\(file)")
+        }
+        #expect(FileManager.default.fileExists(atPath: layout.licenses.appendingPathComponent(Scowl.licenseFile).path))
+
+        try ScowlArchiveFixture.install(in: layout, omitting: "english-proper-names.70")
+        do {
+            try Scowl.importArchive(layout)
+            Issue.record("an archive without english-proper-names.70 was imported")
+        } catch let error as BuilderError {
+            #expect(error.description.contains("english-proper-names.70"))
+        }
+    }
+
     // MARK: Hand-edited inputs
 
     @Test func techListValidatesEntries() throws {
@@ -186,7 +250,7 @@ import VietnameseEngine
         let json = Builder.manifestJSON(
             files, entries: ["a.txt": 1], stats: [("words", 1), ("more", 2)], inputsDigest: "d")
         #expect(
-            json.hasPrefix("{\n  \"format\": 2,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
+            json.hasPrefix("{\n  \"format\": 3,\n  \"generator\": \"lexicon-builder\",\n  \"inputsSHA256\": \"d\","))
         #expect(json.contains("{\"name\": \"a.txt\", \"bytes\": 2, \"entries\": 1, \"sha256\": "))
         #expect(json.contains("{\"name\": \"NOTICES.txt\", \"bytes\": 2, \"sha256\": "))
         let object = try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
@@ -293,5 +357,33 @@ import VietnameseEngine
         #expect(text.hasSuffix("Điều Luật này quy định về thủy lợi\n"))
         #expect(text.contains("# Tokens: 8\n"))
         #expect(throws: BuilderError.self) { try ProseCorpus.generate(layout, minimumTokens: 1_000) }
+    }
+}
+
+/// A SCOWL archive in the pinned layout (`scowl-2020.12.07/final/<member>`, `Copyright`, `README`), written into a
+/// data root's `cache/` with its `SOURCES.tsv` row, so that `import scowl` runs offline on fixture data. Each member
+/// holds its own name.
+enum ScowlArchiveFixture {
+    static func install(in layout: Layout, omitting omitted: String?) throws {
+        let work = try TempDirectory.make("scowl-archive")
+        defer { TempDirectory.remove(work) }
+        let release = work.appendingPathComponent(Scowl.release)
+        for file in Scowl.componentFiles + Scowl.guardListFiles where file != omitted {
+            try write("\(file)\n", to: release.appendingPathComponent("final/\(file)"))
+        }
+        try write("SCOWL fixture copyright\n", to: release.appendingPathComponent("Copyright"))
+        try write("SCOWL fixture readme\n", to: release.appendingPathComponent("README"))
+        let archiveName = "\(Scowl.release).tar.gz"
+        let archive = layout.cache.appendingPathComponent(archiveName)
+        try FileManager.default.createDirectory(at: layout.cache, withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: archive)
+        _ = try FileIO.run("/usr/bin/tar", ["-czf", archive.path, "-C", work.path, Scowl.release])
+        let data = try Data(contentsOf: archive)
+        let header = DownloadSource.columns.joined(separator: "\t")
+        let row = [
+            Scowl.release, archiveName, "https://example.invalid/scowl.tar.gz", sha256Hex(data), "\(data.count)",
+            "2026-11-19", "SCOWL fixture", "1", "2020-12-07", "fixture", "https://example.invalid",
+        ].joined(separator: "\t")
+        try write("\(header)\n\(row)\n", to: layout.inputs.appendingPathComponent("english/SOURCES.tsv"))
     }
 }

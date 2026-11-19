@@ -31,8 +31,9 @@ struct LexiconBuilderTests {
             names == [
                 "NOTICES.txt", "ambiguity.tsv", "attested.txt", "boundary-particles.txt", "collision-supplement.txt",
                 "english-function-words.txt", "english-lean-neutral.txt", "english-pre-guard.txt", "english.txt",
-                "manifest.json", "phrases.txt", "tech-always.txt", "tech-code-capitalized.txt", "tech-code-only.txt",
-                "vi-tail-particles.txt", "vi-tail-words.txt",
+                "guard-list.bloom", "keyboard-neighbours.txt", "manifest.json", "phrases.txt", "tech-always.txt",
+                "tech-code-capitalized.txt", "tech-code-only.txt", "unmarked-shapes.txt", "vi-tail-particles.txt",
+                "vi-tail-words.txt", "vietnamese-keyings.txt",
             ])
         for name in names {
             let a = try Data(contentsOf: first.appendingPathComponent("Resources/\(name)"))
@@ -48,6 +49,44 @@ struct LexiconBuilderTests {
         let resources = try Resources.load(
             from: first.appendingPathComponent("Resources"), userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
         #expect(resources.english.contains("keyboard"))
+    }
+
+    // MARK: The guard list (ENG-R1120, ENG-T56)
+
+    /// The guard words of the pinned inputs: lowercase `a-z`, five letters or more (shorter words are never looked
+    /// up, ENG-R1111), none of them in the correction lexicon (the English lexicon and the letter-only tech-always
+    /// entries).
+    @Test func theGuardListHoldsNoLexiconWordAndNothingShorterThanFive() throws {
+        let layout = Layout(dataRoot: TestPaths.dataRoot, resources: TestPaths.committedResources)
+        let lexicon = try Builder.correctionLexicon(layout)
+        let english = try EnglishLexicon.load(layout)
+        #expect(lexicon.isSuperset(of: english.keys))
+        #expect(lexicon.contains("wifi") && !lexicon.contains("mp3"), "letter-only tech-always entries only")
+        let words = try GuardList.words(layout, lexicon: lexicon)
+        #expect(words.isDisjoint(with: lexicon))
+        #expect(words.allSatisfy { $0.utf8.count >= 5 && $0.utf8.allSatisfy { $0 >= 0x61 && $0 <= 0x7A } })
+        for word in ["biden", "obama", "quixotic"] { #expect(words.contains(word), "\(word)") }
+        #expect(!words.contains("android") && !words.contains("bidden"), "lexicon words")
+        print("ENG-R1120 guard list: \(words.count) words of five letters or more outside the correction lexicon")
+    }
+
+    /// ENG-R1120: at most 512 KB resident; the builder picks the smallest power-of-two size whose analytic
+    /// false-positive rate is at most 0.4 % with eight hashes, under the 0.5 % that ENG-T56 measures.
+    @Test func theGuardFilterIsUnder512KB() throws {
+        let layout = Layout(dataRoot: TestPaths.dataRoot, resources: TestPaths.committedResources)
+        let words = try GuardList.words(layout, lexicon: try Builder.correctionLexicon(layout))
+        let filter = GuardList.filter(words)
+        let bitCount = filter.bits.count * 64
+        #expect(filter.hashCount == 8 && filter.wordCount == words.count)
+        #expect(GuardList.falsePositiveRate(words: words.count, bits: bitCount, hashes: 8) <= 0.004)
+        #expect(GuardList.falsePositiveRate(words: words.count, bits: bitCount / 2, hashes: 8) > 0.004)
+        let data = try GuardList.encode(filter)
+        #expect(data.count == 32 + bitCount / 8 && data.count <= 512 * 1024)
+        let committed = try Data(contentsOf: TestPaths.committedResources.appendingPathComponent("guard-list.bloom"))
+        #expect(committed == data)
+        print(
+            "ENG-R1120 guard filter: \(words.count) words, \(bitCount) bits, \(data.count) bytes, analytic false "
+                + "positives \(GuardList.falsePositiveRate(words: words.count, bits: bitCount, hashes: 8) * 100) %")
     }
 
     @Test func checkPassesOnTheCommittedOutputs() throws {
@@ -79,6 +118,13 @@ struct LexiconBuilderTests {
         #expect(loaded.collision.runExempt.contains("as") && loaded.collision.readingKinds["as"] == .particle)
         // The capitalized code-word list (ENG-R850 as amended on 16/11/2026).
         #expect(loaded.techCodeCapitalized.contains("tar") && loaded.techCodeOnly.contains("tar"))
+        // The typo correction data (ENG-R1120): guard words of five letters or more, lowercased, outside the lexicon.
+        let guardList = loaded.correction.guardList
+        #expect(["biden", "kbang", "zebra", "quixotic", "themes"].allSatisfy { guardList.mayContain($0) })
+        #expect(guardList.wordCount == 5, "Ann is too short, O'Brien and Zoë are not a-z")
+        #expect(loaded.correction.keyboardNeighbours.count == 26)
+        #expect(loaded.correction.unmarkedShapes.contains("truong"))
+        #expect(loaded.correction.vietnameseKeyings.contains("phair"))
         try write("www\nwifi\nnew\n", to: root.appendingPathComponent("data/inputs/tech-always.txt"))
         let refused = try BuilderProcess.run([
             "build", "--data-root", root.appendingPathComponent("data").path, "--output", resources.path,
@@ -237,6 +283,15 @@ enum MiniDataRoot {
         try write("as\nis\ntest\nthe\nI\ndon't\n", to: scowl.appendingPathComponent("english-words.10"))
         try write("theme\n", to: scowl.appendingPathComponent("english-words.35"))
         try write("color\n", to: scowl.appendingPathComponent("american-words.20"))
+        // The guard list's members (ENG-R1120): every one must exist; a few words and names.
+        for file in Scowl.guardListFiles { try write("", to: scowl.appendingPathComponent(file)) }
+        try write("zebra\nquixotic\nthemes\n", to: scowl.appendingPathComponent("english-words.40"))
+        try write("Biden\nKbang\nO'Brien\nZoë\nAnn\n", to: scowl.appendingPathComponent("english-proper-names.50"))
+        try write(
+            try String(
+                contentsOf: TestPaths.dataRoot.appendingPathComponent("inputs/keyboard-neighbours.txt"), encoding: .utf8
+            ),
+            to: data.appendingPathComponent("inputs/keyboard-neighbours.txt"))
         try write("# tech\nwww\nwifi\n", to: data.appendingPathComponent("inputs/tech-always.txt"))
         try write("tar\n", to: data.appendingPathComponent("inputs/tech-code-only.txt"))
         try write("# capitalized\ntar\n", to: data.appendingPathComponent("inputs/tech-code-capitalized.txt"))
