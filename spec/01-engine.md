@@ -1723,7 +1723,7 @@ The W11 research (13/11 to 15/11/2026) produced a labelled corpus of 1,206 chat,
 
 ### 13.12 Worked examples: typo correction (84 rows, 1.1.0)
 
-Section 11A, ENG-T50. The bundled data (8.2), Telex with default options unless the row says VNI, the `general` context, `typoCorrection` on, from an empty field unless the row types more. The never-correct list, the keep lists and the macro table are empty except where a row names an entry. Each row types the keys and then the key shown (a space unless the row says otherwise); the text column is the field after it. Rows S01 to S30 correct; S31 to S67 do not, one row per exclusion; S68 to S73 undo and re-open; S74 to S84 were added after the review of 18/11/2026 (S82 corrects, the others do not). The decision of 8.1 for every row (the text the 1.0 engine leaves and its reason code) was checked against the 1.0 engine with the bundled data on 18/11/2026, and the correction side against the bundled lexicon with a model of the rules; each exclusion row types a word that would be corrected but for the rule it names, unless the row says otherwise. The rows run against the engine once it exists.
+Section 11A, ENG-T50. The bundled data (8.2), Telex with default options unless the row says VNI, the `general` context, `typoCorrection` on, from an empty field unless the row types more. The never-correct list, the keep lists and the macro table are empty except where a row names an entry. Each row types the keys and then the key shown (a space unless the row says otherwise); the text column is the field after it. Rows S01 to S30 correct; S31 to S67 do not, one row per exclusion; S68 to S73 undo and re-open; S74 to S84 were added after the review of 18/11/2026 (S82 corrects, the others do not). The decision of 8.1 for every row (the text the 1.0 engine leaves and its reason code) was checked against the 1.0 engine with the bundled data on 18/11/2026, and again on 19/11/2026 against the engine of 1.0.1 (rules L4a and the REG-38 change of L9 included) with `typoCorrection` off, where every row kept its text and only the reason given for S46 changed; the correction side was checked against the bundled lexicon with a model of the rules; each exclusion row types a word that would be corrected but for the rule it names, unless the row says otherwise. The rows run against the engine once it exists.
 
 | # | Keys typed, then the key shown | Text after | What decided |
 |---|---|---|---|
@@ -1772,7 +1772,7 @@ Section 11A, ENG-T50. The bundled data (8.2), Telex with default options unless 
 | S43 | `oauth` | `oauth ` | on the tech-always list (`oath` is one deletion away) |
 | S44 | `gradle` | `gradle ` | on the code-only list only (`grade` is one deletion away) |
 | S45 | `androdi` with `androdi` on the never-correct list | `androdi ` | the never-correct list |
-| S46 | `androdi` with `androdi` on the keep-as-typed list | `androdi ` | L2 decides, not a candidate |
+| S46 | `androdi` with `androdi` on the keep-as-typed list | `androdi ` | the keep-as-typed list (ENG-R1110 (c)); the token is shown as typed, so L0 decides before L2 (re-checked on 19/11/2026) |
 | S47 | `ANDRODI` | `ANDRODI ` | capitals |
 | S48 | `AndroDi` | `AndroDi ` | mixed case |
 | S49 | `ddi Androdi` | `đi Androdi ` | sentence case inside a sentence is a name (`Android` would fit) |
