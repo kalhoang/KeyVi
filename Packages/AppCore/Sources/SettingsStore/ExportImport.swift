@@ -253,12 +253,15 @@ struct SettingsImporter {
         return object
     }
 
-    /// Setting keys whose value would change; onboarding is machine state and never imported.
+    /// Setting keys whose value would change; onboarding is machine state and never imported. The never-correct list
+    /// is part of the settings (PRD-R72, PRD-R81: no checkbox of its own); an export of 1.0.x has none, which reads as
+    /// an empty list, so it is named only when the current list is not empty.
     static func changedKeys(from current: UserSettings, to imported: UserSettings) -> [String] {
         var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
         if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
         if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
         if current.learnedWords != imported.learnedWords { keys.append(SettingListKey.learnedWords) }
+        if current.neverCorrect != imported.neverCorrect { keys.append(SettingListKey.neverCorrect) }
         if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
         return keys
     }
