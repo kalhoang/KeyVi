@@ -105,6 +105,31 @@ import Testing
         #expect(undeclared.typed.all == [["command+k", "v", "i"]])
     }
 
+    /// The wait after a focus shortcut is for that shortcut's snapshot, not for one the keys before it caused: the
+    /// Escape that closes TestHost's panel publishes the mirror field's snapshot some time later, so a count taken
+    /// right after the Escape grew by that snapshot alone and the wait ended before a loaded guest showed the panel
+    /// again. Before the shortcut the runner waits for the earlier keys' snapshot as it waits for the shortcut's own,
+    /// bounded alike, so any lag inside that bound is counted first, also one above the 300 ms quiet interval
+    /// (escape and panel lags in milliseconds; PLT-R530, integration-suite.md section 10.10).
+    @Test(arguments: [(50, 700), (350, 700), (400, 700), (600, 700), (400, 1000), (1500, 1000), (1500, 1900)])
+    func aFocusShortcutWaitsForItsOwnSnapshotPltR530(escapeLag: UInt64, panelLag: UInt64) async throws {
+        let clock = ManualClock()
+        let timeline = FocusTimeline(
+            clock: clock, snapshotDelays: ["escape": escapeLag * 1_000_000, "command+k": panelLag * 1_000_000])
+        let targets = HarnessTargets(
+            testHostBundleID: bundle("org.example.product.dev.testhost"),
+            appUnderTestBundleID: bundle("org.example.product.dev"), pagesDirectory: URL(fileURLWithPath: "/pages"))
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: ClockSleeper(clock: clock), hooks: timeline, clock: clock)
+        var scenario = makeScenario(keys: ["command+k", "v", "escape", "command+k", "i"])
+        scenario.focusShortcuts = ["command+k"]
+        _ = await runner(driver: timeline, setup: router, clock: clock).run(scenario)
+        let panelShown = try #require(timeline.postTimes(of: "command+k").last) + panelLag * 1_000_000
+        let nextKey = try #require(timeline.postTimes(of: "i").first)
+        #expect(nextKey >= panelShown + ScenarioRunner.shortcutSettleNanoseconds)
+    }
+
     /// The reason names what differed, with the observed state next to the expected one, never the typed text.
     @Test func aFailureNamesTheMismatchedExpectations() {
         let expect = Scenario.Expectation(

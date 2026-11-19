@@ -249,3 +249,41 @@ final class SlowHooks: AppHookClient, Sendable {
         return try await base.send(command)
     }
 }
+
+/// Keys posted on a virtual timeline and the focus snapshots (T6) the app under test publishes for them: each key
+/// takes 10 ms of `clock` time, and a key in `snapshotDelays` makes the app publish one snapshot that much later
+/// (Escape closing a panel, Command+K opening one on a loaded guest). Driver and hooks of one scenario run.
+final class FocusTimeline: KeyboardDriver, AppHookClient, Sendable {
+    private let clock: ManualClock
+    private let snapshotDelays: [String: UInt64]
+    private let posted = Mutex<[(key: String, at: UInt64)]>([])
+
+    init(clock: ManualClock, snapshotDelays: [String: UInt64]) {
+        self.clock = clock
+        self.snapshotDelays = snapshotDelays
+    }
+
+    /// When `key` was posted, in order (nanoseconds of `clock`).
+    func postTimes(of key: String) -> [UInt64] { posted.withLock { $0.filter { $0.key == key }.map(\.at) } }
+
+    func type(_ keys: [String], profile: Scenario.TimingProfile) async throws {
+        for key in keys {
+            let now = clock.now().nanoseconds
+            posted.withLock { $0.append((key, now)) }
+            clock.advance(byMicroseconds: 10_000)
+        }
+    }
+
+    func send(_ command: AppHookCommand) async throws -> AppHookResponse {
+        let now = clock.now().nanoseconds
+        let published = posted.withLock { entries in
+            entries.filter { entry in snapshotDelays[entry.key].map { entry.at &+ $0 <= now } ?? false }.count
+        }
+        var metrics = emptyMetrics()
+        var buckets = metrics.focusRefresh.buckets
+        buckets[0] = UInt64(published)
+        metrics.focusRefresh = HistogramSnapshot(buckets: buckets)
+        let state = AppStateSnapshot(processIdentifier: 100, state: .ready, mode: .vietnamese, metrics: metrics)
+        return AppHookResponse(sequence: 0, state: state)
+    }
+}
