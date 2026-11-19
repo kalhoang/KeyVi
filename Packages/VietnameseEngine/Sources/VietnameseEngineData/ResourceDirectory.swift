@@ -122,7 +122,8 @@ struct ResourceDirectory {
     /// another order takes the general path (`wordList`, then a sort).
     func packedWordList(_ file: ResourceFile) throws -> PackedWordSet {
         let data = try verifiedData(file)
-        guard let parsed = try Self.packedLines(data, file: file) else {
+        guard let parsed = try Self.packedLines(data, file: file, expectedLines: manifest[file.rawValue]?.entries)
+        else {
             return PackedWordSet(try wordList(file))
         }
         try checkEntryCount(parsed.count, file: file)
@@ -314,39 +315,41 @@ struct ResourceDirectory {
 
     // MARK: Line parsing
 
-    /// ASCII lists: `a-z` (plus `0-9` with at least one letter for the tech lists). Parsed on raw bytes
-    /// so the 40,000-word English list loads well inside the ENG-R1231 budget.
+    /// ASCII lists: `a-z` (plus `0-9` with at least one letter for the tech lists). Parsed on raw bytes through a
+    /// raw pointer so the 40,000-word English list loads well inside the ENG-R1231 budget, in debug builds too.
     private static func asciiLines(_ data: Data, file: ResourceFile, allowDigits: Bool) throws -> [String] {
         try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> [String] in
-            let bytes = buffer.bindMemory(to: UInt8.self)
             var words: [String] = []
-            words.reserveCapacity(bytes.count / 8)
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return words }
+            let end = buffer.count
+            words.reserveCapacity(end / 8)
             var start = 0
             var line = 1
-            while start < bytes.count {
-                var end = start
+            while start < end {
+                var stop = start
                 var hasLetter = false
-                while end < bytes.count, bytes[end] != 0x0A {
-                    let byte = bytes[end]
+                while stop < end, base[stop] != 0x0A {
+                    let byte = base[stop]
                     if byte >= 0x61 && byte <= 0x7A {
                         hasLetter = true
                     } else if !(allowDigits && byte >= 0x30 && byte <= 0x39) {
                         throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
                     }
-                    end += 1
+                    stop &+= 1
                 }
-                guard end < bytes.count else {
+                guard stop < end else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .missingFinalNewline)
                 }
-                guard end > start else {
+                guard stop > start else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .emptyLine)
                 }
                 guard hasLetter else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
                 }
-                words.append(String(decoding: UnsafeBufferPointer(rebasing: bytes[start..<end]), as: UTF8.self))
-                start = end + 1
-                line += 1
+                words.append(
+                    String(decoding: UnsafeBufferPointer(start: base + start, count: stop - start), as: UTF8.self))
+                start = stop &+ 1
+                line &+= 1
             }
             return words
         }
@@ -355,31 +358,36 @@ struct ResourceDirectory {
     /// The lines of a list of lowercase words `a-z` (the format of `asciiLines` without digits), each packed when it
     /// fits (`PackedWordSet.pack`) and kept as text otherwise. Nil when the file is not strictly ascending, so the
     /// caller takes the general path; within an ascending file an equal neighbour is the first duplicate.
-    private static func packedLines(_ data: Data, file: ResourceFile) throws -> PackedLines? {
+    /// `expectedLines` (the manifest's entry count, checked afterwards) sizes the array, so a well-formed file
+    /// fills it without growth or spare room.
+    private static func packedLines(_ data: Data, file: ResourceFile, expectedLines: Int?) throws -> PackedLines? {
         try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> PackedLines? in
-            let bytes = buffer.bindMemory(to: UInt8.self)
             var result = PackedLines()
-            result.packed.reserveCapacity(bytes.reduce(0) { $1 == 0x0A ? $0 + 1 : $0 })
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return result }
+            let end = buffer.count
+            result.packed.reserveCapacity(min(expectedLines ?? 0, end / 2))
             var start = 0
             var line = 1
-            while start < bytes.count {
-                var end = start
-                while end < bytes.count, bytes[end] != 0x0A {
-                    guard bytes[end] >= 0x61 && bytes[end] <= 0x7A else {
+            while start < end {
+                // A raw pointer: this loop reads every byte of the keyings at each load, in debug builds too.
+                var stop = start
+                while stop < end, base[stop] != 0x0A {
+                    guard base[stop] >= 0x61 && base[stop] <= 0x7A else {
                         throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
                     }
-                    end += 1
+                    stop &+= 1
                 }
-                guard end < bytes.count else {
+                guard stop < end else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .missingFinalNewline)
                 }
-                guard end > start else {
+                guard stop > start else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .emptyLine)
                 }
-                let word = UnsafeBufferPointer(rebasing: bytes[start..<end])
-                guard result.append(word, line: line) else { return nil }
-                start = end + 1
-                line += 1
+                guard result.append(UnsafeBufferPointer(start: base + start, count: stop - start), line: line) else {
+                    return nil
+                }
+                start = stop &+ 1
+                line &+= 1
             }
             return result
         }
@@ -392,17 +400,20 @@ struct ResourceDirectory {
         var duplicateLine: Int?
         /// The lines read, duplicates included (the manifest counts lines).
         var count = 0
+        private var lastPacked: UInt64 = 0
 
         /// Adds a line; false when it breaks the ascending order of the packed words or of the others.
         mutating func append(_ word: UnsafeBufferPointer<UInt8>, line: Int) -> Bool {
-            count += 1
+            count &+= 1
             if let value = PackedWordSet.pack(utf8: word) {
-                if let last = packed.last, last >= value {
-                    guard last == value else { return false }
+                // A packed value is never 0, so 0 stands for "none yet".
+                if value <= lastPacked {
+                    guard value == lastPacked else { return false }
                     duplicateLine = duplicateLine ?? line
                     return true
                 }
                 packed.append(value)
+                lastPacked = value
             } else {
                 let text = String(decoding: word, as: UTF8.self)
                 if let last = others.last, last >= text {
@@ -450,18 +461,34 @@ struct ResourceDirectory {
         return lines
     }
 
-    /// Splits a UTF-8 file into lines; requires a final newline. Empty file -> no lines.
+    /// Splits a UTF-8 file into lines; requires a final newline. Empty file -> no lines. The file is validated as
+    /// UTF-8 once, then split on the LF byte (never part of a multi-byte sequence) through a raw pointer, without
+    /// iterating grapheme clusters, which costs most of the load in a debug build (ENG-R1231). A CR before the LF
+    /// stays in the line, where the entry checks reject it.
     private static func utf8Lines(_ data: Data, file: ResourceFile) throws -> [String] {
-        guard let text = String(data: data, encoding: .utf8) else {
+        guard String(data: data, encoding: .utf8) != nil else {
             throw LoadError.malformedResource("\(file.rawValue): not UTF-8")
         }
-        guard !text.isEmpty else { return [] }
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        guard lines.last == "" else {
-            throw LoadError.malformedEntry(resource: file.rawValue, line: lines.count, reason: .missingFinalNewline)
+        return try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> [String] in
+            var lines: [String] = []
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return lines }
+            let end = buffer.count
+            var start = 0
+            var index = 0
+            while index < end {
+                if base[index] == 0x0A {
+                    lines.append(
+                        String(decoding: UnsafeBufferPointer(start: base + start, count: index - start), as: UTF8.self))
+                    start = index &+ 1
+                }
+                index &+= 1
+            }
+            guard start == end else {
+                throw LoadError.malformedEntry(
+                    resource: file.rawValue, line: lines.count + 1, reason: .missingFinalNewline)
+            }
+            return lines
         }
-        lines.removeLast()
-        return lines
     }
 
     private static func checkUnique(_ words: [String], file: ResourceFile, firstLine: Int) throws {

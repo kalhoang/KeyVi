@@ -166,6 +166,13 @@ struct MalformedResourceTests {
         try expectLoadError(
             .malformedEntry(resource: "attested.txt", line: 1, reason: .missingFinalNewline),
             replacing: ["attested.txt": "á"])
+        try expectLoadError(
+            .malformedEntry(resource: "attested.txt", line: 3, reason: .missingFinalNewline),
+            replacing: ["attested.txt": "á\nđi\nhoà"])
+        // LF line ends only (data/README.md): a CR stays in its line, where the entry check rejects it.
+        try expectLoadError(
+            .malformedEntry(resource: "attested.txt", line: 1, reason: .invalidCharacter),
+            replacing: ["attested.txt": "á\r\nđi\r\n"])
         let directory = try ResourceFixture.make()
         defer { TempDirectory.remove(directory) }
         try Data([0x61, 0xFF, 0x0A]).write(to: directory.appendingPathComponent("attested.txt"))

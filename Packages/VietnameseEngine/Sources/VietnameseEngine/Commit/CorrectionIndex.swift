@@ -147,13 +147,15 @@ package final class CorrectionIndex: Sendable {
             return long
         }
 
-        /// Adds the bigrams and trigrams of every packed word of `set`, unpacked into a stack buffer (no `String`).
+        /// Adds the bigrams and trigrams of every packed word of `set`, read from the packed letter codes (no
+        /// `String`, no unpacking), so the shapes and keyings index within the load budget of ENG-R1231.
         mutating func insert(packed set: PackedWordSet) {
             withTables { tables in
-                withUnsafeTemporaryAllocation(of: UInt8.self, capacity: PackedWordSet.maximumLetters) { buffer in
-                    for value in set.packed {
-                        let count = PackedWordSet.unpack(value, into: buffer)
-                        _ = tables.insert(UnsafeBufferPointer(rebasing: buffer[..<count]))
+                set.packed.withUnsafeBufferPointer { values in
+                    var index = 0
+                    while index < values.count {
+                        tables.insert(packed: values[index])
+                        index += 1
                     }
                 }
             }
@@ -163,43 +165,69 @@ package final class CorrectionIndex: Sendable {
             trigrams.withUnsafeMutableBufferPointer { trigrams in
                 starts.withUnsafeMutableBufferPointer { starts in
                     ends.withUnsafeMutableBufferPointer { ends in
+                        guard let trigrams = trigrams.baseAddress, let starts = starts.baseAddress,
+                            let ends = ends.baseAddress
+                        else { return }
                         body(Tables(trigrams: trigrams, starts: starts, ends: ends))
                     }
                 }
             }
         }
 
+        /// The tables as raw pointers, with literal constants: these loops run over every byte of the lists at each
+        /// build of the index, in debug builds too, where a checked subscript or a lazy global costs more than the
+        /// work (ENG-R1231). Every index stays within the tables: letters are checked first.
         private struct Tables {
-            let trigrams: UnsafeMutableBufferPointer<UInt64>
-            let starts: UnsafeMutableBufferPointer<UInt64>
-            let ends: UnsafeMutableBufferPointer<UInt64>
+            let trigrams: UnsafeMutablePointer<UInt64>
+            let starts: UnsafeMutablePointer<UInt64>
+            let ends: UnsafeMutablePointer<UInt64>
 
             func insert(_ bytes: UnsafeBufferPointer<UInt8>) -> Bool {
+                guard let base = bytes.baseAddress else { return false }
                 let count = bytes.count
                 var index = 0
                 while index < count {
-                    guard ASCII.isLowercaseLetter(bytes[index]) else { return false }
-                    index += 1
+                    let byte = base[index]
+                    guard byte >= 0x61, byte <= 0x7A else { return false }
+                    index &+= 1
                 }
                 guard count >= 2 else { return count == 1 }
-                var previous = Int(bytes[0]) &- CorrectionIndex.a
-                var current = Int(bytes[1]) &- CorrectionIndex.a
-                Self.set(starts, previous * 26 + current)
+                var previous = Int(base[0]) &- 0x61
+                var current = Int(base[1]) &- 0x61
+                Self.set(starts, previous &* 26 &+ current)
                 index = 2
                 while index < count {
-                    let next = Int(bytes[index]) &- CorrectionIndex.a
-                    Self.set(trigrams, (previous * 26 + current) * 26 + next)
+                    let next = Int(base[index]) &- 0x61
+                    Self.set(trigrams, (previous &* 26 &+ current) &* 26 &+ next)
                     previous = current
                     current = next
-                    index += 1
+                    index &+= 1
                 }
-                Self.set(ends, previous * 26 + current)
+                Self.set(ends, previous &* 26 &+ current)
                 return true
             }
 
+            /// The same for a packed word (`PackedWordSet`): every letter code is 1 to 26, and 0 ends the word.
+            func insert(packed value: UInt64) {
+                var previous = PackedWordSet.letterCode(value, at: 0) &- 1
+                var current = PackedWordSet.letterCode(value, at: 1) &- 1
+                guard current >= 0 else { return }
+                Self.set(starts, previous &* 26 &+ current)
+                var index = 2
+                while index < 12 {
+                    let next = PackedWordSet.letterCode(value, at: index) &- 1
+                    guard next >= 0 else { break }
+                    Self.set(trigrams, (previous &* 26 &+ current) &* 26 &+ next)
+                    previous = current
+                    current = next
+                    index &+= 1
+                }
+                Self.set(ends, previous &* 26 &+ current)
+            }
+
             @inline(__always)
-            private static func set(_ table: UnsafeMutableBufferPointer<UInt64>, _ index: Int) {
-                table[index >> 6] |= 1 << UInt64(index & 63)
+            private static func set(_ table: UnsafeMutablePointer<UInt64>, _ index: Int) {
+                table[index &>> 6] |= 1 &<< UInt64(index & 63)
             }
         }
     }

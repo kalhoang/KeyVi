@@ -21,9 +21,10 @@ public struct PackedWordSet: Sendable {
     /// The words that do not pack; empty for the bundled shapes and keyings.
     let others: WordSet
 
-    /// The longest word that packs: 12 letters of 5 bits fill 60 of the 64 bits.
-    static let maximumLetters = 12
-    private static let bitsPerLetter = 5
+    /// The longest word that packs: 12 letters of 5 bits fill 60 of the 64 bits. Computed rather than stored, so a
+    /// debug build reads them without a lazy-global check in the loops of the load (ENG-R1231).
+    static var maximumLetters: Int { 12 }
+    private static var bitsPerLetter: Int { 5 }
 
     /// A set of `words` (compared byte for byte, so callers pass lowercased words); duplicates are ignored and the
     /// words may come in any order.
@@ -119,14 +120,36 @@ public struct PackedWordSet: Sendable {
         return value << UInt64(bitsPerLetter * (maximumLetters - letters))
     }
 
+    /// `pack(utf8:)` over a byte buffer without generics, for the loader and the edit search (ENG-R1231, ENG-R1122).
+    @inline(__always)
+    package static func pack(utf8 bytes: UnsafeBufferPointer<UInt8>) -> UInt64? {
+        let count = bytes.count
+        guard count > 0, count <= 12, let base = bytes.baseAddress else { return nil }
+        var value: UInt64 = 0
+        var index = 0
+        while index < count {
+            let byte = base[index]
+            guard byte >= 0x61, byte <= 0x7A else { return nil }
+            value = value &<< 5 | UInt64(byte &- 0x60)
+            index &+= 1
+        }
+        return value &<< UInt64(5 &* (12 &- count))
+    }
+
+    /// The code of the letter at `index` (0 to 11) of a packed value: 1 for `a` to 26 for `z`, 0 past the word's end.
+    @inline(__always)
+    static func letterCode(_ value: UInt64, at index: Int) -> Int {
+        Int(truncatingIfNeeded: value &>> UInt64(5 &* (11 &- index))) & 0x1F
+    }
+
     /// Writes the letters of a packed value to the start of `buffer` (at least 12 bytes) and returns their count.
     @inline(__always)
     static func unpack(_ value: UInt64, into buffer: UnsafeMutableBufferPointer<UInt8>) -> Int {
         var count = 0
         while count < maximumLetters {
-            let code = UInt8(truncatingIfNeeded: value >> UInt64(bitsPerLetter * (maximumLetters - 1 - count))) & 0x1F
+            let code = letterCode(value, at: count)
             guard code != 0 else { break }
-            buffer[count] = code &+ 0x60
+            buffer[count] = UInt8(code) &+ 0x60
             count += 1
         }
         return count

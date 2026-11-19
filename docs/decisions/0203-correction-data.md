@@ -120,6 +120,21 @@ Load time (ENG-R1231, debug, `BundledResourcesTests.staysWithinLoadTimeAndMemory
 median 28.8 ms for all resources (25.8 ms recorded for format 2 in the test's comment), live heap growth 3.58 MB. A
 first version decoded the bits byte by byte and took 56.5 ms of CPU in debug; the bits are now copied as one block.
 
+Once the logic track's correction index was built in `Resources.init`, the merged branch measured 52 to 58 ms of
+thread CPU (debug, the test alone, load average 16 to 100), over the 50 ms. Measured by phase on 19/11/2026 (debug,
+thread CPU medians, load average 8): the index 12.1 ms (5.6 ms for the lexicon's trigrams, 6.5 ms for the shapes and
+keyings), the keyings 6.4 ms, the English list 9 ms (parse and set), the ambiguity table 3.6 ms, the attested
+syllables 2.3 ms; `Resources.bundled` 37 ms. In a debug build the per-byte loops cost most: a checked buffer
+subscript, a static constant read through its lazy accessor and a function call for every byte. The logic track
+changed, without changing what is loaded or checked: the shapes and keyings are packed in one pass over the file's
+bytes into an array sized by the manifest's entry count (section 6); the index takes the trigrams of the packed words
+straight from their letter codes; the loops of the loader and the index read through raw pointers with literal
+constants; the UTF-8 lists are split on the LF byte instead of grapheme clusters (a CR before the LF now stays in the
+line and fails the entry check, `MalformedResourceTests.attestedEntryProblems`). After: `Resources.bundled` 22.9 ms by
+phase (the index 5.4 ms, the keyings 2.3 ms, the English list 7.8 ms); the test alone measures 22.2 to 23.5 ms of
+thread CPU at load average 19. Release (`engine-benchmark --quick`, load average 11 to 15): cold 10.8 to 32.0 ms,
+median 9.5 to 10.1 ms (the 1.0 baseline recorded 17.8 ms cold and 9.0 ms median on an idle Apple M4).
+
 ## 6. Resident budget: the packed sets
 
 ENG-R1120 allows the new data at most 1 MB resident, 512 KB of it for the guard list.
