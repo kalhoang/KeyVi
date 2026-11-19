@@ -32,13 +32,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     public var healthEvents: [HealthEvent]
     public var conflictingInputApps: [BundleKey]
     public var userReport: UserReportSection?
+    /// Counts of the host since launch (1.1.0, ADR 0323): numbers only. Nil when the report was built without them.
+    public var counters: CountersSection?
 
     public init(
         formatVersion: Int = DiagnosticsReport.formatVersion, generatedAt: Date, app: AppIdentity, system: SystemInfo,
         hostState: HostStateCode, keyboard: KeyboardSection, permissions: PermissionsSection, tap: TapSection,
         secureInput: SecureInputSection, focus: FocusSection?, rule: RuleSection?, settings: SettingsSection,
         reportedAppMode: AppModeSection?, latency: LatencySection, healthEvents: [HealthEvent],
-        conflictingInputApps: [BundleKey], userReport: UserReportSection?
+        conflictingInputApps: [BundleKey], userReport: UserReportSection?, counters: CountersSection? = nil
     ) {
         self.formatVersion = formatVersion
         self.generatedAt = generatedAt
@@ -57,6 +59,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         self.healthEvents = healthEvents
         self.conflictingInputApps = conflictingInputApps
         self.userReport = userReport
+        self.counters = counters
     }
 
     public struct KeyboardSection: Sendable, Hashable, Codable {
@@ -321,19 +324,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var learnCollisionChoices: Bool
         /// D29: fix the previous word once the next word shows the language (PLT-R357).
         public var lookaheadRevision: Bool
+        /// D30: correct one clearly mistyped English word at its commit (PRD-R80, 1.1.0), the user's switch.
+        public var typoCorrection: Bool
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
         /// Entries of the learned collision memory: the count only, never a word (PLT-R901, PLT-R914). Nil when the
         /// report was built without it.
         public var learnedCollisionEntries: Int?
+        /// Entries of the never-correct list: the count only, never a word (PRD-R45, PRD-R81, ENG-R1118). Nil when the
+        /// report was built without it.
+        public var neverCorrectEntries: Int?
 
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
             toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, learnCollisionChoices: Bool = true,
-            lookaheadRevision: Bool = true, interfaceLanguage: InterfaceLanguage, updateChannel: UpdateChannel,
-            explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
+            lookaheadRevision: Bool = true, typoCorrection: Bool = true, interfaceLanguage: InterfaceLanguage,
+            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil,
+            neverCorrectEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -348,10 +357,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.restoreHotkeySet = restoreHotkeySet
             self.learnCollisionChoices = learnCollisionChoices
             self.lookaheadRevision = lookaheadRevision
+            self.typoCorrection = typoCorrection
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
             self.learnedCollisionEntries = learnedCollisionEntries
+            self.neverCorrectEntries = neverCorrectEntries
+        }
+    }
+
+    /// Counts the host keeps since launch (`HostCounters`), numbers only (ENG-R1121, PRD-R45).
+    public struct CountersSection: Sendable, Hashable, Codable {
+        /// Commits the engine corrected (ENG-R1115).
+        public var corrections: UInt64?
+        /// Corrections the user took back with the restore key (ENG-R1117).
+        public var correctionUndos: UInt64?
+
+        public init(corrections: UInt64? = nil, correctionUndos: UInt64? = nil) {
+            self.corrections = corrections
+            self.correctionUndos = correctionUndos
         }
     }
 

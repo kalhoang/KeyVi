@@ -62,6 +62,8 @@ settings.restoreHotkey: false
 settings.learnCollisionChoices: true
 settings.learnedCollisionEntries:
 settings.lookaheadRevision: true
+settings.typoCorrection: true
+settings.neverCorrectEntries:
 settings.interfaceLanguage: vi
 settings.updateChannel: beta
 settings.changed: typingMethod,macrosEnabled
@@ -92,6 +94,8 @@ counters.fallbacks: 0
 counters.echoLosses: 0
 counters.watchdogTrips: 0
 counters.lostWhilePostingBroken: 0
+counters.corrections:
+counters.correctionUndos:
 probe.ranAt: 2027-01-15T07:59:00Z
 probe.normal.t2.p50Us: 900
 probe.normal.t2.p99Us: 1300

@@ -65,6 +65,21 @@ import Testing
         #expect(!text.contains("Secret") && !text.contains("example.com/x"))
     }
 
+    /// ENG-R1119, plan Task 24: the focus line carries the variant's restore key (`rhk`, the rule's
+    /// `features.restoreHotkey`), which replay needs to rebuild the typo correction switch the host passed.
+    @Test func aFocusRecordCarriesTheRulesRestoreKey() {
+        var decision = HostDecisionMapper.map(FocusFixtures.decision(nil), engine: .native, optedIntoPaste: false)
+        for restoreHotkey in [true, false] {
+            decision.variant.restoreHotkey = restoreHotkey
+            let snapshot = FocusSnapshot(
+                generation: .initial, app: nil, field: .unknown, decision: decision, mode: .vietnamese,
+                modeSource: .globalMode, appliedToggleSequence: 0, fieldHandle: nil, changedAt: .zero, pause: nil)
+            let record = DevFocusRecord(snapshot, at: .zero)
+            #expect(record.restoreHotkey == restoreHotkey)
+            #expect(DevTraceLine(.focus(record), t: 0).rhk == restoreHotkey)
+        }
+    }
+
     /// 685 key downs of 15/11/2026 went to an app AX did not name: the focus line then carries NSWorkspace's
     /// frontmost application (format version 3), and only then.
     @Test func aFocusWithoutAnAppNamesTheFrontmostApplication() throws {

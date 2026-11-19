@@ -156,6 +156,8 @@ struct DevTraceLine: Codable, Sendable, Hashable {
     var ctx: String?
     var er: Bool?
     var mac: Bool?
+    /// Focus lines: the rule's restore key (ENG-R1119, 1.1.0; optional, so the format version stays).
+    var rhk: Bool?
     var pause: String?
     var manual: Bool?
     /// Focus lines without an app: the frontmost application's bundle ID (format version 3).
@@ -280,6 +282,7 @@ extension DevTraceLine {
         ctx = focus.engineContext
         er = focus.englishRestore
         mac = focus.macros
+        rhk = focus.restoreHotkey
         pause = focus.pause
         front = focus.bundle == nil ? focus.frontmost : nil
     }

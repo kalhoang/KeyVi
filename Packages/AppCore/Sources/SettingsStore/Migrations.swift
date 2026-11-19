@@ -50,5 +50,10 @@ public struct MigrationChain: Sendable {
     /// optional `learnedWords` array, which builds without it keep unread (PLT-R1002). No step is needed for the
     /// files written before it: their `keepAsTyped` and `keepVietnamese` entries carry no app, so they are read as
     /// global entries, and so is a `learnedWords` item without an app (`LearnedWordsCodec`).
+    ///
+    /// It stays at version 1 for typo correction too (1.1.0, ADR 0323): `settings` gains the optional `typoCorrection`
+    /// (D30; absent is unset, so the shipped default applies, PRD-R6) and `englishRestoreLists` the optional
+    /// `neverCorrect` array (ENG-R1118). A file written before reads as D30 at its default and an empty list; 1.0.x
+    /// builds keep both keys unread through their rewrites (PLT-R1002).
     public static let shipped = MigrationChain([])
 }

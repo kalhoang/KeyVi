@@ -109,13 +109,18 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     public var tapRecoveries: UInt64
     /// Of those, recoveries after which the engine state was reset (QA-R11 expects every one).
     public var engineResetsAfterTapRecovery: UInt64
+    /// Commits the engines corrected since launch (ENG-R1115, 1.1.0); nil from a build before 1.1.0. A count only.
+    public var corrections: UInt64?
+    /// Of those, corrections the restore key took back (ENG-R1117, 1.1.0); nil from a build before 1.1.0.
+    public var correctionUndos: UInt64?
     public var metrics: MetricsSnapshot
 
     public init(
         processIdentifier: Int32, state: State, mode: TypingMode? = nil, pauseReason: PauseCode? = nil,
         failOpenReason: FailOpenReason? = nil, secureInputHolderBundleId: BundleKey? = nil,
         firstKeyAfterSecureInputReleaseComposed: Bool? = nil, tapRecoveries: UInt64 = 0,
-        engineResetsAfterTapRecovery: UInt64 = 0, metrics: MetricsSnapshot
+        engineResetsAfterTapRecovery: UInt64 = 0, corrections: UInt64? = nil, correctionUndos: UInt64? = nil,
+        metrics: MetricsSnapshot
     ) {
         self.processIdentifier = processIdentifier
         self.state = state
@@ -126,6 +131,8 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
         self.firstKeyAfterSecureInputReleaseComposed = firstKeyAfterSecureInputReleaseComposed
         self.tapRecoveries = tapRecoveries
         self.engineResetsAfterTapRecovery = engineResetsAfterTapRecovery
+        self.corrections = corrections
+        self.correctionUndos = correctionUndos
         self.metrics = metrics
     }
 
@@ -134,12 +141,14 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     /// the holder appears as its bundle ID only, and only while paused for secure input.
     public init(
         processIdentifier: Int32, hostState: HostState, firstKeyAfterSecureInputReleaseComposed: Bool?,
-        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, metrics: MetricsSnapshot
+        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, corrections: UInt64? = nil,
+        correctionUndos: UInt64? = nil, metrics: MetricsSnapshot
     ) {
         self.init(
             processIdentifier: processIdentifier, state: .starting,
             firstKeyAfterSecureInputReleaseComposed: firstKeyAfterSecureInputReleaseComposed,
-            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery, metrics: metrics)
+            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery,
+            corrections: corrections, correctionUndos: correctionUndos, metrics: metrics)
         switch hostState {
         case .noPermission: state = .noPermission
         case .starting: state = .starting

@@ -76,6 +76,10 @@ struct ReportLabels: Sendable {
     var restoreHotkey: String
     var learnCollisionChoices: String
     var lookaheadRevision: String
+    var typoCorrection: String
+    var neverCorrectEntries: String
+    var corrections: String
+    var correctionUndos: String
     var interfaceLanguage: String
     var changedSettings: String
     var learnedCollisionEntries: String

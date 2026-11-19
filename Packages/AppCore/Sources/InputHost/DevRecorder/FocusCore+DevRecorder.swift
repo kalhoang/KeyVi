@@ -41,7 +41,8 @@ extension DevFocusRecord {
             mode: snapshot.mode.rawValue, modeSource: snapshot.modeSource.rawValue,
             engineContext: String(describing: decision.variant.appContext),
             englishRestore: decision.variant.englishRestore, macros: decision.variant.macros,
-            pause: snapshot.pause.map { $0.code.rawValue }, frontmost: front,
+            restoreHotkey: decision.variant.restoreHotkey, pause: snapshot.pause.map { $0.code.rawValue },
+            frontmost: front,
             at: instant)
     }
 }

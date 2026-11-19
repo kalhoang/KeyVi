@@ -99,7 +99,8 @@ enum ReportSections {
     }
 
     /// `learnedCollisionEntries`: the collision memory's entry count, nil while it is not loaded (PLT-R914: a count
-    /// only, never a word).
+    /// only, never a word). D30 is the effective switch; the never-correct list is reported by its size only (PRD-R45,
+    /// PRD-R81).
     static func settings(_ state: SettingsState, learnedCollisionEntries: Int? = nil)
         -> DiagnosticsReport.SettingsSection
     {
@@ -112,9 +113,17 @@ enum ReportSections {
             macrosInEnglishMode: effective.macrosInEnglishMode, rememberPerApp: effective.rememberPerApp,
             toggleHotkey: effective.toggleHotkey, restoreHotkeySet: effective.restoreHotkey != nil,
             learnCollisionChoices: effective.learnCollisionChoices, lookaheadRevision: effective.lookaheadRevision,
-            interfaceLanguage: effective.interfaceLanguage, updateChannel: effective.updateChannel,
+            typoCorrection: effective.typoCorrection, interfaceLanguage: effective.interfaceLanguage,
+            updateChannel: effective.updateChannel,
             // PRD-R6: names of explicitly set keys, never values (SettingsStore owns the names).
-            explicitlySetKeys: state.user.explicitlySetKeys, learnedCollisionEntries: learnedCollisionEntries)
+            explicitlySetKeys: state.user.explicitlySetKeys, learnedCollisionEntries: learnedCollisionEntries,
+            neverCorrectEntries: effective.neverCorrect.count)
+    }
+
+    /// ADR 0323: the host's correction counters, read from `HostCounters` through the report context the way the
+    /// integration hooks read them; numbers only (ENG-R1121).
+    static func counters(_ host: HostReportContext) -> DiagnosticsReport.CountersSection {
+        DiagnosticsReport.CountersSection(corrections: host.corrections, correctionUndos: host.correctionUndos)
     }
 
     /// PLT-R913: the memory entry of the reported app only.

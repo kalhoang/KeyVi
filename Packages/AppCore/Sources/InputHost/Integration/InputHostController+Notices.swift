@@ -64,8 +64,15 @@ extension InputHostController {
 
     /// ENG-R862: the second identical signal in the same app adds the word for that app (visible, removable and
     /// promotable in Settings). `app` is the app the tap saw the token committed in, not the focus at drain time.
+    /// ENG-R1118: a `neverCorrect` signal (a correction the user undid with the restore key) adds its word to the
+    /// never-correct list at once, for every app, with or without an app, and never goes through the tracker.
     /// The word is content: it goes to the settings store only, never to a log.
     func noteLearning(_ signal: LearningSignal, in app: BundleKey?) {
+        if case .neverCorrect(let raw) = signal {
+            let store = settingsStore
+            Task { await store.updateSettings { $0.neverCorrect(raw) } }
+            return
+        }
         guard let proposal = learning.note(signal, in: app, collisionWords: collisionWords.current) else { return }
         let store = settingsStore
         Task { await store.updateSettings { proposal.apply(to: &$0) } }

@@ -7,18 +7,20 @@ internal import SettingsStore
 internal import VietnameseEngine
 
 extension EngineVariant {
-    /// The number of catalog slots: appContext x englishRestore x macros x lookaheadRevision.
-    static let catalogSize = 16
+    /// The number of catalog slots: appContext x englishRestore x macros x lookaheadRevision x restoreHotkey.
+    static let catalogSize = 32
 
-    /// Catalog slot: bit 3 = revisions allowed, bit 2 = code context, bit 1 = English restore, bit 0 = macros.
+    /// Catalog slot: bit 4 = restore key on (ENG-R1119, 1.1.0), bit 3 = revisions allowed, bit 2 = code context,
+    /// bit 1 = English restore, bit 0 = macros.
     var catalogIndex: Int {
-        (lookaheadRevision ? 8 : 0) | (appContext == .code ? 4 : 0) | (englishRestore ? 2 : 0) | (macros ? 1 : 0)
+        (restoreHotkey ? 16 : 0) | (lookaheadRevision ? 8 : 0) | (appContext == .code ? 4 : 0)
+            | (englishRestore ? 2 : 0) | (macros ? 1 : 0)
     }
 
     init(catalogIndex index: Int) {
         self.init(
             appContext: index & 4 != 0 ? .code : .general, englishRestore: index & 2 != 0, macros: index & 1 != 0,
-            lookaheadRevision: index & 8 != 0)
+            lookaheadRevision: index & 8 != 0, restoreHotkey: index & 16 != 0)
     }
 
     /// Every variant, ordered by `catalogIndex`.
@@ -46,10 +48,17 @@ enum EngineSettingsMapping {
             // ENG-R829, ENG-R850 (REG-36): RV5 of the code context follows D29 alone; the rule flag above is off in
             // every code-context app, and RV5 only completes rule L9's line condition there.
             lineStartRevision: settings.lookaheadRevision,
-            // ENG-R1119: off in the API stage of 1.1.0, whatever the settings, until the host track passes the
-            // conjunction D30 AND D4 AND the rule's englishRestore AND its restoreHotkey AND D8 on (plan Task 24).
-            // TraceScanCore `ReplayEngineFactory.typoCorrection(settings:focus:)` rebuilds the same switch.
-            typoCorrection: false)
+            typoCorrection: typoCorrection(settings, variant: variant))
+    }
+
+    /// ENG-R1119, PRD-R80: D30 AND D4 AND the rule's `features.englishRestore` AND the rule's `features.restoreHotkey`
+    /// AND D8 on (any binding), so a word is corrected only where the restore key can undo it (not in Spotlight and
+    /// the overlay panels, nor anywhere while D8 is off). D30, D4 and D8's on or off state are engine inputs of the
+    /// publisher; the two rule switches are catalog variants. TraceScanCore
+    /// `ReplayEngineFactory.typoCorrection(settings:focus:)` rebuilds the same conjunction from a trace.
+    static func typoCorrection(_ settings: EffectiveSettings, variant: EngineVariant) -> Bool {
+        settings.typoCorrection && settings.englishRestore && variant.englishRestore && variant.restoreHotkey
+            && settings.restoreHotkey != nil
     }
 
     /// ENG-R865: the learned memory is looked up only where English restore runs (D4 and the rule's
