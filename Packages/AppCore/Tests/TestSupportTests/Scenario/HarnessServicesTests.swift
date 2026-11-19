@@ -195,17 +195,32 @@ private let targets = HarnessTargets(
         #expect(sleeper.requests.all == [poll, poll, ScenarioSetupRouter.focusSettleNanoseconds])
     }
 
-    /// The count a focus shortcut waits from is taken once it held still for `focusRefreshQuietNanoseconds`, so a
-    /// snapshot the keys before the shortcut caused (an Escape closing a panel) is in it (PLT-R530).
-    @Test func theFocusBaselineWaitsUntilTheCountHoldsStill() async {
+    /// The count a focus shortcut waits from includes the snapshot the keys before it caused (an Escape closing a
+    /// panel): the settle waits for a new count that then held still for `focusRefreshQuietNanoseconds`, as the
+    /// refresh wait does, so a lag above the quiet interval is counted too (PLT-R530).
+    @Test func theFocusBaselineWaitsForTheEarlierKeysSnapshot() async {
         let sleeper = RecordingSleeper()
-        let hooks = FocusRefreshHooks([4, 5, 5, 5, 5])
+        let hooks = FocusRefreshHooks([4, 4, 4, 4, 4, 4, 5, 5, 5, 5])
         let router = ScenarioSetupRouter(
             system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
             sleeper: sleeper, hooks: hooks)
         #expect(await router.settledFocusRefreshCount() == 5)
-        #expect(hooks.requestCount == 5, "the first count, then until a new one held still for the quiet interval")
-        #expect(sleeper.requests.all == Array(repeating: ScenarioSetupRouter.focusRefreshPollNanoseconds, count: 4))
+        #expect(hooks.requestCount == 10, "the first count, five unchanged polls, the new one and its quiet interval")
+        #expect(sleeper.requests.all == Array(repeating: ScenarioSetupRouter.focusRefreshPollNanoseconds, count: 8))
+    }
+
+    /// Keys before a focus shortcut that publish no snapshot leave nothing to tell a late one from none: the settle
+    /// then waits the whole bound of the refresh wait and answers the unchanged count (PLT-R530, QA-R11).
+    @Test func theFocusBaselineWaitsTheWholeBoundWhenNoSnapshotComes() async {
+        let sleeper = RecordingSleeper()
+        let hooks = FocusRefreshHooks([6])
+        let router = ScenarioSetupRouter(
+            system: FakeSystemActions(), targets: targets, webDrivers: WebDriverClients(clients: [:]), terminal: nil,
+            sleeper: sleeper, hooks: hooks)
+        let polls = Int(
+            ScenarioSetupRouter.focusRefreshWaitNanoseconds / ScenarioSetupRouter.focusRefreshPollNanoseconds)
+        #expect(await router.settledFocusRefreshCount() == 6)
+        #expect(sleeper.requests.all.count == polls)
     }
 
     /// A count that never holds still, a hook request that fails and an app without hooks all end the settle: it is

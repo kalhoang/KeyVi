@@ -20,8 +20,9 @@ public protocol ScenarioSetupPerformer: Sendable {
     /// How many focus snapshots the app under test has published (T6 count of its integration hooks); nil when it
     /// cannot be asked. Taken before a focus change, for `awaitFocusRefresh(after:)`.
     func focusRefreshCount() async -> UInt64?
-    /// The count once it held still for a quiet interval, bounded: taken before a focus shortcut, so a snapshot the
-    /// keys before it caused (an Escape closing a panel) cannot end the wait for the shortcut's own (PLT-R530).
+    /// The count once a snapshot the keys before a focus shortcut caused (an Escape closing a panel) is in it: the
+    /// same bounded wait as `awaitFocusRefresh(after:)`, so such a snapshot published within that bound cannot end
+    /// the wait for the shortcut's own (PLT-R530).
     func settledFocusRefreshCount() async -> UInt64?
     /// Waits, bounded, until the app published a focus snapshot after `count` (nil: returns at once).
     func awaitFocusRefresh(after count: UInt64?) async
@@ -148,8 +149,9 @@ extension ScenarioRunner {
     /// Types `keys`. A focus shortcut (Command plus a digit, or a chord in `declared`, the scenario's
     /// `focusShortcuts`) is typed on its own: the runner waits until the app under test published the new focus
     /// snapshot (`awaitFocusRefresh`), then `shortcutSettleNanoseconds`, before the next key. The count it waits
-    /// from is taken once it held still (`settledFocusRefreshCount`), so a snapshot the keys before the shortcut
-    /// caused (an Escape closing a panel) does not end the wait for the shortcut's own (PLT-R530).
+    /// from is taken after the same bounded wait for a snapshot the keys before the shortcut caused
+    /// (`settledFocusRefreshCount`), so one published within that bound (an Escape closing a panel) does not end the
+    /// wait for the shortcut's own (PLT-R530).
     func type(_ keys: [String], profile: Scenario.TimingProfile, declared: [String] = []) async throws {
         var run: [String] = []
         for key in keys {

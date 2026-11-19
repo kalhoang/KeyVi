@@ -88,28 +88,15 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         return try? await hooks.state().metrics.focusRefresh.count
     }
 
-    /// Polls the hooks until the T6 count held still for `focusRefreshQuietNanoseconds` and answers it, at most
-    /// `focusRefreshWaitNanoseconds` (on `clock` as well as by the polls, QA-R11). Taken before a focus shortcut:
-    /// the keys before it can still publish a snapshot (the Escape that closes TestHost's panel hands the focus back
-    /// to the mirror field), and a count taken before that snapshot lets it end the wait for the shortcut's own
-    /// (PLT-R530, integration-suite.md section 10.10). A failed request answers the newest count seen; nil without
-    /// hooks or when the first request fails.
+    /// The T6 count once the snapshot the keys before a focus shortcut caused is in it: the same bounded wait as
+    /// `awaitFocusRefresh(after:)`, from the count right after those keys, answering the newest count seen. The
+    /// Escape that closes TestHost's panel hands the focus back to the mirror field, and on a loaded guest that
+    /// snapshot can come later than any quiet interval; a count taken before it would let it end the wait for the
+    /// shortcut's own. Keys that publish no snapshot cost the whole bound, the price of telling a late snapshot from
+    /// none (PLT-R530, integration-suite.md section 10.10). Nil without hooks or when the first request fails.
     public func settledFocusRefreshCount() async -> UInt64? {
-        guard let hooks, var last = try? await hooks.state().metrics.focusRefresh.count else { return nil }
-        let start = clock.now().nanoseconds
-        var waited: UInt64 = 0
-        var quiet: UInt64 = 0
-        while quiet < Self.focusRefreshQuietNanoseconds, waited < Self.focusRefreshWaitNanoseconds,
-            clock.now().nanoseconds &- start < Self.focusRefreshWaitNanoseconds
-        {
-            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil,
-                let current = try? await hooks.state().metrics.focusRefresh.count
-            else { return last }
-            waited += Self.focusRefreshPollNanoseconds
-            quiet = current == last ? quiet + Self.focusRefreshPollNanoseconds : 0
-            last = current
-        }
-        return last
+        guard let count = await focusRefreshCount() else { return nil }
+        return await pollFocusRefresh(after: count)
     }
 
     /// Polls the hooks until the T6 count grew past `count` and then held still for `focusRefreshQuietNanoseconds`,
@@ -120,7 +107,13 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
     /// by the polls, so slow requests count against it, and a failed request ends the wait (an app that does not
     /// answer the hooks publishes no focus either; each failure already cost the channel's timeout).
     public func awaitFocusRefresh(after count: UInt64?) async {
-        guard let hooks, let count else { return }
+        guard hooks != nil, let count else { return }
+        _ = await pollFocusRefresh(after: count)
+    }
+
+    /// The wait of `awaitFocusRefresh(after:)`; answers the newest count seen (`count` when none was).
+    private func pollFocusRefresh(after count: UInt64) async -> UInt64 {
+        guard let hooks else { return count }
         let start = clock.now().nanoseconds
         var waited: UInt64 = 0
         var last = count
@@ -128,17 +121,18 @@ public struct ScenarioSetupRouter: ScenarioSetupPerformer {
         while waited < Self.focusRefreshWaitNanoseconds,
             clock.now().nanoseconds &- start < Self.focusRefreshWaitNanoseconds
         {
-            guard let current = try? await hooks.state().metrics.focusRefresh.count else { return }
+            guard let current = try? await hooks.state().metrics.focusRefresh.count else { return last }
             if current != last {
                 last = current
                 quiet = 0
             } else if current > count, quiet >= Self.focusRefreshQuietNanoseconds {
-                return
+                return last
             }
-            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil else { return }
+            guard (try? await sleeper.sleep(nanoseconds: Self.focusRefreshPollNanoseconds)) != nil else { return last }
             waited += Self.focusRefreshPollNanoseconds
             quiet += Self.focusRefreshPollNanoseconds
         }
+        return last
     }
 
     public func prepare(_ scenario: Scenario) async throws {
