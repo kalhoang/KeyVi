@@ -28,11 +28,10 @@ import VietnameseEngine
         }
     }
 
-    /// With the bundled correction data (engine track E1) and the correction itself (E2), the identity with the switch
-    /// on differs from the identity with it off, so the probes above reach the correction. Integration enables it once
-    /// both are merged into integration/1.1.0 (plan Task 35); until then the engine never corrects.
-    @Test(.disabled("needs the bundled correction data and the correction of the engine tracks"))
-    func theIdentityFollowsTheCorrection() throws {
+    /// ENG-R1119: with the bundled correction data (engine track E1) and the correction itself (E2), both merged into
+    /// integration/1.1.0, the identity with the switch on differs from the identity with it off, so the probes above
+    /// reach the correction.
+    @Test func theIdentityFollowsTheCorrection() throws {
         let resources = try ReplayEngineFactory.bundledResources()
         func identity(_ typoCorrection: Bool) -> String {
             DevEngineIdentity.digest { vni in

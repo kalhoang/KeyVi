@@ -183,7 +183,7 @@ import VietnameseEngine
 
     /// Review Focus 5 of the plan: the thirty-two engines share the correction data instead of copying it, or memory
     /// and the rebuild time double. Checked on the guard filter's bit storage, which every engine must hold as one
-    /// buffer. (The shared `Resources.correctionIndex` of the engine track is pinned once that index exists.)
+    /// buffer; the shared `Resources.correctionIndex` is pinned by `thirtyTwoEnginesShareTheCorrectionIndex`.
     @Test func thirtyTwoEnginesShareTheCorrectionData() {
         var resources = Resources.empty
         resources.correction = CorrectionData(
@@ -195,6 +195,39 @@ import VietnameseEngine
             let bits = catalog.engine(for: variant).resources.correction.guardList.bits
             #expect(bits.withUnsafeBufferPointer { $0.baseAddress } == base)
         }
+    }
+
+    /// Review Focus 5 of the plan, ENG-R1122: the thirty-two engines share the one `Resources.correctionIndex` that
+    /// `Resources.init` built (a class instance), so the doubled catalog neither copies nor rebuilds it per engine.
+    /// Built the way the host builds it: the loaded resources get the user lists, the never-correct list and the
+    /// macros (`EngineBridge.resources`), then a variant may drop the macros or the memory. The control at the end
+    /// shows the probe tells two indexes apart: assigning `correction` rebuilds the index.
+    @Test func thirtyTwoEnginesShareTheCorrectionIndex() throws {
+        var loaded = Resources.empty
+        loaded.correction = CorrectionData(
+            guardList: ApproximateWordSet(exactly: ["bidden", "keyvi"]), keyboardNeighbours: ["q": "wa"],
+            unmarkedShapes: WordSet(["truong"]), vietnameseKeyings: WordSet(["truowng"]))
+        var settings = DefaultSettings.v1
+        settings.keepAsTyped = ["gramar"]
+        settings.neverCorrect = ["androdi"]
+        let resources = EngineBridge.resources(settings: settings, macros: .empty) { loaded }
+        let index = try #require(Self.correctionIndex(of: loaded))
+        #expect(Self.correctionIndex(of: resources) == index)
+        let catalog = EngineBridge.catalog(settings: settings, resources: resources)
+        for variant in Self.allVariants {
+            #expect(Self.correctionIndex(of: catalog.engine(for: variant).resources) == index)
+        }
+        var rebuilt = resources
+        rebuilt.correction = resources.correction
+        #expect(Self.correctionIndex(of: rebuilt) != index, "assigning the data rebuilds the index")
+    }
+
+    /// `Resources.correctionIndex` has the engine package's `package` access, so the test reads the stored instance
+    /// by reflection; nil unless it is a class instance (a value would have no identity to share).
+    private static func correctionIndex(of resources: Resources) -> ObjectIdentifier? {
+        let child = Mirror(reflecting: resources).children.first { $0.label == "correctionIndex" }
+        guard let value = child?.value, Mirror(reflecting: value).displayStyle == .class else { return nil }
+        return ObjectIdentifier(value as AnyObject)
     }
 
     /// ENG-R1118: the never-correct list is per user and applies in every app, so every variant's engine carries it,
