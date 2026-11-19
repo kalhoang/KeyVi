@@ -8,6 +8,16 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+### Thêm
+
+- KeyVi nay tự sửa một từ tiếng Anh bạn gõ nhầm khi bạn gõ xong từ đó và chỉ có đúng một từ phù hợp: "androdi" thành "android", "gramar" thành "grammar". Từ tiếng Việt, từ viết hoa toàn bộ và chữ gõ trong Terminal hay trình soạn mã không bao giờ bị đổi. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ. Tùy chọn "Tự sửa từ gõ nhầm" trong Cài đặt > Kiểu gõ được bật sẵn.
+- Từ bạn lấy lại bằng phím Escape được thêm vào danh sách mới "Không tự sửa" trong Cài đặt > Kiểu gõ và không bao giờ bị sửa nữa. Bạn có thể thêm hay xóa từ trong danh sách này, và danh sách được xuất và nhập cùng các cài đặt khác.
+
+### Lỗi đã biết
+
+- Ngay sau khi bạn bấm chuột vào giữa một dòng, từ gõ liền sau #, @ hay / có thể bị sửa ("#androdi" thành "#android"). Nhấn Escape để lấy lại từ đó.
+- Từ gõ nhầm đứng trước dấu chấm được sửa ngay khi bạn gõ dấu chấm, kể cả khi sau đó là một địa chỉ web: "googel.com" thành "google.com".
+
 ## [1.0.1-beta.2] - 2026-11-19
 
 ### Sửa lỗi
