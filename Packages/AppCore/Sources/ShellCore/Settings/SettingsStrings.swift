@@ -144,6 +144,22 @@ public enum SettingsText: String, LocalizationKey {
     /// D29 (PRD-R79), under Advanced.
     case lookaheadRevisionTitle = "settings.typing.lookaheadRevision.title"
     case lookaheadRevisionExplanation = "settings.typing.lookaheadRevision.explanation"
+    /// The never-correct list (1.1.0, PRD-R81, ENG-R1118), the third list of the English section. The explanation
+    /// names the restore key of D8 as PRD-R78 does: Escape (`neverCorrectExplanation`), another key in words
+    /// (`OtherKey`: the app name, then the key) or that the key is off (`NoKey`); its first argument is the app name.
+    case neverCorrectTitle = "settings.typing.neverCorrect.title"
+    case neverCorrectExplanation = "settings.typing.neverCorrect.explanation"
+    case neverCorrectExplanationOtherKey = "settings.typing.neverCorrect.explanationOtherKey"
+    case neverCorrectExplanationNoKey = "settings.typing.neverCorrect.explanationNoKey"
+    /// Under the list's field when an entry is not lowercase letters without marks (PRD-R81).
+    case neverCorrectInvalid = "settings.typing.neverCorrect.invalid"
+    /// D30 (1.1.0, PRD-R80), right under D28; the explanation's variants and arguments are the list's. The suffix ends
+    /// the explanation while D4 is off and the row is disabled.
+    case typoCorrectionTitle = "settings.typing.typoCorrection.title"
+    case typoCorrectionExplanation = "settings.typing.typoCorrection.explanation"
+    case typoCorrectionExplanationOtherKey = "settings.typing.typoCorrection.explanationOtherKey"
+    case typoCorrectionExplanationNoKey = "settings.typing.typoCorrection.explanationNoKey"
+    case typoCorrectionDisabledSuffix = "settings.typing.typoCorrection.disabledSuffix"
     case resetTitlePane = "settings.reset.title.pane"
     case resetTitleAll = "settings.reset.title.all"
     case resetBodyGeneral = "settings.reset.body.general"
@@ -252,9 +268,12 @@ public enum SettingsControl: String, AccessibleControl {
     case keepAsTypedAdd
     case keepVietnameseField
     case keepVietnameseAdd
+    case neverCorrectField  // PRD-R81
+    case neverCorrectAdd
     case wordRemove
     case wordMakeGlobal  // ENG-R862
     case learnCollisionChoices  // D28
+    case typoCorrection  // D30
     case learnedChoicesShow  // PRD-R78
     case learnedChoiceRemove
     case learnedChoicesRemoveAll

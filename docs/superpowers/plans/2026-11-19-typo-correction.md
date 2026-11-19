@@ -778,8 +778,15 @@ bundled data of E1 merged into `integration/1.1.0`.
 variants follow `learnedChoicesEmpty`, `learnedChoicesEmptyOtherKey` and `learnedChoicesEmptyNoKey` (PRD-R78:
 Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the key is off).
 
-- [ ] **Step 1: Write the failing tests**: `SettingsCatalogTests.d30SitsRightUnderD28InTheEnglishSectionAndIsNotAdvanced_PRDR80`, `theNeverCorrectListIsTheThirdListOfTheEnglishSection_PRDR81`, `d30IsDisabledWhileD4IsOffWithTheSuffix_PRDR80` (`isEnabled(in:)` false and `disabledSuffix == CatalogText(.typoCorrectionDisabledSuffix)` when `englishRestore` is false; no other item has a dependency), `SettingsLayoutTests.theNeverCorrectListHasItsOwnRow`, `SettingsModelsTests.neverCorrectEntriesAreLettersOnly_PRDR81` (`adding("Androdi")` is `.added(["androdi"])`; `adding("android1")`, `adding("well-known")`, `adding("việt")` are `.invalid`; a duplicate is `.duplicate`).
-- [ ] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter ShellCoreTests`; `SettingsCatalogStringTests` is red until Task 29 (the keys have no catalog entry yet). Step 5: Commit.** `feat(shell): D30 and the never-correct list in the settings catalog`
+*As built (19/11/2026):* the catalog's members are `requirement` and `settingsKey` (this task said `dNumber` and
+`jsonKey`); the key in words comes from `ShortcutWords.string(for:localizer:)` through `RestoreKeyWording` (in
+`SettingItem+Explanation.swift`, shared with the learned-words sheet), with `SettingItem.explanation(restoreHotkey:)`
+and `explanationText(appName:settings:_:)`; `SettingsEdit` also gains `.typoCorrection(Bool)` for the switch;
+`UserWordList` gains `settingItem`, `fieldControl`, `addControl` and `invalidMessage` (the refusal of the list is
+`neverCorrectInvalid`), and `restoreList` becomes optional (nil for the never-correct list).
+
+- [x] **Step 1: Write the failing tests**: `SettingsCatalogTests.d30SitsRightUnderD28InTheEnglishSectionAndIsNotAdvanced_PRDR80`, `theNeverCorrectListIsTheThirdListOfTheEnglishSection_PRDR81`, `d30IsDisabledWhileD4IsOffWithTheSuffix_PRDR80` (`isEnabled(in:)` false and `disabledSuffix == CatalogText(.typoCorrectionDisabledSuffix)` when `englishRestore` is false; no other item has a dependency), `SettingsLayoutTests.theNeverCorrectListHasItsOwnRow`, `SettingsModelsTests.neverCorrectEntriesAreLettersOnly_PRDR81` (`adding("Androdi")` is `.added(["androdi"])`; `adding("android1")`, `adding("well-known")`, `adding("việt")` are `.invalid`; a duplicate is `.duplicate`).
+- [x] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter ShellCoreTests`; `SettingsCatalogStringTests` is red until Task 29 (the keys have no catalog entry yet). Step 5: Commit.** `feat(shell): D30 and the never-correct list in the settings catalog`
 
 ### Task 29: String Catalog (copy verbatim from PRD-R80 and PRD-R81)
 
@@ -787,9 +794,10 @@ Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the
 - Modify: `App/Resources/Localization/Settings.xcstrings`, `scripts/tests/test_correction_policy.py` (the catalog half: the vi and en values of `settings.typing.typoCorrection.explanation` and its `OtherKey` and `NoKey` variants contain the Q10 words that `CorrectionPolicy.sentenceStart` implies)
 - Test: `Packages/AppCore/Tests/ShellCoreTests/Settings/SettingsCatalogStringTests.swift` (existing: every key in vi and en, matching arguments, no literal brand, no dashes, no dead copy), `Tests/ShellCoreTests/Localization/SpecDraftCopyTests.swift` (add the PRD-R80 and PRD-R81 drafts to its table), `scripts/tests/run.sh`
 
-- [ ] **Step 0: Copy review.** PRD-R81 says the copy is reviewed by the product owner with the 1.1.0 strings: hand the strings of Step 2 (vi and en, with the Q10-dependent words marked) to the product owner in this task's report and record the answer, or the fact that it is pending, in the A2 report; the strings ship as drafted until the review changes them (the "Open questions" section lists it).
-- [ ] **Step 1: Add the drafts to `SpecDraftCopyTests` and run it: red.**
-- [ ] **Step 2: Add the entries** (`%@` is the app name; `%2$@` the key in words in the `OtherKey` variants):
+- [x] **Step 0: Copy review.** *(19/11/2026: the strings went to the product owner in the A2 report; the review is
+  pending, so they ship as drafted.)* PRD-R81 says the copy is reviewed by the product owner with the 1.1.0 strings: hand the strings of Step 2 (vi and en, with the Q10-dependent words marked) to the product owner in this task's report and record the answer, or the fact that it is pending, in the A2 report; the strings ship as drafted until the review changes them (the "Open questions" section lists it).
+- [x] **Step 1: Add the drafts to `SpecDraftCopyTests` and run it: red.**
+- [x] **Step 2: Add the entries** (`%@` is the app name; `%2$@` the key in words in the `OtherKey` variants):
   - `settings.typing.typoCorrection.title`: vi `Tự sửa từ gõ nhầm`, en `Fix mistyped words`.
   - `settings.typing.typoCorrection.explanation`: vi `Gõ nhầm một từ tiếng Anh (androdi, gramar) thì %@ sửa thành từ đúng (android, grammar) khi bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ.`; en `When you mistype an English word (androdi, gramar), %@ replaces it with the one word it can be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything typed in Terminal are never changed. Press Escape right after to get the word you typed back.` (Q10 recommendation; the alternative wording `từ viết hoa` / `capitalised words` is in the comment of the entry.)
   - `settings.typing.typoCorrection.explanationOtherKey` and `.explanationNoKey`: the same with the key named or with the last sentence saying the key is off, as the `learnedChoicesEmpty*` entries do.
@@ -799,8 +807,8 @@ Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the
   - `settings.typing.neverCorrect.invalid`: vi `Chỉ nhận chữ cái không dấu, không có số hay ký hiệu.`, en `Letters only, without marks, digits or symbols.`
   - The accessibility label and hint of the three new controls; the add field reuses `Thêm từ mới`.
   - The Typing pane reset confirmation and the full reset confirmation name the list (PRD-R26, PRD-R81): extend the existing bodies (the keys under `settings.reset.` that name the keep lists).
-- [ ] **Step 3: Run `swift test --filter "SettingsCatalogStringTests|SpecDraftCopyTests|CatalogAuditTests"` and `scripts/tests/run.sh`.** Expected: green (the policy script now checks the catalog too).
-- [ ] **Step 4: Commit.** `feat(app): copy of D30 and the never-correct list (PRD-R80, PRD-R81)`
+- [x] **Step 3: Run `swift test --filter "SettingsCatalogStringTests|SpecDraftCopyTests|CatalogAuditTests"` and `scripts/tests/run.sh`.** Expected: green (the policy script now checks the catalog too).
+- [x] **Step 4: Commit.** `feat(app): copy of D30 and the never-correct list (PRD-R80, PRD-R81)`
 
 ### Task 30: Typing pane views and the window model
 
@@ -809,10 +817,18 @@ Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the
 - Modify: `scripts/snapshots/SettingsSnapshots/SnapshotFixtures.swift` (`neverCorrect = ["androdi"]`, one fixture with D4 off)
 - Test: `SettingsCatalogStringTests` (it scans `App/Sources/Settings` for every `SettingsControl` as a focusable control with label and hint), the App build
 
-- [ ] **Step 1: Run `SettingsCatalogStringTests`: red for the three controls not yet used in the app.**
-- [ ] **Step 2: Implement the views and the model.** Keyboard reachable, visible focus ring, VoiceOver label naming the word on every remove button (PRD-R66), the setting applies at once (PRD-R27).
-- [ ] **Step 3: `xcodegen generate && xcodebuild ... build` and `swift test --filter ShellCoreTests`.** Expected: green. Run `scripts/snapshots/settings.sh` where it can run (not on the product owner's Mac while the VM proof runs) and attach the two renderings to the report.
-- [ ] **Step 4: Commit.** `feat(app): D30 row and the never-correct list in the Typing pane`
+- [x] **Step 1: Run `SettingsCatalogStringTests`: red for the three controls not yet used in the app.**
+- [x] **Step 2: Implement the views and the model.** Keyboard reachable, visible focus ring, VoiceOver label naming the word on every remove button (PRD-R66), the setting applies at once (PRD-R27).
+- [x] **Step 3: `xcodegen generate && xcodebuild ... build` and `swift test --filter ShellCoreTests`.** Expected: green. Run `scripts/snapshots/settings.sh` where it can run (not on the product owner's Mac while the VM proof runs) and attach the two renderings to the report.
+- [x] **Step 4: Commit.** `feat(app): D30 row and the never-correct list in the Typing pane`
+
+*As built (19/11/2026):* a switch whose dependency is off shows off and disabled (the D30 row of section 4: "off, and
+shown disabled, while English restore is off"), the stored value kept. The snapshot fixture with D4 off is chosen with
+`TEST_RUNNER_SNAPSHOT_FIXTURE=englishRestoreOff`, so `SettingsSnapshotTests.swift` (no track owns it) is unchanged.
+`scripts/snapshots/settings.sh` does not build on `integration/1.1.0` (nor on `main`) since `cb790dbe`: the
+`SettingsSnapshots` target excludes `Composition/AppMain.swift`, which `NSApplication+BringToFront.swift` now names;
+the two renderings were made with a local stub that was not committed, and the fix (`project.yml` or the extension)
+is left to the integration.
 
 ---
 

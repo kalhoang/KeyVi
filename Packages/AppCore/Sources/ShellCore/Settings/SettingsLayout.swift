@@ -100,7 +100,8 @@ public struct SettingsSection: Sendable, Hashable {
     }
 
     /// The rows of the section: one setting each, except the two ENG-R860 word lists, which share one row side by
-    /// side so the Typing pane fits its window without scrolling (PRD-R24 acceptance).
+    /// side so the Typing pane fits its window without scrolling (PRD-R24 acceptance). The never-correct list
+    /// (PRD-R81) has a row of its own under the pair.
     public var rows: [[SettingItem]] {
         var result: [[SettingItem]] = []
         for item in items {
@@ -133,7 +134,10 @@ extension SettingsCatalog {
                     header: CatalogText(SettingsText.sectionVietnamese), items: [.typingMethod, .tonePlacement]),
                 SettingsSection(
                     header: CatalogText(SettingsText.sectionEnglish),
-                    items: [.englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices]),
+                    items: [
+                        .englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect, .learnCollisionChoices,
+                        .typoCorrection,
+                    ]),
             ]
         case .apps: []
         case .macros: [SettingsSection(header: nil, items: [.macrosEnabled])]

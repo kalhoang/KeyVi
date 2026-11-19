@@ -20,10 +20,12 @@ extension View {
 }
 
 /// A setting's row: its title and explanation from the catalog, its control on the right (PRD-R25).
+/// `explanationText` replaces the catalog explanation when the row composes it (`SettingItem.explanationText`).
 struct SettingRow<Control: View>: View {
     let localizer: Localizer
     let item: SettingItem
     var arguments: [any CVarArg] = []
+    var explanationText: String?
     @ViewBuilder var control: Control
 
     var body: some View {
@@ -31,11 +33,13 @@ struct SettingRow<Control: View>: View {
     }
 
     private var explanation: String {
-        localizer.format(item.explanation.key, table: item.explanation.table, arguments: arguments)
+        explanationText ?? localizer.format(item.explanation.key, table: item.explanation.table, arguments: arguments)
     }
 }
 
-/// A Bool setting as a switch on the right of its title and explanation, like System Settings.
+/// A Bool setting as a switch on the right of its title and explanation, like System Settings. A setting whose
+/// dependency is off (D30 while D4 is off, PRD-R80) shows its switch off and disabled, and its explanation ends with
+/// what to turn on; the stored value is kept for when the dependency is back on.
 struct ToggleSetting<Control: AccessibleControl>: View {
     @ObservedObject var model: SettingsWindowModel
     let item: SettingItem
@@ -45,12 +49,16 @@ struct ToggleSetting<Control: AccessibleControl>: View {
 
     var body: some View {
         let localizer = model.localizer
-        SettingRow(localizer: localizer, item: item) {
-            Toggle(isOn: Binding(get: { isOn }, set: { model.edit(edit($0)) })) {
+        let settings = model.settings
+        let enabled = item.isEnabled(in: settings)
+        let explanation = item.explanationText(appName: model.appName, settings: settings, localizer)
+        SettingRow(localizer: localizer, item: item, explanationText: explanation) {
+            Toggle(isOn: Binding(get: { isOn && enabled }, set: { model.edit(edit($0)) })) {
                 Text(verbatim: localizer.string(item.title))
             }
             .settingsAccessibility(control, localizer)
             .settingsSwitch()
+            .disabled(!enabled)
         }
     }
 }
