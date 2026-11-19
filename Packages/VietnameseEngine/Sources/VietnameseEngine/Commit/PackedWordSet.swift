@@ -142,19 +142,6 @@ public struct PackedWordSet: Sendable {
         Int(truncatingIfNeeded: value &>> UInt64(5 &* (11 &- index))) & 0x1F
     }
 
-    /// Writes the letters of a packed value to the start of `buffer` (at least 12 bytes) and returns their count.
-    @inline(__always)
-    static func unpack(_ value: UInt64, into buffer: UnsafeMutableBufferPointer<UInt8>) -> Int {
-        var count = 0
-        while count < maximumLetters {
-            let code = letterCode(value, at: count)
-            guard code != 0 else { break }
-            buffer[count] = UInt8(code) &+ 0x60
-            count += 1
-        }
-        return count
-    }
-
     /// A copy of `values` in storage of exactly their count, so the array's footprint is its words (ENG-R1120).
     private static func exactCopy(_ values: [UInt64]) -> [UInt64] {
         [UInt64](unsafeUninitializedCapacity: values.count) { buffer, initialized in

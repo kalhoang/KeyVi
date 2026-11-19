@@ -42,16 +42,23 @@ struct PackedWordSetTests {
         #expect(PackedWordSet(sorted.reversed()).packed == packed)  // any order: sorted once
     }
 
-    @Test func packAndUnpackAreInverse() {
+    @Test("The letter codes of a packed value give the word back, 0 past its end")
+    func letterCodesGiveTheWordBack() {
         for word in ["a", "z", "phair", "thwowngf", "abcdefghijkl", "zzzzzzzzzzzz"] {
             let value = PackedWordSet.pack(utf8: word.utf8)!
-            var bytes = [UInt8](repeating: 0, count: PackedWordSet.maximumLetters)
-            let count = bytes.withUnsafeMutableBufferPointer { PackedWordSet.unpack(value, into: $0) }
-            #expect(String(decoding: bytes.prefix(count), as: UTF8.self) == word)
+            let codes = (0..<PackedWordSet.maximumLetters).map { PackedWordSet.letterCode(value, at: $0) }
+            let letters = codes.prefix { $0 != 0 }.map { Character(UnicodeScalar(UInt8($0 + 0x60))) }
+            #expect(String(letters) == word)
+            #expect(codes.dropFirst(word.count).allSatisfy { $0 == 0 })
         }
         // Only 1 to 12 letters `a` to `z` fit.
         for word in ["", "abcdefghijklm", "Phair", "truong2", "đi", "well-known"] {
             #expect(PackedWordSet.pack(utf8: word.utf8) == nil, "\(word)")
+        }
+        // The buffer form (the loader and the edit search) packs exactly as the sequence form.
+        for word in ["", "a", "phair", "abcdefghijkl", "abcdefghijklm", "Phair", "đi", "zz"] {
+            let fromBuffer = Array(word.utf8).withUnsafeBufferPointer { PackedWordSet.pack(utf8: $0) }
+            #expect(fromBuffer == PackedWordSet.pack(utf8: AnySequence(word.utf8)), "\(word)")
         }
     }
 
