@@ -160,7 +160,7 @@ final class SettingsWindowModel: ObservableObject {
         LoginItemRowText(localizer: localizer, appName: appName, panes: panes, presentation: loginItem)
     }
 
-    // MARK: - Word lists (ENG-R860, ENG-R862)
+    // MARK: - Word lists (ENG-R860, ENG-R862, PRD-R81)
 
     /// Global entries and the words learned per app, in display order.
     func wordRows(_ list: UserWordList) -> [UserWordList.Row] { list.rows(in: state.user) }
@@ -180,12 +180,12 @@ final class SettingsWindowModel: ObservableObject {
     func addWord(to list: UserWordList) {
         let draft = drafts[list]
         let current = Set(list.entries(in: settings))
-        switch UserWordList.adding(draft, to: current) {
+        switch list.adding(draft, to: current) {
         case .added(let entries):
             wordListError[list] = nil
             drafts[list] = ""
             edit(list.edit(entries))
-        case .invalid: wordListError[list] = localizer.string(SettingsText.listInvalid)
+        case .invalid: wordListError[list] = localizer.string(list.invalidMessage)
         case .duplicate: wordListError[list] = localizer.string(SettingsText.listDuplicate)
         }
     }
