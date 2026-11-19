@@ -1,0 +1,734 @@
+# Typo and spelling correction (1.1.0) implementation plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** At the commit of a word, {{AppName}} 1.1.0 replaces one clearly mistyped English word with the only word it
+can be (`androdi` gives `android`, `gramar` gives `grammar`), offline, from bundled data, never touching Vietnamese,
+with the restore key as the undo that also teaches a per-user never-correct list; on by default (D30).
+
+**Architecture:**
+- **Engine (MPL-2.0):** one more step at the commit, after the 8.1 decision and before the edit is formed
+  (`Commit/TypoCorrection.swift`), reading the token alone and the resources. The edit model and the one-word rule
+  run on hash lookups over preallocated sets behind a trigram prefilter, so a commit costs time proportional to the
+  token's length. Five data resources (guard list as an approximate membership filter, keyboard neighbours, unmarked
+  shapes, Vietnamese keyings, the existing lexicon) are built by `lexicon-builder` from pinned inputs.
+- **Host (GPL-3.0-or-later):** D30 and the never-correct list live in `SettingsStore` next to the keep lists; the
+  engine switch is D30 AND D4 AND the rule's `englishRestore` AND the restore key (D8 and the rule's `restoreHotkey`),
+  one prebuilt engine per variant; a `neverCorrect` signal is stored at once; the undo rides the existing restore path
+  (PLT-R353). No new compat rule flag, no new edit job kind.
+- **Work shape:** an API stage first (types and signatures), then two tracks with disjoint file ownership (engine:
+  data E1 and logic E2; app: store and host A1, UI and copy A2), then integration on `integration/1.1.0`, which is
+  not merged into `main` before stable 1.0.1 ships.
+
+**Tech Stack:** Swift 6 (strict concurrency, Swift Testing), SwiftPM packages `Packages/VietnameseEngine` and
+`Packages/AppCore`, the AppKit and SwiftUI app under `App/`, Python 3 (`python3 -I`) for the reference model and the
+repository checks.
+
+**Spec:** `spec/01-engine.md` section 11A (ENG-R1110 to ENG-R1125, ENG-T50 to ENG-T57), 12.2 (the API lines of
+1.1.0), 13.12 (rows S01 to S84), section 15 (Q10, Q11); `spec/03-product.md` PRD-R4A, D30, PRD-R80, PRD-R81;
+`docs/superpowers/specs/2026-11-18-spelling-correction-design.md` (the approved design, with the measurements of
+18/11/2026 and the alternatives rejected). Read these before any task; section numbers below refer to them.
+
+## Global Constraints
+
+- **Clean room (CLAUDE.md, `spec/05-clean-room.md`):** work only from `spec/` and public documentation. The QWERTY
+  table is written from the public layout and its origin recorded (provenance note N6 of
+  `docs/provenance/reports/2026-11-18-1.0.1.md`).
+- **Decisions already taken by the product owner (18/11/2026, `docs/decisions/0009-pa-decisions-2026-11-18.md`):**
+  1.1.0 is built while 1.0.1 waits out its 72 h beta; correction is on by default (D30); Q10 and Q11 stay open, so the
+  recommendations are built with each choice in ONE named place (`CorrectionPolicy`, section "Q10 and Q11" below)
+  and the D30 copy follows the Q10 recommendation (`từ viết hoa toàn bộ` / `words in all capitals`).
+- **Licences and headers:** new files under `Packages/VietnameseEngine/`, `data/` and `spec/reference-model/` start
+  with `// SPDX-License-Identifier: MPL-2.0` (`# SPDX-License-Identifier: MPL-2.0` as the first line of a Python
+  file); everything else `GPL-3.0-or-later`. `scripts/check-spdx.sh` (in `scripts/lint.sh`) enforces it. Never edit a
+  `LICENSE` file.
+- **Engine rules:** standard library only in `Sources/VietnameseEngine` (`StaticSourceTests.coreIsClean`); no
+  global or static mutable state (ENG-R1202); every public type `Sendable` (ENG-R1203); `Engine.reduce` pure
+  (ENG-R1210); nothing logs, prints or persists text (ENG-R1220, ENG-R1121). Never use Swift's `Hasher` for anything
+  that is written to a file or must agree between processes: it is seeded per process.
+- **Hot path (PLT-R304, PLT-R305):** nothing new in `InputHost/Pipeline` or `InputHost/Tap` allocates, locks or does
+  I/O in steady state; new state goes through the existing snapshot and notice channels.
+- **Privacy:** the never-correct list and the typed words are user content: on disk and in Settings only, never in a
+  log or a diagnostics report (counts only, PRD-R45, PRD-R81, PLT-R901).
+- **Data (ENG-R810 to ENG-R812):** every bundled file is built by `lexicon-builder` from pinned inputs with recorded
+  checksums and is byte-reproducible; the core never embeds data; the SCOWL notice covers the guard list (ENG-R811).
+- **Budgets (the table "Budgets and the tests that pin them" below):** 50 µs p99 and 200 µs worst case per
+  candidate commit (ENG-R1122); ENG-T40 percentiles unchanged within the benchmark's threshold (ENG-R1233); at most
+  1 MB resident for the new data, 512 KB of it for the guard list, 8 MB and 50 ms for all resources (ENG-R1120,
+  ENG-R1231).
+- **Copy:** product copy verbatim from `spec/03-product.md` PRD-R80 and PRD-R81 (standard, neutral Vietnamese
+  addressed to "bạn", PRD-R62), app name as a format argument, never the literal name (CLAUDE.md). No em dash or en
+  dash anywhere: copy, comments, commit messages, this plan.
+- **Wording of documents:** `scripts/tests/test_licences_and_wording.py` forbids a few words about development tools
+  in `spec/` and `docs/`; `scripts/check-docs.py` requires `{{AppName}}` placeholders in `docs/` and resolvable
+  relative links. New documents follow both.
+- **Tests first (QA-R3), Swift Testing; coverage at least 95 % for `Sources/VietnameseEngine` and 80 % per AppCore
+  module (QA-R2, `scripts/coverage.sh`).** Traceability: `Packages/VietnameseEngine/TRACEABILITY.md` needs one row per
+  spec identifier (`Scripts/check-traceability.py`, `TraceabilityTests`); `docs/architecture/traceability.md` may
+  cite only suites that exist (`scripts/tests/test_docs_and_workflows.py`), so a planned row names no suite in
+  backticks until the suite exists.
+- **Contracts:** a changed public signature in an included file is re-spliced into `docs/architecture/contracts.md`
+  by `python3 -I docs/architecture/tools/sync_contracts.py` (CI runs it with `--check`).
+- **Process:** English Conventional Commits, no attribution lines, no history rewriting (CLR-R12). Each track builds
+  with a private scratch path: `swift build --scratch-path .build-<track>`. Integration merges with `--no-ff`.
+- **On the product owner's Mac:** never launch the app or post events from a task; the tart integration run is the
+  product owner's window (`docs/runbooks/`).
+
+## Review Focus
+
+1. **The undo after a punctuation closer.** `androdi.` gives `android.`; the restore key right after must give
+   `androdi.` with the `.` untouched, in the engine (one edit over the correction and the closer) and in the host (a
+   restore job whose deletion is wider than the empty active display). Tests: `TypoCorrectionUndoTests.undoAfterACloserKeepsTheCloser` (Task 15) and `KeyPipelineCorrectionTests.theUndoAfterACloserDeletesTheCloserToo` (Task 25).
+2. **A reset in the middle of a line.** After a click or a focus change the history is empty, so `androdi` typed right
+   after a `#`, `@` or `/` the engine never saw is a candidate and is corrected: the blind spot rule L9 already has
+   (ENG-R850). Pinned, not fixed, by `TypoCorrectionContextTests.afterAResetTheWordIsACandidate` (Task 13); listed for
+   the product owner.
+3. **Settings files and exports from 1.0.x.** A `settings.json` or an export without `typoCorrection` and without
+   `englishRestoreLists.neverCorrect` loads with D30 on and an empty list, reports nothing as changed, and a file
+   written by 1.1.0 keeps its list through a 1.0.1 rewrite (PLT-R1002). Tests in Task 23.
+4. **The corrected token as English evidence.** A corrected token is `en` for the window (ENG-R1116), so the
+   collision word after it is decided by the English run: `androdi as` from an empty field gives `android as`, not
+   `android á`. Test: `TypoCorrectionCommitTests.aCorrectedTokenCountsAsEnglishForTheRun_ENGR1116` (Task 14).
+5. **Thirty-two prebuilt engines.** The catalog doubles (a `restoreHotkey` bit); every engine must share the one
+   correction index and the one guard filter instead of copying them, or memory and the catalog rebuild time double.
+   Test: `EngineCatalogTests.thirtyTwoEnginesShareTheCorrectionIndex` (Task 24) with the memory gate of Task 10.
+
+---
+
+## Stages, branches, worktrees and owned paths
+
+All worktrees live under `/Volumes/Data/Projects-2026/Kal-Key-wt/`. `main` is `7a4c06b6` (1.0.1 content merged;
+`1.0.1-beta.1` published). Nothing here touches `main` until stable 1.0.1 is out.
+
+| Stage | Branch | Worktree | Base | Runs |
+|---|---|---|---|---|
+| 0 API | `feat/v110-api` | `v110-api` | `main` at `7a4c06b6` | first, alone; reviewed, then `integration/1.1.0` is created from its head |
+| E1 data | `feat/v110-engine-data` | `v110-engine-data` | `integration/1.1.0` | in parallel with E2a, A1, A2 |
+| E2 logic | `feat/v110-engine-logic` | `v110-engine-logic` | `integration/1.1.0` | E2a (Tasks 11 to 18) in parallel; E2b (Tasks 19 to 22) after E1 is merged |
+| A1 store and host | `feat/v110-app-host` | `v110-app-host` | `integration/1.1.0` | in parallel |
+| A2 UI and copy | `feat/v110-app-ui` | `v110-app-ui` | `integration/1.1.0` | in parallel |
+| Integration | `integration/1.1.0` | `v110-integration` | API head | merges in the order API, E1, A1, A2, E2a, E2b, then Tasks 31 to 36 |
+
+Ownership (edit only your paths; anything else is read-only and a request in your report):
+
+| Track | Owned paths |
+|---|---|
+| 0 API | `Packages/VietnameseEngine/Sources/VietnameseEngine/PublicAPI.swift`, `Sources/VietnameseEngine/Commit/ApproximateWordSet.swift` (new), `Sources/VietnameseEngineData/Bundled.swift` (signatures), `Sources/VietnameseEngineTesting/Fuzz/InvariantChecker.swift` and `Sources/site-demo-frames/FrameRecorder.swift` (the new enum cases only), `Tests/CollisionCorpusTests/Harness/CorpusScore.swift` (same), `Tests/VietnameseEngineTests/Quality/PublicAPITests.swift`, `Tests/VietnameseEngineTests/Commit/ApproximateWordSetTests.swift` (new), `Tests/VietnameseEngineTests/Corpus/typo-corrections.tsv` (new, handed to E2), `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionExampleTests.swift` (new, handed to E2); `Packages/AppCore/Sources/SettingsStore/{UserSettings,SettingFields}.swift`, `Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift`, `Packages/AppCore/Sources/InputHost/Integration/LearningTracker.swift` (compile only), `Packages/AppCore/Tests/SettingsStoreTests/TypoCorrectionDefaultTests.swift` (new); `spec/01-engine.md` 12.2 (two amendments) |
+| E1 | `data/**`, `Packages/VietnameseEngine/Sources/lexicon-builder/**`, `Sources/VietnameseEngineData/**`, `Tests/VietnameseEngineDataTests/{Builder/**,BundledResourcesTests.swift,MalformedResourceTests.swift,LexiconBuilderTests.swift,CorrectionDataTests.swift}`, `Packages/VietnameseEngine/README.md`, `spec/reference-model/correction*.py` and its `README.md`, `THIRD_PARTY_NOTICES.md` (the SCOWL rows), `docs/decisions/0203-correction-data.md` (new) |
+| E2 | `Sources/VietnameseEngine/Commit/{TypoCorrection,EditModel,CorrectionPolicy,CorrectionIndex}.swift` (new), `Sources/VietnameseEngine/Commit/{CommitRules,TokenLanguage}.swift`, `Sources/VietnameseEngine/Engine/**`, `Sources/VietnameseEngine/PublicAPI.swift` (the `Resources` index only, after the API stage), `Sources/VietnameseEngineTesting/**` (except the API stage's enum edits), `Benchmarks/**`, `Scripts/benchmark.sh`, `Tests/VietnameseEngineTests/**`, `Tests/VietnameseEngineDataTests/RealData/TypoCorrection*.swift`, `Packages/VietnameseEngine/TRACEABILITY.md`, `Packages/VietnameseEngine/CHANGELOG.md` (E1 reports its rows and entries to E2) |
+| A1 | `Packages/AppCore/Sources/SettingsStore/**` (after the API stage), `Packages/AppCore/Sources/InputHost/**`, `Packages/AppCore/Sources/Diagnostics/**`, `Packages/AppCore/Sources/ShellCore/ReportAssembly.swift`, `Packages/AppCore/Sources/TestSupport/Pipeline/ScriptedEngine.swift`, `Packages/AppCore/Tests/{SettingsStoreTests,InputHostTests,DiagnosticsTests}/**`, `docs/decisions/0323-never-correct-list.md` (new), `docs/architecture/traceability.md` |
+| A2 | `Packages/AppCore/Sources/ShellCore/**` (except `ReportAssembly.swift`), `App/Sources/Settings/**`, `App/Resources/Localization/Settings.xcstrings`, `Packages/AppCore/Tests/ShellCoreTests/**`, `scripts/snapshots/SettingsSnapshots/SnapshotFixtures.swift` |
+| Integration | everything above after the merges, plus `docs/architecture/contracts.md`, `CHANGELOG.md`, `CHANGELOG.vi.md`, `docs/provenance/**`, `Benchmarks/baseline.json`, `Benchmarks/results/**` |
+
+Frozen for every track: `Packages/*/Package.swift`, `project.yml`, `Config/**`, `compat/**`, `App/Info.plist`,
+`Packages/AppCore/Sources/AppModel/**`, `Packages/AppCore/Sources/TestSupport/Fakes/Common/**`.
+
+## Interfaces between tracks
+
+The contract every track builds against, fixed by the API stage (Tasks 1 to 5) and copied from spec 12.2 where it
+fixes them. Two amendments to 12.2 are made by the API stage: `guardList` is an `ApproximateWordSet` (12.2 writes
+`WordSet` with a comment that it may answer yes for a word it lacks, which `WordSet` cannot), and
+`EngineConfiguration.init` gains `typoCorrection: Bool = true` (12.2 lists the property but not the parameter).
+
+```swift
+// Packages/VietnameseEngine/Sources/VietnameseEngine/PublicAPI.swift (MPL-2.0)
+public struct EngineConfiguration: Sendable, Hashable {
+    public var typoCorrection: Bool                      // default true (ENG-R1119)
+    public init(inputMethod: InputMethod = .telex(TelexOptions()), toneStyle: ToneStyle = .traditional,
+                autoRestore: Bool = true, appContext: AppContext = .general, historyLimit: Int = 16,
+                lookaheadRevision: Bool = true, lineStartRevision: Bool = true, typoCorrection: Bool = true)
+}
+public enum CommitDecision: Sendable, Hashable { case kept(CommitRule), restored(CommitRule), macro, corrected(CommitRule) }
+public enum LearningSignal: Sendable, Hashable { case preferredRaw(raw: String), preferredVietnamese(raw: String), neverCorrect(raw: String) }
+
+// Packages/VietnameseEngine/Sources/VietnameseEngine/Commit/ApproximateWordSet.swift (new, stdlib only)
+/// A Bloom filter over lowercase words: never a false "no", at most the configured false "yes" rate (ENG-R1120).
+public struct ApproximateWordSet: Sendable {
+    public init(bits: [UInt64], hashCount: Int, wordCount: Int)             // from the bundled file; bits.count a power of two
+    public init<S: Sequence>(exactly words: S, bitsPerWord: Int = 12, hashCount: Int = 8) where S.Element == String
+    public init<S: Sequence>(exactly words: S, bitCount: Int, hashCount: Int) where S.Element == String   // the builder's choice of size
+    public func mayContain(_ word: some StringProtocol) -> Bool
+    public var bits: [UInt64] { get }; public var hashCount: Int { get }; public var wordCount: Int { get }
+    public static let empty: ApproximateWordSet                              // answers false for every word
+}
+// Hashing: FNV-1a 64 over the UTF-8 bytes gives h1; h2 = h1 rotated left by 32 bits, forced odd; the i-th index is
+// (h1 &+ UInt64(i) &* h2) & (bitCount - 1). Written once here, used by the builder (via the type) and the loader.
+
+public struct CorrectionData: Sendable {                                     // ENG-R1120
+    public let guardList: ApproximateWordSet                                 // SCOWL words 40 to 70 and proper names 10 to 70, minus the lexicon
+    public let keyboardNeighbours: [Character: String]                       // the QWERTY table of ENG-R1113, 26 entries, symmetric
+    public let unmarkedShapes: WordSet                                       // Tier A and B syllables, marks and stroke removed (ENG-R1110 (d))
+    public let vietnameseKeyings: WordSet                                    // usual-order Telex keyings of Tier A syllables (ENG-R1125)
+    public init(guardList: ApproximateWordSet, keyboardNeighbours: [Character: String], unmarkedShapes: WordSet, vietnameseKeyings: WordSet)
+    public static let empty: CorrectionData
+}
+// `let`, not `var` (deviation from 12.2, recorded there): the engine derives an index from these at `Resources.init`.
+
+public struct Resources: Sendable {
+    public var userNeverCorrect: WordSet                                     // ENG-R1118
+    public var correction: CorrectionData                                    // ENG-R1120
+    public init(english:techAlways:techCodeOnly:techCodeCapitalized:attestedSyllables:ambiguity:userKeepRaw:userKeepVietnamese:
+                macros: MacroTable = .empty, collision: CollisionLists = .empty, collisionMemory: CollisionMemorySnapshot = .empty,
+                userNeverCorrect: WordSet = WordSet([]), correction: CorrectionData = .empty)
+    package let correctionIndex: CorrectionIndex                             // E2 (Task 12): built in init from english, techAlways and correction
+}
+
+// Packages/VietnameseEngine/Sources/VietnameseEngineData/Bundled.swift
+extension Resources {
+    public static func bundled(userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
+                               collisionMemory: CollisionMemorySnapshot = .empty, userNeverCorrect: WordSet = WordSet([])) throws -> Resources
+    public static func load(from directory: URL, userKeepRaw: WordSet, userKeepVietnamese: WordSet, macros: MacroTable = .empty,
+                            collisionMemory: CollisionMemorySnapshot = .empty, userNeverCorrect: WordSet = WordSet([])) throws -> Resources
+}
+```
+
+Host side (API stage, so A1 and A2 compile against the same model):
+
+```swift
+// Packages/AppCore/Sources/SettingsStore/UserSettings.swift (GPL-3.0-or-later)
+public struct UserSettings { public var typoCorrection: Setting<Bool> = .unset   // D30 "typoCorrection"
+                             public var neverCorrect: Set<String> = [] }         // ENG-R1118, "englishRestoreLists.neverCorrect"
+public struct EffectiveSettings { public var typoCorrection: Bool; public var neverCorrect: Set<String> }
+// DefaultSettings.v1: typoCorrection: true (D30, decision of the product owner, 18/11/2026, ADR 0009 item 10)
+// SettingFields.all: field("typoCorrection", \.typoCorrection, .typing)  // D30
+// SettingListKey.neverCorrect = "neverCorrect"
+public enum NeverCorrectEntry { public static func normalized(_ text: String) -> String?   // lowercase a-z only, 1 to 64 letters, else nil (PRD-R81)
+                                public static let maximumLength = 64 }
+
+// Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift
+public struct EngineVariant { public var restoreHotkey: Bool   // the rule's `features.restoreHotkey` (ENG-R1119); default true
+                              public init(appContext:englishRestore:macros:lookaheadRevision: Bool = true, restoreHotkey: Bool = true) }
+```
+
+Engine internals that E2 produces and the tests of E2 and the benchmark consume (package access):
+
+```swift
+// Sources/VietnameseEngine/Commit/CorrectionPolicy.swift: the ONE place for each open choice
+package enum CorrectionPolicy {
+    package enum SentenceStart { case corrected, neverCorrected }
+    package static let sentenceStart: SentenceStart = .corrected                       // Q10 recommendation
+    package enum CommitKeys { case everyCommitKey, spaceAndPunctuationOnly }
+    package static let commitKeys: CommitKeys = .everyCommitKey                        // Q11 recommendation
+    package static let minimumLetters = 5, maximumLetters = 24, minimumFitLetters = 4   // ENG-R1111, ENG-R1114
+    package static let closers: Set<Character> = [".", ",", ";", ":", "!", "?", ")", "]", "}", "\""]   // ENG-R1112 (plus whitespace, Return, Tab per `commitKeys`)
+    package static let openers: Set<Character> = [" ", "\u{00A0}", "(", "[", "{", "\"", "\u{201C}", "\u{2018}", "'"]
+    package static let clusterOnsets: Set<String> = ["bl", "br", "dr", "đr", "gl", "gr", "kl", "kr", "pl", "pr"]   // ENG-R1110 (b)
+}
+// Sources/VietnameseEngine/Commit/EditModel.swift
+package struct EditModel: Sendable {
+    package init(neighbours: [Character: String])
+    /// Calls `body` with every word at distance one (ENG-R1113; `positionRules: false` for ENG-R1125); stops when it returns false.
+    package func forEachEdit(of word: [UInt8], positionRules: Bool, _ body: (UnsafeBufferPointer<UInt8>) -> Bool)
+}
+// Sources/VietnameseEngine/Commit/CorrectionIndex.swift
+package final class CorrectionIndex: Sendable {   // let properties only (ENG-R1203)
+    package init(english: WordSet, techAlways: WordSet, correction: CorrectionData)
+    package func mightHold(_ candidate: UnsafeBufferPointer<UInt8>) -> Bool    // trigram and edge-bigram prefilter
+    package static let empty: CorrectionIndex
+}
+// Sources/VietnameseEngine/Commit/TypoCorrection.swift
+package struct Correction: Sendable, Hashable { package let text: String; package let rule: CommitRule }
+package struct TypoCorrector: Sendable {
+    package init(resources: Resources, configuration: EngineConfiguration)
+    package func correction(for inputs: CommitInputs, decision: CommitDecision, token: ActiveToken, context: CommitContext) -> Correction?
+}
+// CommitContext gains `characterBefore: Character?` (the boundary right before the token, nil at the start of the history).
+// CommitPolicy gains `let corrector: TypoCorrector?` (nil when `typoCorrection` is off or `appContext == .code`).
+```
+
+## Budgets and the tests that pin them
+
+| Budget | Value | Pinned by |
+|---|---|---|
+| Per candidate commit (ENG-R1122) | p99 at most 50 µs, worst case at most 200 µs, release build, baseline machine | ENG-T55: `engine-benchmark` workload `correction` (Task 17), gate in `Scripts/benchmark.sh`; debug sanity `EngineBenchmarkTests.candidateLatency` |
+| ENG-T40 percentiles (ENG-R1233) | switch on and off differ by less than the benchmark threshold | `Scripts/benchmark.sh` runs the prose and fuzz workloads with `--typo-correction off` too (Task 17) |
+| New data resident (ENG-R1120) | at most 1 MB together; guard list at most 512 KB | `BundledResourcesTests.correctionDataStaysWithinItsResidentBudget` (Task 10) |
+| All resources (ENG-R1231) | at most 8 MB resident, loads in at most 50 ms | `BundledResourcesTests.staysWithinLoadTimeAndMemoryBudget` (existing, re-run in Task 10) |
+| Guard list false positives (ENG-R1120) | at most 0.5 % of 100,000 random letter strings | `CorrectionDataTests.guardListFalsePositivesStayUnder0_5Percent` (Task 10) |
+| Correction targets (ENG-R1124) | the table of 11A.4 | ENG-T51 to ENG-T53, ENG-T57 (Tasks 19 to 21) |
+| Coverage (QA-R2) | engine at least 95 %, AppCore modules at least 80 % | `scripts/coverage.sh` (Task 35) |
+
+## Q10 and Q11: one named place each
+
+- **Q10 (sentence case at a sentence start):** `CorrectionPolicy.sentenceStart = .corrected`. Flipping it to
+  `.neverCorrected` turns rows S23 and S24 into no-correction rows and the D30 copy into `từ viết hoa` /
+  `capitalised words` (two String Catalog values, Task 29). Nothing else reads the choice.
+- **Q11 (Return and Tab):** `CorrectionPolicy.commitKeys = .everyCommitKey`. Flipping it to
+  `.spaceAndPunctuationOnly` leaves Return and Tab out of the committing keys that let a correction through
+  (row S26 becomes a no-correction row). Nothing else reads the choice.
+- When the product owner answers, the decision record names the constant and the rows that change; the fixture
+  `typo-corrections.tsv` carries both expectations in its `note` column so the flip is a one-line edit plus a test run.
+
+---
+
+## Stage 0: API (`feat/v110-api`)
+
+### Task 1: Engine public types
+
+**Files:**
+- Modify: `Packages/VietnameseEngine/Sources/VietnameseEngine/PublicAPI.swift`
+- Create: `Packages/VietnameseEngine/Sources/VietnameseEngine/Commit/ApproximateWordSet.swift`
+- Modify: `Packages/VietnameseEngine/Sources/VietnameseEngine/Commit/CommitRules.swift` (`CommitDecision.rule` and `restores` cover `.corrected`)
+- Modify: `Packages/VietnameseEngine/Sources/VietnameseEngineTesting/Fuzz/InvariantChecker.swift` (`count`, `digest`: a `.corrected?` arm), `Packages/VietnameseEngine/Sources/site-demo-frames/FrameRecorder.swift` (`outcome` `"corrected"`, rule name as for `kept`), `Packages/VietnameseEngine/Tests/CollisionCorpusTests/Harness/CorpusScore.swift` (`"corrected"`)
+- Modify: `spec/01-engine.md` 12.2 (the two amendments named under "Interfaces between tracks")
+- Test: `Packages/VietnameseEngine/Tests/VietnameseEngineTests/Quality/PublicAPITests.swift`, `Tests/VietnameseEngineTests/Commit/ApproximateWordSetTests.swift`
+
+**Interfaces:** Produces every engine signature of "Interfaces between tracks" except `correctionIndex`, with
+`typoCorrection` read by nobody yet (E2 wires it).
+
+- [ ] **Step 1: Write the failing tests.**
+  - `PublicAPITests.defaults`: add `#expect(EngineConfiguration().typoCorrection == true)`; `conformances`: `requireSendable(CorrectionData.self)`, `requireSendable(ApproximateWordSet.self)`, `requireHashable(CommitDecision.self)` still passes with the new case.
+  - `PublicAPITests.resourcesCarryTheNeverCorrectListAndCorrectionData`: `Resources.empty.userNeverCorrect.contains("androdi") == false`, `Resources.empty.correction.keyboardNeighbours.isEmpty`.
+  - `ApproximateWordSetTests.neverForgetsAWordItWasBuiltFrom`: 10,000 random lowercase words, `mayContain` true for each.
+  - `ApproximateWordSetTests.falsePositivesStayUnderTheRate`: built from 100,000 random words with `bitsPerWord: 12`, 100,000 other random words give at most 0.5 % true.
+  - `ApproximateWordSetTests.bitsRoundTripAndAreDeterministic`: `ApproximateWordSet(bits: a.bits, hashCount: a.hashCount, wordCount: a.wordCount)` answers like `a`; two builds from the same words give equal `bits` (no process seed).
+  - `ApproximateWordSetTests.emptyAnswersNo`: `ApproximateWordSet.empty.mayContain("android") == false`.
+- [ ] **Step 2: Run them and see them fail.** `swift test --package-path Packages/VietnameseEngine --scratch-path .build-api --filter "PublicAPITests|ApproximateWordSetTests"`. Expected: compile errors for the missing members.
+- [ ] **Step 3: Implement** the types as written in "Interfaces between tracks". `bitCount` is `bits.count * 64`, a power of two; `init(exactly:)` picks the smallest power of two at or above `bitsPerWord * words.count` (at least 64 bits). `CommitDecision.rule` returns the rule for `.corrected`; `restores` stays false for it.
+- [ ] **Step 4: Fix every exhaustive switch the new cases break** (the files listed above) and run the whole engine test suite. Expected: green; `StaticSourceTests.coreIsClean` green (no Foundation in the new file).
+- [ ] **Step 5: Commit.** `feat(engine): add the typo correction API of spec 11A`
+
+### Task 2: Data loader signatures
+
+**Files:**
+- Modify: `Packages/VietnameseEngine/Sources/VietnameseEngineData/Bundled.swift`
+- Test: `Packages/VietnameseEngine/Tests/VietnameseEngineDataTests/BundledResourcesTests.swift`
+
+- [ ] **Step 1: Write the failing test** `BundledResourcesTests.passesTheNeverCorrectListThrough`: `Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]), userNeverCorrect: WordSet(["androdi"]))` has `userNeverCorrect.contains("androdi")` and `correction.keyboardNeighbours.isEmpty` (E1 fills it).
+- [ ] **Step 2: Run it, see it fail to compile.**
+- [ ] **Step 3: Add the `userNeverCorrect` parameter to `bundled` and `load(from:)`, passing `correction: .empty`.**
+- [ ] **Step 4: Run `swift test --filter VietnameseEngineDataTests`.** Expected: green.
+- [ ] **Step 5: Commit.** `feat(data): accept the never-correct list in Resources.bundled`
+
+### Task 3: Host model types (D30, the list, the variant bit)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/SettingsStore/UserSettings.swift`, `Packages/AppCore/Sources/SettingsStore/SettingFields.swift`
+- Create: `Packages/AppCore/Sources/SettingsStore/NeverCorrectEntry.swift`
+- Modify: `Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift` (`EngineVariant.restoreHotkey`, default true, `default` variant true)
+- Modify: `Packages/AppCore/Sources/InputHost/Integration/LearningTracker.swift` (`LearningProposal.init(_:app:)` becomes failable, `nil` for `.neverCorrect`; `note` returns nil for it; A1 adds the real routing)
+- Test: `Packages/AppCore/Tests/SettingsStoreTests/TypoCorrectionDefaultTests.swift` (new)
+
+**Interfaces:** Produces the host signatures of "Interfaces between tracks".
+
+- [ ] **Step 1: Write the failing tests** (`@Suite struct TypoCorrectionDefaultTests`):
+  - `theShippedDefaultIsOn_D30`: `DefaultSettings.v1.typoCorrection == true`; `UserSettings().resolved().typoCorrection == true`.
+  - `theKeyIsTypoCorrectionInTheTypingGroup`: `SettingFields.all.first { $0.key == "typoCorrection" }?.group == .typing`.
+  - `entriesAreLowercaseLettersOnly_PRDR81`: `NeverCorrectEntry.normalized(" Androdi ") == "androdi"`, nil for `"android1"`, `"well-known"`, `"việt"`, `""`, a 65-letter word.
+  - `explicitlySetKeysNameTheListNeverItsContent`: with `neverCorrect = ["androdi"]`, `explicitlySetKeys` contains `"neverCorrect"` and no element contains `"androdi"`.
+- [ ] **Step 2: Run them** (`swift test --package-path Packages/AppCore --scratch-path .build-api --filter TypoCorrectionDefaultTests`), see them fail to compile.
+- [ ] **Step 3: Implement**: the two `UserSettings` fields, the `EffectiveSettings` fields and `resolved(over:)`, the `DefaultSettings.v1` value, the `SettingFields` row, `SettingListKey.neverCorrect`, `explicitlySetKeys` (the list after `learnedWords`), `NeverCorrectEntry`, the `EngineVariant` field, the `LearningTracker` compile fix.
+- [ ] **Step 4: Run the AppCore suite and build the app** (`xcodegen generate && xcodebuild -project App.xcodeproj -scheme App -configuration Debug build CODE_SIGNING_ALLOWED=NO -derivedDataPath /tmp/v110-api-dd`). Expected: green; existing `ExplicitSettingKeysTests` updated if it enumerates keys.
+- [ ] **Step 5: Commit.** `feat(settings): add the D30 switch, the never-correct list and the restore-key variant bit`
+
+### Task 4: The 13.12 fixture and the switch-off re-check (early task)
+
+The rows were checked against the engine at `8926c798`, before rules L4a and L9's REG-38 change shipped in 1.0.1.
+This task turns the check into a permanent test and runs it against the current engine while the correction does
+not exist yet (the switch off is the 1.0 behaviour).
+
+**Files:**
+- Create: `Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/typo-corrections.tsv`
+- Create: `Packages/VietnameseEngine/Tests/VietnameseEngineDataTests/RealData/TypoCorrectionExampleTests.swift`
+
+**Interfaces:** Produces the fixture E2 completes (Task 19). Columns, tab-separated, with the escapes of
+`Scripts/extract-spec-examples.py` (`\n` Return, `\t` Tab, `\s` a leading or trailing space) and the markers `⌫`
+(Backspace) and `⎋` (restore toggle):
+`id  method  setup  keys  expected  expected_off  decision  signal  note`, where `setup` is `-`, `code`, `off`,
+`never:<word>`, `keep:<word>`, `macro:<trigger>=<expansion>` or `after:<id>`; `expected` is the field text with the
+switch on, `expected_off` the text the 1.0 rules leave (from the "What decided" column: `grẩm\s` for S02,
+`whcih\s` for S04, `chính\s` for S39, `message\s` for S74, `yess\s` for S83); `decision` is `corrected(unchanged)`,
+`corrected(extendedSpelling)`, `corrected(invalid)`, `kept(notEnglish)`, `restored(invalid)`, `-`; `signal` is
+`neverCorrect(androdi)` or `-`.
+
+- [ ] **Step 1: Write the fixture**, all 84 rows, every `expected` copied from the spec's text column.
+- [ ] **Step 2: Write the tests** (`@Suite("13.12 typo correction with the bundled data")`):
+  - `tableMatchesTheSpec`: parse the `| S` rows of section 13.12 from `spec/01-engine.md` (as `CollisionWorkedExampleTests.rows` does for 13.9.3) and assert the fixture has the same ids in the same order and the same `expected` text per id.
+  - `rowsWithTheSwitchOffMatchThe1_0Engine(row)` (arguments: every row whose `setup` is not `after:`): type `keys` with `EngineConfiguration(typoCorrection: false, appContext: setup == "code" ? .code : .general, inputMethod:)` and the named list entries, assert `driver.field.string == expected_off` and that no output carries `corrected` or `neverCorrect`.
+  - `rowsWithTheSwitchOn(row)`: written now, disabled with `.disabled("E2 Task 19 enables it")`.
+- [ ] **Step 3: Run `rowsWithTheSwitchOffMatchThe1_0Engine`.** Expected: green for every row. A red row means the 1.0 side of a spec row drifted since `8926c798`: fix the row's `expected_off` and report the row id (the spec table's "What decided" column is amended in the same commit).
+- [ ] **Step 4: Commit.** `test(engine): pin the 1.0 side of the 13.12 rows against the current engine`
+
+### Task 5: Hand-off
+
+- [ ] Run `python3 -I docs/architecture/tools/sync_contracts.py` (the included `UserSettings.swift`, `Snapshots.swift` and `Report.swift` change) and `scripts/lint.sh`; commit `docs(contracts): sync the 1.1.0 API`.
+- [ ] Review the stage (signatures only, every suite green on both packages, the app builds), then create `integration/1.1.0` at its head and the four track worktrees from it.
+
+---
+
+## Engine track E1: data (`feat/v110-engine-data`)
+
+### Task 6: SCOWL import of the guard list sources
+
+**Files:**
+- Modify: `Packages/VietnameseEngine/Sources/lexicon-builder/Importers.swift` (`Scowl`), `Sources/lexicon-builder/Inputs.swift` (`EnglishLexicon.load` keeps levels 10, 20, 35 and the `words` lists only)
+- Modify: `data/inputs/english/SOURCES.tsv` (no change expected; the archive is the same pin), `data/inputs/MANIFEST.sha256` (by `pin`)
+- Create (by `import scowl`): `data/inputs/english/scowl-2020.12.07/{english,american,british,british_z}-words.{40,50,55,60,70}` and `{...}-proper-names.{10,20,35,40,50,55,60,70}` (the components that exist in the archive; the importer lists what it extracted)
+- Test: `Packages/VietnameseEngine/Tests/VietnameseEngineDataTests/Builder/BuilderUnitTests.swift`
+
+- [ ] **Step 1: Write the failing tests**: `Scowl.guardListFiles` names every `words` level above 35 and every `proper-names` level up to 70 for the four categories and nothing else; `Scowl.componentFiles` (the lexicon) is unchanged (12 files); `EnglishLexicon.load` on a layout that also holds a `words.40` file returns the same dictionary as before (no word above level 35).
+- [ ] **Step 2: Run, see them fail.**
+- [ ] **Step 3: Implement** `Scowl.guardLevels = [40, 50, 55, 60, 70]`, `Scowl.properNameLevels = [10, 20, 35, 40, 50, 55, 60, 70]`, `guardListFiles`, and extend `importArchive` to extract them (a missing member is reported, not fatal).
+- [ ] **Step 4: Fetch and import**: `data/fetch.sh` (verifies the pinned SHA-256), then `lexicon-builder import scowl`, then check `git status data/` shows only the new files and `MANIFEST.sha256`. Record the file list and byte counts for the ADR of Task 9.
+- [ ] **Step 5: Run `swift test --filter VietnameseEngineDataTests` and `lexicon-builder check`.** Expected: `check` fails only because `manifest.json` records the inputs digest (fixed by the build of Task 8); every test green.
+- [ ] **Step 6: Commit.** `feat(data): pin the SCOWL words 40 to 70 and proper names for the guard list`
+
+### Task 7: Keyboard neighbours input and the shapes and keyings generators
+
+**Files:**
+- Create: `data/inputs/keyboard-neighbours.txt` (26 lines `letter<TAB>neighbours`, a header comment that states the origin: the three letter rows of the standard ANSI QWERTY layout, `qwertyuiop`, `asdfghjkl`, `zxcvbnm`, with a key's neighbours its row mates on each side plus the staggered keys of the rows above and below; reviewed with the lists)
+- Create: `Packages/VietnameseEngine/Sources/lexicon-builder/CorrectionInputs.swift` (`KeyboardNeighbours`, `UnmarkedShapes`, `VietnameseKeyings`)
+- Test: `Packages/VietnameseEngine/Tests/VietnameseEngineDataTests/Builder/CorrectionInputTests.swift` (new)
+
+**Interfaces:**
+- `enum KeyboardNeighbours { static func load(_ url: URL) throws -> [Character: String]; static func derived() -> [Character: String]; static func check(_ table: [Character: String]) throws }` where `derived()` computes the table from the three rows (a key at index `i` of a row neighbours indices `i - 1` and `i` of the row below and `i` and `i + 1` of the row above) and `check` fails on asymmetry, a missing letter or a difference from `derived()`.
+- `enum UnmarkedShapes { static func generate() -> Set<String> }` from `SyllableTables.extendedPairs` (package access, same package): each pair's letters with `ă â` to `a`, `ê` to `e`, `ô ơ` to `o`, `ư` to `u`, `đ` to `d`, tone ignored.
+- `enum VietnameseKeyings { static func generate() -> Set<String> }` from `SyllableTables.standardPairs` and each pair's allowed tones: onset keys (`đ` as `dd`), each marked vowel as its two keys (`aa aw ee oo ow uw`, `ươ` as `uwow` and as `uow`), the coda, and the tone key (`s f r x j`, none for level) last and, when a coda exists, right before it; plus the variant with a leading `ư` after a consonant other than `q` typed as `w`.
+
+- [ ] **Step 1: Write the failing tests**: `theNeighboursTableIsSymmetricCoversTheAlphabetAndEqualsTheDerivation` (`load` of the input equals `derived()`, and `derived()["q"] == "wa"`, `["s"] == "weadzx"`, `["m"] == "jkn"` in the spec's letter order sorted); `anAsymmetricTableFailsTheBuild`; `shapesHoldTheSpecExamples` (`truong`, `nguoi`, `khong`, `thuong`, `chuop`, `thach`, `gruop`, `glong` present; `android` absent; every shape matches `^[a-z]+$`); `keyingsHoldTheSpecExamples` (`phair`, `phis`, `chinhs`, `thieeus`, `hoanf`, `phis`, `chinhs` present; `gamar` absent because it is not the usual order; count printed).
+- [ ] **Step 2: Run, see them fail. Step 3: Implement. Step 4: Run, green.** Record the shape and keying counts (the spec quotes 27,367 keyings on 18/11/2026; a different count is reported, not hidden).
+- [ ] **Step 5: Commit.** `feat(data): keyboard neighbours input and the shape and keying generators`
+
+### Task 8: Build, format 3 and the loader
+
+**Files:**
+- Modify: `Packages/VietnameseEngine/Sources/lexicon-builder/Build.swift` (`resourceFormat = 3`; new outputs `guard-list.bloom`, `keyboard-neighbours.txt`, `unmarked-shapes.txt`, `vietnamese-keyings.txt`; manifest entries; stats `guardListWords`, `guardListBits`, `unmarkedShapes`, `vietnameseKeyings`)
+- Create: `Packages/VietnameseEngine/Sources/lexicon-builder/GuardList.swift` (`enum GuardList { static func words(_ layout: Layout, lexicon: Set<String>) throws -> Set<String>; static func filter(_ words: Set<String>) -> ApproximateWordSet; static func encode(_ filter: ApproximateWordSet) -> Data }`)
+- Modify: `Sources/VietnameseEngineData/ResourceDirectory.swift` (`ResourceFile` cases `guardList = "guard-list.bloom"`, `keyboardNeighbours`, `unmarkedShapes`, `vietnameseKeyings`; `supportedFormat = 3`; `guardList()`, `neighbours()` readers), `Sources/VietnameseEngineData/Bundled.swift` (`load` builds `CorrectionData`)
+- Modify: `data/licenses/bundled-notices.txt` (the SCOWL paragraph names the guard list and sizes 40 to 70 and the proper names), `data/NOTICES.md`, `THIRD_PARTY_NOTICES.md` (the SCOWL row), `data/README.md` (layout, commands, format 3), `Packages/VietnameseEngine/README.md` (generated data)
+- Test: `Tests/VietnameseEngineDataTests/LexiconBuilderTests.swift`, `MalformedResourceTests.swift`, `BundledResourcesTests.swift`
+
+**Interfaces:**
+- `guard-list.bloom`: 32-byte header (`KVGL` magic, `UInt32` version 1, `UInt32` hashCount, `UInt64` bitCount, `UInt64` wordCount, 4 bytes zero), then the bits as little-endian `UInt64`. The builder chooses the smallest power of two `bitCount` with an analytic false-positive rate at or under 0.4 % for `hashCount = 8` and fails when the file exceeds 512 KB.
+- Guard words: lowercase `a-z` entries of 5 letters or more (shorter words are never looked up, ENG-R1111) from every guard list file, minus the correction lexicon (the English lexicon and the letter-only tech-always entries).
+- `keyboard-neighbours.txt`: 26 lines `letter<TAB>neighbours`, sorted; `unmarked-shapes.txt` and `vietnamese-keyings.txt`: format-2 ASCII word lists (sorted, final newline).
+
+- [ ] **Step 1: Write the failing tests**: `buildTwiceGivesIdenticalBytesEqualToTheCommittedResources` (existing; now covers the four files), `checkPassesOnTheCommittedOutputs`, `theGuardListHoldsNoLexiconWordAndNothingShorterThanFive` (`GuardList.words` against `EnglishLexicon.load`), `theGuardFilterIsUnder512KB`, `MalformedResourceTests.correctionFileProblems` (a truncated `.bloom`, a bad magic, an asymmetric table, a 25-line table, a shape with a digit each throw the named `LoadError`), `BundledResourcesTests.loadsTheCorrectionData` (`correction.keyboardNeighbours.count == 26`, `unmarkedShapes.contains("truong")`, `vietnameseKeyings.contains("phair")`, `guardList.mayContain(<a proper name of the input, lowercased>)`, `!guardList.mayContain("android")`); the `keyboardNeighbours.isEmpty` assertion that Task 2 left in `passesTheNeverCorrectListThrough` is replaced by `count == 26`.
+- [ ] **Step 2: Run, see them fail. Step 3: Implement.** `Builder.build` writes the four files in manifest order after the collision lists and before `NOTICES.txt`; the loader validates every file through the manifest as today.
+- [ ] **Step 4: Build the resources** (`lexicon-builder build`, then `pin` is not needed; `check` must pass) and run `swift test --filter VietnameseEngineDataTests`. Expected: green, `english.txt` byte-identical to before (`git diff --stat` shows only the new files, `manifest.json`, `NOTICES.txt`).
+- [ ] **Step 5: Commit** inputs, manifest and resources together: `feat(data): build the guard list, neighbours, shapes and keyings (resource format 3)`
+
+### Task 9: Measurement scripts and the data decision record
+
+**Files:**
+- Create: `spec/reference-model/correction.py` (the model of ENG-R1110 to ENG-R1114 and ENG-R1125 over `english.txt`, the tech lists, the neighbours table, the shapes and the keyings generated by `ortho.py`; `python3 -I correction.py --self-check` checks the 13.12 rows it can decide), `spec/reference-model/correction_measure.py` (ENG-T52 injected typos with `--seed`, ENG-T53 rare words from `/usr/share/dict/words`, ENG-T57 one-key Vietnamese typos; prints the table of ENG-R1124)
+- Modify: `spec/reference-model/README.md` (the two scripts, what they measured on 18/11/2026 and how to re-run them)
+- Create: `docs/decisions/0203-correction-data.md`: the guard list sources and the licence check (the SCOWL `Copyright` file covers every size; the README's note on COCA-derived additions is recorded), the Bloom filter and its parameters, resource format 3, the origin of the QWERTY table (provenance N6), the shape and keying counts, the measurement scripts and the figures they give at this commit, and the two 12.2 amendments of the API stage.
+
+- [ ] **Step 1: Rebuild the model** from the design note's description and the spec; `--self-check` must pass on every 13.12 row that does not need the engine's composition (the rows whose `expected_off` is the typed word).
+- [ ] **Step 2: Run `correction_measure.py --seed 18112026`** and compare with the design note's table (85.7, 95.2, 86.7, 57.5, 75.8 %; 0, 0, 0.05, 1.32, 1.20 %; 3.42 % rare words without the guard list; 1 of 3,371 and 0 of 579 Vietnamese typos). Differences are recorded in the ADR with their cause (the model is a cross-check; ENG-T52, ENG-T53 and ENG-T57 on the engine are the gates).
+- [ ] **Step 3: Run `python3 -I scripts/tests/test_licences_and_wording.py`** (SPDX first line, README needles). Expected: green.
+- [ ] **Step 4: Commit.** `docs(data): record the correction data sources, the model scripts and the measurements`
+
+### Task 10: Resident budget gates
+
+**Files:**
+- Create: `Packages/VietnameseEngine/Tests/VietnameseEngineDataTests/CorrectionDataTests.swift`
+- Modify: `Tests/VietnameseEngineDataTests/BundledResourcesTests.swift`
+
+- [ ] **Step 1: Write the tests** (ENG-T56 data half):
+  - `guardListFalsePositivesStayUnder0_5Percent`: 100,000 random lowercase strings of 5 to 12 letters (seeded generator), at most 500 `mayContain` true.
+  - `theGuardFilterNeverForgetsAnInputWord`: every word of `GuardList.words(layout, lexicon:)` answers true (`@testable import lexicon_builder`).
+  - `shapesAndKeyingsEqualAnIndependentComputation`: shapes from `SpecFixtures.allStandardSyllables` and the Tier B pairs spelled by `SyllableOracle.spell` with the marks stripped; keyings from `ProseCorpusCheck.keys(for:method:.telex, order:)` for `.o1` and `.o2` over every Tier A toned syllable plus the ENG-T03 standalone-`w` variant; both equal the bundled sets exactly (differences printed).
+  - `correctionDataStaysWithinItsResidentBudget`: resident memory of loading the resources with and without the four files differs by at most 1 MB and the guard filter's `bits` by at most 512 KB (the measurement style of `staysWithinLoadTimeAndMemoryBudget`). If it fails, the named fallback is a packed `[UInt64]` sorted array for the keyings (5 bits per letter) before a parser; record the choice in ADR 0203.
+- [ ] **Step 2: Run them.** Expected: green; the printed counts and the resident delta go into the ADR and E1's report (for the TRACEABILITY rows ENG-R1120 and ENG-T56 that E2 owns).
+- [ ] **Step 3: Commit.** `test(data): gate the correction data on size, false positives and the independent computation`
+
+---
+
+## Engine track E2: logic (`feat/v110-engine-logic`)
+
+E2a (Tasks 11 to 18) uses fixture resources only and runs in parallel with E1. E2b (Tasks 19 to 22) needs the
+bundled data of E1 merged into `integration/1.1.0`.
+
+### Task 11: Policy constants and the edit model
+
+**Files:**
+- Create: `Sources/VietnameseEngine/Commit/CorrectionPolicy.swift`, `Sources/VietnameseEngine/Commit/EditModel.swift`
+- Test: `Tests/VietnameseEngineTests/Commit/EditModelTests.swift`
+
+- [ ] **Step 1: Write the failing tests** (`@Suite struct EditModelTests`, neighbours from the spec table written as a literal in the test):
+  - `transpositionsDeletionsInsertionsAndNeighbourSubstitutions_ENGR1113`: edits of `androdi` include `android`; of `untill` include `until`; of `gramar` include `grammar` once only (the set of distinct edits); of `servet` include `server`; of `grammer` never include `grammar` (`e` and `a` are not neighbours).
+  - `positionRulesProtectFirstAndLastLetters`: with `positionRules: true`, edits of `kbang` never include `bang`, of `messi` never `mess`, of `pajama` never `pajamas`, of `leecher` never `leeched`; of `aabout` include `about`, of `helpp` include `help`, of `committ` include `commit`.
+  - `withoutPositionRulesEveryEditIsEnumerated_ENGR1125`: with `positionRules: false`, edits of `pahir` include `phair`, of `pehis` include `phis`, of `hoand` include `hoanf`, of `htach` include `thach`.
+  - `enumerationStopsWhenTheBodyReturnsFalse` and `enumerationAllocatesNothingForWordsUpTo24Letters` (the callback receives a buffer into one preallocated scratch array).
+- [ ] **Step 2: Run, see them fail. Step 3: Implement** `CorrectionPolicy` (the constants of "Interfaces between tracks") and `EditModel.forEachEdit` over `[UInt8]` with one scratch buffer of 32 bytes.
+- [ ] **Step 4: Run, green. Step 5: Commit.** `feat(engine): edit model and policy constants of the typo correction`
+
+### Task 12: The correction index
+
+**Files:**
+- Create: `Sources/VietnameseEngine/Commit/CorrectionIndex.swift`
+- Modify: `Sources/VietnameseEngine/PublicAPI.swift` (`Resources.init` builds `correctionIndex`; `Resources.empty` uses `.empty`)
+- Test: `Tests/VietnameseEngineTests/Commit/CorrectionIndexTests.swift`
+
+- [ ] **Step 1: Write the failing tests**: `aCandidateWithAnUnseenTrigramIsRejected` (index over `["android", "about"]`: `mightHold("andxoid")` false, `mightHold("android")` true, `mightHold("about")` true); `edgeBigramsAreChecked` (`mightHold("ndroid")` false: `^nd` never starts a word of the set); `theIndexIsSharedByCopiesOfResources` (`ObjectIdentifier(a.correctionIndex) == ObjectIdentifier(b.correctionIndex)` for `var b = a; b.userKeepRaw = WordSet(["x"])`); `emptyResourcesHaveAnEmptyIndex`.
+- [ ] **Step 2: Run, see them fail. Step 3: Implement**: a 17,576-bit trigram table and two 676-bit edge tables (`^ab`, `yz$`) as `[UInt64]`, built once from `english`, the letter-only `techAlways` entries of at least four letters, `correction.unmarkedShapes` and `correction.vietnameseKeyings`. A false "yes" only costs lookups; a stale index (a host that mutates `english` after init) can only miss corrections, which the doc comment says.
+- [ ] **Step 4: Run, green; `StaticSourceTests.coreIsClean` green. Step 5: Commit.** `feat(engine): trigram prefilter shared by every engine of a resources value`
+
+### Task 13: Candidate rules (ENG-R1110 to ENG-R1112)
+
+**Files:**
+- Create: `Sources/VietnameseEngine/Commit/TypoCorrection.swift`
+- Modify: `Sources/VietnameseEngine/Commit/CommitRules.swift` (`CommitContext.characterBefore`, `CommitPolicy.corrector`), `Sources/VietnameseEngine/Engine/Reducer+Commit.swift` (passes `characterBefore` from the history's last entry)
+- Create: `Sources/VietnameseEngineTesting/Fixtures/CorrectionFixtures.swift` (`SpecFixtures.correctionResources(...)`: the 13.9 lexicon plus `android grammar which hello server about help their tier thief weird wired pair hand penis chins hatch group truing chop still bank mess pajamas leeched leecher example local known wren`, guard `["biden", "kbang"]`, shapes `["truong", "chuop", "thach", "gruop", "glong"]`, keyings `["phair", "phis", "hoanf", "chinhs"]`, the spec neighbours table)
+- Test: `Tests/VietnameseEngineTests/Commit/TypoCorrectionCandidateTests.swift`, `TypoCorrectionContextTests.swift`
+
+- [ ] **Step 1: Write the failing tests** (each types keys with `EngineDriver` on `correctionResources`, commits with a space unless stated, asserts the field and the decision):
+  - Candidates (ENG-R1110): `aTokenShownAsTypedIsACandidate` (`androdi` gives `android `, `.corrected(.unchanged)`); `aRestoredTokenIsACandidate` (`whcih`: `.corrected(.invalid)`); `theClusterCaseNeedsATransformedDisplayKeptByL6` (`gramar` gives `grammar `, `.corrected(.extendedSpelling)`; `glong` stays; `Gramar` after `ddi` stays `Grẩm`); `aUserToggleOrListEntryIsNeverACandidate` (`androdi` toggled, `keep:androdi`, `never:androdi`); `aWordOfAnyListIsNeverACandidate` (`ability`, `oauth`, `gradle`, a collision-supplement word); `aVietnameseWordOrShapeIsNeverACandidate` (`chinhs` gives `chính `, `truong`, `chuop`, `gruop` stay).
+  - Letters and case (ENG-R1111): `fourLettersAreTooFew` (`wiht`), `twentyFiveLettersAreTooMany`, `aDigitOrBracketLetterExcludesTheToken` (`androd1`, a VNI `6`), `sentenceCaseOnlyAtASentenceStart` (`Androdi` gives `Android `; `xong. Recieve` gives `Receive`; `ddi Androdi` stays; `ANDRODI`, `AndroDi` stay), `aChatElongationIsNotATypo` (`stilll`).
+  - Context (ENG-R1112): `neverInTheCodeContext`; `onlyWhitespaceReturnTabAndTheAsciiClosersCommitACorrection` (`androdi.` gives `android.`, `(androdi)`, `androdi\n` gives `android\n`; `androdi…`, `weren't`, `androdi/` stay); `nothingGluedBeforeTheWord` (`www.exapmle.com`, `kal@exapmle.com`, `/opt/locla`, `#androdi`, `well-knwon` stay; `- androdi` and `# androdi` at a line start and after a Return are corrected); `afterAResetTheWordIsACandidate` (type `#`, send `.reset(.pointerClicked)`, type `androdi `: corrected; Review Focus 2).
+- [ ] **Step 2: Run, see them fail. Step 3: Implement** `TypoCorrector.correction(for:decision:token:context:)` up to and including the context checks (the edit search comes in Task 14; return nil for now), `CommitContext.characterBefore`, `CommitPolicy.corrector` (nil with the switch off or in `.code`), and the call site in `Reducer+Commit.commitToken` right after the RV5 block: a non-nil correction replaces `result.text`, `result.decision` (`.corrected(rule)` with `rule` the 8.1 rule's `CommitRule`), `result.action` (`DisplayEdit.edit(from: token.display, to: text)`, `thenPassThrough: true`), `result.language = .english`, clears `learning`, `strongSignal` and `collision.listWord`, and `mayRevise` is forced false for it (ENG-R1116).
+- [ ] **Step 4: Run; the candidate tests that expect a correction stay red until Task 14, the exclusion tests are green. Commit.** `feat(engine): candidate rules of the typo correction (ENG-R1110 to ENG-R1112)`
+
+### Task 14: Edit search, the one-word rule and Vietnamese within one edit
+
+**Files:**
+- Modify: `Sources/VietnameseEngine/Commit/TypoCorrection.swift`, `Sources/VietnameseEngine/Commit/TokenLanguage.swift` (a corrected token is `.english`)
+- Test: `Tests/VietnameseEngineTests/Commit/TypoCorrectionCommitTests.swift`
+
+- [ ] **Step 1: Write the failing tests**:
+  - `exactlyOneWordOfAtLeastFourLettersFits_ENGR1114`: `androdi`, `helpp` (a four-letter fit is allowed), `gramar` (one word reached twice counts once) corrected; `thier`, `wierd`, `pleasee`, `grammer`, `eah` stay.
+  - `theCorrectionLexiconIsTheLexiconAndTheLetterOnlyTechAlwaysEntries`: a tech-always entry with a digit is never a fit; a code-only word is never a fit (`gradle` protects itself but `grade` is not reached through it).
+  - `vietnameseWithinOneEditBlocksTheCorrection_ENGR1125`: `ddi pahir` gives `đi pahir `, `pehis`, `hoand`, `chihns`, `htach` stay; `gramar` is still corrected (`gamar` is not a usual-order keying).
+  - `theEditIsOneTextEditWithThePassThrough_ENGR1115`: the output of the committing space is `.edit(TextEdit(deleteCount: 7, deleteUTF16Count: 7, insert: "android"), thenPassThrough: true)` for `androdi`; for `gramar` the deletion covers `grẩm` (4 graphemes).
+  - `theCaseOfTheTypedWordIsKept`: `Androdi` gives `Android`.
+  - `aCorrectedTokenCountsAsEnglishForTheRun_ENGR1116`: `androdi as ` gives `android as ` (`as` restored by the English run); `state.history` newest token has `language == .english`.
+  - `aCommitNeverBothRevisesAndCorrects_ENGR1116`: `cais nayf tricky as androdi ` revises nothing and corrects `androdi`.
+  - `theDecisionIsTheSameAtEveryCommittingKey_Q11`: `androdi\n` and `androdi\t` give the correction with `CorrectionPolicy.commitKeys == .everyCommitKey` (the test reads the constant and expects the other outcome under `.spaceAndPunctuationOnly`).
+- [ ] **Step 2: Run, see them fail. Step 3: Implement** the search: lowercase the raw keys into the scratch buffer; `forEachEdit(positionRules: false)` first for ENG-R1125 (stop at the first shape or keying hit, after the prefilter), then `forEachEdit(positionRules: true)` for the lexicon fits (stop at the second distinct fit); a fit is a word of `english` or a letter-only `techAlways` entry of at least `minimumFitLetters`. Distinctness: keep the first fit's bytes and compare the second.
+- [ ] **Step 4: Run every engine suite** (`swift test --package-path Packages/VietnameseEngine --scratch-path .build-e2`). Expected: green, including the 1.0 corpora and worked examples (they run with fixture resources whose correction data is empty, so no candidate ever has a fit). **Commit.** `feat(engine): the edit search, the one-word rule and ENG-R1125`
+
+### Task 15: History, re-opening and the undo
+
+**Files:**
+- Modify: `Sources/VietnameseEngine/Engine/ActiveToken.swift` (`MacroTokenKeys` becomes `LiteralTokenKeys` with `kind: LiteralKind` where `enum LiteralKind { case macro, corrected(CommitRule) }`; `init(correctedSpan: [UInt8], correction: String, rule: CommitRule)`; `correctedRule: CommitRule?`; `isMacro` is `kind == .macro`), `Sources/VietnameseEngine/Engine/History.swift` (`CommittedToken.reopened` returns the literal corrected token), `Sources/VietnameseEngine/Engine/Reducer.swift` (`EngineState.previousEventCorrected`; the toggle dispatch), `Sources/VietnameseEngine/Engine/Reducer+Commit.swift` (records the corrected token; `commitResult` for a re-opened corrected token: `.corrected(rule)` unchanged when the user did not restore it, L1 otherwise), `Sources/VietnameseEngine/Engine/Reducer+Revision.swift` (`undoCorrection(_:)` next to `undoRevision`)
+- Test: `Tests/VietnameseEngineTests/Commit/TypoCorrectionUndoTests.swift`
+
+- [ ] **Step 1: Write the failing tests**:
+  - `theToggleRightAfterACorrectionBringsTheKeysBackAndTeaches_ENGR1117` (S68): `androdi ⎋` gives `androdi `; the toggle output is `.edit(TextEdit(deleteCount: 8, deleteUTF16Count: 8, insert: "androdi "), thenPassThrough: false)` with `learning == .neverCorrect(raw: "androdi")`; the history token now shows the raw keys as the user's choice.
+  - `aSecondTogglePassesThrough_ENGR702` (S69).
+  - `undoAfterACloserKeepsTheCloser`: `androdi.⎋` gives `androdi.` (Review Focus 1).
+  - `afterReturnTheToggleCannotUndo`: `androdi\n⎋`: the toggle passes through (ENG-R829).
+  - `backspaceReopensTheCorrectionAsALiteralToken` (S70): `androdi ⌫⌫` gives `androi`, `state.isLiteral`.
+  - `theToggleAfterReopeningBringsTheKeysBackWithTheSignal` (S71): `androdi ⌫⎋` gives `androdi` and `.neverCorrect(raw: "androdi")`.
+  - `aReopenedCorrectedTokenIsNeverCorrectedAgain` (S73): `androdi ⌫ ` gives `android ` with `.corrected(.unchanged)` reported again; after `⌫⎋ ` the decision is `.kept(.userChoice)`.
+  - `keysTypedIntoAReopenedCorrectionAreAppendedAsTyped`: `androdi ⌫s ` gives `androids ` and the token stays literal.
+  - `withTheSwitchOffNothingChanges_ENGR1119` (S66): the toggle after `androdi ` behaves as ENG-R703 (pass-through), no `corrected`, no `neverCorrect`.
+  - `theUserListsAndTheNeverCorrectListStopTheCorrection` (S45, S46, S72 with `userNeverCorrect: WordSet(["androdi"])`).
+- [ ] **Step 2: Run, see them fail. Step 3: Implement** as named in Files. The undo edit mirrors `undoRevision`: the newest entry is the boundary `b`, the token before it the corrected token `t`; the edit is `DisplayEdit.edit(from: t.committedText + b, to: rawKeys + b)`, the history token takes `committedText = rawKeys`, `token.choosing(.restored)`, `decision = .restored(.userChoice)`, its language as `TokenLanguage.of` gives for that decision, the language window is replaced at distance 0, and the output carries `.neverCorrect(raw: lowercased raw keys)` and no `decision`. The toggle on a re-opened corrected literal restores through the `LiteralTokenKeys` path and the reducer attaches the same signal.
+- [ ] **Step 4: Run every engine suite; the macro suites (`MacroTests`, `macros.tsv`) must be untouched by the rename. Commit.** `feat(engine): undo and re-opening of a corrected token (ENG-R1117)`
+
+### Task 16: Fuzz invariants (ENG-T54)
+
+**Files:**
+- Modify: `Sources/VietnameseEngineTesting/Fuzz/InvariantChecker.swift`, `Sources/VietnameseEngineTesting/Fuzz/FuzzCampaign.swift` (`FuzzCombination.typoCorrection`, a random never-correct list, `correctionResources` or the bundled data when present), `Tests/VietnameseEngineTests/Quality/FuzzTests.swift` (the combinations double: switch on and off)
+- Test: `Tests/VietnameseEngineTests/Quality/FuzzTests.swift`
+
+- [ ] **Step 1: Write the new invariants as `FuzzViolation` kinds and the assertions of ENG-T54**: with the switch on: ENG-T32 extended (a toggle right after a corrected commit, or right after Backspace re-opened a corrected token, gives exactly the raw keys typed), ENG-T35 extended (in VNI every inserted string that is neither the raw keys nor a composition of typed letters is a word of the correction lexicon), no correction in `.code`, none of a token on any list, none of a typed word within one edit of a keying or a shape (the checker recomputes with `EditModel`), none that deletes more than the active display, never two edits in one event, never `revision != nil` together with `corrected`, every `neverCorrect` names the lowercased raw keys of its token; with the switch off: no output carries `corrected` or `neverCorrect` and every toggle after a commit answers as ENG-R703 and ENG-R829 say.
+- [ ] **Step 2: Run `FuzzTests.randomStreams` for every combination (the per-PR 1,000,000 events).** Expected: zero violations; `determinism` green.
+- [ ] **Step 3: Commit.** `test(engine): fuzz invariants of the typo correction (ENG-T54)`
+
+### Task 17: Benchmark (ENG-T55)
+
+**Files:**
+- Modify: `Benchmarks/EngineBenchmark/Workloads.swift` (`Workload.correctionCandidates(resources:count: 10_000, seed:)`: typos of lexicon words of 5 to 24 letters, one random edit each, typed after a space), `Benchmarks/EngineBenchmark/EngineBenchmark.swift` (`--typo-correction on|off`; result keys `correction.p99`, `correction.max`, `correction.events`; budget keys `correctionP99: 50000`, `correctionMax: 200000`), `Benchmarks/EngineBenchmark/Measurement.swift`, `Scripts/benchmark.sh` (runs the prose and fuzz workloads with the switch on and off and fails when a percentile differs by more than the threshold it already applies), `Tests/VietnameseEngineTests/Composition/EngineBenchmarkTests.swift` (`candidateLatency`: prints p50, p99 and max over 10,000 candidates in debug; not a gate)
+- Test: the benchmark run itself and `EngineBenchmarkTests`
+
+- [ ] **Step 1: Write `candidateLatency` and the workload**, run in debug to see numbers.
+- [ ] **Step 2: Run the release benchmark** (`Scripts/benchmark.sh`) and record the figures. Expected: `correction.p99` at most 50 µs, `correction.max` at most 200 µs, the ENG-T40 percentiles within the threshold between on and off. If p99 fails, the named next step is a packed trie of the correction lexicon for insertions (prefix-pruned), built in `CorrectionIndex`.
+- [ ] **Step 3: Commit.** `perf(engine): benchmark the typo correction candidates (ENG-T55)`
+
+### Task 18: E2a traceability and changelog rows
+
+- [ ] Replace the "planned" rows ENG-R1110 to ENG-R1119, ENG-R1121, ENG-R1122, ENG-R1125, ENG-T54 and ENG-T55 of `Packages/VietnameseEngine/TRACEABILITY.md` with the real `Suite.function` names of Tasks 11 to 17; add the engine CHANGELOG entries under Unreleased (Added: `EngineConfiguration.typoCorrection`, `CommitDecision.corrected`, `LearningSignal.neverCorrect`, `CorrectionData`, `ApproximateWordSet`, `Resources.userNeverCorrect`; source-breaking additions, the next tag stays the minor bump the file already announces). Run `python3 -I Packages/VietnameseEngine/Scripts/check-traceability.py`. Commit `docs(engine): traceability and changelog of the typo correction logic`.
+
+### Task 19: Worked examples with the bundled data (ENG-T50), after E1
+
+**Files:**
+- Modify: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionExampleTests.swift` (enable `rowsWithTheSwitchOn`), `Tests/VietnameseEngineTests/Corpus/typo-corrections.tsv` (`decision` and `signal` columns completed)
+
+- [ ] **Step 1: Enable `rowsWithTheSwitchOn(row)`**: for every row, apply `setup`, type `keys`, assert `driver.field.string == expected`, the last commit's decision equals `decision`, the outputs' `learning` equals `signal`, and for the undo rows (S68 to S73) the toggle's edit as Task 15 specifies. `after:S68` rows run S68 first and add the signal's word to `userNeverCorrect` for the second part.
+- [ ] **Step 2: Run.** Expected: 84 green rows. A red row is either a bug (fix the engine) or a spec row the bundled data contradicts (report it with the engine's text; never edit `expected` to match).
+- [ ] **Step 3: Commit.** `test(engine): the 84 rows of 13.12 pass with the bundled data (ENG-T50)`
+
+### Task 20: Zero-change corpora (ENG-T51) and the Vietnamese typos (ENG-T57)
+
+**Files:**
+- Create: `Sources/VietnameseEngineTesting/Corpora/CorrectionTargets.swift` (`CorrectionCheck.run(words:resources:configuration:) -> [ChangedWord]` counting `corrected` outputs; `TypoGenerator(seed:)` with the five kinds; `VietnameseTypoCheck` for ENG-T57)
+- Create: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionCorpusGateTests.swift`
+
+- [ ] **Step 1: Write the tests** (each prints every corrected token, `RealData.listing`):
+  - `proseCorpusIsNeverCorrected(method, order, style)` (the `ProseCorpusGateTests.cases`): zero `corrected`.
+  - `unmarkedProseIsNeverCorrected`: every token of the prose corpus with its marks removed, typed as plain letters after a space and at a line start: zero.
+  - `generatedAndW11CorporaAreNeverCorrected`: the generated corpus (both methods, both styles) and the W11 corpus with its three sets: zero.
+  - `everyWordListIsNeverCorrected`: the English lexicon, tech-always, code-only and the guard list's input words, each in Telex and VNI, lowercase after `vieejt ` and in sentence case at the start of the input: zero.
+  - `vietnameseTyposAreAlmostNeverCorrectedToEnglish_ENGT57`: every distinct word of the prose corpus typed in Telex with the tone key last and, as a second run, as plain letters, one random edit of each kind (seed `18112026`), after `vieejt `; among the typos of 5 or more keys whose source is Tier A or Tier B, at most 0.1 % corrected; the list printed; typos of English words of the corpus not counted.
+- [ ] **Step 2: Run.** Expected: green; the ENG-T57 figures go into the TRACEABILITY row with the seed.
+- [ ] **Step 3: Commit.** `test(engine): zero-change corpora and Vietnamese typo gate (ENG-T51, ENG-T57)`
+
+### Task 21: Injected typos (ENG-T52) and rare words (ENG-T53)
+
+**Files:**
+- Create: `Tests/VietnameseEngineDataTests/RealData/TypoCorrectionTargetTests.swift`
+
+- [ ] **Step 1: Write the tests**:
+  - `injectedTyposAreCorrectedToTheirSource_ENGT52(kind)` (arguments: transposition, deletion, insertion, doubling, neighbouring key): 6,000 lexicon words of at least five letters, seed `18112026`, one edit each, typed after a space; corrected to the source at least 80, 50, 70, 90 and 80 %; corrected to another word at most 1.5 %; the counts printed.
+  - `rareWordsAreRarelyCorrected_ENGT53`: every word of `/usr/share/dict/words` with five or more ASCII letters outside the lexicon, the tech lists and the guard filter, typed lowercase after a space: at most 3.5 % corrected, the list printed; skipped when the file is absent.
+- [ ] **Step 2: Run.** Expected: green. Record the figures.
+- [ ] **Step 3: Commit.** `test(engine): injected typos and rare words gates (ENG-T52, ENG-T53)`
+
+### Task 22: E2b traceability
+
+- [ ] Fill the remaining rows of section 11A of `TRACEABILITY.md` (ENG-R1120, ENG-R1123, ENG-R1124, ENG-T50 to ENG-T53, ENG-T56, ENG-T57) with the real suite names, the measured figures and seeds (E1's report supplies the data rows), and amend the ENG-R122 row (the typo correction now ships). Run `check-traceability.py` and `TraceabilityTests`. Commit `docs(engine): traceability of the typo correction gates and data`.
+
+---
+
+## App track A1: store and host (`feat/v110-app-host`)
+
+### Task 23: The never-correct list in the store (PRD-R81 storage half)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/SettingsStore/DocumentCodecs.swift` (`englishRestoreLists.neverCorrect`, lowercased, entries that fail `NeverCorrectEntry.normalized` dropped), `ExportImport.swift` (`changedKeys` names `neverCorrect`), `SettingsStore+Transfer.swift` (`.typing` reset and the full reset clear it), `Migrations.swift` (doc comment: version 1 stays; an older file reads as an empty list)
+- Create: `Packages/AppCore/Sources/SettingsStore/NeverCorrectList.swift` (`extension UserSettings { public mutating func neverCorrect(_ raw: String) -> Bool  // normalises, inserts, false when refused }`)
+- Test: `Packages/AppCore/Tests/SettingsStoreTests/NeverCorrectListTests.swift` (new), `SettingsTransferTests.swift`, `MigrationAndJSONTests.swift`
+
+- [ ] **Step 1: Write the failing tests**: `codecRoundTripsTheListUnderEnglishRestoreLists`; `invalidEntriesAreDroppedOnLoad`; `aFileWithoutTheListLoadsEmptyAndWithD30On` (Review Focus 3); `unknownSiblingKeysSurviveARewrite_PLTR1002`; `typingResetAndFullResetClearTheList_PRDR26`; `exportThenImportCarriesTheListWithoutAChoice_PRDR72` (no new checkbox; `changedKeys` lists `neverCorrect` only when it differs); `a1_0ExportImportsWithTheDefaults` (an export fixture without the two keys: D30 resolves on, nothing listed as changed for them); `neverCorrectNormalisesAndRefuses`.
+- [ ] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter SettingsStoreTests`, green. Step 5: Commit.** `feat(settings): store, reset, export and import the never-correct list`
+
+### Task 24: The engine switch and the variant (ENG-R1119, PRD-R80 host half)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/InputHost/Engine/EngineSettingsMapping.swift` (`catalogSize = 32`, bit 4 `restoreHotkey`; `configuration(for:variant:)` passes `typoCorrection: settings.typoCorrection && settings.englishRestore && variant.englishRestore && variant.restoreHotkey && settings.restoreHotkey != nil`), `Engine/EngineBridge.swift` (`resources(wordLists:neverCorrect:macros:bundledLoader:)` sets `userNeverCorrect`), `Focus/HostDecisionMapping.swift` (`restoreHotkey: decision.features.restoreHotkey`), `Integration/TapSettingsPublisher.swift` (`EngineInputs.typoCorrection`, `EngineInputs.neverCorrect`)
+- Test: `Packages/AppCore/Tests/InputHostTests/Pipeline/EngineBridgeTests.swift`, `Tests/InputHostTests/Integration/TapSettingsPublisherTests.swift` (new if absent), `Tests/InputHostTests/Pipeline/LookaheadRevisionContinuationTests.swift` (unchanged expectations, re-run)
+
+- [ ] **Step 1: Write the failing tests**: `EngineBridgeConfigurationTests.typoCorrectionIsD30AndD4AndTheRuleSwitchesAndTheRestoreKey_ENGR1119` (arguments: the 2^5 combinations of D30, D4, `variant.englishRestore`, `variant.restoreHotkey`, D8 set; expected the conjunction); `EngineCatalogTests.catalogHoldsOneEnginePerVariant` (32), `variantIndexRoundTrips` (bit 4), `thirtyTwoEnginesShareTheCorrectionIndex` (every engine's `resources.correctionIndex` is the same object; Review Focus 5), `theNeverCorrectListReachesEveryVariant`; `HostDecisionMappingTests.aRuleWithTheRestoreKeyOffGivesAVariantWithoutIt` (a rule fixture with `features.restoreHotkey: false`, the Spotlight shape); `TapSettingsPublisherTests.aChangedNeverCorrectListOrD30RebuildsTheCatalogWithANewRevision` and `aHotkeyChangeStillKeepsTheRevision`.
+- [ ] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter InputHostTests`, green (the pipeline hot-path tests included). Step 5: Commit.** `feat(host): pass the typo correction switch per variant and the never-correct list to the engines`
+
+### Task 25: Escape teaching and the undo in the pipeline (ENG-R1117, ENG-R1118 host halves)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/InputHost/Pipeline/KeyPipeline+Keys.swift` (`restoreLastWord` forwards `output.learning` to main like `compose` does), `Integration/InputHostController+Notices.swift` (`noteLearning`: a `.neverCorrect(raw)` goes to `settingsStore.updateSettings { _ = $0.neverCorrect(raw) }` at once, with or without an app, and never to the tracker), `Pipeline/HostCounters.swift` (`corrections`, `correctionUndos`), `Integration/LearningTracker.swift` (doc comment)
+- Modify: `Packages/AppCore/Sources/TestSupport/Pipeline/ScriptedEngine.swift` (a token whose raw keys end with `yy` commits as the raw keys without the last `y`, decision `.corrected(.unchanged)`, one edit then the boundary; the toggle right after replaces the correction and the boundary with the raw keys and the boundary and carries `.neverCorrect(raw:)`; a second toggle passes through)
+- Test: `Packages/AppCore/Tests/InputHostTests/Pipeline/KeyPipelineCorrectionTests.swift` (new), `Tests/InputHostTests/Integration/PerAppLearningTests.swift`, `Tests/InputHostTests/Pipeline/PipelinePropertyTests.swift` (the scripted rule joins the random streams)
+
+- [ ] **Step 1: Write the failing tests**: `aCorrectedCommitIsOneEditJobBeforeTheBoundaryKey_ENGR1115` (kind `.compose`, the boundary replayed after); `theUndoRightAfterIsARestoreWiderThanTheActiveDisplayAndCarriesTheSignal_ENGR1117` (kind `.restore`, `deleteCount == corrected.count + 1`, `keyState.lastCommit == nil`, the key consumed); `theUndoAfterACloserDeletesTheCloserToo` (Review Focus 1); `aNeverCorrectSignalReachesTheStoreAtOnceFromAnyApp_ENGR1118` (HostRig: one signal with `bundle: nil` lands in `user.neverCorrect`; `LearningTracker` pending count unchanged); `countersCountCorrectionsAndUndosNeverWords`; `PipelinePropertyTests` conservation and ordering still hold with the scripted rule in the streams.
+- [ ] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter InputHostTests`, green; `PipelineHotPathTests` allocation counts unchanged. Step 5: Commit.** `feat(host): learn the never-correct list from the restore key at once`
+
+### Task 26: Diagnostics (PLT-R1202, PRD-R45)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/Diagnostics/Report.swift` (`Settings.typoCorrection: Bool = true`; `neverCorrectEntries: Int?`), `ReportLabels.swift`, `ReportLabelsCatalog.swift` (vi `Tự sửa từ gõ nhầm`, en `Fix mistyped words`; the count label), `IssueBlockFields.swift` (`settings.typoCorrection`, `settings.neverCorrectEntries`), `PlainTextReport.swift`, `ReportJSON.swift`, `Packages/AppCore/Sources/ShellCore/ReportAssembly.swift`
+- Test: `Packages/AppCore/Tests/DiagnosticsTests/**` (the issue block round trip picks up the new keys; add `ReportSettingsTests.d30AndTheNeverCorrectCountAppearWithoutWords`: a report built with `neverCorrect = ["androdi"]` contains `settings.neverCorrectEntries 1` and never `androdi`)
+
+- [ ] **Step 1: Write the test, run, fail. Step 2: Implement. Step 3: Run `swift test --filter DiagnosticsTests`, green (the canary test too). Step 4: Commit.** `feat(diagnostics): report D30 and the never-correct list count`
+
+### Task 27: Host decision record and traceability
+
+- [ ] Write `docs/decisions/0323-never-correct-list.md` (storage next to the keep lists under `englishRestoreLists.neverCorrect`, schema version unchanged, one signal is enough, per user across apps, the restore-key variant bit and 32 engines, the counters in diagnostics, the 1.0.x compatibility). Update the rows ENG-R1117, ENG-R1118, ENG-R1119, PRD-R4A (host half), PRD-R80 (host half) and PRD-R81 (storage half) of `docs/architecture/traceability.md` with the real suite names of Tasks 23 to 26 (`python3 -I scripts/tests/test_docs_and_workflows.py` checks they exist). Commit `docs(host): decision record and traceability of the never-correct list`.
+
+---
+
+## App track A2: UI and copy (`feat/v110-app-ui`)
+
+### Task 28: Catalog, layout and list model (PRD-R80, PRD-R81)
+
+**Files:**
+- Modify: `Packages/AppCore/Sources/ShellCore/Settings/SettingsCatalog.swift` (`SettingItem.neverCorrect`, `.typoCorrection`; `pane` `.typing`; `isAdvanced` false; `dNumber` `"PRD-R81"` and `"D30"`; `jsonKey` `"typoCorrection"`; `title` and `explanation`; `public var dependsOn: SettingItem?` (`.typoCorrection` on `.englishRestore`); `public func isEnabled(in settings: EffectiveSettings) -> Bool`; `public var disabledSuffix: CatalogText?`), `SettingsLayout.swift` (the English section: `[.englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect, .learnCollisionChoices, .typoCorrection]`; `rows` keeps the keep lists paired and puts `.neverCorrect` on its own row), `WordListsAndLayouts.swift` (`UserWordList.neverCorrect`: `entries(in:)` from `settings.neverCorrect`, `edit(_:)` to `SettingsEdit.neverCorrect(Set<String>)`, `adding` through `NeverCorrectEntry.normalized`, `rows(in:)` without learned entries), `SettingsEdit.swift` (`case neverCorrect(Set<String>)` applied to `UserSettings.neverCorrect`), `SettingsStrings.swift` (`SettingsText` keys below; `SettingsControl.neverCorrectField`, `.neverCorrectAdd`, `.typoCorrection` with label and hint keys)
+- Test: `Packages/AppCore/Tests/ShellCoreTests/Settings/SettingsCatalogTests.swift`, `SettingsLayoutTests.swift`, `SettingsModelsTests.swift`
+
+**Interfaces:** `SettingsText` cases and keys: `neverCorrectTitle = "settings.typing.neverCorrect.title"`,
+`neverCorrectExplanation`, `neverCorrectExplanationOtherKey`, `neverCorrectExplanationNoKey`, `neverCorrectInvalid`,
+`typoCorrectionTitle = "settings.typing.typoCorrection.title"`, `typoCorrectionExplanation`,
+`typoCorrectionExplanationOtherKey`, `typoCorrectionExplanationNoKey`, `typoCorrectionDisabledSuffix`. The key
+variants follow `learnedChoicesEmpty`, `learnedChoicesEmptyOtherKey` and `learnedChoicesEmptyNoKey` (PRD-R78:
+Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the key is off).
+
+- [ ] **Step 1: Write the failing tests**: `SettingsCatalogTests.d30SitsRightUnderD28InTheEnglishSectionAndIsNotAdvanced_PRDR80`, `theNeverCorrectListIsTheThirdListOfTheEnglishSection_PRDR81`, `d30IsDisabledWhileD4IsOffWithTheSuffix_PRDR80` (`isEnabled(in:)` false and `disabledSuffix == CatalogText(.typoCorrectionDisabledSuffix)` when `englishRestore` is false; no other item has a dependency), `SettingsLayoutTests.theNeverCorrectListHasItsOwnRow`, `SettingsModelsTests.neverCorrectEntriesAreLettersOnly_PRDR81` (`adding("Androdi")` is `.added(["androdi"])`; `adding("android1")`, `adding("well-known")`, `adding("việt")` are `.invalid`; a duplicate is `.duplicate`).
+- [ ] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter ShellCoreTests`; `SettingsCatalogStringTests` is red until Task 29 (the keys have no catalog entry yet). Step 5: Commit.** `feat(shell): D30 and the never-correct list in the settings catalog`
+
+### Task 29: String Catalog (copy verbatim from PRD-R80 and PRD-R81)
+
+**Files:**
+- Modify: `App/Resources/Localization/Settings.xcstrings`
+- Test: `Packages/AppCore/Tests/ShellCoreTests/Settings/SettingsCatalogStringTests.swift` (existing: every key in vi and en, matching arguments, no literal brand, no dashes, no dead copy), `Tests/ShellCoreTests/Localization/SpecDraftCopyTests.swift` (add the PRD-R80 and PRD-R81 drafts to its table)
+
+- [ ] **Step 1: Add the drafts to `SpecDraftCopyTests` and run it: red.**
+- [ ] **Step 2: Add the entries** (`%@` is the app name; `%2$@` the key in words in the `OtherKey` variants):
+  - `settings.typing.typoCorrection.title`: vi `Tự sửa từ gõ nhầm`, en `Fix mistyped words`.
+  - `settings.typing.typoCorrection.explanation`: vi `Gõ nhầm một từ tiếng Anh (androdi, gramar) thì %@ sửa thành từ đúng (android, grammar) khi bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ.`; en `When you mistype an English word (androdi, gramar), %@ replaces it with the one word it can be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything typed in Terminal are never changed. Press Escape right after to get the word you typed back.` (Q10 recommendation; the alternative wording `từ viết hoa` / `capitalised words` is in the comment of the entry.)
+  - `settings.typing.typoCorrection.explanationOtherKey` and `.explanationNoKey`: the same with the key named or with the last sentence saying the key is off, as the `learnedChoicesEmpty*` entries do.
+  - `settings.typing.typoCorrection.disabledSuffix`: vi `Bật Tự khôi phục từ tiếng Anh để dùng.`, en `Turn on Automatic English restore to use this.`
+  - `settings.typing.neverCorrect.title`: vi `Không tự sửa`, en `Never correct`.
+  - `settings.typing.neverCorrect.explanation`: vi `Những từ %@ luôn giữ như bạn gõ, không sửa. Từ bạn lấy lại bằng phím Escape được thêm vào đây.`, en `Words %@ always leaves as you typed them. A word you take back with Escape is added here.`; the two key variants as above.
+  - `settings.typing.neverCorrect.invalid`: vi `Chỉ nhận chữ cái không dấu, không có số hay ký hiệu.`, en `Letters only, without marks, digits or symbols.`
+  - The accessibility label and hint of the three new controls; the add field reuses `Thêm từ mới`.
+  - The Typing pane reset confirmation and the full reset confirmation name the list (PRD-R26, PRD-R81): extend the existing bodies (the keys under `settings.reset.` that name the keep lists).
+- [ ] **Step 3: Run `swift test --filter "SettingsCatalogStringTests|SpecDraftCopyTests|CatalogAuditTests"`.** Expected: green.
+- [ ] **Step 4: Commit.** `feat(app): copy of D30 and the never-correct list (PRD-R80, PRD-R81)`
+
+### Task 30: Typing pane views and the window model
+
+**Files:**
+- Modify: `App/Sources/Settings/TypingPaneView.swift` (the third `WordListView` for `.neverCorrect` under the pair, with its own label, box and add area; the refusal message shown under the field as the keep lists show theirs), `App/Sources/Settings/SettingItemRow.swift` (a row whose item `isEnabled(in:)` is false renders its control disabled and appends `disabledSuffix` to the explanation), `App/Sources/Settings/SettingsWindowModel.swift` (add and remove for `.neverCorrect` through `UserWordList`), `App/Sources/Settings/SettingsComponents.swift` if the explanation text is composed there
+- Modify: `scripts/snapshots/SettingsSnapshots/SnapshotFixtures.swift` (`neverCorrect = ["androdi"]`, one fixture with D4 off)
+- Test: `SettingsCatalogStringTests` (it scans `App/Sources/Settings` for every `SettingsControl` as a focusable control with label and hint), the App build
+
+- [ ] **Step 1: Run `SettingsCatalogStringTests`: red for the three controls not yet used in the app.**
+- [ ] **Step 2: Implement the views and the model.** Keyboard reachable, visible focus ring, VoiceOver label naming the word on every remove button (PRD-R66), the setting applies at once (PRD-R27).
+- [ ] **Step 3: `xcodegen generate && xcodebuild ... build` and `swift test --filter ShellCoreTests`.** Expected: green. Run `scripts/snapshots/settings.sh` where it can run (not on the product owner's Mac while the VM proof runs) and attach the two renderings to the report.
+- [ ] **Step 4: Commit.** `feat(app): D30 row and the never-correct list in the Typing pane`
+
+---
+
+## Integration (`integration/1.1.0`)
+
+### Task 31: Merges
+
+- [ ] Merge `feat/v110-engine-data`, `feat/v110-app-host`, `feat/v110-app-ui`, `feat/v110-engine-logic` (E2a then E2b) with `git merge --no-ff`, in that order; resolve only trivial conflicts (`TRACEABILITY.md`, changelogs); after each merge run that package's tests.
+
+### Task 32: Contracts and spec hygiene
+
+- [ ] `python3 -I docs/architecture/tools/sync_contracts.py`; add to contracts.md 10.5 the lines the host relies on: `corrected(rule)` is one edit of the restore kind; a `neverCorrect` signal may arrive on the restore key and must be stored at once; the switch is the conjunction of ENG-R1119. `python3 -I scripts/check-docs.py` green. Commit `docs(contracts): typo correction`.
+
+### Task 33: Traceability and changelogs
+
+- [ ] Both traceability files name real suites only; `check-traceability.py` and `scripts/tests/run.sh` green. `CHANGELOG.md` and `CHANGELOG.vi.md` under Unreleased, Added: the correction (with the two examples, the undo key and the setting), the never-correct list; Known issues: a word before a mid-line click, `googel.com` at the `.`. Engine `CHANGELOG.md` as Task 18 left it. Commit `docs(changelog): typo correction for 1.1.0`.
+
+### Task 34: Benchmark baseline and provenance
+
+- [ ] Run `Packages/VietnameseEngine/Scripts/benchmark.sh` on the baseline machine, commit the result under `Benchmarks/results/` and update `Benchmarks/baseline.json` with the `correction` keys (the M4 note of ENG-R1230 applies). Write `docs/provenance/reports/<date>-1.1.0.md` from the template: note N6 answered (the table's origin, the scripts in `spec/reference-model/`, the SCOWL additions), the new files listed for the outside comparison of N1, `THIRD_PARTY_NOTICES.md` cross-checked. Commit `docs(provenance): 1.1.0 review record`.
+
+### Task 35: Full gates
+
+- [ ] Engine: `swift test` (every suite, fuzz at the per-PR size), `scripts/coverage.sh --package Packages/VietnameseEngine --min 95 --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/'`, `swift run lexicon-builder check`, `python3 -I Packages/VietnameseEngine/Scripts/extract-spec-examples.py --check`, `swift run site-demo-frames --check`.
+- [ ] AppCore and App: `swift test`, `scripts/coverage.sh --package Packages/AppCore --min 80`, `xcodegen generate && xcodebuild ... build`, `scripts/lint.sh`, `python3 -I docs/architecture/tools/sync_contracts.py --check`, `scripts/tests/run.sh`.
+- [ ] Record every figure in the integration report.
+
+### Task 36: Hand-off to the release track
+
+- [ ] The integration branch stays unmerged until stable 1.0.1 is published (QA-R29). The release of 1.1.0 follows `docs/runbooks/release.md` (a `1.1.0-beta.1` first); the tart integration run (QA-R12) and the Tier 1 manual pass are the product owner's window and are not part of this plan.
+
+---
+
+## Spec coverage
+
+| Requirement | Tasks |
+|---|---|
+| ENG-R1110, ENG-R1111, ENG-R1112 | 13, 19 |
+| ENG-R1113, ENG-R1114 | 11, 14, 19, 21 |
+| ENG-R1125 | 11, 14, 19, 20 |
+| ENG-R1115, ENG-R1116 | 13, 14, 16, 19 |
+| ENG-R1117 | 15, 19, 25 |
+| ENG-R1118 | 3, 15, 23, 25 |
+| ENG-R1119 | 1, 15, 16, 24 |
+| ENG-R1120 | 6, 7, 8, 9, 10 |
+| ENG-R1121 | 1 (`coreIsClean`), 16, 26 |
+| ENG-R1122 | 12, 17 |
+| ENG-R1123 | 20 (zero corrections on the Vietnamese corpora; no pattern ships) |
+| ENG-R1124 | 20, 21 |
+| ENG-T50 to ENG-T57 | 19, 20, 21, 21, 16, 17, 10, 20 |
+| PRD-R4A, D30 default | 3, 28, 29, 30 |
+| PRD-R80 | 24, 26, 28, 29, 30 |
+| PRD-R81 | 23, 25, 28, 29, 30 |
+| 12.2 amendments, contracts, traceability, provenance | 1, 5, 18, 22, 27, 32, 33, 34 |
