@@ -207,8 +207,17 @@ enum CoreSourceScanner {
 /// names the typo correction switch, so the 1.0 suites hold the 1.0 behaviour with it off and only the suites of
 /// section 11A run with it on (the default of 12.2 is on). The one exemption is the test that asserts the defaults.
 enum ConfigurationCallScanner {
-    /// Directories of the package scanned, relative to its root.
-    static let directories = ["Sources/VietnameseEngineTesting", "Sources/site-demo-frames", "Benchmarks", "Tests"]
+    /// Directories of the package scanned, relative to its root (`Sources/lexicon-builder` since the review of the
+    /// API stage of 1.1.0).
+    static let directories = [
+        "Sources/VietnameseEngineTesting", "Sources/site-demo-frames", "Benchmarks", "Tests", "Sources/lexicon-builder",
+    ]
+
+    /// Files whose calls are known not to name the switch yet, each removed as soon as its own track names it.
+    /// `AmbiguityCandidates.swift` (`EngineTyper`, which reads the active display of one token over empty resources)
+    /// gains `typoCorrection: false` on the data track (E1) of 1.1.0; the integration removes this entry after merging
+    /// that track.
+    static let pendingFiles: Set<String> = ["Sources/lexicon-builder/AmbiguityCandidates.swift"]
 
     struct Call: Hashable, CustomStringConvertible {
         let file: String
@@ -256,6 +265,7 @@ enum ConfigurationCallScanner {
     /// The calls of `source` that do not name `typoCorrection:`, except inside `func defaults()` of
     /// PublicAPITests.swift, the test of the 12.2 defaults.
     static func violations(in source: String, file: String) -> [Call] {
+        guard !pendingFiles.contains(file) else { return [] }
         let exempt = file.hasSuffix("Quality/PublicAPITests.swift") ? lines(ofFunction: "defaults", in: source) : nil
         return calls(in: source, file: file).filter { call in
             !call.arguments.contains("typoCorrection:") && !(exempt?.contains(call.line) ?? false)
@@ -340,6 +350,13 @@ struct StaticSourceTests {
             """
         let violations = ConfigurationCallScanner.violations(in: exempted, file: "Tests/Quality/PublicAPITests.swift")
         #expect(violations.map(\.line) == [6])
+        // The lexicon builder is scanned too; only the files pending on another track are skipped.
+        #expect(ConfigurationCallScanner.directories.contains("Sources/lexicon-builder"))
+        #expect(ConfigurationCallScanner.violations(in: source, file: "Sources/lexicon-builder/Build.swift").count == 2)
+        for file in ConfigurationCallScanner.pendingFiles {
+            #expect(file.hasPrefix("Sources/lexicon-builder/"))
+            #expect(ConfigurationCallScanner.violations(in: source, file: file).isEmpty)
+        }
     }
 
     @Test("The core imports nothing and has no logging, I/O, clock, randomness or mutable global state")
