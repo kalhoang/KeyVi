@@ -614,8 +614,8 @@ that branch too; a record written before it has none.
 
 | Code | Fields | Written when |
 |---|---|---|
-| `focus.lateFocusKept` | `sinceLastKeyUs`, `sinceWordStartUs`, `reason` | a focus change found after keys of the active word kept it; microseconds from the word's last and first key to the new snapshot's `changedAt` (0 when it came before the key); `reason`: `window` (a readable element within the windows, checked by the first job), `trigger` (the same, with the first-key window waived after a Command or Control shortcut or a click, PLT-R389), `unreadable` (a snapshot of the same process without a readable element, no check), `sameElement` (the element the word is in, found again after a snapshot without it: no focus change), `backFromNoElement` (the same element found again after Accessibility answered that no element had the focus, with keys of the word composed meanwhile: checked by the first job) |
-| `focus.lateFocusRefused` | `sinceLastKeyUs`, `sinceWordStartUs`, `reason` | such a change ended the word; `reason` names the check: `otherProcess`, `noElement` or `axUnavailable` (no readable element where one is needed, after a timed-out read without an app), `paused`, `variant`, `lastKeyWindow` (more than 500 ms after the word's last key), `firstKeyWindow` (more than 500 ms after its first key, after an element of the same process and without a trigger before the word) |
+| `focus.lateFocusKept` | `sinceLastKeyUs`, `sinceWordStartUs`, `reason` | a focus change found after keys of the active word kept it; microseconds from the word's last and first key to the new snapshot's `changedAt` (0 when it came before the key); `reason`: `window` (a readable element within the windows, checked by the first job), `trigger` (the same, with the first-key window waived after a Command or Control shortcut or a click, PLT-R389, for a change observed at most 1 s after it), `unreadable` (a snapshot of the same process without a readable element, or one without a process after a timed-out or failed system-wide read, no check), `sameElement` (the element the word is in, found again after a snapshot without it: no focus change), `backFromNoElement` (the same element found again after Accessibility answered that no element had the focus, with keys of the word composed meanwhile: checked by the first job) |
+| `focus.lateFocusRefused` | `sinceLastKeyUs`, `sinceWordStartUs`, `reason` | such a change ended the word; `reason` names the check: `otherProcess` (a process other than the word's, or Accessibility answered that no application has the focus), `noElement` or `axUnavailable` (no readable element where one is needed, after a timed-out read without an app), `paused`, `variant`, `lastKeyWindow` (more than 500 ms after the word's last key), `firstKeyWindow` (more than 500 ms after its first key, after an element of the word's process, without a trigger before the word or more than 1 s after it) |
 | `focus.lateFocusCheckFailed` | none | the worker found the new element without the kept word; the key passed and the word was reset |
 | `focus.observerAttempt` | `pid`, `attempt`, `result` (`installed`, `installedBestEffort`, `refused`, `notWanted`, `breakerOpen`) | one observer attempt; a first attempt that installs is not logged, and of the slow attempts only an install and the chain's last attempt are; `installedBestEffort` may lack some names, and when it lacks focused-element changes the chain goes on until an install with them replaces it (`installed` when it has every name, `installedBestEffort` when it lacks another one); a best-effort result without them over such an observer is logged as `refused` |
 
@@ -670,10 +670,11 @@ Review of the branch (19/11/2026), each point with a unit test in `LateFocusIden
   (`FocusIdentity.appUnknown` next to `FocusCore.keepsLastElement`), so the element found again is no application
   change.
 - A check still due when a snapshot without a readable element keeps the word waits for a readable snapshot, instead
-  of running against no field and logging `focus.lateFocusCheckFailed` without a read.
+  of running against no field and logging `focus.lateFocusCheckFailed` without a read. Reversed by the third review
+  below: the jobs built meanwhile went out with no field and no check.
 - The check's settle window is judged when its first read starts: a slow first read (two bounded calls, the second
   timing out, about 60 ms) is read again at once when it ended at most 30 ms after the window, 140 ms after the key at
-  most (PLT-R314).
+  most (PLT-R314); since the third review only when it can end within 150 ms of the key.
 
 Trade-off kept (review point): the first-key window also applies to a snapshot of the word's own process without a
 readable element when the word began in an element of that process. A notification read that times out more than
@@ -686,22 +687,62 @@ key late, which `aWordThatStartedBeforeTheWindowIsAHardBoundaryAfterAnUnreadable
 one splits the word as before this branch. A run that shows `focus.lateFocusRefused` with `reason` `firstKeyWindow`
 right after a timed-out read inside a scenario's own word is this case.
 
-Proof plan of `fix/v101-focus-identity`, with the VM rules of this section, in this order:
+Third review (19/11/2026, branch `fix/v101-focus-r3`, on main after the two branches above), each point with a unit
+test in `LateFocusBoundsTests`, `WorkerLateFocusTests` or `FocusSnapshotPublicationTests`:
+
+- A trigger explains a change only for 1 s (`LateFocusChange.triggerWindowNanoseconds`). A word begun right after a
+  shortcut or a click, typed on for 1.3 s, and a move by the app 1.7 s after the trigger were kept with `reason`
+  `trigger`, the check failed and the reset landed one key late (the `tieengs` shape). 1 s covers the trigger's reads
+  (the last 400 ms after it), the read of the first key after it and the settle re-reads of a sheet's own
+  notification, with 300 ms over the 700 ms that T5.5 took on a loaded guest
+  (`aChangeLongAfterTheTriggerIsMeasuredFromTheFirstKeyPLTR340`, `theTriggerWindowEndsOneSecondAfterTheTriggerPLTR340`).
+- No edit goes out unverified. With the check deferred (second review), the next edit after a kept change and a
+  snapshot without a readable element went out with no field and no check, into whatever had the focus. The next job
+  now carries the pending check whatever the snapshot, and without an element to read the worker fails closed (the
+  key passes, the word is reset). Chosen over a hard boundary at that snapshot: the text is the same when the next key
+  meets it (the key passes as typed either way), and the word survives when the kept element is found again before the
+  next key (`aPendingCheckGoesWithTheNextJobWithoutAReadableElementPLTR340` and the two after it).
+- A snapshot without a process after a timed-out or failed system-wide read ended the word as `otherProcess`, while
+  both threads keep the last element across it. Mid-word it is now judged like a same-process snapshot without a
+  readable element (the same conditions, against the word's element; `reason` `unreadable` when kept); Accessibility
+  answering that no application has the focus stays `otherProcess` (`anAppLessSnapshotAfterAFailedReadKeepsTheWordPLTR340`
+  and the two after it). Accepted exposure, as for the same-process keep: an app that takes the focus by itself, with
+  no key or click the tap sees, while that read times out and within 500 ms of a word's first key, gets that word's
+  edits until its own snapshot arrives.
+- The check's second read runs only when it can end within 150 ms of the check's key (PLT-R314), since the settle
+  window can start at the worker's last posted event; otherwise the check fails at once instead of the liveness flush
+  resetting the word after a match (`theSecondReadEndsWithinTheLivenessCeilingOfTheKeyPLTR314`).
+- The element found without its attributes no longer replaces the decision the tap keeps for it, and the `ax` thread
+  publishes nothing when a read that is not forced finds the published element and only its attribute read times out
+  (until the breaker opens), so a field-level rule no longer splits two words in a row
+  (`anAttributeTimeoutDoesNotReplaceTheElementsDecisionPLTR340`, `anAttributeTimeoutOfThePublishedElementPublishesNothingPLTR340`).
+- Changelog: the search panel line promised the `vieejt` fix, which the corrected diagnosis above gives to another
+  case; it is folded into the slow-apps line as "less often", the first line says "less often" too (a late check
+  that fails still resets one key late), and the slow-apps line no longer names Safari and Google Chrome (the
+  evidence is TestHost on a loaded guest).
+
+Proof plan on the merged main (`fix/v101-focus-identity`, `fix/v101-harness-updates` and `fix/v101-focus-r3`), with
+the VM rules of this section, in this order:
 
 1. three times `scripts/vm/integration-dev.sh --probe --only testhost.native.burst,testhost.native.telex,testhost.native.textView,testhost.panel.inlineCompletionTwice`
    (each run is a throwaway clone, so the burst runs right after TestHost's launch, as in `20261118T220253Z`):
    `testhost.native.burst` passes; when a timed-out read precedes the burst, its first word shows
    `focus.lateFocusKept` with `reason` `sameElement` and no `focus.lateFocusCheckFailed` follows;
 2. five times `scripts/vm/integration-dev.sh --probe --only testhost.sheet.commandS,testhost.native.textView`:
-   both pass; a sheet field found late shows `focus.lateFocusKept` with `reason` `window` or `trigger` (with
-   `sinceWordStartUs` above 500000 for `trigger`), a timed-out read in the sheet shows `reason` `unreadable` before
-   it, and `testhost.native.textView` shows either no late focus record or `focus.lateFocusRefused` with `reason`
-   `firstKeyWindow`;
-3. twice `scripts/vm/integration-dev.sh`: 46 of 46 and a clean privacy scan; `testhost.panel.inlineCompletionTwice`
-   may still fail with `vieêjt` until the harness change of the row above lands (that failure shows
-   `focus.lateFocusKept` with `reason` `window` and a small `sinceLastKeyUs`, then `focus.lateFocusCheckFailed`); no
+   both pass; a sheet field found late shows `focus.lateFocusKept` with `reason` `window` or `trigger` (for `trigger`,
+   `sinceWordStartUs` above 500000 and the field found at most 1 s after Command+S), a timed-out read in the sheet,
+   with or without an app, shows `reason` `unreadable` before it, and `testhost.native.textView` shows either no late
+   focus record or `focus.lateFocusRefused` with `reason` `firstKeyWindow`;
+3. twice `scripts/vm/integration-dev.sh`: 46 of 46 and a clean privacy scan. `testhost.panel.inlineCompletionTwice`
+   waits after each declared Command+K (section 10.10), so its panel field is normally published before `v`; a
+   `vieêjt` there now means that the wait did not hold (that failure shows `focus.lateFocusKept` with `reason`
+   `window` and a small `sinceLastKeyUs`, then `focus.lateFocusCheckFailed`). `testhost.panel.toneUndo` and
+   `testhost.sheet.commandS` still type at once after their shortcut and exercise the late keep. No
    `focus.lateFocusRefused` with `reason` `otherProcess`, `noElement`, `axUnavailable`, `paused` or `variant` should
-   fall inside a scenario's own word.
+   fall inside a scenario's own word;
+4. five times `scripts/vm/integration-dev.sh --only testhost.panel.inlineCompletionTwice,testhost.panel.toneUndo,testhost.sheet.commandS,testhost.web.editModeEditor`:
+   every run passes; a late focus change kept inside one of these words shows `focus.lateFocusKept` and no
+   `focus.lateFocusCheckFailed`.
 
 ### 10.10 Readback of a selected completion (2026-11-19)
 
