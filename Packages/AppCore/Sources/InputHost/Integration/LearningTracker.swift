@@ -15,14 +15,15 @@ struct LearningTracker {
     /// Distinct pending signals kept; the oldest is forgotten first.
     static let capacity = 64
 
-    private var pending: [LearningProposal] = []
+    /// Read by tests only: a `neverCorrect` signal never lands here (ENG-R1118).
+    private(set) var pending: [LearningProposal] = []
 
     /// Returns the proposal when `signal` was seen for the second time in `app`; the count then starts over. A
     /// signal from an unknown app is dropped: a learned word must belong to an app (ENG-R862). So is a signal for a
     /// word of the bundled collision list (`collisionWords`, ENG-R862 amendment of 15/11/2026): those feed the
     /// learned memory, per user across apps, and a per-app list entry would fix them in one direction. A
     /// `neverCorrect` signal is never counted here: one is enough and it applies in every app (ENG-R1118), so the
-    /// host stores it at once on its own path.
+    /// host stores it at once on its own path (`InputHostController.noteLearning`).
     mutating func note(
         _ signal: LearningSignal, in app: BundleKey?, collisionWords: CollisionVocabulary? = nil
     ) -> LearningProposal? {
