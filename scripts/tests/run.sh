@@ -516,6 +516,47 @@ expect 2 "bench --run needs a formatVersion 1 product" "$S/bench-compare.sh" --p
 contains "points the engine at its own gate" "Packages/VietnameseEngine/Scripts/benchmark.sh"
 expect 2 "bench needs a baseline without a package" "$S/bench-compare.sh" --results "$T/bench.json" --output "$T/b2.json"
 
+echo "== engine benchmark.sh runs both passes and both comparisons (ENG-T40, ENG-T55)"
+# A copy of the script in a fake package: a fake swift, a fake engine-benchmark and a fake compare.py that fails
+# when FAKE_FAIL names its baseline ("baseline" for the 1.0 baseline, "off" for the switch-off result).
+EB="$T/enginebench"
+mkdir -p "$EB/pkg/Scripts" "$EB/pkg/Benchmarks" "$EB/pkg/.build-release/release" "$EB/bin"
+cp "$REPO/Packages/VietnameseEngine/Scripts/benchmark.sh" "$EB/pkg/Scripts/benchmark.sh"
+printf '{}\n' >"$EB/pkg/Benchmarks/baseline.json"
+cat >"$EB/bin/swift" <<'EOF'
+#!/bin/sh
+printf 'swift %s\n' "$*"
+EOF
+cat >"$EB/pkg/.build-release/release/engine-benchmark" <<'EOF'
+#!/bin/sh
+printf 'engine-benchmark %s\n' "$*"
+prev=""
+for arg in "$@"; do
+  [ "$prev" = "--output" ] && printf '{}\n' >"$arg"
+  prev="$arg"
+done
+EOF
+cat >"$EB/pkg/Benchmarks/compare.py" <<'EOF'
+import sys
+which = "baseline" if sys.argv[1].endswith("baseline.json") else "off"
+print("compare " + which)
+fail = __import__("os").environ.get("FAKE_FAIL", "")
+sys.exit(1 if which in fail.split(",") else 0)
+EOF
+chmod +x "$EB/bin/swift" "$EB/pkg/.build-release/release/engine-benchmark" "$EB/pkg/Scripts/benchmark.sh"
+expect 0 "both comparisons pass" env PATH="$EB/bin:$PATH" "$EB/pkg/Scripts/benchmark.sh" "$EB/out.json"
+contains "switch-on pass runs" "engine-benchmark --typo-correction on --output $EB/out-typo-correction-on.json"
+contains "on/off comparison runs" "compare off"
+expect 1 "a failed baseline comparison fails the script" \
+  env FAKE_FAIL=baseline PATH="$EB/bin:$PATH" "$EB/pkg/Scripts/benchmark.sh" "$EB/out.json"
+contains "the switch-on pass still runs after a failed baseline comparison" "engine-benchmark --typo-correction on"
+contains "the on/off comparison still runs after a failed baseline comparison" "compare off"
+contains "names the failed comparison" "ENG-T40 against Benchmarks/baseline.json: failed"
+expect 1 "a failed on/off comparison fails the script" \
+  env FAKE_FAIL=off PATH="$EB/bin:$PATH" "$EB/pkg/Scripts/benchmark.sh" "$EB/out.json"
+contains "names the failed on/off comparison" "ENG-T55 switch on against switch off: failed"
+expect 1 "both failed" env FAKE_FAIL=baseline,off PATH="$EB/bin:$PATH" "$EB/pkg/Scripts/benchmark.sh" "$EB/out.json"
+
 echo "== fuzz.sh builds engine-fuzz for libFuzzer and pins the method (ADR 0502)"
 F="$T/fz"
 mkdir -p "$F/pkg/Corpus" "$F/bin" "$F/build"
