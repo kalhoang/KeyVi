@@ -7789,6 +7789,35 @@ exhaustively over `CommitRule` needs one more case (the app only prints reason c
 - No API change for REG-38: in the code context rule L9 now decides a code-only word whose keys are not English before
   L6 and L7 (`sudo chown -R` keeps `chown`), with the existing reason `codeContext`.
 
+Addition of 19/11/2026 for the typo correction of 1.1.0 (section 11A of the engine spec, ENG-R1110 to ENG-R1125; host
+decision record `docs/decisions/0323-never-correct-list.md`). It adds public API: `EngineConfiguration.typoCorrection`
+(default `true`), `CommitDecision.corrected(rule)`, `LearningSignal.neverCorrect(raw:)`, `Resources.userNeverCorrect`
+and `Resources.correction`. A consumer that switches exhaustively over `CommitDecision` or `LearningSignal` needs one
+more case each.
+
+- `corrected(rule)` is one edit of the restore kind (ENG-R803, ENG-R1115): the commit's action is one
+  `.edit(_, thenPassThrough: true)` whose `TextEdit` replaces the token's display with the correction, exactly the
+  shape of a `restored(rule)` commit, so the host injects it with the commit's own job kind and every strategy applies
+  it; there is no new edit job kind and no new compat rule flag. `rule` names the 8.1 rule that would have decided the
+  token and carries no text (ENG-R1121); the host counts it (`HostCounters.corrections`) and never records the words.
+  The restore key right after it answers with an edit that brings back the keys as typed and keeps the boundary
+  character: a `restore` job whose deletion is wider than the empty active display, as for the revision undo
+  (ENG-R1117, PLT-R353).
+- A `neverCorrect` signal may arrive on the restore key and must be stored at once: `EngineOutput.learning` of the
+  `restoreToggle` event (not only of a composing key) can be `LearningSignal.neverCorrect(raw:)`, the lowercased typed
+  word, so the pipeline forwards the learning of `restoreLastWord` as it does for `compose`. The host adds it to the
+  never-correct list on the first signal through `UserSettings.neverCorrect(_:)`, never through `LearningTracker` and
+  its two-signal threshold (ENG-R862 does not apply, ENG-R1118). The list is per user, the same in every app, and is
+  content: never logged, a count only in diagnostics.
+- The switch is the conjunction of ENG-R1119, and every one of its inputs rebuilds the catalog:
+  `EngineSettingsMapping.typoCorrection(_:variant:)` is D30 AND D4 AND the rule's `features.englishRestore` AND the
+  rule's `features.restoreHotkey` AND D8 on. D30, the on or off state of D8 (`EngineInputs.restoreKeyEnabled`, the
+  binding itself stays out, so a rebinding keeps the revision) and the never-correct list are `EngineInputs`, so a
+  change builds a new catalog with a new revision; the rule's `englishRestore` and `restoreHotkey` are variant bits,
+  so the catalog has 32 prebuilt engines. Every engine of the catalog shares one `Resources.correctionIndex` (a class
+  instance built once in `Resources.init`) and the one copy-on-write storage of `Resources.correction` (the guard
+  filter's bits, the packed shapes and keyings), so the doubled catalog does not double the correction data.
+
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift
 // SPDX-License-Identifier: GPL-3.0-or-later
