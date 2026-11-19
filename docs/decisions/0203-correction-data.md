@@ -232,3 +232,22 @@ it.
   writes format 3 directories with the four files, since every malformed-resource test builds on it.
 - The resident budget was over (section 6); the fallback was requested rather than built, and the logic track built
   it (the packed sets, section 6).
+
+## 10. Open: developer words outside every list
+
+The engine's gates with the bundled data (19/11/2026, `Packages/VietnameseEngine/TRACEABILITY.md` rows ENG-T50 to
+ENG-T57) meet every target of ENG-R1124 but one: the W11 corpus (13.11) holds four developer words that are in no
+bundled list, neither the lexicon (SCOWL sizes 10 to 35), the tech lists nor the guard list (SCOWL sizes 40 to 70 and
+names), and each is one edit from exactly one English word, so section 11A corrects it: `frontend` gives `fronted`
+(CS0153, CS0232), `backend` gives `backed` (CS0232), `rebase` gives `debase` (CS0173), `debounce` gives `denounce`
+(CS0219). The engine follows the spec; the data contradicts the W11 row (zero corrections).
+`TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` pins these five corrections as a known issue and fails on
+any other. A probe of 145 common developer words on the same day found two more, `upsert` (to `upset`) and `rebased`
+(to `debased`).
+
+Two remedies, both data changes for the data track and the product owner: add the words to the tech-always list
+(which also decides how 1.0 restores them; these four are restored by L5 already, so their 1.0 output does not move),
+or add a reviewed list of developer words to the guard list's inputs (a new pinned input with its provenance, the
+guard list's notice and its size gate unchanged). Either way the W11 known issue then stops occurring and the test
+fails until its marker is removed.
+
