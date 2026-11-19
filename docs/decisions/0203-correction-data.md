@@ -120,32 +120,46 @@ Load time (ENG-R1231, debug, `BundledResourcesTests.staysWithinLoadTimeAndMemory
 median 28.8 ms for all resources (25.8 ms recorded for format 2 in the test's comment), live heap growth 3.58 MB. A
 first version decoded the bits byte by byte and took 56.5 ms of CPU in debug; the bits are now copied as one block.
 
-## 6. Resident budget: over 1 MB (open)
+## 6. Resident budget: the packed sets
 
 ENG-R1120 allows the new data at most 1 MB resident, 512 KB of it for the guard list.
 `CorrectionDataTests.correctionDataStaysWithinItsResidentBudget` gates on the heap storage the loaded
-`CorrectionData` owns, read from the loaded values (the guard bits, each word set's buckets at its actual capacity, the
-neighbours table): **1,321,992 bytes (1.26 MB)**. It prints, as the cross-check, the plan's malloc measurement: the
-live bytes retained by the resources loaded from the bundled directory minus those retained when the four correction
-files are minimal, five interleaved loads, no assignment to `Resources.correction`: 1,328,000 bytes on each load. The
-gate does not read malloc figures because they are process-wide (other suites allocate on other threads during the
-run) and because replacing `Resources.correction` rebuilds what the engine derives from it; the first version of the
-test measured that replacement and read 1,362,432 bytes alone but 0.68 to 2.6 MB once the logic track's index existed.
-The guard list's bits take 131,072 bytes (within 512 KB). The rest is the two `WordSet`s: a
-`Set<String>` keeps its load under 75 %, so the 27,277 keyings take 65,536 buckets of 16 bytes (1 MB on their own) and
-the 3,953 shapes 8,192 buckets (128 KB).
+`CorrectionData` owns, read from the loaded values (the guard bits, the shapes and keyings at their actual capacity,
+the neighbours table), plus what the engine's correction index owns beyond the sets it reads in place (its prefilter
+tables and the byte-keyed table of the long lexicon words). It prints, as the cross-check, the plan's malloc
+measurement: the live bytes retained by the resources loaded from the bundled directory minus those retained when
+the four correction files are minimal, five interleaved loads, no assignment to `Resources.correction`. The gate does
+not read malloc figures because they are process-wide (other suites allocate on other threads during the run).
 
-The plan's named fallback is a sorted array of packed `UInt64` for the keyings (5 bits per letter; the longest keying
-has 9 letters, the longest shape 7, so every word fits one `UInt64`), before a parser: about 218 KB for the keyings and
-32 KB for the shapes, so the new data would take about 380 KB. It changes the type of `CorrectionData.unmarkedShapes`
-and `vietnameseKeyings` (spec 12.2, `PublicAPI.swift`), which the data track does not own, and it concerns the
-correction index of the logic track, which builds its own byte-keyed store from these two fields (a second copy). The
-data track therefore records the measurement, marks the 1 MB assertion as a known issue in the test (which fails once
-the issue is gone, so the marker cannot outlive the fix) and asks the logic track and the integration to choose the
-representation: a packed public type for the two fields that the loader fills from the sorted files and the index
-reads in place. The loader side of that change belongs to the data track once the type exists, and the test's
-footprint then accounts for the new storage and for any index the engine derives from it (the malloc cross-check
-already counts the index, since both of its loads go through `Resources.init`).
+**As the data track left it (open):** 1,321,992 bytes (1.26 MB) owned, 1,328,000 bytes in the malloc cross-check.
+The guard list's bits took 131,072 bytes (within 512 KB); the rest was the two `WordSet`s: a `Set<String>` keeps its
+load under 75 %, so the 27,277 keyings took 65,536 buckets of 16 bytes (1 MB on their own) and the 3,953 shapes 8,192
+buckets (128 KB). The 1 MB assertion was marked as a known issue.
+
+**Decision (logic track, 19/11/2026): the plan's named fallback, before a parser.** A new public type,
+`PackedWordSet` (`Sources/VietnameseEngine/Commit/PackedWordSet.swift`), holds every word of 1 to 12 letters `a` to
+`z` as one `UInt64`: 5 bits per letter (`a` is 1, `z` is 26, 0 ends the word), the first letter in the highest of
+the 60 low bits. A letter is never 0, so a word and its prefixes stay distinct, and the values sort as the words'
+bytes do, so the sorted bundled files are already the sorted array. A lookup is a binary search (15 comparisons at
+most for the keyings) and allocates nothing; any other word (longer, or with another character) is kept apart in an
+ordinary set, empty for the bundled data, so the type takes any words and never answers wrongly. The longest keying
+has 9 letters and the longest shape 7, so every bundled word packs.
+
+- `CorrectionData.unmarkedShapes` and `vietnameseKeyings` are `PackedWordSet`s (spec 12.2, sixth amendment, section
+  8). The memberwise initialiser that takes `WordSet`s is kept and packs them, so existing callers compile unchanged.
+- The loader (`ResourceDirectory.packedWordList`) parses the two files on raw bytes, packs each line and checks the
+  strict ascending order as it goes, which also proves the entries unique, into an array reserved at the file's line
+  count; a file in another order takes the general path (the word list, then one sort). Every check of the word
+  lists is kept: characters, empty lines, the final newline, duplicates with their line, the manifest's entry count,
+  and the refusal of an empty list (section 8).
+- The correction index reads both sets in place (`CorrectionDataTests.theIndexReadsTheShapesAndKeyingsInPlace`
+  checks that the arrays are shared, not copied) and keeps a byte-keyed table only for words of letters that do not
+  pack, none in the bundled data.
+
+**Measured (debug, 19/11/2026):** the correction data and the index own **399,784 bytes (0.38 MB)**: guard bits
+131,072, keyings 229,344 (27,277 values; the allocator rounds a block of this size up to whole pages), shapes 32,736,
+neighbours table 2,056, index 4,576 (the trigram and edge tables and the long lexicon words). The malloc cross-check
+reads **377,984 bytes** on each of five loads. The 1 MB assertion holds and is no longer a known issue.
 
 ## 7. Measurement scripts (provenance note N6)
 
@@ -186,8 +200,13 @@ structures from them, so they change only through `Resources.correction`; (4) `E
 `lexicon-builder` and never empty (12.2 allowed it to be empty when a parser computes the keyings; the parser stays
 the named fallback of ENG-R1120 and 12.2 is amended again if it is ever taken; the loader refuses an empty
 `vietnamese-keyings.txt` or `unmarked-shapes.txt` with `malformedResource("<file>: no entry")`, even when its manifest
-row agrees, so a resource directory a consumer ships cannot turn ENG-R1110 (d) and ENG-R1125 off unnoticed). Section 6
-may add a sixth: the packed type of the shapes and keyings.
+row agrees, so a resource directory a consumer ships cannot turn ENG-R1110 (d) and ENG-R1125 off unnoticed).
+
+The logic track added a sixth on 19/11/2026, recorded in 12.2 after the five: (6) `CorrectionData.unmarkedShapes` and
+`vietnameseKeyings` are `PackedWordSet`s, a new public type (section 6), instead of `WordSet`s; the initialiser that
+takes `WordSet`s is kept and packs them. The binary search of a packed set counts among the lookups on preallocated
+tables of ENG-R1122: its bound (15 comparisons) is set by the bundled data, not by the lexicon, and ENG-T55 measures
+it.
 
 ## 9. Departures from the plan
 
@@ -196,4 +215,5 @@ may add a sixth: the packed type of the shapes and keyings.
 - `GuardList.encode` throws (above 512 KB) instead of returning `Data` unchecked; the build calls it.
 - The shared test fixture `Tests/VietnameseEngineDataTests/Support/TestSupport.swift` (not in the data track's list)
   writes format 3 directories with the four files, since every malformed-resource test builds on it.
-- The resident budget is over (section 6); the fallback is requested rather than built.
+- The resident budget was over (section 6); the fallback was requested rather than built, and the logic track built
+  it (the packed sets, section 6).
