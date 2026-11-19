@@ -749,7 +749,7 @@ in TRACEABILITY.md; the result files and the baseline keys stay with Task 34). T
 
 - [x] **Step 1: Write the failing tests**: `EngineBridgeConfigurationTests.typoCorrectionIsD30AndD4AndTheRuleSwitchesAndTheRestoreKey_ENGR1119` (arguments: the 2^5 combinations of D30, D4, `variant.englishRestore`, `variant.restoreHotkey`, D8 set; expected the conjunction); `EngineCatalogTests.catalogHoldsOneEnginePerVariant` (32), `variantIndexRoundTrips` (bit 4), `thirtyTwoEnginesShareTheCorrectionIndex` (every engine's `resources.correctionIndex` is the same object; Review Focus 5), `theNeverCorrectListReachesEveryVariant`; `HostDecisionMappingTests.aRuleWithTheRestoreKeyOffGivesAVariantWithoutIt` (a rule fixture with `features.restoreHotkey: false`, the Spotlight shape); `TapSettingsPublisherTests` (Review Focus 6): `turningD30OffRebuildsWithTypoCorrectionOff`, `turningD4OffRebuildsWithTypoCorrectionOff`, `turningTheRestoreKeyOffRebuildsWithTypoCorrectionOff` (publish with D8 Escape, then with D8 `nil`: `rebuiltEngines` is true, the revision moved, and every engine whose variant has `englishRestore` and `restoreHotkey` on now has `configuration.typoCorrection == false`; D8 back on rebuilds with it true), `rebindingTheRestoreKeyKeepsTheRevision` (Escape to another key: no rebuild, same revision, the snapshot's `restoreHotkey` updated), `aChangedNeverCorrectListRebuildsTheCatalogWithANewRevision`, `aNeverCorrectEntryLearnedInOneAppReachesEveryApp` (`focusChanged` republishes nothing for it: the list is global); `ReplayTypoCorrectionTests.replayAgreesWithTheHostForEveryCombination` (the 2^5 combinations of D30, D4, the rule's `englishRestore`, the rule's `restoreHotkey` and D8, recorded as the recorder writes them: replay's switch equals `EngineSettingsMapping.configuration(for:variant:).typoCorrection`) and `aRuleWithoutTheRestoreKeyReplaysWithTheSwitchOff`; `EngineVariantTests.restoreHotkeyIsMoreThanALookaheadDifference` (`differsOnlyInLookaheadRevision` is false when `restoreHotkey` differs too, as the API stage made it).
 - [x] **Step 2: Run, fail. Step 3: Implement. Step 4: Run `swift test --filter InputHostTests`, green (the pipeline hot-path tests included). Step 5: Commit.** `feat(host): pass the typo correction switch per variant and the never-correct list to the engines`
-- Done 19/11/2026, with three differences: `Resources.correctionIndex` does not exist before E2 Task 12, so `EngineCatalogTests.thirtyTwoEnginesShareTheCorrectionData` pins the shared storage of the guard filter instead (the index identity is added once the index exists); the mapping test lives in the existing suite `HostDecisionMapperTests` (`aRuleWithTheRestoreKeyOffGivesAVariantWithoutIt`), and `RestoreHotkeyDefaultTests` checks the variant bit for every shipped rule it resolves, Spotlight included; `EngineIdentityTests.theIdentityFollowsTheCorrection` is written and disabled until E1's data and E2's correction are merged (Task 35 enables it). The focus line field is `rhk`.
+- Done 19/11/2026, with three differences: `Resources.correctionIndex` does not exist before E2 Task 12, so `EngineCatalogTests.thirtyTwoEnginesShareTheCorrectionData` pins the shared storage of the guard filter instead (the index identity is added once the index exists); the mapping test lives in the existing suite `HostDecisionMapperTests` (`aRuleWithTheRestoreKeyOffGivesAVariantWithoutIt`), and `RestoreHotkeyDefaultTests` checks the variant bit for every shipped rule it resolves, Spotlight included; `EngineIdentityTests.theIdentityFollowsTheCorrection` is written and disabled until E1's data and E2's correction are merged (Task 35 enables it). The focus line field is `rhk`. *Integration (19/11/2026, 53a2b477):* the identity test is enabled, and `EngineCatalogTests.thirtyTwoEnginesShareTheCorrectionIndex` pins the one `Resources.correctionIndex` instance across the 32 engines of a catalog built the host's way (the index has the engine's `package` access, so the test reads it by reflection; it fails when each variant reassigns `correction`).
 
 ### Task 25: Escape teaching and the undo in the pipeline (ENG-R1117, ENG-R1118 host halves)
 
@@ -842,7 +842,10 @@ shown disabled, while English restore is off"), the stored value kept. The snaps
 `scripts/snapshots/settings.sh` does not build on `integration/1.1.0` (nor on `main`) since `cb790dbe`: the
 `SettingsSnapshots` target excludes `Composition/AppMain.swift`, which `NSApplication+BringToFront.swift` now names;
 the two renderings were made with a local stub that was not committed, and the fix (`project.yml` or the extension)
-is left to the integration.
+is left to the integration. *Integration (19/11/2026):* `bringToFront` reaches the window presence through the
+`WindowPresenceOwner` protocol declared next to it, which `AppMain` adopts (b4715ed1, `project.yml` unchanged), and
+`SettingsSnapshotTests.swift` renders the Typing pane with D4 off as its own `d4-off` variants in every run (fd67abbe),
+which replace the environment switch.
 
 ---
 
@@ -850,25 +853,72 @@ is left to the integration.
 
 ### Task 31: Merges
 
-- [ ] Merge `feat/v110-engine-data`, `feat/v110-app-host`, `feat/v110-app-ui`, `feat/v110-engine-logic` (E2a then E2b) with `git merge --no-ff`, in that order; resolve only trivial conflicts (`TRACEABILITY.md`, changelogs); after each merge run that package's tests.
+- [x] Merge `feat/v110-engine-data`, `feat/v110-app-host`, `feat/v110-app-ui`, `feat/v110-engine-logic` (E2a then E2b) with `git merge --no-ff`, in that order; resolve only trivial conflicts (`TRACEABILITY.md`, changelogs); after each merge run that package's tests.
+
+*As built (19/11/2026):* E1 `dcecdcaf`, A1 `240632bc`, A2 `fd68446e`, E2a `e748c5a9`, then the counters wiring, the ADR 0501
+amendment, the trace format fields and the contracts re-sync (`cd5a248b`, `698abbad`), and E2b last (`c2451765`, head
+`b6f685fa`, which already contained the branch: no conflict). After the last merge the engine suite passed (703 tests;
+the two known issues of the W11 corpus and the old one of `CollisionMemorySimulationTests`) and the AppCore suite passed
+(2,721 tests), at a load average of 4.6 rising to 30 from another project's build.
 
 ### Task 32: Contracts and spec hygiene
 
-- [ ] `python3 -I docs/architecture/tools/sync_contracts.py`; add to contracts.md 10.5 the lines the host relies on: `corrected(rule)` is one edit of the restore kind; a `neverCorrect` signal may arrive on the restore key and must be stored at once; the switch is the conjunction of ENG-R1119 and every one of its inputs rebuilds the catalog. `python3 -I scripts/check-docs.py links` and `python3 -I scripts/check-docs.py brand` green (the tool takes one of the two subcommands; without one it exits with a usage error). Commit `docs(contracts): typo correction`.
+- [x] `python3 -I docs/architecture/tools/sync_contracts.py`; add to contracts.md 10.5 the lines the host relies on: `corrected(rule)` is one edit of the restore kind; a `neverCorrect` signal may arrive on the restore key and must be stored at once; the switch is the conjunction of ENG-R1119 and every one of its inputs rebuilds the catalog. `python3 -I scripts/check-docs.py links` and `python3 -I scripts/check-docs.py brand` green (the tool takes one of the two subcommands; without one it exits with a usage error). Commit `docs(contracts): typo correction`.
+
+*As built (19/11/2026, 2e30490c):* the re-sync changed nothing after the last merge; section 10.5 has an "Addition of
+19/11/2026" with the three lines and the new public API they rely on; links and brand report 0 problems.
 
 ### Task 33: Traceability and changelogs
 
-- [ ] Both traceability files name real suites only: fill the UI halves of the PRD-R80 and PRD-R81 rows of `docs/architecture/traceability.md` with A2's suites (Tasks 28 to 30; no track owns them before this task) and the PRD-R4A row with the engine suites; `check-traceability.py` and `scripts/tests/run.sh` green. `CHANGELOG.md` and `CHANGELOG.vi.md` under Unreleased, Added: the correction (with the two examples, the undo key and the setting), the never-correct list; Known issues: a word before a mid-line click, `googel.com` at the `.`. Engine `CHANGELOG.md` as Task 18 left it. Commit `docs(changelog): typo correction for 1.1.0`.
+- [x] Both traceability files name real suites only: fill the UI halves of the PRD-R80 and PRD-R81 rows of `docs/architecture/traceability.md` with A2's suites (Tasks 28 to 30; no track owns them before this task) and the PRD-R4A row with the engine suites; `check-traceability.py` and `scripts/tests/run.sh` green. `CHANGELOG.md` and `CHANGELOG.vi.md` under Unreleased, Added: the correction (with the two examples, the undo key and the setting), the never-correct list; Known issues: a word before a mid-line click, `googel.com` at the `.`. Engine `CHANGELOG.md` as Task 18 left it. Commit `docs(changelog): typo correction for 1.1.0`.
+
+*As built (19/11/2026, 0a29d459):* PRD-R80 cites `SettingsCatalogTests`, `SettingsLayoutTests`, `SpecDraftCopyTests`,
+`SettingsCatalogStringTests` and the policy script; PRD-R81 adds `WordListAndLayoutTests` and `ResetRequestTests`;
+PRD-R4A cites the engine suites of section 11A; the "planned" wording is gone. Each changelog has two Added and two Known
+issues lines (four visible lines, so the section can be published as it stands, PRD-R51).
 
 ### Task 34: Benchmark baseline and provenance
 
 - [ ] Run `Packages/VietnameseEngine/Scripts/benchmark.sh` on the baseline machine, commit the result under `Benchmarks/results/` and update `Benchmarks/baseline.json` with the `correction` keys (the M4 note of ENG-R1230 applies). Write `docs/provenance/reports/<date>-1.1.0.md` from the template: note N6 answered (the table's origin, the scripts in `spec/reference-model/`, the SCOWL additions), the new files listed for the outside comparison of N1, `THIRD_PARTY_NOTICES.md` cross-checked. Commit `docs(provenance): 1.1.0 review record`.
 
+*Done so far (19/11/2026, 75039097): the benchmark half.* `Scripts/benchmark.sh` ran on the M4 at a 1-minute load average
+of 3.29 before and 3.16 after; ENG-R1122 with the bundled data: 11,000 candidate commits, 8,369 corrected, p99 30.7 µs
+(stable), max 35.5 µs. The results are under `Benchmarks/results/apple-m4-2026-11-19-typo-correction*.json`, and
+`baseline.json` has the `correction` figures, the two budget keys and `typoCorrection: false`, its ENG-T40 keys of
+13/11/2026 unchanged. The ENG-T40 comparison with that baseline fails at p99 and p99.9 for this branch and for a build of
+`main` (code-identical to 1.0.1-beta.2) alike, at the same load, so the 1.0 baseline is not reproduced today; against
+that `main` build the switch-off result is within the gate (p50 +86 ns under the 100 ns floor, p99 +7.6 %, p99.9
++4.9 %), and the switch-on result is within the gate of the switch-off one. The script stops at the first failed
+comparison, so the switch-on run and its comparison were run by hand. The provenance report is still to write: an
+independent reviewer writes it.
+
 ### Task 35: Full gates
 
-- [ ] Engine: `swift test` (every suite, fuzz at the per-PR size), `scripts/coverage.sh --package Packages/VietnameseEngine --min 95 --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/'`, `swift run lexicon-builder check`, `python3 -I Packages/VietnameseEngine/Scripts/extract-spec-examples.py --check`, `swift run site-demo-frames --check`.
-- [ ] AppCore and App: `swift test`, `scripts/coverage.sh --package Packages/AppCore --min 80`, `xcodegen generate && xcodebuild ... build`, `scripts/lint.sh`, `python3 -I docs/architecture/tools/sync_contracts.py --check`, `scripts/tests/run.sh`.
-- [ ] Record every figure in the integration report.
+- [x] Engine: `swift test` (every suite, fuzz at the per-PR size), `scripts/coverage.sh --package Packages/VietnameseEngine --min 95 --exclude '^Sources/(lexicon-builder|engine-benchmark|site-demo-frames|VietnameseEngineTesting)/'`, `swift run lexicon-builder check`, `python3 -I Packages/VietnameseEngine/Scripts/extract-spec-examples.py --check`, `swift run site-demo-frames --check`.
+- [x] AppCore and App: `swift test`, `scripts/coverage.sh --package Packages/AppCore --min 80`, `xcodegen generate && xcodebuild ... build`, `scripts/lint.sh`, `python3 -I docs/architecture/tools/sync_contracts.py --check`, `scripts/tests/run.sh`.
+- [x] Record every figure in the integration report.
+
+*As built (19/11/2026, code at fd67abbe; the later commits change the benchmark files and documents only).* Load averages
+are the 1-minute figures at the start and the end of each run; another project's build kept the machine at 15 to 35
+during most of them.
+- Engine `swift test` (the run after the last merge; the engine is unchanged since): 703 tests, 483 in 70 suites, 173 in 26
+  suites with the two known issues of `TypoCorrectionCorpusGateTests.w11CorpusIsNeverCorrected` (Task 36 beta gate),
+  21 in 2 suites, 26 in 6 suites with the known issue of `CollisionMemorySimulationTests` (load 4.6 to 29.5). Coverage
+  gate: 99.25 % (4,508 of 4,542 lines, 48 files), the suite green again (load 8.6 to 23.0). `lexicon-builder check`: 22
+  outputs reproducible; `extract-spec-examples.py --check` up to date; `site-demo-frames --check` green (run from the
+  repository root with `--package-path`, as CI does).
+- AppCore `swift test` (the coverage run, with the two test changes of 53a2b477): 2,722 tests in 463 suites; coverage
+  96.96 % (29,149 of 30,064 lines, 341 files; load 25.1 to 18.5).
+- `xcodegen generate` and `xcodebuild build` of App, TestHost and SpikeIMK succeeded; `UpdaterTests`: 66 tests in 14
+  suites (load 28.7 to 31.1). `scripts/snapshots/settings.sh --only typing` builds again and drew 20 images offscreen in
+  the test process (load 34.3).
+- Timing tests again alone: `BundledResourcesTests` (ENG-R1231, debug: first load 21.6 ms, median 22.1 ms, live heap
+  growth 1.60 MB) and the REG-02 long tokens at load 19.7 to 17.5; `TerminalRevisionTests`, `LateFocusEndToEndTests`,
+  `HostHookActionsTests` and `PipelineHotPathTests`, 20 tests in 6 suites, at load 17.0 to 15.1. All green, as they were
+  in the full runs.
+- `scripts/lint.sh` all checks passed; `sync_contracts.py --check` green; `scripts/tests/run.sh` 412 passed, 0 failed;
+  `node site/test.mjs` 133 passed; `node deploy/site/test.mjs` 10 passed; `check-spdx.sh` 1,137 files, 0 problems;
+  `check-docs.py links` and `brand` 0 problems; `check-traceability.py` 251 identifiers, 251 rows.
 
 ### Task 36: Hand-off to the release track
 
