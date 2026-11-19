@@ -36,9 +36,10 @@ repository checks.
   table is written from the public layout and its origin recorded (provenance note N6 of
   `docs/provenance/reports/2026-11-18-1.0.1.md`).
 - **Decisions already taken by the product owner (18/11/2026, `docs/decisions/0009-pa-decisions-2026-11-18.md`):**
-  1.1.0 is built while 1.0.1 waits out its 72 h beta; correction is on by default (D30); Q10 and Q11 stay open, so the
-  recommendations are built with each choice in ONE named place (`CorrectionPolicy`, section "Q10 and Q11" below)
-  and the D30 copy follows the Q10 recommendation (`từ viết hoa toàn bộ` / `words in all capitals`).
+  1.1.0 is built while 1.0.1 waits out its 72 h beta; correction is on by default (D30); Q10 and Q11 were answered on
+  19/11/2026 as recommended (ADR 0010 items 1 and 2); the answers stay built with each choice in ONE named place (`CorrectionPolicy`, section "Q10 and Q11" below)
+  and the D30 copy follows the Q10 answer (`từ viết hoa toàn bộ` / `words in all capitals`). The mid-line reset blind
+  spot ships as a known issue (ADR 0010 item 3).
 - **The switch has three defaults (section "The switch: three defaults, one rule" below):** the product's D30 is on;
   `EngineConfiguration().typoCorrection` is true (12.2); every 1.0 suite, corpus, benchmark and tool constructs its
   configuration with `typoCorrection: false` explicitly, so the 1.0 behaviour is held with the switch off
@@ -859,7 +860,9 @@ Escape, the key in words from `HotkeyKeyNames.word(for:localizer:)`, or that the
 
 ## Open questions for the product owner
 
-Each item names the plan's default (what is built now) and what the other answer changes.
+Each item names the plan's default (what is built now) and what the other answer changes. *(19/11/2026: the product
+owner accepted the defaults of items 1, 2 and 3, `docs/decisions/0010-pa-decisions-2026-11-19.md`; items 4 and 5
+stay open. The text of items 1 to 3 is kept as the record of what the other answers would have changed.)*
 
 1. **Q10, a capitalised word at a sentence start (ENG-R1111).** Default: corrected (`Androdi` gives `Android`;
    `Biden` at a sentence start would become `Bidden` once, until the restore key teaches the never-correct list).
