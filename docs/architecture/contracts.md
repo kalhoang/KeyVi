@@ -3141,13 +3141,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     public var healthEvents: [HealthEvent]
     public var conflictingInputApps: [BundleKey]
     public var userReport: UserReportSection?
+    /// Counts of the host since launch (1.1.0, ADR 0323): numbers only. Nil when the report was built without them.
+    public var counters: CountersSection?
 
     public init(
         formatVersion: Int = DiagnosticsReport.formatVersion, generatedAt: Date, app: AppIdentity, system: SystemInfo,
         hostState: HostStateCode, keyboard: KeyboardSection, permissions: PermissionsSection, tap: TapSection,
         secureInput: SecureInputSection, focus: FocusSection?, rule: RuleSection?, settings: SettingsSection,
         reportedAppMode: AppModeSection?, latency: LatencySection, healthEvents: [HealthEvent],
-        conflictingInputApps: [BundleKey], userReport: UserReportSection?
+        conflictingInputApps: [BundleKey], userReport: UserReportSection?, counters: CountersSection? = nil
     ) {
         self.formatVersion = formatVersion
         self.generatedAt = generatedAt
@@ -3166,6 +3168,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         self.healthEvents = healthEvents
         self.conflictingInputApps = conflictingInputApps
         self.userReport = userReport
+        self.counters = counters
     }
 
     public struct KeyboardSection: Sendable, Hashable, Codable {
@@ -3430,19 +3433,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var learnCollisionChoices: Bool
         /// D29: fix the previous word once the next word shows the language (PLT-R357).
         public var lookaheadRevision: Bool
+        /// D30: correct one clearly mistyped English word at its commit (PRD-R80, 1.1.0), the user's switch.
+        public var typoCorrection: Bool
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
         /// Entries of the learned collision memory: the count only, never a word (PLT-R901, PLT-R914). Nil when the
         /// report was built without it.
         public var learnedCollisionEntries: Int?
+        /// Entries of the never-correct list: the count only, never a word (PRD-R45, PRD-R81, ENG-R1118). Nil when the
+        /// report was built without it.
+        public var neverCorrectEntries: Int?
 
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
             toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, learnCollisionChoices: Bool = true,
-            lookaheadRevision: Bool = true, interfaceLanguage: InterfaceLanguage, updateChannel: UpdateChannel,
-            explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
+            lookaheadRevision: Bool = true, typoCorrection: Bool = true, interfaceLanguage: InterfaceLanguage,
+            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil,
+            neverCorrectEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -3457,10 +3466,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.restoreHotkeySet = restoreHotkeySet
             self.learnCollisionChoices = learnCollisionChoices
             self.lookaheadRevision = lookaheadRevision
+            self.typoCorrection = typoCorrection
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
             self.learnedCollisionEntries = learnedCollisionEntries
+            self.neverCorrectEntries = neverCorrectEntries
+        }
+    }
+
+    /// Counts the host keeps since launch (`HostCounters`), numbers only (ENG-R1121, PRD-R45).
+    public struct CountersSection: Sendable, Hashable, Codable {
+        /// Commits the engine corrected (ENG-R1115).
+        public var corrections: UInt64?
+        /// Corrections the user took back with the restore key (ENG-R1117).
+        public var correctionUndos: UInt64?
+
+        public init(corrections: UInt64? = nil, correctionUndos: UInt64? = nil) {
+            self.corrections = corrections
+            self.correctionUndos = correctionUndos
         }
     }
 
@@ -4498,6 +4522,11 @@ public struct MigrationChain: Sendable {
     /// optional `learnedWords` array, which builds without it keep unread (PLT-R1002). No step is needed for the
     /// files written before it: their `keepAsTyped` and `keepVietnamese` entries carry no app, so they are read as
     /// global entries, and so is a `learnedWords` item without an app (`LearnedWordsCodec`).
+    ///
+    /// It stays at version 1 for typo correction too (1.1.0, ADR 0323): `settings` gains the optional `typoCorrection`
+    /// (D30; absent is unset, so the shipped default applies, PRD-R6) and `englishRestoreLists` the optional
+    /// `neverCorrect` array (ENG-R1118). A file written before reads as D30 at its default and an empty list; 1.0.x
+    /// builds keep both keys unread through their rewrites (PLT-R1002).
     public static let shipped = MigrationChain([])
 }
 ```
@@ -5042,12 +5071,15 @@ struct SettingsImporter {
         return object
     }
 
-    /// Setting keys whose value would change; onboarding is machine state and never imported.
+    /// Setting keys whose value would change; onboarding is machine state and never imported. The never-correct list
+    /// is part of the settings (PRD-R72, PRD-R81: no checkbox of its own); an export of 1.0.x has none, which reads as
+    /// an empty list, so it is named only when the current list is not empty.
     static func changedKeys(from current: UserSettings, to imported: UserSettings) -> [String] {
         var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
         if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
         if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
         if current.learnedWords != imported.learnedWords { keys.append(SettingListKey.learnedWords) }
+        if current.neverCorrect != imported.neverCorrect { keys.append(SettingListKey.neverCorrect) }
         if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
         return keys
     }
@@ -8207,8 +8239,9 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     }
 }
 
-/// Sixteen prebuilt engines: appContext x englishRestore x macros x lookaheadRevision (ENG-R850, `features`,
-/// ENG-R1107, PLT-R357). Lookup is an array index, so the tap never hashes or allocates to find an engine.
+/// Thirty-two prebuilt engines: appContext x englishRestore x macros x lookaheadRevision x restoreHotkey (ENG-R850,
+/// `features`, ENG-R1107, PLT-R357, ENG-R1119). They share one `Resources` value, so the bundled data, the correction
+/// data among it, is held once. Lookup is an array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
     /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
@@ -8242,7 +8275,7 @@ public enum MacroTableBuildIssue: Sendable, Hashable {
 
 /// Pure mapping from settings to engine values. Runs on the utility queue when settings change.
 public enum EngineBridge {
-    /// D1, D2, D4, D5, D6 plus the variant.
+    /// D1, D2, D4, D5, D6, D29, D30 and D8's on or off state, plus the variant.
     public static func configuration(for settings: EffectiveSettings, variant: EngineVariant) -> EngineConfiguration {
         EngineSettingsMapping.configuration(for: settings, variant: variant)
     }
@@ -8252,23 +8285,26 @@ public enum EngineBridge {
         MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
-    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists and macros.
+    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists, the never-correct
+    /// list and the macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         try resources(
             wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese),
-            macros: macros, bundledLoader: bundledLoader)
+            neverCorrect: settings.neverCorrect, macros: macros, bundledLoader: bundledLoader)
     }
 
-    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862) and the
-    /// macros. The engine gets word sets only, never the app (ENG-R851).
+    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862), the
+    /// never-correct list (per user, the same in every app, ENG-R1118) and the macros. The engine gets word sets only,
+    /// never the app (ENG-R851).
     public static func resources(
-        wordLists: UserWordLists, macros: MacroTable, bundledLoader: () throws -> Resources
+        wordLists: UserWordLists, neverCorrect: Set<String>, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         var resources = try bundledLoader()
         resources.userKeepRaw = WordSet(wordLists.keepAsTyped)
         resources.userKeepVietnamese = WordSet(wordLists.keepVietnamese)
+        resources.userNeverCorrect = WordSet(neverCorrect)
         resources.macros = macros
         return resources
     }
@@ -9981,7 +10017,7 @@ public final class InputHostController {
             enabledSources: dependencies.inputSources.enabledSources(),
             secureInput: channels.snapshots.secureInput.load(),
             permissions: latestPermissions ?? Self.unknownPermissions, tapEnabled: session?.thread.isEnabled ?? false,
-            conflicts: conflicts)
+            conflicts: conflicts, corrections: counters.correctionCount, correctionUndos: counters.correctionUndoCount)
     }
 }
 
@@ -9996,6 +10032,9 @@ public struct HostReportContext: Sendable {
     public var permissions: PermissionStatus
     public var tapEnabled: Bool
     public var conflicts: [ConflictingInput]
+    /// `HostCounters` since launch (ENG-R1115, ENG-R1117, 1.1.0): counts only, for the report (ADR 0323).
+    public var corrections: UInt64 = 0
+    public var correctionUndos: UInt64 = 0
 }
 ```
 <!-- /include -->
@@ -14809,13 +14848,18 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     public var tapRecoveries: UInt64
     /// Of those, recoveries after which the engine state was reset (QA-R11 expects every one).
     public var engineResetsAfterTapRecovery: UInt64
+    /// Commits the engines corrected since launch (ENG-R1115, 1.1.0); nil from a build before 1.1.0. A count only.
+    public var corrections: UInt64?
+    /// Of those, corrections the restore key took back (ENG-R1117, 1.1.0); nil from a build before 1.1.0.
+    public var correctionUndos: UInt64?
     public var metrics: MetricsSnapshot
 
     public init(
         processIdentifier: Int32, state: State, mode: TypingMode? = nil, pauseReason: PauseCode? = nil,
         failOpenReason: FailOpenReason? = nil, secureInputHolderBundleId: BundleKey? = nil,
         firstKeyAfterSecureInputReleaseComposed: Bool? = nil, tapRecoveries: UInt64 = 0,
-        engineResetsAfterTapRecovery: UInt64 = 0, metrics: MetricsSnapshot
+        engineResetsAfterTapRecovery: UInt64 = 0, corrections: UInt64? = nil, correctionUndos: UInt64? = nil,
+        metrics: MetricsSnapshot
     ) {
         self.processIdentifier = processIdentifier
         self.state = state
@@ -14826,6 +14870,8 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
         self.firstKeyAfterSecureInputReleaseComposed = firstKeyAfterSecureInputReleaseComposed
         self.tapRecoveries = tapRecoveries
         self.engineResetsAfterTapRecovery = engineResetsAfterTapRecovery
+        self.corrections = corrections
+        self.correctionUndos = correctionUndos
         self.metrics = metrics
     }
 
@@ -14834,12 +14880,14 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     /// the holder appears as its bundle ID only, and only while paused for secure input.
     public init(
         processIdentifier: Int32, hostState: HostState, firstKeyAfterSecureInputReleaseComposed: Bool?,
-        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, metrics: MetricsSnapshot
+        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, corrections: UInt64? = nil,
+        correctionUndos: UInt64? = nil, metrics: MetricsSnapshot
     ) {
         self.init(
             processIdentifier: processIdentifier, state: .starting,
             firstKeyAfterSecureInputReleaseComposed: firstKeyAfterSecureInputReleaseComposed,
-            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery, metrics: metrics)
+            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery,
+            corrections: corrections, correctionUndos: correctionUndos, metrics: metrics)
         switch hostState {
         case .noPermission: state = .noPermission
         case .starting: state = .starting
@@ -15017,10 +15065,12 @@ public protocol IntegrationHookFileAccess: Sendable {
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Content-free observations of the host since launch that the integration hooks report in `AppStateSnapshot`
-// (ADR 0502, "Integration hooks"): tap recoveries after a timeout and the engine resets that came with them
-// (PLT-R330, QA-R11), and whether the first key-down after a secure-input release was composed (PLT-R398B). Always
-// on in every build (two counters and one byte); written on the tap thread with relaxed atomics only, no lock and
-// no allocation (PLT-R304, PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
+// (ADR 0502, "Integration hooks") and, for the typo correction, the diagnostics report (PRD-R45, ADR 0323): tap
+// recoveries after a timeout and the engine resets that came with them (PLT-R330, QA-R11), whether the first key-down
+// after a secure-input release was composed (PLT-R398B), and the corrections the engines made and the ones the
+// restore key undid (ENG-R1115, ENG-R1117, 1.1.0; counts only, never words, ENG-R1121). Always on in every build (four
+// counters and one byte); written on the tap thread with relaxed atomics only, no lock and no allocation (PLT-R304,
+// PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
 
 internal import Diagnostics
 internal import RealtimeSupport
@@ -15030,6 +15080,10 @@ public final class HostCounters: Sendable {
     let tapRecoveries = AtomicCounter()
     /// The pipeline handled a `tapDisabledByTimeout` and its engine was left reset (QA-R11).
     let engineResetsAfterTapRecovery = AtomicCounter()
+    /// A commit the engine decided `corrected` (ENG-R1115).
+    let corrections = AtomicCounter()
+    /// A restore toggle that undid a correction: its output carried `LearningSignal.neverCorrect` (ENG-R1117).
+    let correctionUndos = AtomicCounter()
     /// 0: no secure-input release seen yet; 1: the first key-down after the latest release passed uncomposed;
     /// 2: it was composed.
     private let firstKeyAfterRelease = Atomic<UInt8>(0)
@@ -15038,6 +15092,8 @@ public final class HostCounters: Sendable {
 
     public var tapRecoveryCount: UInt64 { tapRecoveries.value }
     public var engineResetsAfterTapRecoveryCount: UInt64 { engineResetsAfterTapRecovery.value }
+    public var correctionCount: UInt64 { corrections.value }
+    public var correctionUndoCount: UInt64 { correctionUndos.value }
 
     /// PLT-R398B: nil before the first release of this process.
     public var firstKeyAfterSecureInputReleaseComposed: Bool? {
