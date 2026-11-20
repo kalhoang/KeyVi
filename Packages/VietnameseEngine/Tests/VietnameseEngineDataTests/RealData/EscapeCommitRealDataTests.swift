@@ -271,7 +271,7 @@ struct EscapeCommitRealDataTests {
     }
 
     /// The configurations of the sweep and the default one, where the typo correction is on (ENG-R1119).
-    static let configurationsWithCorrection = configurations + [EngineConfiguration()]
+    static let configurationsWithCorrection = configurations + [EngineConfiguration(typoCorrection: true)]
 
     @Test(
         "REG-40: a re-opened token that shows R′ never gains a w it does not show (ENG-R1005, ENG-R701)",
@@ -303,8 +303,8 @@ struct EscapeCommitRealDataTests {
 
     @Test("REG-40, 11A: a one-syllable typo typed with the habit is a deliberate form of (d), no candidate (ENG-R1110)")
     func oneSyllableTypoWithTheHabit() throws {
-        #expect(try Self.checked("wwhcih ", EngineConfiguration()) == "whcih ")
-        #expect(try Self.checked("whcih ", EngineConfiguration()) == "which ")
+        #expect(try Self.checked("wwhcih ", EngineConfiguration(typoCorrection: true)) == "whcih ")
+        #expect(try Self.checked("whcih ", EngineConfiguration(typoCorrection: true)) == "which ")
     }
 
     @Test(
