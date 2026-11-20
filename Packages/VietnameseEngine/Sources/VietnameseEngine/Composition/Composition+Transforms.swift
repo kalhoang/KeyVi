@@ -113,8 +113,11 @@ extension Composition {
         }
         // Escape: the effect is already present (ENG-R440, ENG-R534).
         if parse.vowelRange.contains(where: { scope.isEffect(letters[$0].letter.modifier) }) {
-            let undone = removeHornBreveEffect(scope, parse: parse)
-            escape(scope.kind, key: key, at: index, undoing: undone)
+            let removed = removeHornBreveEffect(scope, parse: parse)
+            if scope == .telexW {
+                recordWDoubling(at: index, undone: removed.undone, standaloneSources: removed.standaloneSources)
+            }
+            escape(scope.kind, key: key, at: index, undoing: removed.undone)
             return true
         }
         // ENG-R103: `w` with no vowel yet is the vowel `ư` (its case follows the key, ENG-R903).
@@ -153,9 +156,12 @@ extension Composition {
     /// ENG-R413 escape: removes every horn and breve the key could have made in the vowel group (VNI `7`
     /// only horns, VNI `8` only breves) and, for Telex `w`, the `ư` letters a standalone `w` created.
     /// Returns the keys whose effect the escape undid (ENG-R711): the mark keys of every letter it
-    /// unmarked and the keys of every `ư` it removed.
-    private mutating func removeHornBreveEffect(_ scope: HornBreveScope, parse: SyllableParse) -> KeySet {
+    /// unmarked and the keys of every `ư` it removed; and the keys of those `ư` letters (ENG-R804, REG-40).
+    private mutating func removeHornBreveEffect(_ scope: HornBreveScope, parse: SyllableParse)
+        -> (undone: KeySet, standaloneSources: KeySet)
+    {
         var undone = KeySet()
+        var standaloneSources = KeySet()
         var result: [ComposedLetter] = []
         result.reserveCapacity(letters.count)
         for (offset, var letter) in letters.enumerated() {
@@ -163,6 +169,7 @@ extension Composition {
             if inVowelGroup, scope == .telexW, letter.flags.contains(.standaloneW), letter.letter == .uHorn {
                 undone.formUnion(KeySet(index: Int(letter.source)))
                 undone.formUnion(letter.modifierSources)
+                standaloneSources.formUnion(KeySet(index: Int(letter.source)))
                 continue
             }
             if inVowelGroup, scope.isEffect(letter.letter.modifier) {
@@ -172,7 +179,7 @@ extension Composition {
             result.append(letter)
         }
         letters = result
-        return undone
+        return (undone, standaloneSources)
     }
 
     /// ENG-R415. Applies when the first letter of the token is `d`: an unstroked `d` becomes `đ` if

@@ -72,6 +72,15 @@ extension Composition {
 
     /// The raw keys as a string (restore reproduces them exactly, ENG-R705).
     package var rawText: String { ASCII.string(raw) }
+
+    /// `R′` of ENG-R804 (REG-40): the raw keys without the key of each w doubling, the other keys in their case.
+    package var rawWithoutWDoublings: [UInt8] {
+        guard !wDoublings.isEmpty else { return raw }
+        var kept: [UInt8] = []
+        kept.reserveCapacity(raw.count)
+        for (index, key) in raw.enumerated() where !wDoublings.contains(index) { kept.append(key) }
+        return kept
+    }
 }
 
 extension Composition {
