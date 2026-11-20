@@ -28,6 +28,23 @@ import VietnameseEngine
         }
     }
 
+    /// ENG-R804, REG-40: the probes include rows X28 and X34 of 13.9.5, which the restore without the doubled `w`
+    /// decides (`wwebview ` gives `webview `; `answwer ` gives `answer ` with the correction off too), so a build from
+    /// before the amendment (1.0.1-beta.2 committed `wwebview `) gets another identity.
+    @Test func theProbesExerciseTheWDoubling() throws {
+        for probe in ["wwebview ", "answwer "] { #expect(DevEngineIdentity.telexProbes.contains(probe)) }
+        let resources = try ReplayEngineFactory.bundledResources()
+        var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: resources))
+        let typed = DevEngineIdentity.type("wwebview ") { character in
+            switch session.handle(.key(KeyInput(character))).action {
+            case .passThrough: .passThrough
+            case .edit(let edit, let thenPassThrough):
+                .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+            }
+        }
+        #expect(typed == "webview ")
+    }
+
     /// ENG-R1119: with the bundled correction data (engine track E1) and the correction itself (E2), both merged into
     /// integration/1.1.0, the identity with the switch on differs from the identity with it off, so the probes above
     /// reach the correction.
