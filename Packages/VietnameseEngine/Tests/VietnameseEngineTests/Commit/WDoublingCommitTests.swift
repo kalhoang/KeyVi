@@ -195,9 +195,72 @@ struct WDoublingCommitTests {
         #expect(try Self.text("wwebview ⌫s") == "webviews")
         #expect(try Self.text("wwebview ⌫s ") == "webviews ")
         #expect(try Self.text("answwer ⌫") == "answer")
-        // At the boundary the token is decided again on its raw keys at that moment (ENG-R1005): `answwe` shows
-        // `ánwe`, and `answe` is not English, so (d) restores `R` (a breve doubling). Known cost, like `text ⌫⌫ `.
-        #expect(try Self.text("answwer ⌫⌫ ") == "answwe ")
+        // At the boundary the token is decided again on its raw keys at that moment (ENG-R1005): `answwe` is neither
+        // English nor `answe`, and (d) restores the keys it shows, `R′`, never a `w` it does not show.
+        #expect(try Self.text("answwer ⌫⌫ ") == "answe ")
+    }
+
+    /// The keys typed, through the invariant checker of 13.6 (ENG-R701: a restored token shows the raw keys it shows,
+    /// ENG-T31, ENG-T32, ENG-T33), and the field after them.
+    static func checked(
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false)
+    ) throws -> String {
+        var checker = InvariantChecker(engine: Engine(configuration: configuration, resources: resources))
+        try checker.send(KeyNotation.events(keys))
+        try checker.finish()
+        return try text(keys, configuration)
+    }
+
+    @Test(
+        "A re-opened token that shows R′ restores R′ again: it never gains a w it does not show (ENG-R1005)",
+        arguments: [
+            ("answwer ⌫⌫ ", "answe "), ("answwer ⌫z ", "answerz "),
+            ("wwebview ⌫⌫ ", "webvie "), ("wwebview ⌫s ", "webviews "),
+        ])
+    func reopenedTokenRestoresTheKeysItShows(_ keys: String, _ expected: String) throws {
+        #expect(try Self.checked(keys) == expected)
+        #expect(try Self.driver(keys).outputs.last?.decision == .restored(.escape))
+    }
+
+    @Test("Every commit sets or clears what the token shows, so each re-opening shows the text committed (ENG-R701)")
+    func secondReopeningShowsTheTextCommitted() throws {
+        // The first re-opened commit wrote `answe` (`R′`); the second re-opening shows it, and each Backspace deletes
+        // one character of it: the `w` doubling goes with the `w` before it.
+        #expect(try Self.checked("answwer ⌫⌫ ⌫") == "answe")
+        #expect(try Self.checked("answwer ⌫⌫ ⌫⌫") == "answ")
+        #expect(try Self.checked("answwer ⌫⌫ ⌫⌫⌫") == "ans")
+        #expect(try Self.checked("answwer ⌫⌫ ⌫⌫a ") == "answa ")
+        // A commit that keeps `C` clears it: `ww` composes to the `w` shown, and its deliberate form is kept.
+        #expect(try Self.checked("wwebview ⌫⌫⌫⌫⌫⌫⌫ ⌫") == "w")
+        // camel case keys typed into a re-opened token: L3b restores `R′` too, so the next re-opening matches it.
+        #expect(try Self.checked("wwebview ⌫Kit ") == "webviewKit ")
+        #expect(try Self.checked("wwebview ⌫Kit ⌫") == "webviewKit")
+        #expect(try Self.checked("wwebview ⌫Kit ⌫⌫⌫⌫ ⌫") == "webview")
+        // Down to `answ` the keys compose to `ánw`, a deliberate form whose escape is the last key: (d) keeps it.
+        #expect(try Self.checked("answwer ⌫⌫⌫ ") == "ánw ")
+    }
+
+    @Test(
+        "L3b: camel case keys with a standalone w doubling restore R′ (ENG-R904, REG-40)",
+        arguments: [
+            ("wwebView ", "webView "), ("WwebView ", "WebView "), ("WwordPress ", "WordPress "),
+            ("WweChat ", "WeChat "), ("wwebSocket ", "webSocket "), ("WwhatsApp ", "WhatsApp "),
+        ])
+    func camelCaseRestoresTheKeysWithoutTheDoubling(_ keys: String, _ expected: String) throws {
+        #expect(try Self.checked(keys) == expected)
+        #expect(try Self.driver(keys).outputs.last?.decision == .restored(.camelCase))
+        let code = EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false)
+        #expect(try Self.text(keys, code) == expected)
+    }
+
+    @Test("A w doubling followed by another w is no habit (`www`, ENG-T12): L3b and L4 restore R as before")
+    func wwwKeepsEveryW() throws {
+        // `www` typed as it is written shows `ww`; English has no word with `ww` right after a first `w` but `www`.
+        #expect(try Self.checked("wwwRoot ") == "wwwRoot ")
+        #expect(try Self.checked("wwwexample ") == "wwwexample ")
+        // A horn or breve doubling in camel case keys keeps `R`, as in L4 (d).
+        #expect(try Self.checked("dowwnLoad ") == "dowwnLoad ")
+        #expect(try Self.checked("useState ") == "useState ")
     }
 
     @Test("A key the restore left out at the end goes with the character before it")

@@ -81,6 +81,18 @@ extension Composition {
         for (index, key) in raw.enumerated() where !wDoublings.contains(index) { kept.append(key) }
         return kept
     }
+
+    /// ENG-R804 (REG-40): the token has a w doubling, each one removed the `ư` of a standalone `w`, and no `w` key
+    /// follows it: the habit of typing `ww` for the letter `w`. `www` typed as written (ENG-T12) is no habit: English
+    /// has no word that starts with `ww` except `www` (`wwwexample`, `wwwRoot` keep every `w`).
+    package var wDoublingsAreHabit: Bool {
+        guard !wDoublings.isEmpty, wDoublings == standaloneWDoublings else { return false }
+        // A doubling is recorded while composing, so its index is below 64 (`KeySet`) and a key precedes it.
+        let followed = raw.indices.dropLast().prefix(64).contains { index in
+            wDoublings.contains(index) && ASCII.lowercased(raw[index + 1]) == UInt8(ascii: "w")
+        }
+        return !followed
+    }
 }
 
 extension Composition {

@@ -135,10 +135,12 @@ package struct ActiveToken: Sendable, Hashable {
         return token
     }
 
-    /// This token showing its raw keys without the key of each w doubling: rule L4 restored it so (ENG-R804, REG-40).
-    package func omittingWDoublings() -> ActiveToken {
+    /// This token as its commit left it (REG-40): showing its raw keys without the key of each w doubling when the
+    /// restore wrote `R′` (ENG-R804, ENG-R904, ENG-R1005), otherwise not; every commit sets or clears it, so a
+    /// re-opened token always shows the text its last commit wrote (ENG-R701).
+    package func omittingWDoublings(_ omits: Bool) -> ActiveToken {
         var token = self
-        token.omitsWDoublings = true
+        token.omitsWDoublings = omits
         return token
     }
 

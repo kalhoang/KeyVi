@@ -34,7 +34,8 @@ package struct TypoCorrector: Sendable {
     /// The correction of a token the decision of 8.1 has decided as `decision`, nil when the token is not a
     /// candidate (ENG-R1110) or not exactly one word fits (ENG-R1114, ENG-R1125). `typed` is the typed word: the keys a
     /// restore puts back, `R`, or `R′` when rule L4 restores the token without its w doublings (ENG-R804, REG-40), so
-    /// the correction reads what the screen shows (`wwhcih` shows `whcih` and gives `which`). `context.boundary` is the
+    /// the correction reads what the screen shows (`wwindwos` shows `windwos` and gives `windows`; a one-syllable typo
+    /// such as `wwhcih` is kept by (d) as a deliberate form and is no candidate). `context.boundary` is the
     /// committing key and `context.characterBefore` the character right before the token.
     package func correction(
         for inputs: CommitInputs, typed: RestoreKeys, decision: CommitDecision, token: ActiveToken,

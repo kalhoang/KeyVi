@@ -36,8 +36,12 @@ package struct CommitInputs: Sendable {
     /// `R′` (ENG-R804, REG-40): `R` without the key of each w doubling (`Composition.wDoublings`), the other keys in
     /// their case; nil when the token has none. Built here, at the commit, never per key (ENG-R1122).
     package let withoutWDoublings: RestoreKeys?
-    /// Every w doubling of the token removed the `ư` of a standalone `w` (`Composition.standaloneWDoublings`).
-    package let onlyStandaloneWDoublings: Bool
+    /// The w doublings of the token are the habit of typing `ww` for `w` (`Composition.wDoublingsAreHabit`): each
+    /// removed the `ư` of a standalone `w` and no `w` key follows it.
+    package let wDoublingsAreHabit: Bool
+    /// The token already shows `R′` (`ActiveToken.omitsWDoublings`): a re-opened token that a restore without its w
+    /// doublings committed (ENG-R1005). A restore of it writes `R′`, the keys it shows, never a `w` it does not show.
+    package let showsWithoutWDoublings: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -60,7 +64,8 @@ package struct CommitInputs: Sendable {
         endsWithRemoval = token.composition.endsWithRemoval
         let doublings = token.composition.wDoublings
         withoutWDoublings = doublings.isEmpty ? nil : RestoreKeys(token.composition.rawWithoutWDoublings)
-        onlyStandaloneWDoublings = !doublings.isEmpty && doublings == token.composition.standaloneWDoublings
+        wDoublingsAreHabit = token.composition.wDoublingsAreHabit
+        showsWithoutWDoublings = token.omitsWDoublings && token.literalKeys == nil
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -314,11 +319,19 @@ package struct CommitPolicy: Sendable {
         autoRestore ? .restored(rule) : .kept(rule)
     }
 
-    /// ENG-R803: the keys a restore by `decision` puts back: `R′` when rule L4 restores the token without its w
-    /// doublings (ENG-R804 (c′) and (d), REG-40), otherwise `R`. Also the typed word of the typo correction (11A).
+    /// ENG-R803: the keys a restore by `decision` puts back, also the typed word of the typo correction (11A): `R′`
+    /// (REG-40) when rule L4 restores the token without its w doublings (ENG-R804 (c′) and (d)), when rule L3b
+    /// restores camel case keys whose w doublings are a habit (ENG-R904), and for any restore of a re-opened token that
+    /// shows `R′` (ENG-R1005); otherwise `R`.
     package func restoredKeys(_ inputs: CommitInputs, decision: CommitDecision) -> RestoreKeys {
-        if decision == .restored(.escape), let keys = escapeRestoreWithoutWDoublings(inputs) { return keys }
-        return RestoreKeys(raw: inputs.raw, lowercased: inputs.rawLowercased)
+        let typed = RestoreKeys(raw: inputs.raw, lowercased: inputs.rawLowercased)
+        guard decision.restores, let keys = inputs.withoutWDoublings else { return typed }
+        if inputs.showsWithoutWDoublings { return keys }
+        switch decision {
+        case .restored(.escape): return escapeRestoreWithoutWDoublings(inputs) ?? typed
+        case .restored(.camelCase): return habitDoublingsLeftOut(inputs) ?? typed
+        default: return typed
+        }
     }
 
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the

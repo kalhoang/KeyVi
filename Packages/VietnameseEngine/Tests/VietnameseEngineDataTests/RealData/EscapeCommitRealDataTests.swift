@@ -258,6 +258,55 @@ struct EscapeCommitRealDataTests {
         #expect(reopened.field.string == "windwo")
     }
 
+    /// The keys typed through the invariant checker of 13.6 with the bundled data (ENG-R701, ENG-T31 to ENG-T33),
+    /// and the field after them.
+    static func checked(_ keys: String, _ configuration: EngineConfiguration) throws -> String {
+        let resources = try RealData.resources()
+        var checker = InvariantChecker(engine: Engine(configuration: configuration, resources: resources))
+        try checker.send(KeyNotation.events(keys))
+        try checker.finish()
+        var driver = EngineDriver(configuration: configuration, resources: resources)
+        try driver.send(KeyNotation.events(keys))
+        return driver.field.string
+    }
+
+    /// The configurations of the sweep and the default one, where the typo correction is on (ENG-R1119).
+    static let configurationsWithCorrection = configurations + [EngineConfiguration()]
+
+    @Test(
+        "REG-40: a re-opened token that shows R′ never gains a w it does not show (ENG-R1005, ENG-R701)",
+        arguments: [
+            ("answwer ⌫⌫ ", "answe "), ("answwer ⌫z ", "answerz "), ("answwer ⌫⌫ ⌫", "answe"),
+            ("answwer ⌫⌫ ⌫⌫⌫a ", "ấn "), ("softwware ⌫⌫⌫ ⌫", "softwa"), ("softwware ⌫⌫⌫ ⌫⌫⌫ ", "soft "),
+            ("wwebview ⌫Kit ", "webviewKit "), ("wwebview ⌫Kit ⌫", "webviewKit"),
+        ])
+    func reopenedTokenNeverGainsAW(_ keys: String, _ expected: String) throws {
+        // Each commit of the token sets or clears what it shows, so the second re-opening shows the text the first
+        // re-opened commit wrote; the invariant checker holds the display to the raw keys shown after every event.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40, ENG-R904: camel case keys whose w doublings are a habit restore R′ through rule L3b",
+        arguments: [
+            ("wwebView ", "webView "), ("WwebView ", "WebView "), ("WwordPress ", "WordPress "),
+            ("WweChat ", "WeChat "), ("WwhatsApp ", "WhatsApp "), ("WwiFi ", "WiFi "), ("wwebSocket ", "webSocket "),
+            ("wwwRoot ", "wwwRoot "), ("dowwnLoad ", "dowwnLoad "), ("wwwexample ", "wwwexample "),
+        ])
+    func camelCaseHabit(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: a one-syllable typo typed with the habit is a deliberate form of (d), no candidate (ENG-R1110)")
+    func oneSyllableTypoWithTheHabit() throws {
+        #expect(try Self.checked("wwhcih ", EngineConfiguration()) == "whcih ")
+        #expect(try Self.checked("whcih ", EngineConfiguration()) == "which ")
+    }
+
     @Test(
         "The deliberate escapes of Telex users and the escape examples of the spec do not change",
         arguments: [

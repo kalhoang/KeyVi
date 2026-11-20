@@ -84,7 +84,7 @@ extension Engine {
                 correcting: token, correction: result.text, rule: rule, omittingWDoublings: result.omitsWDoublings)
         } else {
             let reported = result.learning == nil ? token : token.reportingChoice()
-            stored = result.omitsWDoublings ? reported.omittingWDoublings() : reported
+            stored = reported.omittingWDoublings(result.omitsWDoublings)
         }
         let committed = CommittedToken(
             token: stored, committedText: result.text, decision: result.decision, language: result.language,
