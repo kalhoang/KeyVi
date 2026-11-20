@@ -28,21 +28,27 @@ import VietnameseEngine
         }
     }
 
-    /// ENG-R804, REG-40: the probes include rows X28 and X34 of 13.9.5, which the restore without the doubled `w`
-    /// decides (`wwebview ` gives `webview `; `answwer ` gives `answer ` with the correction off too), so a build from
-    /// before the amendment (1.0.1-beta.2 committed `wwebview `) gets another identity.
+    /// ENG-R804, REG-40: the probes include rows X28 and X29 of 13.9.5, which the restore without the doubled `w`
+    /// decides in the default configuration the identity is computed with (`wwebview ` gives `webview `, `Wwebview `
+    /// gives `Webview `), so a build from before the amendment (1.0.1-beta.2 committed `wwebview ` and `Wwebview `)
+    /// gets another identity. (`answwer ` would not tell them apart: the correction already gave `answer `.) The camel
+    /// case probe `WwordPress ` follows rule L3b (ENG-R904): it gives `WordPress `.
     @Test func theProbesExerciseTheWDoubling() throws {
-        for probe in ["wwebview ", "answwer "] { #expect(DevEngineIdentity.telexProbes.contains(probe)) }
         let resources = try ReplayEngineFactory.bundledResources()
-        var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: resources))
-        let typed = DevEngineIdentity.type("wwebview ") { character in
-            switch session.handle(.key(KeyInput(character))).action {
-            case .passThrough: .passThrough
-            case .edit(let edit, let thenPassThrough):
-                .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+        for (probe, expected) in [
+            ("wwebview ", "webview "), ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "),
+        ] {
+            #expect(DevEngineIdentity.telexProbes.contains(probe))
+            var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: resources))
+            let typed = DevEngineIdentity.type(probe) { character in
+                switch session.handle(.key(KeyInput(character))).action {
+                case .passThrough: .passThrough
+                case .edit(let edit, let thenPassThrough):
+                    .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+                }
             }
+            #expect(typed == expected, "\(probe)")
         }
-        #expect(typed == "webview ")
     }
 
     /// ENG-R1119: with the bundled correction data (engine track E1) and the correction itself (E2), both merged into
