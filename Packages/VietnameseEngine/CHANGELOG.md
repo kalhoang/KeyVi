@@ -84,8 +84,11 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   English decides first (`www`, `powwow`), and the reason code stays `escape`. The typed word of the typo correction
   is `R′` in that case (`wwindwos` gives `windows`), a re-opened token shows `R′`, every later commit of it that
   restores writes `R′` again (`answwer`, space, two Backspaces, space gives `answe `), and the toggle composes it.
-  The `w` doublings are a habit only when no `w` key follows them (`wwwexample` keeps every `w`), and rule L3b
-  restores `R′` for camel case keys with that habit (`WwordPress` gives `WordPress`, ENG-R904). Every
+  The `w` doublings are a habit only when no `w` key follows them and none is a capital right after a lowercase `w`
+  (`wwwexample` and `dwWidth` keep every `w`), and rule L3b restores `R′` for camel case keys with that habit
+  (`WwordPress` gives `WordPress`, ENG-R904). A Backspace that takes the doubling a re-opened token does not show
+  ends the omission, and a commit that writes the token's text unchanged (the typed word the toggle took back from a
+  correction) keeps it showing `R′` (ENG-R701, ENG-R1005, ENG-R1117). Every
   word of `/usr/share/dict/words` typed as written commits the same text as before. Spec rows X28 to X39;
   `spec/reference-model/boundary.py` models the rule.
 

@@ -959,12 +959,16 @@ during most of them.
   1.0.1 merge.
 - [ ] **REG-40, a `w` doubled out of habit (ADR 0010 item 7, 20/11/2026).** Built on `fix/ww-doubling` from
   `integration/1.1.0` at d94fc102, for the integrator to merge with `--no-ff`: the spec amendment of ENG-R804 (the `w`
-  doubling, `R′`, case (c′), the restore of (d)), the L4 row of 8.1, ENG-R803, ENG-R1005, the typed word of 11A
-  (`R′` when L4 restores it), REG-40 and rows X28 to X39 of 13.9.5; the engine (`Composition.wDoublings`,
-  `CommitPolicy.restoredKeys`, the re-opened token showing `R′`, the correction reading `R′`); the reference model;
-  two probes of the engine identity (`wwebview `, `answwer `, ADR 0007 decision 13); the CHANGELOG lines. The
-  TRACEABILITY rows ENG-R803, ENG-R804, ENG-R1005, ENG-R1110, ENG-R1117 and REG-40 name the new suites
-  (`WDoublingCommitTests`, `EscapeCommitRealDataTests`, `RegressionTests.reg40`). It changes no word of
+  doubling, `R′`, case (c′), the restore of (d), the habit: every `w` doubling a standalone one, no `w` key after it
+  and no capital right after a lowercase `w`), the L3b and L4 rows of 8.1, ENG-R701, ENG-R803, ENG-R904 (L3b restores
+  `R′` for camel case keys with the habit), ENG-R1005, ENG-R1117, the typed word of 11A (`R′` when L4 restores it),
+  REG-40 and rows X28 to X39 of 13.9.5; the engine (`Composition.wDoublings`, `Composition.wDoublingsAreHabit`,
+  `CommitPolicy.restoredKeys`, the re-opened token showing `R′`, `omitsWDoublings` set or cleared at every commit and
+  cleared by the Backspace that takes the doubling, the correction reading `R′`); the reference model; three probes of
+  the engine identity (`wwebview `, `Wwebview `, `WwordPress `, ADR 0007 decision 13); the CHANGELOG lines. The
+  TRACEABILITY rows ENG-R701, ENG-R803, ENG-R804, ENG-R904, ENG-R1005, ENG-R1110, ENG-R1117 and REG-40 name the new
+  suites (`WDoublingCommitTests`, `EscapeCommitRealDataTests`, `WDoublingFuzzRealDataTests`,
+  `RegressionTests.reg40`). It changes no word of
   `/usr/share/dict/words` typed as written; the Task 35 rerun at the stable 1.0.1 merge covers it.
 
 ---
