@@ -1,5 +1,21 @@
 // SPDX-License-Identifier: MPL-2.0
 
+/// Keys of a token as a restore writes them (ENG-R803): as typed, and lowercased (ASCII only, ENG-R905) for the word
+/// lists.
+package struct RestoreKeys: Sendable, Hashable {
+    package let raw: String
+    package let lowercased: String
+
+    package init(raw: String, lowercased: String) {
+        self.raw = raw
+        self.lowercased = lowercased
+    }
+
+    package init(_ bytes: [UInt8]) {
+        self.init(raw: ASCII.string(bytes), lowercased: ASCII.string(bytes, lowercasing: true))
+    }
+}
+
 /// The inputs of the decision at commit (8.1) for one token.
 package struct CommitInputs: Sendable {
     /// `C`: the composed form after the 5.5 normalisation (`Composition.committedText(style:)`).
@@ -17,6 +33,11 @@ package struct CommitInputs: Sendable {
     /// The last key is a tone-removal key that removed the tone or the letter marks (`Composition.endsWithRemoval`,
     /// rule L4a, REG-39).
     package let endsWithRemoval: Bool
+    /// `R′` (ENG-R804, REG-40): `R` without the key of each w doubling (`Composition.wDoublings`), the other keys in
+    /// their case; nil when the token has none. Built here, at the commit, never per key (ENG-R1122).
+    package let withoutWDoublings: RestoreKeys?
+    /// Every w doubling of the token removed the `ư` of a standalone `w` (`Composition.standaloneWDoublings`).
+    package let onlyStandaloneWDoublings: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -37,6 +58,9 @@ package struct CommitInputs: Sendable {
         endsWithEscape = token.composition.endsWithEscape
         escapedAcrossKeys = token.composition.escapedAcrossKeys
         endsWithRemoval = token.composition.endsWithRemoval
+        let doublings = token.composition.wDoublings
+        withoutWDoublings = doublings.isEmpty ? nil : RestoreKeys(token.composition.rawWithoutWDoublings)
+        onlyStandaloneWDoublings = !doublings.isEmpty && doublings == token.composition.standaloneWDoublings
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -288,6 +312,13 @@ package struct CommitPolicy: Sendable {
     @inline(__always)
     func restore(_ rule: CommitRule) -> CommitDecision {
         autoRestore ? .restored(rule) : .kept(rule)
+    }
+
+    /// ENG-R803: the keys a restore by `decision` puts back: `R′` when rule L4 restores the token without its w
+    /// doublings (ENG-R804 (c′) and (d), REG-40), otherwise `R`. Also the typed word of the typo correction (11A).
+    package func restoredKeys(_ inputs: CommitInputs, decision: CommitDecision) -> RestoreKeys {
+        if decision == .restored(.escape), let keys = escapeRestoreWithoutWDoublings(inputs) { return keys }
+        return RestoreKeys(raw: inputs.raw, lowercased: inputs.rawLowercased)
     }
 
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the

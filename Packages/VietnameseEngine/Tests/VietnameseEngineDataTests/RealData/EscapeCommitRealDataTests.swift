@@ -200,6 +200,64 @@ struct EscapeCommitRealDataTests {
         #expect(try Self.text(keys) == keys)
     }
 
+    // MARK: - REG-40
+
+    @Test(
+        "REG-40: the product owner's report, a w doubled out of habit is left out of the restore",
+        arguments: [
+            ("wwebview ", "webview "), ("wwebsite ", "website "), ("wwebhook ", "webhook "), ("wwiki ", "wiki "),
+            ("wwidget ", "widget "), ("wwechat ", "wechat "), ("wwordpress ", "wordpress "), ("Wwebview ", "Webview "),
+            ("vieejt wwebview ", "việt webview "),
+        ])
+    func productOwnerReport(_ keys: String, _ expected: String) throws {
+        // 1.0.1-beta.2 committed the raw keys with both `w` (`wwebview`): neither form is English, so (d) restored R.
+        for configuration in Self.configurations {
+            #expect(try Self.text(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40: what the report found right does not change",
+        arguments: [
+            ("wwindows ", "windows "), ("wwifi ", "wifi "), ("wwork ", "work "), ("wweb ", "web "), ("wwhat ", "what "),
+            ("wwow ", "wow "), ("wwatch ", "watch "), ("wwebpack ", "webpack "), ("wwhatsapp ", "whatsapp "),
+            ("wwrapper ", "wrapper "), ("www ", "www "), ("webview ", "webview "), ("website ", "website "),
+            ("webhook ", "webhook "), ("powwow ", "powwow "), ("ww ", "w "), ("uww ", "uw "), ("aww ", "aw "),
+            ("wwww ", "www "),
+        ])
+    func reportedRightUnchanged(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations {
+            #expect(try Self.text(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: the typed word of the correction is R′, what the screen shows (ENG-R1110, ENG-R1117)")
+    func correctionReadsTheKeysWithoutTheDoubling() throws {
+        // `wwindwos` shows `windwos`; L4 restores `R′` = `windwos`, which one transposition makes `windows`. Read on
+        // `R` = `wwindwos`, no single edit gives a word, so 1.0.1-beta.2 committed `wwindwos`.
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: true), resources: try RealData.resources())
+        try driver.send(KeyNotation.events("wwindwos "))
+        #expect(driver.field.string == "windows " && driver.outputs.last?.decision == .corrected(.escape))
+        // The undo brings back the typed word and names it in the signal, so the never-correct list holds what the
+        // next `wwindwos` reads.
+        try driver.send(.restoreToggle)
+        #expect(driver.field.string == "windwos " && driver.outputs.last?.learning == .neverCorrect(raw: "windwos"))
+        var resources = try RealData.resources()
+        resources.userNeverCorrect = WordSet(["windwos"])
+        var listed = EngineDriver(configuration: EngineConfiguration(typoCorrection: true), resources: resources)
+        try listed.send(KeyNotation.events("wwindwos "))
+        #expect(listed.field.string == "windwos ")
+        // Backspace re-opens the correction and the toggle brings back the typed word; after one more Backspace the
+        // token shows `windwo`, which is also its composed form `C`, so the next toggle passes through.
+        var reopened = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: true), resources: try RealData.resources())
+        try reopened.send(KeyNotation.events("wwindwos ⌫⎋"))
+        #expect(reopened.field.string == "windwos")
+        try reopened.send(KeyNotation.events("⌫⎋"))
+        #expect(reopened.field.string == "windwo")
+    }
+
     @Test(
         "The deliberate escapes of Telex users and the escape examples of the spec do not change",
         arguments: [

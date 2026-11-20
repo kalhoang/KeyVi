@@ -107,22 +107,28 @@ struct TypoCorrectionCandidateTests {
         let token = try #require(driver.state.active)
         let inputs = CommitInputs(token: token, style: .traditional)
         let context = CommitContext(runIsEnglish: false)
+        // The typed word is `R`: `androdi` holds no w doubling (ENG-R804, REG-40).
+        let typed = RestoreKeys(raw: inputs.raw, lowercased: inputs.rawLowercased)
         let rules: [CommitRule] = [
             .unchanged, .userChoice, .userList, .abbreviation, .camelCase, .escape, .toneRemoval, .invalid,
             .extendedSpelling, .notEnglish, .notAttested, .codeContext, .boundaryParticle, .phrase, .learned,
             .englishRun, .ambiguityTable, .techList, .defaultVietnamese,
         ]
         for rule in rules {
-            let kept = corrector.correction(for: inputs, decision: .kept(rule), token: token, context: context)
+            let kept = corrector.correction(
+                for: inputs, typed: typed, decision: .kept(rule), token: token, context: context)
             // `androdi` is no cluster token, so L6 keeping it is not the cluster case.
             #expect((kept != nil) == (rule == .unchanged), "kept(\(rule))")
-            let restored = corrector.correction(for: inputs, decision: .restored(rule), token: token, context: context)
+            let restored = corrector.correction(
+                for: inputs, typed: typed, decision: .restored(rule), token: token, context: context)
             #expect((restored != nil) == (rule != .userChoice && rule != .userList), "restored(\(rule))")
             if let restored { #expect(restored.text == "android" && restored.rule == rule) }
             #expect(
-                corrector.correction(for: inputs, decision: .corrected(rule), token: token, context: context) == nil)
+                corrector.correction(
+                    for: inputs, typed: typed, decision: .corrected(rule), token: token, context: context) == nil)
         }
-        #expect(corrector.correction(for: inputs, decision: .macro, token: token, context: context) == nil)
+        #expect(
+            corrector.correction(for: inputs, typed: typed, decision: .macro, token: token, context: context) == nil)
     }
 
     @Test func withAutoRestoreOffNothingIsCorrected_ENGR802() throws {

@@ -24,8 +24,12 @@ package struct RevisionEvidence: Sendable {
     /// Decided by a rule that reads the token alone (not L9a to L11), so it is evidence of its own language.
     package var isFixed: Bool { decision.rule.map { !$0.isCollisionRule } ?? false }
 
-    /// The committed text in lowercase (the tail-word lists are lowercase).
-    var committedLowercased: String { decision.restores ? inputs.rawLowercased : inputs.facts.lowercased }
+    /// The committed text in lowercase (the tail-word lists are lowercase): a restore writes ASCII keys, `R`, or `R′`
+    /// when rule L4 left out a w doubling (REG-40).
+    var committedLowercased: String {
+        guard decision.restores else { return inputs.facts.lowercased }
+        return text == inputs.raw ? inputs.rawLowercased : ASCII.string(Array(text.utf8), lowercasing: true)
+    }
 
     /// More than one letter and every letter a capital (`OK`, `USB`): all caps is never evidence.
     var isAllCaps: Bool { Self.isAllCaps(inputs.raw) }

@@ -15,6 +15,9 @@ package struct CommitResult: Sendable {
     package var collision = CollisionFacts()
     /// The strong signal of a collision word committed by the user's toggle against the rules (ENG-R864).
     package var strongSignal: CollisionSignal?
+    /// The restore put back the raw keys without the key of each w doubling (`R′`, ENG-R804, REG-40), which is also the
+    /// typed word of a correction (11A): the history keeps the token showing them (ENG-R1001, ENG-R1005, ENG-R1117).
+    package var omitsWDoublings = false
 }
 
 extension Engine {
@@ -77,9 +80,11 @@ extension Engine {
         // corrected token is kept literal, with its raw keys as typed and the correction as its display.
         let stored: ActiveToken
         if corrected, case .corrected(let rule) = result.decision {
-            stored = ActiveToken(correcting: token, correction: result.text, rule: rule)
+            stored = ActiveToken(
+                correcting: token, correction: result.text, rule: rule, omittingWDoublings: result.omitsWDoublings)
         } else {
-            stored = result.learning == nil ? token : token.reportingChoice()
+            let reported = result.learning == nil ? token : token.reportingChoice()
+            stored = result.omitsWDoublings ? reported.omittingWDoublings() : reported
         }
         let committed = CommittedToken(
             token: stored, committedText: result.text, decision: result.decision, language: result.language,
@@ -100,7 +105,8 @@ extension Engine {
     private func correct(_ result: inout CommitResult, token: ActiveToken, context: CommitContext) -> Bool {
         guard let corrector = commitPolicy.corrector, let inputs = result.inputs,
             let correction = corrector.correction(
-                for: inputs, decision: result.decision, token: token, context: context)
+                for: inputs, typed: commitPolicy.restoredKeys(inputs, decision: result.decision),
+                decision: result.decision, token: token, context: context)
         else { return false }
         result.text = correction.text
         result.decision = .corrected(correction.rule)
@@ -170,8 +176,9 @@ extension Engine {
     }
 
     /// The decision at commit for one token (8.1) and the text it leaves on screen: the raw keys when it
-    /// is restored, otherwise the composed form `C` (with the ENG-R532 spelling of an open `ươ`). A
-    /// re-opened macro expansion that the user did not restore keeps its text (`CommitDecision.macro`).
+    /// is restored (without the key of each w doubling when rule L4 restores them so, ENG-R804, REG-40), otherwise the
+    /// composed form `C` (with the ENG-R532 spelling of an open `ươ`). A re-opened macro expansion that the user did
+    /// not restore keeps its text (`CommitDecision.macro`).
     func commitResult(for token: ActiveToken, context: CommitContext) -> CommitResult {
         if token.isMacro {
             return CommitResult(
@@ -199,7 +206,8 @@ extension Engine {
         let decision = commitPolicy.decide(inputs, context: context)
         let learning = commitPolicy.learningSignal(inputs, decision: decision, context: context)
         let restored = decision.restores
-        let text = restored ? inputs.raw : inputs.committed
+        let restoredKeys = restored ? commitPolicy.restoredKeys(inputs, decision: decision).raw : inputs.raw
+        let text = restored ? restoredKeys : inputs.committed
         let action: KeyAction =
             text == token.display
             ? .passThrough : .edit(DisplayEdit.edit(from: token.display, to: text), thenPassThrough: true)
@@ -208,6 +216,7 @@ extension Engine {
             collisionRules: commitPolicy.collisionRules)
         var result = CommitResult(
             text: text, action: action, decision: decision, learning: learning, language: language, inputs: inputs)
+        result.omitsWDoublings = restoredKeys != inputs.raw
         result.collision = collisionFacts(inputs, context: context)
         if learning != nil, let word = result.collision.listWord {
             result.strongSignal = CollisionSignal(

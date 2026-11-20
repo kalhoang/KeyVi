@@ -13,6 +13,13 @@
 /// | no | yes | restore (`password`, `traffic`, `www` of ENG-T12) |
 /// | no | no | keep when the escape was a doubling and `C` has one vowel group at most or ends with the escape (`nhâmf`, `booong`, `Ana`); otherwise restore (`leecher`) |
 ///
+/// A `w` doubled out of habit (amended by the product owner on 20/11/2026, docs/decisions/0010-pa-decisions-2026-11-19.md
+/// item 7, REG-40): `R′` is `R` without the key of each w doubling (`Composition.wDoublings`). When `R′` differs from
+/// `R`, the rows above still decide while `R` or `C` is English; otherwise (c′) `R′` English restores `R′` (`answwer`
+/// shows `ánwer` and restores `answer`), before the deliberate form, and the restore of the last row puts back `R′` when
+/// every w doubling removed the `ư` of a standalone `w` (`wwebview` restores `webview`), else `R` (`dowwnload`):
+/// English writes `ww` only after a vowel, where a `w` is a horn or breve doubling.
+///
 /// Every outcome keeps the reason code `escape` (ENG-R801).
 extension CommitPolicy {
     func decideEscape(_ inputs: CommitInputs, rawLowercased: String, context: CommitContext) -> CommitDecision {
@@ -31,8 +38,18 @@ extension CommitPolicy {
         case (false, true):
             return restore(.escape)
         case (false, false):
+            // (c′), REG-40: the keys without the doubled `w` are English (`answwer`), whatever the shape of `C`.
+            if let keys = inputs.withoutWDoublings, isEnglish(keys.lowercased) { return restore(.escape) }
             return isDeliberateForm(inputs) ? .kept(.escape) : restore(.escape)
         }
+    }
+
+    /// REG-40: `R′` when rule L4 restores the token without its w doublings: `R` is not English (else (a) or (c)
+    /// restores `R`) and either `R′` is English ((c′)) or every w doubling removed the `ư` of a standalone `w` ((d)).
+    /// Read only for a token that L4 restored, so `C` is not English unless `R` is.
+    func escapeRestoreWithoutWDoublings(_ inputs: CommitInputs) -> RestoreKeys? {
+        guard let keys = inputs.withoutWDoublings, !isEnglish(inputs.rawLowercased) else { return nil }
+        return inputs.onlyStandaloneWDoublings || isEnglish(keys.lowercased) ? keys : nil
     }
 
     /// The English context of a word whose two forms are English: the run is English (ENG-R823, the evidence of
@@ -58,7 +75,7 @@ extension CommitPolicy {
         var withoutMemory = context
         withoutMemory.readsMemory = false
         let decision = decide(alone, context: withoutMemory, includeUserChoice: false)
-        return (decision.restores ? alone.raw : alone.committed) != inputs.committed
+        return (decision.restores ? restoredKeys(alone, decision: decision).raw : alone.committed) != inputs.committed
     }
 
     /// Neither form is English. `C` is a deliberate form when every escape was a doubling and `C` has the shape of

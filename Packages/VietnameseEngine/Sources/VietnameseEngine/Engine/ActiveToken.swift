@@ -62,6 +62,11 @@ package struct ActiveToken: Sendable, Hashable {
     /// Set when the toggle undid a typo correction (ENG-R1117): the token shows its raw keys as the user's choice,
     /// and its next commit reports `kept(userChoice)` (rule L1) whatever rule L0 would say.
     package private(set) var correctionUndone = false
+    /// ENG-R804 (REG-40): the raw keys this token shows leave out the key of each w doubling (`R′`,
+    /// `Composition.wDoublings`), because the restore of rule L4 put them back so, or the typo correction read them so
+    /// (11A): a re-opened token shows `R′` (ENG-R1005) and a correction's keys are `R′` (ENG-R1117). Cleared when the
+    /// token stops showing its raw keys or the toggle makes another choice.
+    package private(set) var omitsWDoublings = false
     /// Set when the token is re-opened showing the commit spelling `uơ` of an open `ươ` (ENG-R532,
     /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
     /// display again.
@@ -99,11 +104,16 @@ package struct ActiveToken: Sendable, Hashable {
     }
 
     /// ENG-R1115, ENG-R1117: the history token of a typo correction: the raw keys of `token` as typed, display = the
-    /// correction, literal, with the rule of 8.1 that would have decided it.
-    package init(correcting token: ActiveToken, correction: String, rule: CommitRule) {
+    /// correction, literal, with the rule of 8.1 that would have decided it. With `omittingWDoublings` its keys are the
+    /// typed word `R′`, the keys without each w doubling that the restore would have shown (ENG-R804, REG-40); the
+    /// composition keeps every key typed.
+    package init(correcting token: ActiveToken, correction: String, rule: CommitRule, omittingWDoublings: Bool = false)
+    {
         composition = token.composition
         display = correction
-        literalKeys = LiteralTokenKeys(span: token.composition.raw, kind: .corrected(rule))
+        let keys = omittingWDoublings ? token.composition.rawWithoutWDoublings : token.composition.raw
+        literalKeys = LiteralTokenKeys(span: keys, kind: .corrected(rule))
+        omitsWDoublings = omittingWDoublings
     }
 
     /// This token re-opened from history with `display` on screen (ENG-R1002); `revisionRestored` is the
@@ -122,6 +132,13 @@ package struct ActiveToken: Sendable, Hashable {
     package func choosing(_ choice: UserChoice) -> ActiveToken {
         var token = self
         token.userChoice = choice
+        return token
+    }
+
+    /// This token showing its raw keys without the key of each w doubling: rule L4 restored it so (ENG-R804, REG-40).
+    package func omittingWDoublings() -> ActiveToken {
+        var token = self
+        token.omitsWDoublings = true
         return token
     }
 
@@ -161,6 +178,13 @@ package struct ActiveToken: Sendable, Hashable {
     package var rawText: String {
         guard let literalKeys else { return composition.rawText }
         return ASCII.string(literalKeys.raw)
+    }
+
+    /// The raw keys as the token shows them while it shows its raw keys (`showsRawKeys`): without the key of each w
+    /// doubling when the restore of rule L4 left them out (ENG-R804, REG-40), otherwise `rawText`.
+    package var shownRawText: String {
+        guard omitsWDoublings, literalKeys == nil else { return rawText }
+        return ASCII.string(composition.rawWithoutWDoublings)
     }
 
     /// The typed word of a typo correction, lowercased: the keys as typed before the correction, without the keys
@@ -210,6 +234,10 @@ package struct ActiveToken: Sendable, Hashable {
             return .passThrough
         }
         if showsRawKeys {
+            // REG-40: a w doubling the token does not show goes with the character before it.
+            while omitsWDoublings, let last = composition.raw.indices.last, composition.wDoublings.contains(last) {
+                composition.removeLastKey(rules: rules)
+            }
             composition.removeLastKey(rules: rules)
             display.unicodeScalars.removeLast()
             endRuleRestoreIfComposedMatches(rules: rules)
@@ -240,6 +268,7 @@ package struct ActiveToken: Sendable, Hashable {
             composition.display(style: rules.toneStyle) == display
         else { return }
         restoredByRule = false
+        omitsWDoublings = false
     }
 
     /// The restore toggle (ENG-R701, ENG-R703); the consecutive case (ENG-R702) is handled by the
@@ -249,20 +278,23 @@ package struct ActiveToken: Sendable, Hashable {
         signalledRaw = nil
         if let literalKeys { return restoreLiteralSpan(literalKeys, rules: rules) }
         let raw = rawText
-        if display != raw {
+        // A token that shows its raw keys without its w doublings shows its raw keys (REG-40): the second branch.
+        if display != (showsRawKeys ? shownRawText : raw) {
             // ENG-R701 first branch, ENG-R705: the raw keys exactly as typed.
             let edit = DisplayEdit.edit(from: display, to: raw)
             display = raw
             userChoice = .restored
+            omitsWDoublings = false
             return .edit(edit, thenPassThrough: false)
         }
         guard showsRawKeys else { return nil }
         let composed = composition.display(style: rules.toneStyle)
-        guard composed != raw else { return nil }
+        guard composed != display else { return nil }
         // ENG-R701 second branch.
         let edit = DisplayEdit.edit(from: display, to: composed)
         display = composed
         userChoice = .kept
+        omitsWDoublings = false
         return .edit(edit, thenPassThrough: false)
     }
 
@@ -273,7 +305,7 @@ package struct ActiveToken: Sendable, Hashable {
         let raw = rawText
         guard display != raw else { return nil }
         let edit = DisplayEdit.graphemeEdit(from: display, to: raw)
-        self = Self.restored(keys, rules: rules)
+        self = restored(keys, rules: rules)
         return .edit(edit, thenPassThrough: false)
     }
 
@@ -281,14 +313,19 @@ package struct ActiveToken: Sendable, Hashable {
     /// `Engine.undoCorrection`); the token itself for any other token.
     package func undoingCorrection(rules: ComposerRules) -> ActiveToken {
         guard let literalKeys, correctedRule != nil else { return self }
-        return Self.restored(literalKeys, rules: rules)
+        return restored(literalKeys, rules: rules)
     }
 
-    private static func restored(_ keys: LiteralTokenKeys, rules: ComposerRules) -> ActiveToken {
+    /// The user-restored token that shows `keys`. A correction whose keys left out the w doublings (REG-40) keeps its
+    /// composition, every key typed, so that the toggle composes `C` again; any other token replays `keys`.
+    private func restored(_ keys: LiteralTokenKeys, rules: ComposerRules) -> ActiveToken {
+        let isCorrection = correctedRule != nil
+        let keepsComposition = isCorrection && omitsWDoublings
         var token = ActiveToken(
-            composition: Composition(replaying: keys.raw, rules: rules), display: ASCII.string(keys.raw),
-            userChoice: .restored, restoredByRule: false)
-        if case .corrected = keys.kind { token.correctionUndone = true }
+            composition: keepsComposition ? composition : Composition(replaying: keys.raw, rules: rules),
+            display: ASCII.string(keys.raw), userChoice: .restored, restoredByRule: false)
+        token.correctionUndone = isCorrection
+        token.omitsWDoublings = keepsComposition
         return token
     }
 }

@@ -75,10 +75,11 @@ struct CommitPropertyTests {
     }
 
     /// ENG-T32: for an ordinary token whose display differs from its raw keys, the toggle produces exactly
-    /// the raw keys.
+    /// the raw keys. A re-opened token that shows `R′` after rule L4 (ENG-R804, REG-40) shows its raw keys: its toggle
+    /// composes it (ENG-R701 second branch).
     private func checkRestoreIsExact(_ driver: EngineDriver) throws {
         guard let token = driver.state.active, !token.isMacro, token.display != token.rawText,
-            !driver.state.previousEventWasRestoreToggle
+            token.display != token.shownRawText, !driver.state.previousEventWasRestoreToggle
         else { return }
         var copy = driver
         try copy.send(.restoreToggle)

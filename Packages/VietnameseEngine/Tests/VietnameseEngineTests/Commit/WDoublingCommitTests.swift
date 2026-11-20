@@ -91,4 +91,147 @@ struct WDoublingCommitTests {
         composition.append(UInt8(ascii: "w"), rules: Self.telex)
         #expect(composition.wDoublings.isEmpty)
     }
+
+    // MARK: - The decision
+
+    @Test(
+        "(d): neither form English, every w doubling a standalone one: R′ is restored",
+        arguments: [
+            ("wwebview ", "webview "), ("wwiki ", "wiki "), ("Wwebview ", "Webview "), ("WWEBVIEW ", "WEBVIEW "),
+            ("vieejt wwebview ", "việt webview "), ("Twwitter ", "Twitter "),
+        ])
+    func standaloneDoublingsRestoreTheKeysWithoutThem(_ keys: String, _ expected: String) throws {
+        let driver = try Self.driver(keys)
+        #expect(driver.field.string == expected)
+        #expect(driver.outputs.last?.decision == .restored(.escape))
+    }
+
+    @Test("(c′): R′ English restores R′, also where C is a deliberate form")
+    func keysWithoutTheDoublingEnglish() throws {
+        // `answwer` shows `ánwer`: the `s` set the tone before the doubled `w`.
+        let driver = try Self.driver("answwer ")
+        #expect(driver.field.string == "answer ")
+        #expect(driver.outputs.last?.decision == .restored(.escape))
+        // `sofww` shows `sòw`, one syllable that ends with the escape (a deliberate form of (d)); (c′) comes first.
+        #expect(try Self.text("sofww ") == "sofw ")
+    }
+
+    @Test("A horn or breve doubling outside (c′) restores R, and R English decides first (c)")
+    func otherDoublingsRestoreTheKeys() throws {
+        // `bawwnana` shows `bawnana`: the doubling undid a breve, and English writes `ww` only in compounds.
+        #expect(try Self.text("bawwnana ") == "bawwnana ")
+        #expect(try Self.text("dowwnload ") == "dowwnload ")
+        #expect(try Self.text("powwow ") == "powwow ")
+        #expect(try Self.text("www ") == "www ")
+    }
+
+    @Test(
+        "The deliberate forms do not change (4.7)",
+        arguments: [("uww ", "uw "), ("ww ", "w "), ("aww ", "aw "), ("wwww ", "www "), ("Ww ", "w ")])
+    func deliberateFormsUnchanged(_ keys: String, _ expected: String) throws {
+        #expect(try Self.text(keys) == expected)
+        #expect(try Self.driver(keys).outputs.last?.decision == .kept(.escape))
+    }
+
+    @Test("The restore edit puts back R′ and then the boundary key (ENG-R803)")
+    func restoreEditWritesTheKeysWithoutTheDoubling() throws {
+        // `answwer` shows `ánwer`: one edit replaces it with `answer`, then the space passes through.
+        let driver = try Self.driver("answwer ")
+        guard case .edit(let edit, let thenPassThrough)? = driver.outputs.last?.action else {
+            Issue.record("no edit")
+            return
+        }
+        #expect(thenPassThrough && edit.insert.hasSuffix("wer") && !edit.insert.contains("ww"))
+        // `wwebview` already shows `webview`: nothing to change, the space passes through.
+        #expect(try Self.driver("wwebview ").outputs.last?.action == .passThrough)
+    }
+
+    @Test("VNI and Telex with standalone w off: L4 decides as before")
+    func otherConfigurationsUnchanged() throws {
+        let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
+        #expect(try Self.text("wwebview ", vni) == "wwebview ")
+        let off = EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false)), typoCorrection: false)
+        #expect(try Self.text("wwebview ", off) == "wwebview ")
+        #expect(try Self.text("aww ", off) == "aw ")
+    }
+
+    @Test("lookaheadRevision off and the code context give the same text; auto restore off keeps C")
+    func otherSwitches() throws {
+        let configurations = [
+            EngineConfiguration(lookaheadRevision: false, typoCorrection: false),
+            EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
+            EngineConfiguration(appContext: .code, typoCorrection: false),
+        ]
+        for configuration in configurations {
+            #expect(try Self.text("wwebview ", configuration) == "webview ", "\(configuration)")
+            #expect(try Self.text("answwer ", configuration) == "answer ", "\(configuration)")
+            #expect(try Self.text("bawwnana ", configuration) == "bawwnana ", "\(configuration)")
+        }
+        let off = EngineConfiguration(autoRestore: false, typoCorrection: false)
+        #expect(try Self.text("answwer ", off) == "ánwer ")
+        #expect(try Self.driver("answwer ", off).outputs.last?.decision == .kept(.escape))
+    }
+
+    // MARK: - Toggle, history, re-opening, run
+
+    @Test("The restore key while composing still gives R, the keys as typed (ENG-R701)")
+    func toggleWhileComposingGivesTheKeysTyped() throws {
+        #expect(try Self.text("wwebview⎋") == "wwebview")
+        #expect(try Self.text("wwebview⎋ ") == "wwebview ")
+        #expect(try Self.text("answwer⎋ ") == "answwer ")
+    }
+
+    @Test("The history holds R′ and a re-opened token shows R′, never R (ENG-R1001, ENG-R1002, ENG-R1005)")
+    func historyAndReopeningShowTheKeysWithoutTheDoubling() throws {
+        var driver = try Self.driver("wwebview ⌫")
+        #expect(driver.field.string == "webview" && driver.state.activeDisplay == "webview")
+        #expect(driver.state.active?.showsRawKeys == true)
+        // Backspace takes one character at a time down to an empty field; the driver checks the field after each.
+        for length in (0..<7).reversed() {
+            try driver.send(.backspace)
+            #expect(driver.field.string == String("webview".prefix(length)), "\(length)")
+        }
+        // Keys typed into the re-opened token are appended as typed, and the next commit restores R′ again.
+        #expect(try Self.text("wwebview ⌫s") == "webviews")
+        #expect(try Self.text("wwebview ⌫s ") == "webviews ")
+        #expect(try Self.text("answwer ⌫") == "answer")
+        // At the boundary the token is decided again on its raw keys at that moment (ENG-R1005): `answwe` shows
+        // `ánwe`, and `answe` is not English, so (d) restores `R` (a breve doubling). Known cost, like `text ⌫⌫ `.
+        #expect(try Self.text("answwer ⌫⌫ ") == "answwe ")
+    }
+
+    @Test("A key the restore left out at the end goes with the character before it")
+    func backspaceOverAnOmittedKey() throws {
+        // `sofww` restores `sofw` (its last key is the doubling): the first Backspace takes the `w` shown and the
+        // doubling after it.
+        var driver = try Self.driver("sofww ⌫")
+        #expect(driver.field.string == "sofw")
+        try driver.send(.backspace)
+        #expect(driver.field.string == "sof")
+        try driver.send(.backspace)
+        #expect(driver.field.string == "so")
+    }
+
+    @Test("The toggle right after the commit passes through (ENG-R703); after the re-opening it gives C (ENG-R704)")
+    func toggleAfterTheCommit() throws {
+        var driver = try Self.driver("answwer ⎋")
+        #expect(driver.field.string == "answer " && driver.outputs.last?.action == .passThrough)
+        driver = try Self.driver("answwer ⌫⎋")
+        #expect(driver.field.string == "ánwer")
+        #expect(driver.state.active?.userChoice == .kept)
+        try driver.send(.restoreToggle)
+        #expect(driver.field.string == "ánwer" && driver.outputs.last?.action == .passThrough)
+        try driver.type(" ")
+        #expect(driver.field.string == "ánwer " && driver.outputs.last?.decision == .kept(.userChoice))
+        // `wwebview` shows `webview`, which is also C: the toggle has nothing to give back.
+        driver = try Self.driver("wwebview ⌫⎋")
+        #expect(driver.field.string == "webview" && driver.outputs.last?.action == .passThrough)
+    }
+
+    @Test("The run language counts the token as restored (ENG-R823)")
+    func runLanguage() throws {
+        // `webview` is English evidence: `this` (row `vi`) is restored by L10 after it.
+        #expect(try Self.text("wwebview this ") == "webview this ")
+        #expect(try Self.text("answwer this ") == "answer this ")
+    }
 }

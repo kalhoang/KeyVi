@@ -32,15 +32,19 @@ package struct TypoCorrector: Sendable {
     }
 
     /// The correction of a token the decision of 8.1 has decided as `decision`, nil when the token is not a
-    /// candidate (ENG-R1110) or not exactly one word fits (ENG-R1114, ENG-R1125). `context.boundary` is the
+    /// candidate (ENG-R1110) or not exactly one word fits (ENG-R1114, ENG-R1125). `typed` is the typed word: the keys a
+    /// restore puts back, `R`, or `R′` when rule L4 restores the token without its w doublings (ENG-R804, REG-40), so
+    /// the correction reads what the screen shows (`wwhcih` shows `whcih` and gives `which`). `context.boundary` is the
     /// committing key and `context.characterBefore` the character right before the token.
     package func correction(
-        for inputs: CommitInputs, decision: CommitDecision, token: ActiveToken, context: CommitContext
+        for inputs: CommitInputs, typed: RestoreKeys, decision: CommitDecision, token: ActiveToken,
+        context: CommitContext
     ) -> Correction? {
         guard let rule = candidateRule(decision, inputs: inputs, token: token),
-            let letterCase = Self.letterCase(of: inputs.raw, context: context),
-            Self.allowsContext(context), isCandidateWord(inputs, clusterCase: decision == .kept(.extendedSpelling)),
-            let fit = onlyFit(inputs.rawLowercased)
+            let letterCase = Self.letterCase(of: typed.raw, context: context),
+            Self.allowsContext(context),
+            isCandidateWord(typed.lowercased, display: inputs.facts, clusterCase: decision == .kept(.extendedSpelling)),
+            let fit = onlyFit(typed.lowercased)
         else { return nil }
         return Correction(text: letterCase.apply(to: fit), rule: rule)
     }
@@ -71,8 +75,7 @@ package struct TypoCorrector: Sendable {
 
     /// The typed word is no word of any list (ENG-R1110 (c)) and not Vietnamese (ENG-R1110 (d); the edits one key
     /// away are checked by `onlyFit`, ENG-R1125).
-    private func isCandidateWord(_ inputs: CommitInputs, clusterCase: Bool) -> Bool {
-        let word = inputs.rawLowercased
+    private func isCandidateWord(_ word: String, display: CommittedTextFacts, clusterCase: Bool) -> Bool {
         let listed =
             resources.english.contains(word) || resources.techAlways.contains(word)
             || resources.techCodeOnly.contains(word) || resources.correction.guardList.mayContain(word)
@@ -81,7 +84,7 @@ package struct TypoCorrector: Sendable {
             || resources.collision.supplement.contains(word)
         guard !listed else { return false }
         // The cluster case is Tier B by definition; any other display that is a syllable is Vietnamese.
-        if !clusterCase, inputs.facts.validity != .invalid { return false }
+        if !clusterCase, display.validity != .invalid { return false }
         return !resources.correction.unmarkedShapes.contains(word)
     }
 
