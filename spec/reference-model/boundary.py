@@ -2,7 +2,7 @@
 import re, sys; sys.path.insert(0,'.')
 from compose import compose, Cfg, commit, display
 from ortho import validity, VOWELS, strip
-EN = set("""test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky""".split())
+EN = set("""test this these there best max list been text user wifi usb case password traffic boss coffee as is was has its us car did theme does door her post says war two wow ask task zoom more year mother keyboard verbose startup data plans grows www less tomorrow the and you a i cost room tar class app file think tricky answer powwow""".split())
 TECH = {"www","wifi","usb"}
 CODE_ONLY = {"tar","sudo","chown"}  # `chown` (keys not English) joined on 18/11/2026 for REG-38
 CODE_CAPITALIZED = set()  # the capitalized code-word list (8.2) is empty in the 13.9 fixtures
@@ -31,8 +31,12 @@ def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, 
             return R, "restored: escaped token, both English"
         if c_english: return C, "kept: escaped form is an English word"
         if r_english: return R, "restored: escaped token, raw is English"
+        # REG-40 (product owner, 20/11/2026): R' is R without the key of each `w` doubling.
+        R2 = "".join(k for i, k in enumerate(st.raw) if i not in st.w_doublings)
+        if R2 != R and R2.lower() in EN | TECH: return R2, "restored: escaped token, keys without the doubled w are English"
         ends_with_escape = st.last_escape == len(st.raw) - 1
         if not st.escape_across and (vowel_groups(C) <= 1 or ends_with_escape): return C, "kept: user escape"
+        if R2 != R and all(st.w_doublings.values()): return R2, "restored: escaped token typed through"
         return R, "restored: escaped token typed through"
     if st.last_removal is not None and st.last_removal == len(st.raw) - 1:
         # rule L4a, decided by the product owner on 18/11/2026 (ENG-R411, REG-39): the last key removed the tone or marks
@@ -332,6 +336,16 @@ ESCAPE_RUNS = [
     ("tarr ", "tar ", "kept: escaped form is an English word"),
     ("password ", "password ", "restored: escaped token, raw is English"),
     ("www ", "www ", "restored: escaped token, raw is English"),
+    # REG-40 (product owner, 20/11/2026): a `w` doubled out of habit is left out of the restore (`answer` and `powwow`
+    # added to the fixture lexicon below).
+    ("wwebview ", "webview ", "restored: escaped token typed through"),
+    ("Wwebview ", "Webview ", "restored: escaped token typed through"),
+    ("Twwitter ", "Twitter ", "restored: escaped token typed through"),
+    ("answwer ", "answer ", "restored: escaped token, keys without the doubled w are English"),
+    ("bowwow ", "bowwow ", "restored: escaped token typed through"),  # a horn doubling: R
+    ("powwow ", "powwow ", "restored: escaped token, raw is English"),
+    ("ww ", "w ", "kept: user escape"),
+    ("uww ", "uw ", "kept: user escape"),
 ]
 # Rule L4a (product owner, 18/11/2026, ENG-R411, REG-39) with the 13.9 fixtures: a token whose last key removed the tone
 # or the marks keeps the text shown unless its keys are English; a removal that more letters follow is decided as before.

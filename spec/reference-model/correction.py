@@ -279,7 +279,9 @@ def type_line(keys, data, im="telex", context="general", user=(), correction=Tru
         display = boundary.commit(boundary.compose(list(raw), cfg), cfg)
         fixed = None
         if correction:
-            fixed = correct_token(raw, reason, display, keys[j], before, line_start, sentence_start, data, context,
+            # The typed word: the keys a restore puts back, `R`, or `R'` when rule L4 left out a `w` doubling (REG-40).
+            typed = shown if reason.startswith("restored") else raw
+            fixed = correct_token(typed, reason, display, keys[j], before, line_start, sentence_start, data, context,
                                   user)
         out += fixed if fixed is not None else shown
         prev_lang = "en" if fixed is not None or reason.startswith("restored") else "neutral"
