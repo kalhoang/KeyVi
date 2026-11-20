@@ -15,8 +15,10 @@ package struct CommitResult: Sendable {
     package var collision = CollisionFacts()
     /// The strong signal of a collision word committed by the user's toggle against the rules (ENG-R864).
     package var strongSignal: CollisionSignal?
-    /// The restore put back the raw keys without the key of each w doubling (`R′`, ENG-R804, REG-40), which is also the
-    /// typed word of a correction (11A): the history keeps the token showing them (ENG-R1001, ENG-R1005, ENG-R1117).
+    /// The text written is the raw keys without the key of each w doubling (`R′`, ENG-R804, REG-40): a restore that put
+    /// them back, or a token that showed them and commits unchanged (a correction, or the typed word the toggle took back
+    /// from it); `R′` is also the typed word of a correction (11A). The history keeps the token showing them (ENG-R1001,
+    /// ENG-R1005, ENG-R1117).
     package var omitsWDoublings = false
 }
 
@@ -188,9 +190,12 @@ extension Engine {
         // ENG-R1117: a re-opened corrected token is never corrected again: it commits unchanged and reports
         // `corrected` again; English for the run (ENG-R1116).
         if let rule = token.correctedRule {
-            return CommitResult(
+            var result = CommitResult(
                 text: token.display, action: .passThrough, decision: .corrected(rule), learning: nil, language: .english
             )
+            // REG-40: unchanged, so its keys stay the typed word they were (`R′` when rule L4 left a w doubling out).
+            result.omitsWDoublings = token.omitsWDoublings
+            return result
         }
         // ENG-R1117: once the toggle undid the correction the token is the user's choice (rule L1), reported as
         // `kept(userChoice)` even where rule L0 would decide the keys first; the toggle already sent its signal.
@@ -199,6 +204,9 @@ extension Engine {
             var result = CommitResult(
                 text: token.display, action: .passThrough, decision: .kept(.userChoice), learning: nil,
                 language: .english, inputs: inputs)
+            // REG-40, ENG-R1005: the text written is the display, `R′` when the typed word left a w doubling out, so the
+            // next re-opening shows it again.
+            result.omitsWDoublings = token.omitsWDoublings
             result.collision = collisionFacts(inputs, context: context)
             return result
         }

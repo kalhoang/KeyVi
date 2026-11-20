@@ -275,6 +275,22 @@ struct WDoublingCommitTests {
         #expect(driver.field.string == "so")
     }
 
+    @Test("Backspace past the w doubling the token did not show: it shows every raw key again (ENG-R1005, ENG-R701)")
+    func backspacePastTheOmittedDoubling() throws {
+        // `answwer` restores `answer`; three Backspaces after the re-opening take `r`, `e`, then `w` with the doubling.
+        var driver = try Self.driver("answwer ⌫⌫⌫⌫")
+        #expect(driver.field.string == "ans" && driver.state.active?.rawText == "ans")
+        #expect(driver.state.active?.omitsWDoublings == false && driver.state.active?.showsRawKeys == true)
+        // A `w` doubling typed now is on screen: the token shows it, and Backspace takes one key per character.
+        try driver.type("ww")
+        #expect(driver.field.string == "answw" && driver.state.active?.shownRawText == "answw")
+        try driver.send(.backspace)
+        #expect(driver.field.string == "answ" && driver.state.active?.rawText == "answ")
+        #expect(try Self.checked("answwer ⌫⌫⌫⌫ww⌫er ") == "answer ")
+        #expect(try Self.checked("answwer ⌫⌫⌫⌫ww⌫⌫⌫⌫") == "a")
+        #expect(try Self.checked("answwer ⌫⌫ ⌫⌫⌫ww ") == "ánw ")
+    }
+
     @Test("The toggle right after the commit passes through (ENG-R703); after the re-opening it gives C (ENG-R704)")
     func toggleAfterTheCommit() throws {
         var driver = try Self.driver("answwer ⎋")

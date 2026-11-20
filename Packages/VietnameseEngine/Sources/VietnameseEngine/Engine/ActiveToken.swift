@@ -64,8 +64,9 @@ package struct ActiveToken: Sendable, Hashable {
     package private(set) var correctionUndone = false
     /// ENG-R804 (REG-40): the raw keys this token shows leave out the key of each w doubling (`R′`,
     /// `Composition.wDoublings`), because the restore of rule L4 put them back so, or the typo correction read them so
-    /// (11A): a re-opened token shows `R′` (ENG-R1005) and a correction's keys are `R′` (ENG-R1117). Cleared when the
-    /// token stops showing its raw keys or the toggle makes another choice.
+    /// (11A): a re-opened token shows `R′` (ENG-R1005) and a correction's keys are `R′` (ENG-R1117). Set or cleared by
+    /// every commit; cleared when the token stops showing its raw keys, when Backspace removed its w doubling or when the
+    /// toggle makes another choice.
     package private(set) var omitsWDoublings = false
     /// Set when the token is re-opened showing the commit spelling `uơ` of an open `ươ` (ENG-R532,
     /// ENG-R1002) instead of its composed display; cleared by the next event, which shows the composed
@@ -183,7 +184,8 @@ package struct ActiveToken: Sendable, Hashable {
     }
 
     /// The raw keys as the token shows them while it shows its raw keys (`showsRawKeys`): without the key of each w
-    /// doubling when the restore of rule L4 left them out (ENG-R804, REG-40), otherwise `rawText`.
+    /// doubling when its text left them out (`omitsWDoublings`: a restore by rule L4 or L3b, or the typed word the toggle
+    /// took back from a correction; ENG-R701, ENG-R804, REG-40), otherwise `rawText`.
     package var shownRawText: String {
         guard omitsWDoublings, literalKeys == nil else { return rawText }
         return ASCII.string(composition.rawWithoutWDoublings)
@@ -241,7 +243,11 @@ package struct ActiveToken: Sendable, Hashable {
                 composition.removeLastKey(rules: rules)
             }
             composition.removeLastKey(rules: rules)
-            display.unicodeScalars.removeLast()
+            // ENG-R1005, REG-40: a token holds one w doubling at most (the escape is sticky, ENG-R441); once it is gone
+            // the token shows every raw key, and a w doubling typed from now on is on screen.
+            if composition.wDoublings.isEmpty { omitsWDoublings = false }
+            // The display holds one character per key shown (ENG-R701); an empty one has nothing left to delete.
+            _ = display.unicodeScalars.popLast()
             endRuleRestoreIfComposedMatches(rules: rules)
             return .passThrough
         }

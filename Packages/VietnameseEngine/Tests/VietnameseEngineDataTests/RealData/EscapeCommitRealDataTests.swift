@@ -289,6 +289,48 @@ struct EscapeCommitRealDataTests {
     }
 
     @Test(
+        "REG-40: once Backspace took the w doubling the token did not show, a w doubling typed again shows and stays",
+        arguments: [
+            ("answwer ⌫⌫⌫⌫ww⌫er ", "answer "), ("answwer ⌫⌫⌫⌫wwer ", "answer "), ("answwer ⌫⌫⌫⌫wwere ", "answwere "),
+            ("softwware ⌫⌫⌫⌫⌫⌫wware ", "sofwware "), ("softwware ⌫⌫⌫⌫⌫⌫ww⎋ ", "sòw "), ("answwer ⌫⌫⌫⌫ww⌫⌫⌫⌫", "a"),
+            ("answwer ⌫⌫ ⌫⌫⌫ww ", "ánw "),
+        ])
+    func backspacePastTheOmittedDoubling(_ keys: String, _ expected: String) throws {
+        // ENG-R1005, ENG-R701: the token holds one `w` doubling at most (the escape is sticky, ENG-R441), so once
+        // Backspace removed the one the token did not show, the token shows every raw key again; a `w` doubling typed
+        // after that is on screen, and the commit decides the keys as a token typed afresh with them (`ans` + `wwer`
+        // gives `answer`, as `answwer` does: (c′)).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40, 11A: a re-commit of the typed word the toggle took back keeps showing it (ENG-R1005, ENG-R1117)",
+        arguments: [
+            ("wwindwos ⎋⌫ ⌫", "windwos"), ("wwindwos ⎋⌫.⌫", "windwos"), ("wwindwos ⎋⌫s ⌫", "windwoss"),
+            ("wwindwos ⎋⌫ ⌫⌫", "windwo"), ("wwindwos ⌫ ⌫⎋", "windwos"),
+            ("wwindwos ⌫ ⌫⎋⌫⎋", "windwo"),
+        ])
+    func recommittedUndoneCorrectionShowsTheTypedWord(_ keys: String, _ expected: String) throws {
+        // `wwindwos` + space gives `windows`, the toggle gives back the typed word `windwos` (`R′`), Backspace re-opens
+        // it and the next boundary commits it unchanged (rule L1): the re-opening after that shows `windwos` again. A
+        // re-committed correction keeps its typed word the same way, so its toggle still composes every key typed.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: Backspace empties a re-committed typed word one character at a time (ENG-R1005)")
+    func recommittedUndoneCorrectionEmptiesCleanly() throws {
+        // The first Backspace re-opens the word, seven more delete its seven characters (eight raw keys), the last one
+        // finds an empty field.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked("wwindwos ⎋⌫ ⌫⌫⌫⌫⌫⌫⌫⌫⌫", configuration).isEmpty, "\(configuration)")
+        }
+    }
+
+    @Test(
         "REG-40, ENG-R904: camel case keys whose w doublings are a habit restore R′ through rule L3b",
         arguments: [
             ("wwebView ", "webView "), ("WwebView ", "WebView "), ("WwordPress ", "WordPress "),
