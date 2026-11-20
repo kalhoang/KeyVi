@@ -36,8 +36,10 @@ def decide(keys, cfg, prev="neutral", context="general", vietnamese_text=False, 
         if R2 != R and R2.lower() in EN | TECH: return R2, "restored: escaped token, keys without the doubled w are English"
         ends_with_escape = st.last_escape == len(st.raw) - 1
         if not st.escape_across and (vowel_groups(C) <= 1 or ends_with_escape): return C, "kept: user escape"
-        # the habit (20/11/2026): every `w` doubling removed a standalone `ư` and no `w` key follows it (`www` is no habit)
-        habit = all(st.w_doublings.values()) and not any(st.raw[i + 1:i + 2] in (["w"], ["W"]) for i in st.w_doublings)
+        # the habit (20/11/2026): every `w` doubling removed a standalone `ư`, no `w` key follows it (`www` is no habit)
+        # and none is a capital right after a lowercase `w` (Shift for the second key alone is no habit)
+        habit = all(st.w_doublings.values()) and not any(
+            st.raw[i + 1:i + 2] in (["w"], ["W"]) or (st.raw[i] == "W" and st.raw[i - 1] == "w") for i in st.w_doublings)
         if R2 != R and habit: return R2, "restored: escaped token typed through"
         return R, "restored: escaped token typed through"
     if st.last_removal is not None and st.last_removal == len(st.raw) - 1:
@@ -349,6 +351,8 @@ ESCAPE_RUNS = [
     ("ww ", "w ", "kept: user escape"),
     ("uww ", "uw ", "kept: user escape"),
     ("wwwexample ", "wwwexample ", "restored: escaped token typed through"),  # a `w` follows the doubling: R
+    ("wWEBVIEW ", "wWEBVIEW ", "restored: escaped token typed through"),  # a capital after a lowercase `w`: R
+    ("WWEBVIEW ", "WEBVIEW ", "restored: escaped token typed through"),
 ]
 # Rule L4a (product owner, 18/11/2026, ENG-R411, REG-39) with the 13.9 fixtures: a token whose last key removed the tone
 # or the marks keeps the text shown unless its keys are English; a removal that more letters follow is decided as before.

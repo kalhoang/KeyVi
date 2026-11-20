@@ -331,6 +331,16 @@ struct EscapeCommitRealDataTests {
     }
 
     @Test(
+        "REG-40, ENG-R904: a capital W typed right after a lowercase w is no habit, the keys stay as typed",
+        arguments: ["wWidth ", "dwWidth ", "swWidth ", "cwWidth ", "hwWallet ", "nwWest ", "wWinMain ", "rwWrite "])
+    func capitalAfterLowercaseWIsNoHabit(_ keys: String) throws {
+        // The screen shows the capital (`dWidth`); leaving it out would write a text nobody saw (`dwidth`).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == keys, "\(configuration)")
+        }
+    }
+
+    @Test(
         "REG-40, ENG-R904: camel case keys whose w doublings are a habit restore R′ through rule L3b",
         arguments: [
             ("wwebView ", "webView "), ("WwebView ", "WebView "), ("WwordPress ", "WordPress "),

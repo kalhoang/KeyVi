@@ -253,6 +253,27 @@ struct WDoublingCommitTests {
         #expect(try Self.text(keys, code) == expected)
     }
 
+    @Test(
+        "A capital W typed right after a lowercase w is no habit: L3b restores R (ENG-R904, REG-40)",
+        arguments: ["wWidth ", "dwWidth ", "swWidth ", "hwWallet ", "nwWest ", "wWinMain ", "wWord "])
+    func capitalAfterLowercaseWIsNoHabit(_ keys: String) throws {
+        // The screen shows the capital (`dWidth`): the habit types `ww`, `Ww` or `WW`, never Shift for the second key
+        // alone, and leaving the capital out would write a text nobody saw (`dwidth`).
+        #expect(Self.doublings(keys).standalone.count == 1, "\(keys)")
+        #expect(try Self.checked(keys) == keys)
+        #expect(try Self.driver(keys).outputs.last?.decision == .restored(.camelCase))
+    }
+
+    @Test("Shift on both keys stays a habit; Shift on the second alone is none, in L4 too (ENG-R804, REG-40)")
+    func capitalsAndTheHabit() throws {
+        #expect(try Self.checked("WWebView ") == "WebView ")
+        // Not camel case (no lowercase letter after the capitals), so L4 decides: (d) restores `R′` for `WW` and `R`
+        // for `wW`, the keys as typed.
+        #expect(try Self.checked("WWEBVIEW ") == "WEBVIEW ")
+        #expect(try Self.checked("wWEBVIEW ") == "wWEBVIEW ")
+        #expect(try Self.driver("wWEBVIEW ").outputs.last?.decision == .restored(.escape))
+    }
+
     @Test("A w doubling followed by another w is no habit (`www`, ENG-T12): L3b and L4 restore R as before")
     func wwwKeepsEveryW() throws {
         // `www` typed as it is written shows `ww`; English has no word with `ww` right after a first `w` but `www`.

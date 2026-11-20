@@ -82,16 +82,21 @@ extension Composition {
         return kept
     }
 
-    /// ENG-R804 (REG-40): the token has a w doubling, each one removed the `ư` of a standalone `w`, and no `w` key
-    /// follows it: the habit of typing `ww` for the letter `w`. `www` typed as written (ENG-T12) is no habit: English
-    /// has no word that starts with `ww` except `www` (`wwwexample`, `wwwRoot` keep every `w`).
+    /// ENG-R804 (REG-40): the token has a w doubling, each one removed the `ư` of a standalone `w`, no `w` key follows
+    /// it, and none is a capital `W` right after a lowercase `w`: the habit of typing `ww`, `Ww` or `WW` for the letter
+    /// `w`. `www` typed as written (ENG-T12) is no habit: English has no word that starts with `ww` except `www`
+    /// (`wwwexample`, `wwwRoot` keep every `w`). Nor is Shift for the second key alone: the screen shows that capital
+    /// (`dwWidth` shows `dWidth`), and leaving it out would write a text nobody saw.
     package var wDoublingsAreHabit: Bool {
         guard !wDoublings.isEmpty, wDoublings == standaloneWDoublings else { return false }
         // A doubling is recorded while composing, so its index is below 64 (`KeySet`) and a key precedes it.
-        let followed = raw.indices.dropLast().prefix(64).contains { index in
-            wDoublings.contains(index) && ASCII.lowercased(raw[index + 1]) == UInt8(ascii: "w")
+        let breaksHabit = raw.indices.prefix(64).contains { index in
+            guard wDoublings.contains(index) else { return false }
+            let followed = index + 1 < raw.count && ASCII.lowercased(raw[index + 1]) == UInt8(ascii: "w")
+            let shiftedAlone = ASCII.isUppercaseLetter(raw[index]) && !ASCII.isUppercaseLetter(raw[index - 1])
+            return followed || shiftedAlone
         }
-        return !followed
+        return !breaksHabit
     }
 }
 

@@ -37,7 +37,7 @@ package struct CommitInputs: Sendable {
     /// their case; nil when the token has none. Built here, at the commit, never per key (ENG-R1122).
     package let withoutWDoublings: RestoreKeys?
     /// The w doublings of the token are the habit of typing `ww` for `w` (`Composition.wDoublingsAreHabit`): each
-    /// removed the `ư` of a standalone `w` and no `w` key follows it.
+    /// removed the `ư` of a standalone `w`, no `w` key follows it and none is a capital after a lowercase `w`.
     package let wDoublingsAreHabit: Bool
     /// The token already shows `R′` (`ActiveToken.omitsWDoublings`): a re-opened token that a restore without its w
     /// doublings committed (ENG-R1005). A restore of it writes `R′`, the keys it shows, never a `w` it does not show.

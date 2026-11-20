@@ -17,11 +17,12 @@
 /// item 7, REG-40): `R′` is `R` without the key of each w doubling (`Composition.wDoublings`). When `R′` differs from
 /// `R`, the rows above still decide while `R` or `C` is English; otherwise (c′) `R′` English restores `R′` (`answwer`
 /// shows `ánwer` and restores `answer`), before the deliberate form, and the restore of the last row puts back `R′` when
-/// the w doublings are a habit, each one removed the `ư` of a standalone `w` and no `w` key follows it (`wwebview`
-/// restores `webview`, `wwwexample` restores `wwwexample`), else `R` (`dowwnload`): English writes `ww` only after a
-/// vowel, where a `w` is a horn or breve doubling. Rule L3b restores camel case keys with the habit the same way
-/// (`habitDoublingsLeftOut`, ENG-R904), and a re-opened token that shows `R′` is restored to `R′` by any rule
-/// (`CommitPolicy.restoredKeys`, ENG-R1005).
+/// the w doublings are a habit, each one removed the `ư` of a standalone `w`, no `w` key follows it and none is a capital
+/// right after a lowercase `w` (`wwebview` restores `webview`, `wwwexample` restores `wwwexample`), else `R`
+/// (`dowwnload`): English writes `ww` only after a vowel, where a `w` is a horn or breve doubling. Rule L3b restores
+/// camel case keys with the habit the same way (`habitDoublingsLeftOut`, ENG-R904; `dwWidth` is no habit and keeps
+/// `R`), and a re-opened token that shows `R′` is restored to `R′` by any rule (`CommitPolicy.restoredKeys`,
+/// ENG-R1005).
 ///
 /// Every outcome keeps the reason code `escape` (ENG-R801).
 extension CommitPolicy {
