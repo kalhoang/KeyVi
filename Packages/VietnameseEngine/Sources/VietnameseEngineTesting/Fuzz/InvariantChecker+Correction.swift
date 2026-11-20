@@ -45,7 +45,7 @@ extension InvariantChecker {
                 throw violation("ENG-T54", "a neverCorrect signal does not name its token's typed word", index)
             }
         }
-        guard case .corrected? = output.decision, let token = before.token else { return }
+        guard case .corrected(let rule)? = output.decision, let token = before.token else { return }
         if configuration.appContext == .code {
             throw violation("ENG-T54", "a correction in the code context", index)
         }
@@ -64,7 +64,9 @@ extension InvariantChecker {
             if token.correctedRule == nil { throw violation("ENG-T54", "a correction without an edit", index) }
         }
         guard token.correctedRule == nil else { return }
-        try checkCorrectedWord(token.rawText, index: index)
+        // The typed word: the keys the restore of `rule` would have put back (`R′` after rule L4, REG-40).
+        let inputs = CommitInputs(token: token, style: engine.configuration.toneStyle)
+        try checkCorrectedWord(engine.commitPolicy.restoredKeys(inputs, decision: .restored(rule)).raw, index: index)
     }
 
     /// A freshly corrected typed word: on no list (ENG-R1110 (c)), not one edit from Vietnamese (ENG-R1125), and the
@@ -115,8 +117,9 @@ extension InvariantChecker {
         }
     }
 
-    /// ENG-T32 extended: right after a corrected commit the toggle gives exactly the raw keys typed (probed on a copy
-    /// of the session, the field as it is now), and the toggle that does so carries the signal.
+    /// ENG-T32 extended: right after a corrected commit the toggle gives exactly the keys of the typed word as typed
+    /// (the raw keys, or `R′` after rule L4, REG-40; probed on a copy of the session, the field as it is now), and the
+    /// toggle that does so carries the signal.
     mutating func checkCorrectionUndo(
         _ event: EngineEvent, _ output: EngineOutput, before: CorrectionSnapshot, index: Int
     ) throws {

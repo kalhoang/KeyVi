@@ -67,7 +67,8 @@ struct CompositionPropertyTests {
         // A token re-opened by Backspace (ENG-R1002) shows what its commit wrote, which is the ENG-R532
         // spelling of an open `ươ` until the next key or Backspace recomputes the display.
         if token.showsRawKeys {
-            #expect(token.display == token.rawText, "display of \(token.rawText)")
+            // Without its w doublings when its commit restored them so (ENG-R804, ENG-R904, REG-40).
+            #expect(token.display == token.shownRawText, "display of \(token.rawText)")
         } else {
             let composed = replayed.display(style: rules.toneStyle)
             let committed = replayed.committedText(style: rules.toneStyle)

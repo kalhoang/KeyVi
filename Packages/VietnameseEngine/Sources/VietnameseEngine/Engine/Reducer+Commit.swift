@@ -15,6 +15,11 @@ package struct CommitResult: Sendable {
     package var collision = CollisionFacts()
     /// The strong signal of a collision word committed by the user's toggle against the rules (ENG-R864).
     package var strongSignal: CollisionSignal?
+    /// The text written is the raw keys without the key of each w doubling (`R′`, ENG-R804, REG-40): a restore that put
+    /// them back, or a token that showed them and commits unchanged (a correction, or the typed word the toggle took back
+    /// from it); `R′` is also the typed word of a correction (11A). The history keeps the token showing them (ENG-R1001,
+    /// ENG-R1005, ENG-R1117).
+    package var omitsWDoublings = false
 }
 
 extension Engine {
@@ -77,9 +82,11 @@ extension Engine {
         // corrected token is kept literal, with its raw keys as typed and the correction as its display.
         let stored: ActiveToken
         if corrected, case .corrected(let rule) = result.decision {
-            stored = ActiveToken(correcting: token, correction: result.text, rule: rule)
+            stored = ActiveToken(
+                correcting: token, correction: result.text, rule: rule, omittingWDoublings: result.omitsWDoublings)
         } else {
-            stored = result.learning == nil ? token : token.reportingChoice()
+            let reported = result.learning == nil ? token : token.reportingChoice()
+            stored = reported.omittingWDoublings(result.omitsWDoublings)
         }
         let committed = CommittedToken(
             token: stored, committedText: result.text, decision: result.decision, language: result.language,
@@ -100,7 +107,8 @@ extension Engine {
     private func correct(_ result: inout CommitResult, token: ActiveToken, context: CommitContext) -> Bool {
         guard let corrector = commitPolicy.corrector, let inputs = result.inputs,
             let correction = corrector.correction(
-                for: inputs, decision: result.decision, token: token, context: context)
+                for: inputs, typed: commitPolicy.restoredKeys(inputs, decision: result.decision),
+                decision: result.decision, token: token, context: context)
         else { return false }
         result.text = correction.text
         result.decision = .corrected(correction.rule)
@@ -170,8 +178,9 @@ extension Engine {
     }
 
     /// The decision at commit for one token (8.1) and the text it leaves on screen: the raw keys when it
-    /// is restored, otherwise the composed form `C` (with the ENG-R532 spelling of an open `ươ`). A
-    /// re-opened macro expansion that the user did not restore keeps its text (`CommitDecision.macro`).
+    /// is restored (without the key of each w doubling when rule L4 restores them so, ENG-R804, REG-40), otherwise the
+    /// composed form `C` (with the ENG-R532 spelling of an open `ươ`). A re-opened macro expansion that the user did
+    /// not restore keeps its text (`CommitDecision.macro`).
     func commitResult(for token: ActiveToken, context: CommitContext) -> CommitResult {
         if token.isMacro {
             return CommitResult(
@@ -181,9 +190,12 @@ extension Engine {
         // ENG-R1117: a re-opened corrected token is never corrected again: it commits unchanged and reports
         // `corrected` again; English for the run (ENG-R1116).
         if let rule = token.correctedRule {
-            return CommitResult(
+            var result = CommitResult(
                 text: token.display, action: .passThrough, decision: .corrected(rule), learning: nil, language: .english
             )
+            // REG-40: unchanged, so its keys stay the typed word they were (`R′` when rule L4 left a w doubling out).
+            result.omitsWDoublings = token.omitsWDoublings
+            return result
         }
         // ENG-R1117: once the toggle undid the correction the token is the user's choice (rule L1), reported as
         // `kept(userChoice)` even where rule L0 would decide the keys first; the toggle already sent its signal.
@@ -192,6 +204,9 @@ extension Engine {
             var result = CommitResult(
                 text: token.display, action: .passThrough, decision: .kept(.userChoice), learning: nil,
                 language: .english, inputs: inputs)
+            // REG-40, ENG-R1005: the text written is the display, `R′` when the typed word left a w doubling out, so the
+            // next re-opening shows it again.
+            result.omitsWDoublings = token.omitsWDoublings
             result.collision = collisionFacts(inputs, context: context)
             return result
         }
@@ -199,7 +214,8 @@ extension Engine {
         let decision = commitPolicy.decide(inputs, context: context)
         let learning = commitPolicy.learningSignal(inputs, decision: decision, context: context)
         let restored = decision.restores
-        let text = restored ? inputs.raw : inputs.committed
+        let restoredKeys = restored ? commitPolicy.restoredKeys(inputs, decision: decision).raw : inputs.raw
+        let text = restored ? restoredKeys : inputs.committed
         let action: KeyAction =
             text == token.display
             ? .passThrough : .edit(DisplayEdit.edit(from: token.display, to: text), thenPassThrough: true)
@@ -208,6 +224,7 @@ extension Engine {
             collisionRules: commitPolicy.collisionRules)
         var result = CommitResult(
             text: text, action: action, decision: decision, learning: learning, language: language, inputs: inputs)
+        result.omitsWDoublings = restoredKeys != inputs.raw
         result.collision = collisionFacts(inputs, context: context)
         if learning != nil, let word = result.collision.listWord {
             result.strongSignal = CollisionSignal(

@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-39, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-40, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-39 (13.5)")
+@Suite("Regressions REG-01 to REG-40 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
@@ -410,5 +410,17 @@ struct RegressionTests {
         #expect(try text("daauszz ") == "dau ")
         #expect(try text("vie65t0 ", vni) == "viêt ")
         #expect(try Committing.decision("dduwowngfzz ") == .kept(.toneRemoval))
+    }
+
+    @Test("REG-40: rule L4 leaves out a w doubled out of habit when it restores the keys")
+    func reg40() throws {
+        // The product owner's report of 20/11/2026: `wwebview` showed `webview` and committed `wwebview`, because L4
+        // restored the raw keys with both `w` (ENG-R804 (d)). The second `w` only undid the `ư` of a standalone `w`.
+        #expect(try text("wwebview ") == "webview " && text("Wwebview ") == "Webview ")
+        #expect(try text("vieejt wwebview ") == "việt webview ")
+        #expect(try Committing.decision("wwebview ") == .restored(.escape))
+        // English keys decide first and the deliberate forms of 4.7 stay.
+        #expect(try text("www ") == "www " && text("ww ") == "w " && text("uww ") == "uw " && text("aww ") == "aw ")
+        #expect(try text("wwebview ", vni) == "wwebview ")
     }
 }

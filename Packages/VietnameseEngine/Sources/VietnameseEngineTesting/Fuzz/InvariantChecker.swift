@@ -513,7 +513,8 @@ public struct InvariantChecker: Sendable {
                 "ENG-T33", "cached composition differs from replay for \(token.rawText.debugDescription)", index)
         }
         if token.showsRawKeys {
-            guard token.display == token.rawText else {
+            // Without its w doublings when rule L4 restored them so (ENG-R804, REG-40).
+            guard token.display == token.shownRawText else {
                 throw violation("ENG-R701", "restored token does not show its raw keys", index)
             }
         } else {
@@ -560,8 +561,10 @@ public struct InvariantChecker: Sendable {
         // The size test comes first: comparing a long display with its raw keys is itself O(token).
         guard !state.previousEventWasRestoreToggle, let token = state.active,
             token.composition.raw.count <= options.perEventTokenLimit || index % options.fullCheckInterval == 0,
-            token.display != token.rawText
+            token.display != token.rawText, token.display != token.shownRawText
         else { return }
+        // A token showing its raw keys without its w doublings (REG-40) shows its raw keys: its toggle composes it
+        // (ENG-R701 second branch), as for any re-opened restored token.
         statistics.restoreChecks += 1
         let raw = token.rawText
         var probe = session

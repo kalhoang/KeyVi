@@ -24,6 +24,7 @@ class St:
         self.had_escape = False
         self.escape_across = False  # an escape key not right after a key it undid: no doubling (ENG-R804)
         self.last_escape = None  # raw index of the newest escape key (ENG-R804)
+        self.w_doublings = {}  # raw index of each `w` doubling -> it removed the `ư` of a standalone `w` (REG-40)
         self.tone_src = []
         self.mark_rm = []  # tone-removal keys that removed letter marks (ENG-R411)
         self.last_removal = None  # raw index of the newest removal key that removed the tone or marks (rule L4a)
@@ -39,6 +40,7 @@ class St:
         n.raw = list(self.raw)
         n.free_order, n.had_escape = self.free_order, self.had_escape
         n.escape_across, n.last_escape = self.escape_across, self.last_escape
+        n.w_doublings = dict(self.w_doublings)
         n.tone_src = list(self.tone_src)
         n.mark_rm = list(self.mark_rm)
         n.last_removal = self.last_removal
@@ -192,15 +194,21 @@ def try_w(st, cfg, ch, allowed="aou", kind="w", standalone=False):
         # escape: drop w-made letters / mods
         keep = []
         undone = []
+        standalone = set()  # keys of the standalone `ư` letters removed (ENG-R804, REG-40)
         for p, x in enumerate(st.ls):
             if x.fromw:
                 undone += [x.src] + x.msrc
+                standalone.add(x.src)
                 continue
             if i <= p < j and x.mod in ("horn", "breve"):
                 x.mod = ""
                 undone += x.msrc
             keep.append(x)
         st.ls = keep
+        index = len(st.raw) - 1
+        # ENG-R804 (REG-40): a Telex `w` escape right after the `w` key whose effect it removes is a `w` doubling.
+        if kind == "w" and index > 0 and index - 1 in undone and st.raw[index - 1] in "wW":
+            st.w_doublings[index] = index - 1 in standalone
         escape(st, cfg, kind, ch, undone)
         return True
     if standalone and i == j:
