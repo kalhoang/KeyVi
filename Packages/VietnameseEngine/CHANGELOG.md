@@ -82,7 +82,10 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   it is English and neither `C` nor `R` is ((c′): `answwer` gives `answer`), and the restore of (d) puts back `R′`
   when every `w` doubling removed the `ư` of a standalone `w` (`wwebview` gives `webview`, it gave `wwebview`); `R`
   English decides first (`www`, `powwow`), and the reason code stays `escape`. The typed word of the typo correction
-  is `R′` in that case (`wwindwos` gives `windows`), a re-opened token shows `R′`, and the toggle composes it. Every
+  is `R′` in that case (`wwindwos` gives `windows`), a re-opened token shows `R′`, every later commit of it that
+  restores writes `R′` again (`answwer`, space, two Backspaces, space gives `answe `), and the toggle composes it.
+  The `w` doublings are a habit only when no `w` key follows them (`wwwexample` keeps every `w`), and rule L3b
+  restores `R′` for camel case keys with that habit (`WwordPress` gives `WordPress`, ENG-R904). Every
   word of `/usr/share/dict/words` typed as written commits the same text as before. Spec rows X28 to X39;
   `spec/reference-model/boundary.py` models the rule.
 

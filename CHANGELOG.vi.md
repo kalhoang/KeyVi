@@ -15,7 +15,7 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ### Sửa lỗi
 
-- Từ bắt đầu bằng chữ w mà bạn gõ thành ww, theo thói quen gõ hai lần phím w để ra chữ w, nay giữ đúng chữ bạn đang thấy khi gõ xong: "wwebview" thành "webview" thay vì "wwebview".
+- Từ bắt đầu bằng chữ w mà bạn gõ thành ww, theo thói quen gõ hai lần phím w để ra chữ w, nay giữ đúng chữ bạn đang thấy khi gõ xong: "wwebview" thành "webview" thay vì "wwebview", và "WwordPress" thành "WordPress". Xóa lùi vào từ đó rồi gõ xong lần nữa cũng giữ đúng chữ bạn đang thấy.
 
 ### Lỗi đã biết
 
