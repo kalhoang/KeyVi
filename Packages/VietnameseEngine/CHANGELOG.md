@@ -77,6 +77,14 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   rows X25 to X27.
 - The prose-corpus gate pins Telex `IX` -> `Ĩ` (two tokens per Telex typist) as the product owner's decision Q26 of
   13/11/2026 instead of recording it as a known issue (docs/decisions/0202, open issue 3).
+- Rule L4 and a `w` doubled out of habit (product owner, 20/11/2026, ENG-R804, REG-40): `R′`, the raw keys without
+  the key of each `w` doubling (a Telex `w` escape right after the `w` key whose effect it removes), is restored when
+  it is English and neither `C` nor `R` is ((c′): `answwer` gives `answer`), and the restore of (d) puts back `R′`
+  when every `w` doubling removed the `ư` of a standalone `w` (`wwebview` gives `webview`, it gave `wwebview`); `R`
+  English decides first (`www`, `powwow`), and the reason code stays `escape`. The typed word of the typo correction
+  is `R′` in that case (`wwindwos` gives `windows`), a re-opened token shows `R′`, and the toggle composes it. Every
+  word of `/usr/share/dict/words` typed as written commits the same text as before. Spec rows X28 to X39;
+  `spec/reference-model/boundary.py` models the rule.
 
 ## [0.1.0] - 2026-11-18
 
