@@ -102,9 +102,9 @@ struct EscapeCommitRealDataTests {
         return rows
     }()
 
-    @Test("13.9.5 has its 27 rows")
+    @Test("13.9.5 has its 39 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...27).map { String(format: "X%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...39).map { String(format: "X%02d", $0) })
     }
 
     /// 13.9.5: the rows that need the phrase or the English-lean word, which the collision rules switch on.
