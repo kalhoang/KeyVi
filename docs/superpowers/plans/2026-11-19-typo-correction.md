@@ -957,6 +957,15 @@ during most of them.
   `developerWordsAreNeverCorrected` pins the 18 words (ADR 0203 section 10, the W11 row of ENG-R1124). The product owner
   accepted the 18 words on 20/11/2026 (ADR 0010 item 6); left before `1.1.0-beta.1`: the Task 35 rerun at the stable
   1.0.1 merge.
+- [ ] **REG-40, a `w` doubled out of habit (ADR 0010 item 7, 20/11/2026).** Built on `fix/ww-doubling` from
+  `integration/1.1.0` at d94fc102, for the integrator to merge with `--no-ff`: the spec amendment of ENG-R804 (the `w`
+  doubling, `R′`, case (c′), the restore of (d)), the L4 row of 8.1, ENG-R803, ENG-R1005, the typed word of 11A
+  (`R′` when L4 restores it), REG-40 and rows X28 to X39 of 13.9.5; the engine (`Composition.wDoublings`,
+  `CommitPolicy.restoredKeys`, the re-opened token showing `R′`, the correction reading `R′`); the reference model;
+  two probes of the engine identity (`wwebview `, `answwer `, ADR 0007 decision 13); the CHANGELOG lines. The
+  TRACEABILITY rows ENG-R803, ENG-R804, ENG-R1005, ENG-R1110, ENG-R1117 and REG-40 name the new suites
+  (`WDoublingCommitTests`, `EscapeCommitRealDataTests`, `RegressionTests.reg40`). It changes no word of
+  `/usr/share/dict/words` typed as written; the Task 35 rerun at the stable 1.0.1 merge covers it.
 
 ---
 
@@ -982,6 +991,7 @@ during most of them.
 | PRD-R80 | 24, 26, 28, 29, 30 |
 | PRD-R81 | 23, 25, 26, 28, 29 (copy review), 30 |
 | 12.2 amendments, contracts, traceability, provenance | 1, 5, 9, 18, 22, 27, 32, 33, 34 |
+| ENG-R804 and the typed word of 11A (REG-40, ADR 0010 item 7) | 36 |
 
 ## Open questions for the product owner
 
