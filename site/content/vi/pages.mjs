@@ -218,7 +218,7 @@ export const compat = {
   reportHeading: "Báo cáo một ứng dụng",
   reportBody: "Ứng dụng của bạn chưa có trong danh sách, hoặc kết quả không đúng với máy của bạn? Hãy gửi báo cáo tương thích. Người duy trì sẽ xác nhận trước khi đổi trạng thái thành \"Hoạt động tốt\".",
   reportLink: "Gửi báo cáo tương thích",
-  reportEmail: "Không dùng GitHub? Gửi email tới {{email}}.",
+  reportEmail: "Không dùng GitHub? Gửi email tới {{emailHtml}}.",
 };
 
 export const changelog = {

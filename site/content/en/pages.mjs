@@ -208,7 +208,7 @@ export const compat = {
   reportHeading: "Report an app",
   reportBody: "Is your app missing, or does the result not match what you see? Send a compatibility report. A maintainer confirms it before the status changes to \"Works\".",
   reportLink: "Send a compatibility report",
-  reportEmail: "No GitHub account? Email {{email}}.",
+  reportEmail: "No GitHub account? Email {{emailHtml}}.",
 };
 
 export const changelog = {
