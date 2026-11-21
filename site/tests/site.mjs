@@ -79,6 +79,22 @@ export async function checkSite(check, label, dist, { allowedScriptTag = "" } = 
     assert.deepEqual(problems, []);
   });
 
+  await check(`${label}: every email address sits in an email_off block, so the CDN injects no decoder script (PRD-R74)`, () => {
+    // Cloudflare's Email Address Obfuscation rewrites a visible address into a link that needs its own script
+    // (/cdn-cgi/.../email-decode.min.js): code the privacy page does not list, and an unreadable address without
+    // JavaScript. It leaves the text between <!--email_off--> and <!--/email_off--> as written.
+    const address = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+    const problems = [];
+    let wrapped = 0;
+    for (const [file, html] of pages) {
+      wrapped += (html.match(/<!--email_off-->[\s\S]*?<!--\/email_off-->/g) ?? []).length;
+      const outside = html.replace(/<!--email_off-->[\s\S]*?<!--\/email_off-->/g, "");
+      for (const found of outside.match(address) ?? []) problems.push(`${rel(file)}: ${found}`);
+    }
+    assert.deepEqual(problems, []);
+    assert.ok(wrapped > 0, "the support and compatibility pages show the support address");
+  });
+
   await check(`${label}: appcast and sitemap are well-formed XML, sitemap URLs exist`, async () => {
     const appcast = await readFile(join(dist, "appcast.xml"), "utf8");
     assertWellFormedXml(appcast, "appcast.xml");
