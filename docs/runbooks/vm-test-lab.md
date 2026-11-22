@@ -438,7 +438,8 @@ memory free, no other VM runs and no `xcodebuild` runs. It starts `watchdog.sh` 
 2. starts the local feed (section 12.1);
 3. installs the previous stable from its DMG into `/Applications` and records its signature and Gatekeeper verdict;
 4. seeds, through the previous version's own `SettingsStore` (so the files are what a user of that version has):
-   15 settings, 13 of them besides the update switches, the channel of the candidate, word lists, per-app learned
+   14 settings, 12 of them besides the update switches (D16 click-to-toggle stays unset: it would turn the status
+   item into a mode switch), the channel of the candidate, word lists, per-app learned
    words, 5 per-app rules, 8 remembered per-app modes, 3 compatibility overrides and 50 macros
    (`scripts/vm/fixtures/upgrade-plan.json`), with onboarding finished;
 5. grants Accessibility, Input Monitoring and event posting with `grant-tcc.sh` (the app's row carries its
