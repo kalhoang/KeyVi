@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MPL-2.0
 #
 # Prepares one tree of the w doubling measurement (README.md in this directory): exports Packages/VietnameseEngine of
-# COMMIT with git archive into TREE (skipped when TREE already holds the package), copies the harness
+# COMMIT with git archive into TREE (skipped when TREE already holds the package of that same commit, recorded in
+# TREE/.wdm-commit; a TREE that holds another commit, or no record, is refused), copies the harness
 # WDoublingMeasureTests.swift into the test target VietnameseEngineDataTests of that copy and builds the package with
 # its tests, under nice, in a private scratch path inside the copy. The repository checkout itself is never built.
 set -euo pipefail
@@ -38,11 +39,20 @@ case "$tree/" in
   "$repo"/*) echo "prepare-tree: TREE must be outside the checkout ($repo)" >&2; exit 2 ;;
 esac
 package="$tree/Packages/VietnameseEngine"
+stamp="$tree/.wdm-commit"
+sha="$(git -C "$repo" rev-parse --verify "$commit^{commit}")"
 if [[ -d "$package" ]]; then
-  echo "prepare-tree: $package exists; export skipped"
+  # Reusing a tree must never measure another commit than the one asked for.
+  held="$(cat "$stamp" 2>/dev/null || true)"
+  if [[ "$held" != "$sha" ]]; then
+    echo "prepare-tree: $package holds ${held:-an unrecorded commit}, not $sha; use an empty TREE" >&2
+    exit 1
+  fi
+  echo "prepare-tree: $package already holds ${sha:0:8}; export skipped"
 else
-  git -C "$repo" archive "$commit" Packages/VietnameseEngine | tar -x -C "$tree"
-  echo "prepare-tree: exported $(git -C "$repo" rev-parse --short "$commit^{commit}") to $package"
+  git -C "$repo" archive "$sha" Packages/VietnameseEngine | tar -x -C "$tree"
+  echo "$sha" >"$stamp"
+  echo "prepare-tree: exported ${sha:0:8} to $package"
 fi
 target="$package/Tests/VietnameseEngineDataTests/RealData"
 [[ -d "$target" ]] || { echo "prepare-tree: no test target folder $target" >&2; exit 1; }

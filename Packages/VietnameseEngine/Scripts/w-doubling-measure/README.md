@@ -63,7 +63,7 @@ python3 -I "$M/compare.py" --inputs "$W/inputs" --out "$W/out"
 ```
 
 `run-tree.sh --sets c_capital,e_capital_inner` runs a few sets only; `compare.py` skips a set whose outputs are missing.
-`prepare-tree.sh` on a tree that already holds the package skips the export, copies the harness again and builds again.
+`prepare-tree.sh` on a tree that already holds the package of the same commit (recorded in `TREE/.wdm-commit`) skips the export, copies the harness again and builds again; it refuses a tree that holds another commit or has no record, so a rerun never measures the wrong engine.
 The build is a debug build: on an Apple M4 under load, `a_dict` takes about three minutes per run, `f_fuzz` about twenty
 seconds and every other set less than two. The harness reads members of package access (`Composition.literalStart`,
 `Composition.standaloneWDoublings`, `ASCII.isUppercaseLetter`), so it compiles against a commit that has the standalone
