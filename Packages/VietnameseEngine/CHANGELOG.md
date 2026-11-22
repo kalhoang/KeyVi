@@ -107,8 +107,11 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   carries `preferredVietnamese(raw)` and a strong `CollisionSignal` for the Vietnamese side, as Backspace then the
   toggle do, and withdraws the token's weak signal; the next toggle passes through. No undo after Return, Tab or a
   non-ASCII boundary, and a commit that also revised the token before is undone as a revision (ENG-R829). Restores
-  that the token alone decides (`best`, an `en` row), L9, L9c and L4 are left as they were. No public API changes.
-  Spec rows E09 to E13; the measurement harness is `Scripts/context-restore-measure/`.
+  that the token alone decides (`best`, an `en` row), L9, L9c and L4 are left as they were. The words covered after an
+  English run are the `vi` rows of the ambiguity table whose `run` column is `en`: 289 words of the bundled English
+  lists, common English words such as `there` and `this` among them (`I will be there`, space, toggle gives
+  `I will be thể `). No public API changes. Spec rows E09 to E13; the measurement harness, with the census of the
+  covered words, is `Scripts/context-restore-measure/`.
 
 ## [0.1.0] - 2026-11-18
 
