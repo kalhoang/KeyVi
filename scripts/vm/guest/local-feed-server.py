@@ -35,17 +35,42 @@ def inside_virtual_machine() -> bool:
 
 
 class FeedHandler(SimpleHTTPRequestHandler):
+    """Serves the feed folder and logs one line per request once its status and size are known."""
+
     log_lock = threading.Lock()
     log_path = ""
 
-    def log_request(self, code="-", size="-"):  # noqa: D102 (http.server API)
+    def send_response(self, code, message=None):  # noqa: D102 (http.server API)
+        self.status = int(code)
+        super().send_response(code, message)
+
+    def send_header(self, keyword, value):  # noqa: D102 (http.server API)
+        if keyword.lower() == "content-length":
+            self.content_length = int(value)
+        super().send_header(keyword, value)
+
+    def log_request(self, code="-", size="-"):  # noqa: D102 (http.server API): logged in write_log instead
+        pass
+
+    def handle_request(self, method):
+        self.status, self.content_length = None, None
+        method()
+        self.write_log()
+
+    def do_GET(self):  # noqa: N802 (http.server API)
+        self.handle_request(super().do_GET)
+
+    def do_HEAD(self):  # noqa: N802 (http.server API)
+        self.handle_request(super().do_HEAD)
+
+    def write_log(self):
         record = {
             "at": time.time(),
             "client": self.client_address[0],
             "method": self.command,
             "path": self.path,
-            "status": int(code) if str(code).isdigit() else str(code),
-            "size": int(size) if str(size).isdigit() else None,
+            "status": self.status,
+            "size": self.content_length,
             "host": self.headers.get("Host", "") if self.headers else "",
             "userAgent": self.headers.get("User-Agent", "") if self.headers else "",
         }

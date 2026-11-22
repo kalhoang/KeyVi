@@ -22,7 +22,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-sys.dont_write_bytecode = True  # keep scripts/tests free of __pycache__
+sys.dont_write_bytecode = True  # keep scripts/ free of __pycache__ (the modules below are loaded by path)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from support import REPO, SCRIPTS  # noqa: E402
@@ -423,6 +423,7 @@ def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_pr
     (out / "evidence" / "prompt-processes.txt").write_text("")
     (out / "evidence" / "update-offer-find.json").write_text(json.dumps(
         {"found": "Install Update", "window": {"texts": ["A new version 1.1.0-beta.1 is available"]}}))
+    (out / "evidence" / "update-offer-menu.json").write_text(json.dumps({"pressed": "Check for updates..."}))
     (out / "evidence" / "update-ready-find.json").write_text(json.dumps({"found": "Install and Relaunch"}))
     (out / "evidence" / "update-install-press.json").write_text(json.dumps({"pressed": "Install and Relaunch"}))
     (out / "feed-requests.jsonl").write_text(
@@ -650,6 +651,76 @@ class UpgradeScriptTests(LabTestCase):
         self.assertTrue((ops / "watchdog.stop").exists())
         self.assertIn("stop vm", (self.tmp / "run" / "watchdog-stops.txt").read_text())
         self.assertEqual(json.loads((self.tmp / "run" / "result.json").read_text())["verdict"], "ABORTED")
+
+
+TCPDUMP = """1800000001.100000 (proc {name}:812) IP6 ::1.50211 > ::1.443: Flags [S], seq 1, win 65535, length 0
+1800000001.100010 () IP6 ::1.50211 > ::1.443: Flags [S], seq 1, win 65535, length 0
+1800000001.200000 (proc {name}:812) IP6 ::1.50211 > ::1.443: Flags [.], ack 2, win 6379, length 0
+1800000002.000000 (proc mDNSResponder:240, eproc {name}:812) IP 192.168.64.43.63136 > 192.168.64.1.53: 4+ A? {host}. (30)
+1800000002.050000 (proc mDNSResponder:240, eproc {name}:812) IP 192.168.64.1.53 > 192.168.64.43.63136: 4 2/0/0 A 104.21.1.1, A 172.67.1.1 (62)
+1800000002.100000 (proc {name}:812) IP 192.168.64.43.50300 > 104.21.1.1.443: Flags [SEW], seq 5, win 65535, length 0
+1800000003.000000 (proc mDNSResponder:240, eproc {name}:812) IP 192.168.64.43.63137 > 192.168.64.1.53: 5+ AAAA? tracker.example. (33)
+1800000003.100000 (proc {name}:812) IP 192.168.64.43.50301 > 93.184.216.34.443: UDP, length 1200
+1800000004.000000 (proc softwareupdated:300) IP 192.168.64.43.50400 > 17.253.1.1.443: Flags [S], seq 9, length 0
+""".replace("{name}", NAME).replace("{host}", HOST)
+
+
+class TcpdumpTests(unittest.TestCase):
+    def test_syn_udp_and_dns_lookups_are_attributed_to_the_sending_process(self):
+        events = report.tcpdump_events(TCPDUMP)
+        kinds = [(e["kind"], e["process"], e.get("remote"), e.get("port")) for e in events]
+        self.assertIn(("syn", NAME, "::1", 443), kinds)
+        self.assertIn(("syn", NAME, "104.21.1.1", 443), kinds)
+        self.assertIn(("udp", NAME, "93.184.216.34", 443), kinds)
+        self.assertIn(("syn", "softwareupdated", "17.253.1.1", 443), kinds)
+        self.assertEqual(len([k for k in kinds if k[0] == "syn" and k[2] == "::1"]), 1)  # no ACK, no blank meta
+        queries = [e["names"] for e in events if e["kind"] == "dns-query"]
+        self.assertEqual(queries, [[HOST], ["tracker.example"]])
+        answers = [e["addresses"] for e in events if e["kind"] == "dns-answer"]
+        self.assertEqual(answers, [["104.21.1.1", "172.67.1.1"]])
+
+    def test_the_production_phase_flags_other_hosts_and_other_lookups(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            egress = Path(tmp) / "egress"
+            egress.mkdir()
+            (egress / "production-tcpdump.txt").write_text(TCPDUMP)
+            (egress / "production-started").write_text("1800000000\n")
+            result = report.egress_phase(Path(tmp), "production", NAME, [HOST])
+        self.assertEqual({c["remote"] for c in result["disallowed"]}, {"93.184.216.34"})  # softwareupdated ignored
+        self.assertIn("104.21.1.1", result["allowedAddresses"])  # from the app's own DNS answer
+        self.assertEqual(result["disallowedLookups"], ["tracker.example"])
+
+
+class FeedServerTests(unittest.TestCase):
+    def test_every_request_is_logged_with_its_status_size_and_user_agent(self):
+        import threading
+        import urllib.request
+        from http.server import ThreadingHTTPServer
+        spec = importlib.util.spec_from_file_location("feed_server", FEED_SERVER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "feed"
+            root.mkdir()
+            (root / "appcast.xml").write_text("<rss/>")
+            module.FeedHandler.log_path = str(Path(tmp) / "log.jsonl")
+            handler = module.functools.partial(module.FeedHandler, directory=str(root))
+            server = ThreadingHTTPServer(("127.0.0.1", 0), handler)  # plain HTTP on loopback, test only
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                base = f"http://127.0.0.1:{server.server_address[1]}"
+                request = urllib.request.Request(base + "/appcast.xml", headers={"User-Agent": "probe/1"})
+                self.assertEqual(urllib.request.urlopen(request).read(), b"<rss/>")
+                with self.assertRaises(urllib.error.HTTPError), contextlib.redirect_stderr(io.StringIO()):
+                    urllib.request.urlopen(base + "/missing.zip")
+            finally:
+                server.shutdown()
+                server.server_close()
+            lines = [json.loads(line) for line in (Path(tmp) / "log.jsonl").read_text().splitlines()]
+        self.assertEqual([(r["path"], r["status"], r["size"]) for r in lines][0], ("/appcast.xml", 200, 6))
+        self.assertEqual(lines[0]["userAgent"], "probe/1")
+        self.assertEqual(lines[1]["status"], 404)
 
 
 class GuestScriptTests(unittest.TestCase):

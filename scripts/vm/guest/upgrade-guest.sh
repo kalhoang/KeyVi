@@ -189,10 +189,10 @@ app_identity() { # app_identity <file>: version, build and signature of the inst
   } >"$1"
 }
 
-# --- Egress sampling (13.7): nettop flows of every process and lsof of the app and Sparkle's helpers --------------
+# --- Egress sampling (13.7): tcpdump (PKTAP), nettop and lsof of the app and Sparkle's helpers ---------------------
 sampler_stop() {
   local file
-  for file in /tmp/upgrade-nettop.pid /tmp/upgrade-lsof.pid /tmp/upgrade-dns.pid; do
+  for file in /tmp/upgrade-tcpdump.pid /tmp/upgrade-nettop.pid /tmp/upgrade-lsof.pid /tmp/upgrade-dns.pid; do
     [ -f "$file" ] || continue
     sudo -n kill "$(cat "$file")" 2>/dev/null || kill "$(cat "$file")" 2>/dev/null
     sudo -n rm -f "$file"
@@ -202,7 +202,14 @@ sampler_start() { # sampler_start <phase>
   local phase="$1" dir="$out/egress"
   sampler_stop
   printf '%s\n' "$(date +%s)" >"$dir/$phase-started"
+  # Every TCP SYN (IPv4 and IPv6) and UDP datagram with the process that sent it (PKTAP metadata, -k NP), and
+  # the names of DNS lookups (mDNSResponder's packets carry the app as the effective process). nettop misses a
+  # connection that opens and closes between two samples; this does not.
   # shellcheck disable=SC2024 # the samples belong to this user on purpose; only the samplers need root
+  sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-tcpdump.pid; exec /usr/sbin/tcpdump -i pktap,all -k NP -n -l -tt "$1"' \
+    sh "(tcp and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0) or (ip6 and tcp and (ip6[53] & 0x12) == 0x02) or (udp and not port 5353)" \
+    >"$dir/$phase-tcpdump.txt" 2>"$dir/$phase-tcpdump.err" &
+  # shellcheck disable=SC2024
   sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-nettop.pid; exec /usr/bin/nettop -L 0 -s 1 -n -x' \
     >"$dir/$phase-nettop.csv" 2>"$dir/$phase-nettop.err" &
   # shellcheck disable=SC2024
@@ -283,7 +290,58 @@ done
 sudo -n mdutil -a -i off >/dev/null 2>&1
 step_ok
 
-# --- 2. Tools: TestHost, the driver, the store tool (previous and candidate AppCore) ---------------------------
+# --- 2. Local feed over HTTPS, site host mapped to loopback (first: it needs no build) -------------------------
+step "local feed: throwaway CA trusted only in this VM, $APP_SITE_HOST mapped to loopback in /etc/hosts"
+rm -rf "$tls"
+mkdir -p "$tls"
+cat >"$tls/openssl.cnf" <<EOF
+[req]
+distinguished_name = dn
+[dn]
+[ca]
+basicConstraints = critical, CA:true
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+[leaf]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = DNS:$APP_SITE_HOST
+EOF
+{
+  openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 7 -keyout "$tls/ca.key" -out "$tls/ca.pem" \
+    -subj "/CN=$APP_SLUG upgrade test CA (VM only)" -config "$tls/openssl.cnf" -extensions ca &&
+    openssl req -new -newkey rsa:2048 -nodes -sha256 -keyout "$tls/leaf.key" -out "$tls/leaf.csr" \
+      -subj "/CN=$APP_SITE_HOST" -config "$tls/openssl.cnf" &&
+    openssl x509 -req -sha256 -days 7 -in "$tls/leaf.csr" -CA "$tls/ca.pem" -CAkey "$tls/ca.key" -CAcreateserial \
+      -out "$tls/leaf.pem" -extfile "$tls/openssl.cnf" -extensions leaf
+} >"$out/logs/tls.log" 2>&1 || stop "could not create the VM-only certificates (logs/tls.log)"
+cp "$tls/ca.pem" "$out/evidence/vm-only-ca.pem"
+# Admin trust settings: root may set them without a prompt in this image (checked on macOS 27.2); a
+# `security authorizationdb write` first is refused (-60005) and not needed.
+{
+  sudo -n security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$tls/ca.pem" &&
+    security verify-cert -c "$tls/leaf.pem" -p ssl -s "$APP_SITE_HOST"
+} >>"$out/logs/tls.log" 2>&1 || stop "the VM-only CA is not trusted for $APP_SITE_HOST (logs/tls.log)"
+use_appcast appcast-upgrade.xml || stop "no appcast-upgrade.xml in the feed"
+: >"$out/feed-requests.jsonl"
+# shellcheck disable=SC2024 # the server log belongs to this user on purpose
+sudo -n /usr/bin/python3 -I scripts/vm/guest/local-feed-server.py --root "$feed" --cert "$tls/leaf.pem" \
+  --key "$tls/leaf.key" --log "$out/feed-requests.jsonl" --pid-file /tmp/upgrade-feed.pid \
+  >"$out/logs/feed-server.log" 2>&1 &
+map_hosts || stop "could not map $APP_SITE_HOST in /etc/hosts"
+ok=0
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  code="$(curl -s -o /dev/null -w '%{http_code}' --cacert "$tls/ca.pem" "https://$APP_SITE_HOST/appcast.xml")"
+  [ "$code" = 200 ] && { ok=1; break; }
+  sleep 1
+done
+[ "$ok" = 1 ] || stop "the local feed does not answer on https://$APP_SITE_HOST/appcast.xml (logs/feed-server.log)"
+dscacheutil -q host -a name "$APP_SITE_HOST" >"$out/evidence/hosts-mapped.txt" 2>&1
+note "feed: https://$APP_SITE_HOST/appcast.xml served from this VM ($(grep -c '<item>' "$feed/appcast.xml") items)"
+step_ok
+
+# --- 3. Tools: TestHost, the driver, the store tool (previous and candidate AppCore) ---------------------------
 step "build: upgrade-driver, TestHost and upgrade-store (previous and candidate AppCore)"
 xcrun swiftc -O -o "$driver" scripts/vm/guest/upgrade-driver.swift >"$out/logs/build-driver.log" 2>&1 ||
   stop "upgrade-driver.swift did not compile (logs/build-driver.log)"
@@ -325,56 +383,6 @@ prev_store="$(store_tool previous "$in_dir/prev-src/Packages/AppCore")" ||
 cand_store="$(store_tool candidate "$PWD/Packages/AppCore")" ||
   stop "upgrade-store did not build against the candidate's AppCore (logs/build-store-candidate.log)"
 note "built: upgrade-driver, TestHost ($testhost_bundle), upgrade-store x2"
-step_ok
-
-# --- 3. Local feed over HTTPS, site host mapped to loopback ------------------------------------------------------
-step "local feed: throwaway CA trusted only in this VM, $APP_SITE_HOST mapped to loopback in /etc/hosts"
-rm -rf "$tls"
-mkdir -p "$tls"
-cat >"$tls/openssl.cnf" <<EOF
-[req]
-distinguished_name = dn
-[dn]
-[ca]
-basicConstraints = critical, CA:true
-keyUsage = critical, keyCertSign, cRLSign
-subjectKeyIdentifier = hash
-[leaf]
-basicConstraints = critical, CA:false
-keyUsage = critical, digitalSignature, keyEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = DNS:$APP_SITE_HOST
-EOF
-{
-  openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 7 -keyout "$tls/ca.key" -out "$tls/ca.pem" \
-    -subj "/CN=$APP_SLUG upgrade test CA (VM only)" -config "$tls/openssl.cnf" -extensions ca &&
-    openssl req -new -newkey rsa:2048 -nodes -sha256 -keyout "$tls/leaf.key" -out "$tls/leaf.csr" \
-      -subj "/CN=$APP_SITE_HOST" -config "$tls/openssl.cnf" &&
-    openssl x509 -req -sha256 -days 7 -in "$tls/leaf.csr" -CA "$tls/ca.pem" -CAkey "$tls/ca.key" -CAcreateserial \
-      -out "$tls/leaf.pem" -extfile "$tls/openssl.cnf" -extensions leaf
-} >"$out/logs/tls.log" 2>&1 || stop "could not create the VM-only certificates (logs/tls.log)"
-cp "$tls/ca.pem" "$out/evidence/vm-only-ca.pem"
-{
-  sudo -n security authorizationdb write com.apple.trust-settings.admin allow &&
-    sudo -n security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$tls/ca.pem" &&
-    security verify-cert -c "$tls/leaf.pem" -p ssl -s "$APP_SITE_HOST"
-} >>"$out/logs/tls.log" 2>&1 || stop "the VM-only CA is not trusted for $APP_SITE_HOST (logs/tls.log)"
-use_appcast appcast-upgrade.xml || stop "no appcast-upgrade.xml in the feed"
-: >"$out/feed-requests.jsonl"
-# shellcheck disable=SC2024 # the server log belongs to this user on purpose
-sudo -n /usr/bin/python3 -I scripts/vm/guest/local-feed-server.py --root "$feed" --cert "$tls/leaf.pem" \
-  --key "$tls/leaf.key" --log "$out/feed-requests.jsonl" --pid-file /tmp/upgrade-feed.pid \
-  >"$out/logs/feed-server.log" 2>&1 &
-map_hosts || stop "could not map $APP_SITE_HOST in /etc/hosts"
-ok=0
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-  code="$(curl -s -o /dev/null -w '%{http_code}' --cacert "$tls/ca.pem" "https://$APP_SITE_HOST/appcast.xml")"
-  [ "$code" = 200 ] && { ok=1; break; }
-  sleep 1
-done
-[ "$ok" = 1 ] || stop "the local feed does not answer on https://$APP_SITE_HOST/appcast.xml (logs/feed-server.log)"
-dscacheutil -q host -a name "$APP_SITE_HOST" >"$out/evidence/hosts-mapped.txt" 2>&1
-note "feed: https://$APP_SITE_HOST/appcast.xml served from this VM ($(grep -c '<item>' "$feed/appcast.xml") items)"
 step_ok
 
 # --- 4. Previous stable from its DMG --------------------------------------------------------------------------

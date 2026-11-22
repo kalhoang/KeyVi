@@ -377,15 +377,77 @@ def samples_taken(lsof_text: str) -> int:
     return sum(1 for line in lsof_text.splitlines() if line.startswith("#t "))
 
 
+TCPDUMP_LINE = re.compile(r"^(?P<time>\S+) \((?P<meta>[^)]*)\) (?P<proto>IP6?) (?P<src>\S+) > (?P<dst>\S+?): (?P<rest>.*)$")
+
+
+def tcpdump_meta(meta: str) -> tuple:
+    """The process a PKTAP packet belongs to: the effective process (`eproc`, the app a DNS lookup of
+    mDNSResponder is made for) when given, else `proc`. ("", 0) for a packet without process metadata."""
+    for key in ("eproc", "proc"):
+        match = re.search(rf"(?:^|, ){key} ([^:,]+):(\d+)", meta)
+        if match:
+            return match.group(1).strip(), int(match.group(2))
+    return "", 0
+
+
+def split_endpoint(text: str):
+    head, _, tail = text.rpartition(".")
+    return (strip_scope(head), int(tail)) if tail.isdigit() and is_address(strip_scope(head)) else None
+
+
+def tcpdump_events(text: str) -> list:
+    """Connection attempts and DNS lookups of `tcpdump -i pktap,all -k NP -n -tt` (every TCP SYN and UDP datagram
+    with the process that sent it, PKTAP): kind syn, udp, dns-query or dns-answer."""
+    events = []
+    for line in text.splitlines():
+        match = TCPDUMP_LINE.match(line)
+        if not match:
+            continue
+        process, pid = tcpdump_meta(match.group("meta"))
+        src, dst = split_endpoint(match.group("src")), split_endpoint(match.group("dst"))
+        if not process or not src or not dst:
+            continue
+        rest = match.group("rest")
+        event = {"time": match.group("time"), "process": process, "pid": pid, "source": "tcpdump"}
+        flags = re.match(r"Flags \[([^\]]*)\]", rest)
+        if flags:
+            if "S" not in flags.group(1) or "." in flags.group(1):
+                continue  # only the opening SYN of a connection
+            event.update(kind="syn", transport="tcp", remote=dst[0], port=dst[1])
+        elif dst[1] == 53:
+            names = re.findall(r"\b(?:A|AAAA|HTTPS|SVCB|CNAME)\? (\S+?)\.? ", rest + " ")
+            event.update(kind="dns-query", transport="udp", remote=dst[0], port=53, names=names)
+        elif src[1] == 53:
+            event.update(kind="dns-answer", transport="udp", remote=src[0], port=53,
+                         addresses=re.findall(r"\b(?:A|AAAA) ([0-9a-fA-F:.]+[0-9a-fA-F])\b", rest))
+        else:
+            event.update(kind="udp", transport="udp", remote=dst[0], port=dst[1])
+        events.append(event)
+    return events
+
+
+def matches(process: str, names: tuple) -> bool:
+    return any(process == n or process.startswith(n) or n.startswith(process) and len(process) >= 15 for n in names)
+
+
 def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> dict:
-    """Every remote endpoint of the app and Sparkle's helpers in one phase, classified (13.7)."""
+    """Every remote endpoint and DNS lookup of the app and Sparkle's helpers in one phase, classified (13.7).
+    tcpdump (PKTAP) sees every connection attempt with its process; nettop and lsof add what was open at each
+    second. Allowed: loopback (the local feed) and, on the production feed, the addresses the VM resolved for the
+    allowed hosts during the phase; a DNS lookup of any other name is a disallowed attempt too."""
     egress = run / "egress"
     read = lambda suffix: (egress / f"{phase}-{suffix}").read_text(encoding="utf-8", errors="replace") \
         if (egress / f"{phase}-{suffix}").is_file() else ""
     names = (app_name,) + EGRESS_PROCESSES
+    events = [e for e in tcpdump_events(read("tcpdump.txt")) if matches(e["process"], names)]
     flows = [f for f in nettop_flows(read("nettop.csv")) + lsof_flows(read("lsof.txt"))
-             if any(f["process"] == n or f["process"].startswith(n) for n in names)]
-    allowed = dns_addresses(read("dns.txt")) if phase == "production" else set()
+             if matches(f["process"], names)] + [e for e in events if e["kind"] in ("syn", "udp")]
+    hosts = {h.lower().rstrip(".") for h in allowed_hosts}
+    lookups = sorted({n.lower().rstrip(".") for e in events if e["kind"] == "dns-query" for n in e["names"]})
+    allowed = set()
+    if phase == "production":
+        allowed = dns_addresses(read("dns.txt")) | {
+            a for e in events if e["kind"] == "dns-answer" for a in e.get("addresses", [])}
     endpoints = {}
     for flow in flows:
         key = (flow["process"], flow["remote"], flow["port"], flow["transport"])
@@ -394,10 +456,14 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> d
             endpoints[key] = {"process": flow["process"], "remote": flow["remote"], "port": flow["port"],
                               "transport": flow["transport"], "allowed": ok, "firstSeen": flow["time"],
                               "seenBy": flow["source"]}
+        elif flow["source"] not in endpoints[key]["seenBy"]:
+            endpoints[key]["seenBy"] += "," + flow["source"]
     connections = sorted(endpoints.values(), key=lambda e: (e["process"], e["remote"], e["port"]))
-    return {"phase": phase, "allowedHosts": allowed_hosts if phase == "production" else ["loopback (local feed)"],
+    bad_lookups = [n for n in lookups if n not in hosts]
+    return {"phase": phase, "allowedHosts": sorted(hosts) if phase == "production" else ["loopback (local feed)"],
             "allowedAddresses": sorted(allowed), "lsofSamples": samples_taken(read("lsof.txt")),
-            "nettopLines": len(read("nettop.csv").splitlines()), "connections": connections,
+            "nettopLines": len(read("nettop.csv").splitlines()), "tcpdumpLines": len(read("tcpdump.txt").splitlines()),
+            "connections": connections, "lookups": lookups, "disallowedLookups": bad_lookups,
             "disallowed": [c for c in connections if not c["allowed"]],
             "started": read("started").strip(), "ended": read("ended").strip()}
 
@@ -652,7 +718,9 @@ def check_update(run: Run) -> dict:
                 f"{len(appcasts)} appcast request(s) and {zip_name} {len(downloads)} time(s) "
                 f"({downloads[0].get('size') if downloads else 0} bytes, user agent "
                 f"'{downloads[0].get('userAgent', '') if downloads else ''}')")
-    return check("sparkle-update", "QA-R40 step 3: update through Sparkle from a local appcast", ok, evidence,
+    ran = (run.out / "evidence" / "update-offer-menu.json").is_file()
+    return check("sparkle-update", "QA-R40 step 3: update through Sparkle from a local appcast", ok if ran else None,
+                 evidence,
                  ["upgrade-out/evidence/update-offer-window.json", "upgrade-out/evidence/update-ready-window.json",
                   "upgrade-out/feed-requests.jsonl", "upgrade-out/evidence/update-offer.png"])
 
@@ -846,6 +914,7 @@ def check_channel(run: Run, probe: dict) -> dict:
 def check_egress(run: Run, phase: str, minutes: int) -> tuple:
     hosts = [run.brand["APP_SITE_HOST"]]
     report = egress_phase(run.out, phase, run.brand["APP_DISPLAY_NAME"], hosts)
+    report["allowedHosts"] = report["allowedHosts"] if phase == "local" else hosts
     menu = run.json(f"evidence/egress-{phase}-menu.json", {}) or {}
     duration = 0
     if report["started"].isdigit() and report["ended"].isdigit():
@@ -855,28 +924,32 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
     if phase == "local":
         allowed_seen = [c for c in report["connections"] if c["port"] == 443]
     ran = bool(report["started"])
-    ok = ran and not report["disallowed"] and bool(menu.get("pressed")) and bool(allowed_seen) \
-        and duration >= minutes * 60 - 5
+    ok = ran and not report["disallowed"] and not report["disallowedLookups"] and bool(menu.get("pressed")) \
+        and bool(allowed_seen) and duration >= minutes * 60 - 5
     endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}/{c['transport']}"
                           f"{'' if c['allowed'] else ' NOT ALLOWED'}" for c in report["connections"])
-    evidence = (f"{duration} s with a forced check ({menu.get('pressed')}); {report['lsofSamples']} lsof samples, "
-                f"{report['nettopLines']} nettop lines; allowed: {', '.join(report['allowedHosts'])} "
-                f"{report['allowedAddresses'] if phase == 'production' else ''}; endpoints: {endpoints or 'none'}")
+    evidence = (f"{duration} s with a forced check ({menu.get('pressed')}); {report['tcpdumpLines']} tcpdump lines, "
+                f"{report['lsofSamples']} lsof samples, {report['nettopLines']} nettop lines; allowed: "
+                f"{', '.join(report['allowedHosts'])} {report['allowedAddresses'] if phase == 'production' else ''}; "
+                f"endpoints: {endpoints or 'none'}; DNS lookups by the app: {report['lookups'] or 'none'}"
+                f"{'; NOT ALLOWED lookups: ' + ', '.join(report['disallowedLookups']) if report['disallowedLookups'] else ''}")
     name = "egress-local" if phase == "local" else "egress-production"
     requirement = ("spec/02-platform.md 13.7 phase 1: local appcast, forced check, only allowed hosts" if phase == "local"
                    else "spec/02-platform.md 13.7 phase 2: production feed, only the site host (PLT-R906)")
     return check(name, requirement, ok if ran else None, evidence,
-                 [f"upgrade-out/egress/{phase}-nettop.csv", f"upgrade-out/egress/{phase}-lsof.txt",
-                  f"upgrade-out/egress/{phase}-dns.txt"]), report
+                 [f"upgrade-out/egress/{phase}-tcpdump.txt", f"upgrade-out/egress/{phase}-nettop.csv",
+                  f"upgrade-out/egress/{phase}-lsof.txt", f"upgrade-out/egress/{phase}-dns.txt"]), report
 
 
 def check_update_egress(run: Run) -> tuple:
-    report = egress_phase(run.out, "update", run.brand["APP_DISPLAY_NAME"], [])
-    ok = bool(report["started"]) and not report["disallowed"]
+    report = egress_phase(run.out, "update", run.brand["APP_DISPLAY_NAME"], [run.brand["APP_SITE_HOST"]])
+    ok = bool(report["started"]) and not report["disallowed"] and not report["disallowedLookups"]
     endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}" for c in report["connections"])
     return check("egress-update", "spec/02-platform.md 13.7: the update itself contacts only the local feed", ok
-                 if report["started"] else None, f"endpoints during the update: {endpoints or 'none'}",
-                 ["upgrade-out/egress/update-nettop.csv", "upgrade-out/egress/update-lsof.txt"]), report
+                 if report["started"] else None,
+                 f"endpoints during the update: {endpoints or 'none'}; DNS lookups: {report['lookups'] or 'none'}",
+                 ["upgrade-out/egress/update-tcpdump.txt", "upgrade-out/egress/update-nettop.csv",
+                  "upgrade-out/egress/update-lsof.txt"]), report
 
 
 def evaluate(run: Run, feed: dict, options: dict) -> dict:
