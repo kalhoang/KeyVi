@@ -12,6 +12,9 @@ struct Workload {
     let name: String
     let engine: Engine
     let events: [EngineEvent]
+    /// The events whose latency a budget of their own bounds (the committing spaces of the `correction` workload,
+    /// ENG-R1122); empty for the ENG-T40 workloads.
+    var commits: [Int] = []
 }
 
 enum Workloads {
@@ -33,6 +36,39 @@ enum Workloads {
             .appendingPathComponent("data/corpus/prose-vi.txt")
     }
 
+    /// The bundled English lexicon (`english.txt` of `VietnameseEngineData`) of the source tree this benchmark was
+    /// built from: the words the candidates of ENG-T55 are typos of.
+    static var defaultEnglishList: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()  // EngineBenchmark
+            .deletingLastPathComponent()  // Benchmarks
+            .deletingLastPathComponent()  // VietnameseEngine
+            .appendingPathComponent("Sources/VietnameseEngineData/Resources/english.txt")
+    }
+
+    /// ENG-T55, ENG-R1122: `count` typos of lexicon words of 5 to 24 letters and `adversarial` 24-letter tokens
+    /// (`CorrectionCandidates`), each typed after the previous one's space and committed by a space, with the typo
+    /// correction on whatever `--typo-correction` says. `commits` holds the committing spaces, the events the budget
+    /// of 50 µs at p99 and 200 µs in the worst case bounds. Empty when the lexicon file is missing.
+    static func correctionCandidates(resources: Resources, count: Int, adversarial: Int, seed: UInt64) throws
+        -> Workload
+    {
+        let url = defaultEnglishList
+        let lexicon =
+            FileManager.default.fileExists(atPath: url.path)
+            ? try String(contentsOf: url, encoding: .utf8).split(separator: "\n").map(String.init)
+                .filter { !$0.hasPrefix("#") } : []
+        let tokens =
+            CorrectionCandidates.typos(
+                of: lexicon, neighbours: resources.correction.keyboardNeighbours, count: count, seed: seed)
+            + CorrectionCandidates.adversarial(lexicon: lexicon, count: adversarial, seed: seed &+ 1)
+        let (events, commits) = CorrectionCandidates.events(tokens)
+        return Workload(
+            name: "correction",
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: true), resources: resources),
+            events: events, commits: commits)
+    }
+
     /// The paragraphs of the prose corpus as words, at most `limit` words (0: all); nil when the file is
     /// missing.
     static func proseParagraphs(_ url: URL, limit: Int) throws -> [[String]]? {
@@ -51,7 +87,7 @@ enum Workloads {
 
     /// ENG-T40: the prose corpus typed by the three typists of ENG-T20 (`ProseCorpusCheck`: O2, O1, O3),
     /// one pass each, in Telex and VNI, words separated by a space and paragraphs by a Return.
-    static func prose(resources: Resources, paragraphs: [[String]]) -> [Workload] {
+    static func prose(resources: Resources, paragraphs: [[String]], typoCorrection: Bool) -> [Workload] {
         CorpusMethod.allCases.map { method in
             var events: [EngineEvent] = []
             for order in ProseCorpusCheck.typists {
@@ -68,7 +104,9 @@ enum Workloads {
             return Workload(
                 name: "prose-\(method.rawValue)",
                 engine: Engine(
-                    configuration: EngineConfiguration(inputMethod: method.inputMethod), resources: resources),
+                    configuration: EngineConfiguration(
+                        inputMethod: method.inputMethod, typoCorrection: typoCorrection),
+                    resources: resources),
                 events: events)
         }
     }
@@ -78,7 +116,7 @@ enum Workloads {
     /// modifiers and tone after the coda, the "free order" typist). Syllables are separated as in prose:
     /// mostly a space, sometimes `, ` or `. `, a Return now and then, and a mistyped letter corrected with
     /// Backspace every 17th syllable.
-    static func typists(resources: Resources) -> [Workload] {
+    static func typists(resources: Resources, typoCorrection: Bool) -> [Workload] {
         var telex: [EngineEvent] = []
         var vni: [EngineEvent] = []
         var counter = 0
@@ -94,11 +132,15 @@ enum Workloads {
         }
         return [
             Workload(
-                name: "typists-telex", engine: Engine(configuration: EngineConfiguration(), resources: resources),
+                name: "typists-telex",
+                engine: Engine(
+                    configuration: EngineConfiguration(typoCorrection: typoCorrection), resources: resources),
                 events: telex),
             Workload(
                 name: "typists-vni",
-                engine: Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: resources),
+                engine: Engine(
+                    configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: typoCorrection),
+                    resources: resources),
                 events: vni),
         ]
     }
@@ -112,9 +154,12 @@ enum Workloads {
 
     /// The fuzz stream of 13.6 (`FuzzEventSource`: full alphabet, words, macro triggers, Backspace runs,
     /// toggles, resets and bursts of up to 4,096 keys), Telex defaults and VNI alternating in blocks.
-    static func fuzz(resources: Resources, events count: Int, seed: UInt64) -> [Workload] {
+    static func fuzz(resources: Resources, events count: Int, seed: UInt64, typoCorrection: Bool) -> [Workload] {
         let triggers = resources.macros.triggers
-        return [EngineConfiguration(), EngineConfiguration(inputMethod: .vni)].enumerated().map {
+        return [
+            EngineConfiguration(typoCorrection: typoCorrection),
+            EngineConfiguration(inputMethod: .vni, typoCorrection: typoCorrection),
+        ].enumerated().map {
             index, configuration in
             var source = FuzzEventSource(
                 seed: seed &+ UInt64(index), configuration: configuration, triggers: triggers, maximumBurst: 4_096)
@@ -132,7 +177,8 @@ enum Workloads {
         for index in 0..<length { events.append(.key(KeyInput(pattern[index % pattern.count]))) }
         events.append(ending)
         return Workload(
-            name: "long-\(length)", engine: Engine(configuration: EngineConfiguration(), resources: resources),
+            name: "long-\(length)",
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources),
             events: events)
     }
 }

@@ -47,7 +47,9 @@ struct BackspaceRealDataTests {
     }
 
     private static func engine(_ method: CorpusMethod, _ resources: Resources) -> Engine {
-        Engine(configuration: EngineConfiguration(inputMethod: method.inputMethod), resources: resources)
+        Engine(
+            configuration: EngineConfiguration(inputMethod: method.inputMethod, typoCorrection: false),
+            resources: resources)
     }
 
     @Test("ENG-T38: English lexicon and tech lists, Telex in three casings and VNI")

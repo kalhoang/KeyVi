@@ -12,8 +12,41 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
 - `CommitRule.toneRemoval`, the reason code of the new rule L4a (spec/01-engine.md 8.1, ENG-R411, REG-39). A
   consumer that switches exhaustively over `CommitRule` needs the new case, so this is a source-breaking addition
   and the next tag is `engine-v0.2.0`.
+- The typo correction of spec/01-engine.md section 11A (1.1.0, ENG-R1110 to ENG-R1125): at the commit of a word the
+  engine replaces one clearly mistyped English word with the only word of the correction lexicon one edit away
+  (`androdi` gives `android`, `gramar` gives `grammar`), never a Vietnamese word or a word one key from Vietnamese
+  (`ddi pahir` stays `đi pahir`), only in the general context, at whitespace, Return, Tab or an ASCII closer of prose,
+  with nothing glued before the word. The restore toggle right after the correction, or after Backspace re-opened
+  it, brings back the keys as typed and sends `LearningSignal.neverCorrect`. The public API of the feature:
+  `EngineConfiguration.typoCorrection` (default true; off, every commit is exactly as without the section),
+  `CommitDecision.corrected(CommitRule)`, `LearningSignal.neverCorrect(raw:)`, `CorrectionData`,
+  `ApproximateWordSet`, `Resources.userNeverCorrect` and `Resources.correction`. A consumer that switches
+  exhaustively over `CommitDecision` or `LearningSignal` needs the new cases, so these are source-breaking additions
+  in the same minor bump (`engine-v0.2.0`). The bundled correction data (the guard list, the keyboard neighbours,
+  the unmarked shapes and the Vietnamese keyings, ENG-R1120) is built by `lexicon-builder` and documented with it.
+- `PackedWordSet` (spec 12.2, sixth amendment): the type of `CorrectionData.unmarkedShapes` and `vietnameseKeyings`.
+  Each word of 1 to 12 letters `a` to `z` is one `UInt64` (5 bits per letter) in a sorted array searched by halves;
+  any other word is kept beside it in an ordinary set. As `WordSet`s the two lists took 1.30 MB resident, over the
+  1 MB of ENG-R1120; packed, the correction data and the engine's index of it take 0.38 MB, and the index reads the
+  two sets in place. `CorrectionData` keeps an initialiser that takes `WordSet`s and packs them, so callers written
+  against the earlier 1.1.0 API compile unchanged; code that reads the two fields as `WordSet`s needs
+  `PackedWordSet`, whose `contains(_:)` is the same.
+- Resource format 3 (`VietnameseEngineData`, docs/decisions/0203-correction-data.md): `manifest.json` says
+  `"format": 3` and four files follow the collision lists: `guard-list.bloom` (a 32-byte `KVGL` header, then the
+  Bloom filter's bits: the SCOWL words of sizes 40 to 70 and the proper names, 77,488 words, 2^20 bits, 8 hashes),
+  `keyboard-neighbours.txt`, `unmarked-shapes.txt` (3,953) and `vietnamese-keyings.txt` (27,277). The loader reads
+  format 3 only and refuses formats 1 and 2. Problems are reported with the existing `Resources.LoadError` cases.
 
 ### Changed
+
+- The loader refuses an empty `unmarked-shapes.txt` or `vietnamese-keyings.txt` with
+  `malformedResource("<file>: no entry")`, even when its manifest row agrees: the lists are generated and never empty
+  (spec 12.2, the fifth amendment of 1.1.0), and an empty one would silently turn off ENG-R1110 (d) and ENG-R1125.
+- The loader splits the UTF-8 lists (the attested syllables, the ambiguity table, the phrases, the neighbours table)
+  on the LF byte instead of on characters: a CR before the LF now stays in its line and fails the entry check
+  (`invalidCharacter`) instead of `missingFinalNewline`. With the packed shapes and keyings and the raw-pointer
+  parsing, `Resources.bundled` takes 22 to 24 ms of CPU in a debug build (52 to 58 ms on the merged 1.1.0 branch
+  before, against the 50 ms of ENG-R1231) and 10 to 15 ms in a release build.
 
 - Rule L4a, the tone removal at commit (product owner, 18/11/2026, Q9 of spec section 15): when the last key of a
   token is a tone-removal key (Telex `z`, VNI `0`) that removed the tone or the letter marks, the commit keeps the
@@ -32,6 +65,11 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   context and VNI do not change. With the bundled data L9 now reaches `awk`, `chown`, `ef`, `host`, `tar` and `tee`;
   the prose corpus and the W11 corpus in the code context do not move. Spec rows B035o to B035t (`chown` joins the
   13.9 fixture code-only list) and K26 to K32.
+- Bundled data: 18 developer words on the tech-always list (406 entries), `frontend`, `backend`, `rebase`,
+  `debounce`, `upsert`, `structs` and their corrected inflections among them (ENG-R1124, the W11 row;
+  docs/decisions/0203-correction-data.md section 10). The typo correction changed each into another English word
+  one edit away (`frontend` gave `fronted`, `upsert` gave `upset`); listed, they are words of the correction lexicon
+  and stay as typed. Their compositions are invalid, so rule L5 already restored them and no 1.0 output moves.
 - Bundled data: the phrases `day off`, `sale off` and `a mess` (product owner, 18/11/2026; 330 phrases). The phrase
   evidence of rule L4 (ENG-R804 (a)) now keeps the word typed in `day off`, `a mess` and `Ê có sale off`, which kept
   the escapes `day of`, `a mes` and `sale of`; `ok off`, `50% off`, `mess up`, `off topic` and `Off the record` keep
@@ -39,6 +77,29 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   rows X25 to X27.
 - The prose-corpus gate pins Telex `IX` -> `Ĩ` (two tokens per Telex typist) as the product owner's decision Q26 of
   13/11/2026 instead of recording it as a known issue (docs/decisions/0202, open issue 3).
+- Rule L4 and a `w` doubled out of habit (product owner, 20/11/2026, ENG-R804, REG-40): `R′`, the raw keys without
+  the key of each `w` doubling (a Telex `w` escape right after the `w` key whose effect it removes), is restored when
+  it is English and neither `C` nor `R` is ((c′): `answwer` gives `answer`), and the restore of (d) puts back `R′`
+  when every `w` doubling removed the `ư` of a standalone `w` (`wwebview` gives `webview`, it gave `wwebview`); `R`
+  English decides first (`www`, `powwow`), and the reason code stays `escape`. The typed word of the typo correction
+  is `R′` in that case (`wwindwos` gives `windows`), a re-opened token shows `R′`, every later commit of it that
+  restores writes `R′` again (`answwer`, space, two Backspaces, space gives `answe `), and the toggle composes it.
+  The `w` doublings are a habit only when no `w` key follows them and none is a capital right after a lowercase `w`
+  (`wwwexample` and `dwWidth` keep every `w`), and rule L3b restores `R′` for camel case keys with that habit
+  (`WwordPress` gives `WordPress`, ENG-R904). A Backspace that takes the doubling a re-opened token does not show
+  ends the omission, and a commit that writes the token's text unchanged (the typed word the toggle took back from a
+  correction) keeps it showing `R′` (ENG-R701, ENG-R1005, ENG-R1117). Every
+  word of `/usr/share/dict/words` typed as written commits the same text as before. Spec rows X28 to X39;
+  `spec/reference-model/boundary.py` models the rule.
+- A capitalised word typed `Ww` (product owner, 22/11/2026, ENG-R903, ENG-R804, REG-41): the escaped letter of a
+  standalone `w` doubling takes the place of the `ư` it removed, so it is a capital when either `w` key is one (`Ww`
+  shows `W`, as `WW` and `wW` do; `ww` shows `w`; `Composition.showsEscapedWAsCapital`). `Wwade` shows and commits
+  `Wade` and `Wwarden` gives `Warden`, which gave `wade` and `warden`: the escape appended its own key, a lowercase
+  `w`, and rule L4 (b) or the deliberate form kept that display. No rule of 8.1 changes; horn and breve doublings,
+  every other escape and capitals typed on both keys keep the case of the escaping key, and the raw keys stay as typed.
+  Every word of `/usr/share/dict/words` typed as written commits the same text as before; of its 3,947 words that
+  start with `w` or `W`, typed with the habit, 3,947 commit the word with `typoCorrection` off (3,913 before). Spec
+  rows X40 to X43; `spec/reference-model/compose.py` models it.
 
 ## [0.1.0] - 2026-11-18
 

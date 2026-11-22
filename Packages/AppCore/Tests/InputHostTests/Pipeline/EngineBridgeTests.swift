@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// ADR 0306: settings -> engine configuration, the sixteen-engine catalog (PLT-R357), macros and resources.
+// ADR 0306: settings -> engine configuration, the thirty-two-engine catalog (PLT-R357, ENG-R1119), macros and
+// resources.
 
 import AppModel
 import Foundation
@@ -89,6 +90,29 @@ import VietnameseEngine
         #expect(Self.typed("Tar thuwr ", configuration, resources) == "Tả thử ")
     }
 
+    /// ENG-R1119, PRD-R80: the engine corrects only where the user's D30 and D4, the rule's `englishRestore` and
+    /// `restoreHotkey` (the catalog variant) and the user's D8 all allow it, so no word is corrected where the restore
+    /// key cannot undo it. Every one of the 2^5 combinations.
+    @Test(arguments: 0..<32)
+    func typoCorrectionIsD30AndD4AndTheRuleSwitchesAndTheRestoreKey_ENGR1119(_ bits: Int) {
+        let (d30, d4, rule, ruleKey, d8) = (bits & 1 != 0, bits & 2 != 0, bits & 4 != 0, bits & 8 != 0, bits & 16 != 0)
+        let effective = settings {
+            $0.typoCorrection = d30
+            $0.englishRestore = d4
+            $0.restoreHotkey = d8 ? .key(.escape) : nil
+        }
+        let variant = EngineVariant(appContext: .general, englishRestore: rule, macros: true, restoreHotkey: ruleKey)
+        let configuration = EngineBridge.configuration(for: effective, variant: variant)
+        #expect(configuration.typoCorrection == (d30 && d4 && rule && ruleKey && d8))
+    }
+
+    /// D8 counts by its on or off state only: any binding turns it on.
+    @Test func anyRestoreKeyBindingCountsAsOn_ENGR1119() {
+        let rebound = settings { $0.restoreHotkey = .modifierTap(.rightCommand) }
+        #expect(EngineBridge.configuration(for: rebound, variant: .default).typoCorrection)
+        #expect(EngineBridge.configuration(for: settings(), variant: .default).typoCorrection)
+    }
+
     /// The field after typing `keys` into a fresh session.
     private static func typed(_ keys: String, _ configuration: EngineConfiguration, _ resources: Resources) -> String {
         var session = Session(engine: Engine(configuration: configuration, resources: resources))
@@ -124,12 +148,98 @@ import VietnameseEngine
             let engine = catalog.engine(for: variant)
             #expect(engine.configuration == EngineBridge.configuration(for: DefaultSettings.v1, variant: variant))
         }
-        #expect(Set(Self.allVariants.map(\.catalogIndex)) == Set(0..<16))
-        #expect(Set(Self.allVariants).count == 16)
+        #expect(Set(Self.allVariants.map(\.catalogIndex)) == Set(0..<32))
+        #expect(Set(Self.allVariants).count == 32)
+        #expect(Set(Self.allVariants.map(\.restoreHotkey)) == [false, true])
     }
 
+    /// Bit 4 is the rule's `restoreHotkey` (ENG-R1119): every slot index maps to a variant and back.
     @Test func variantIndexRoundTrips() {
-        for index in 0..<16 { #expect(EngineVariant(catalogIndex: index).catalogIndex == index) }
+        for index in 0..<32 { #expect(EngineVariant(catalogIndex: index).catalogIndex == index) }
+        #expect(EngineVariant.catalogSize == 32)
+        var panel = EngineVariant.default
+        panel.restoreHotkey = false
+        #expect(panel.catalogIndex != EngineVariant.default.catalogIndex)
+        #expect(EngineVariant(catalogIndex: panel.catalogIndex) == panel)
+    }
+
+    /// Review of the API stage (19/11/2026): a variant without the restore key used to share the slot of the one with
+    /// it, so a catalog built for it handed out the fallback engine. Each has its own engine now.
+    @Test func aVariantWithoutTheRestoreKeyGetsItsOwnEngine() {
+        var panel = EngineVariant.default
+        panel.restoreHotkey = false
+        let own = Engine(
+            configuration: EngineConfiguration(toneStyle: .modern, typoCorrection: false), resources: .empty)
+        let other = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
+        let catalog = EngineCatalog(engines: [panel: own, .default: other])
+        #expect(catalog.engine(for: panel).configuration.toneStyle == .modern)
+        #expect(catalog.engine(for: .default).configuration.toneStyle == .traditional)
+        let only = EngineCatalog(engines: [panel: own])
+        #expect(only.engine(for: panel).configuration == own.configuration)
+        let built = EngineBridge.catalog(settings: DefaultSettings.v1, resources: .empty)
+        #expect(!built.engine(for: panel).configuration.typoCorrection)
+        #expect(built.engine(for: .default).configuration.typoCorrection)
+    }
+
+    /// Review Focus 5 of the plan: the thirty-two engines share the correction data instead of copying it, or memory
+    /// and the rebuild time double. Checked on the guard filter's bit storage, which every engine must hold as one
+    /// buffer; the shared `Resources.correctionIndex` is pinned by `thirtyTwoEnginesShareTheCorrectionIndex`.
+    @Test func thirtyTwoEnginesShareTheCorrectionData() {
+        var resources = Resources.empty
+        resources.correction = CorrectionData(
+            guardList: ApproximateWordSet(exactly: ["bidden", "keyvi"]), keyboardNeighbours: ["q": "wa"],
+            unmarkedShapes: WordSet(["truong"]), vietnameseKeyings: WordSet(["truowng"]))
+        let catalog = EngineBridge.catalog(settings: DefaultSettings.v1, resources: resources)
+        let base = resources.correction.guardList.bits.withUnsafeBufferPointer { $0.baseAddress }
+        for variant in Self.allVariants {
+            let bits = catalog.engine(for: variant).resources.correction.guardList.bits
+            #expect(bits.withUnsafeBufferPointer { $0.baseAddress } == base)
+        }
+    }
+
+    /// Review Focus 5 of the plan, ENG-R1122: the thirty-two engines share the one `Resources.correctionIndex` that
+    /// `Resources.init` built (a class instance), so the doubled catalog neither copies nor rebuilds it per engine.
+    /// Built the way the host builds it: the loaded resources get the user lists, the never-correct list and the
+    /// macros (`EngineBridge.resources`), then a variant may drop the macros or the memory. The control at the end
+    /// shows the probe tells two indexes apart: assigning `correction` rebuilds the index.
+    @Test func thirtyTwoEnginesShareTheCorrectionIndex() throws {
+        var loaded = Resources.empty
+        loaded.correction = CorrectionData(
+            guardList: ApproximateWordSet(exactly: ["bidden", "keyvi"]), keyboardNeighbours: ["q": "wa"],
+            unmarkedShapes: WordSet(["truong"]), vietnameseKeyings: WordSet(["truowng"]))
+        var settings = DefaultSettings.v1
+        settings.keepAsTyped = ["gramar"]
+        settings.neverCorrect = ["androdi"]
+        let resources = EngineBridge.resources(settings: settings, macros: .empty) { loaded }
+        let index = try #require(Self.correctionIndex(of: loaded))
+        #expect(Self.correctionIndex(of: resources) == index)
+        let catalog = EngineBridge.catalog(settings: settings, resources: resources)
+        for variant in Self.allVariants {
+            #expect(Self.correctionIndex(of: catalog.engine(for: variant).resources) == index)
+        }
+        var rebuilt = resources
+        rebuilt.correction = resources.correction
+        #expect(Self.correctionIndex(of: rebuilt) != index, "assigning the data rebuilds the index")
+    }
+
+    /// `Resources.correctionIndex` has the engine package's `package` access, so the test reads the stored instance
+    /// by reflection; nil unless it is a class instance (a value would have no identity to share).
+    private static func correctionIndex(of resources: Resources) -> ObjectIdentifier? {
+        let child = Mirror(reflecting: resources).children.first { $0.label == "correctionIndex" }
+        guard let value = child?.value, Mirror(reflecting: value).displayStyle == .class else { return nil }
+        return ObjectIdentifier(value as AnyObject)
+    }
+
+    /// ENG-R1118: the never-correct list is per user and applies in every app, so every variant's engine carries it,
+    /// whatever the variant's other switches.
+    @Test func theNeverCorrectListReachesEveryVariant() {
+        var settings = DefaultSettings.v1
+        settings.neverCorrect = ["androdi"]
+        let resources = EngineBridge.resources(settings: settings, macros: .empty) { .empty }
+        let catalog = EngineBridge.catalog(settings: settings, resources: resources)
+        for variant in Self.allVariants {
+            #expect(catalog.engine(for: variant).resources.userNeverCorrect.contains("androdi"))
+        }
     }
 
     /// ENG-R865, PLT-R914: the memory snapshot reaches exactly the variants where English restore runs, and none
@@ -165,11 +275,12 @@ import VietnameseEngine
     }
 
     @Test func missingVariantsFallBackToTheDefault() {
-        let special = Engine(configuration: EngineConfiguration(toneStyle: .modern), resources: .empty)
+        let special = Engine(
+            configuration: EngineConfiguration(toneStyle: .modern, typoCorrection: false), resources: .empty)
         let catalog = EngineCatalog(engines: [.default: special])
         for variant in Self.allVariants { #expect(catalog.engine(for: variant).configuration.toneStyle == .modern) }
         let empty = EngineCatalog(engines: [:])
-        #expect(empty.engine(for: .default).configuration == EngineConfiguration())
+        #expect(empty.engine(for: .default).configuration == EngineConfiguration(typoCorrection: false))
     }
 
     /// PRD-R27: the publisher's revision travels with the catalog; without one the tap treats every settings
@@ -301,10 +412,44 @@ import VietnameseEngine
         #expect(resources.userKeepVietnamese.contains("chao"))
     }
 
+    /// ENG-R1118: the host passes the never-correct list as `Resources.userNeverCorrect`, replacing whatever the loader
+    /// returned, on both entry points (the global lists and the focused app's).
+    @Test func theNeverCorrectListIsAttached() {
+        var settings = DefaultSettings.v1
+        settings.neverCorrect = ["androdi"]
+        let stale = { () -> Resources in
+            var resources = Resources.empty
+            resources.userNeverCorrect = WordSet(["stale"])
+            return resources
+        }
+        let global = EngineBridge.resources(settings: settings, macros: .empty, bundledLoader: stale)
+        #expect(global.userNeverCorrect.contains("androdi") && !global.userNeverCorrect.contains("stale"))
+        let focused = EngineBridge.resources(
+            wordLists: UserWordLists(), neverCorrect: ["gramar"], macros: .empty, bundledLoader: stale)
+        #expect(focused.userNeverCorrect.contains("gramar") && !focused.userNeverCorrect.contains("stale"))
+    }
+
     @Test func loaderErrorsPropagate() {
         struct LoadFailed: Error {}
         #expect(throws: LoadFailed.self) {
             try EngineBridge.resources(settings: DefaultSettings.v1, macros: .empty) { throw LoadFailed() }
         }
+    }
+}
+
+@Suite struct EngineVariantTests {
+    /// ENG-R1211 amendment of 19/11/2026: a late focus change continues the word with the new variant's engine only
+    /// when the two variants differ in `lookaheadRevision` alone. A different restore key is more than that: the new
+    /// engine differs in its typo correction (ENG-R1119), so the word is not carried over.
+    @Test func restoreHotkeyIsMoreThanALookaheadDifference() {
+        var withoutRevision = EngineVariant.default
+        withoutRevision.lookaheadRevision = false
+        #expect(withoutRevision.differsOnlyInLookaheadRevision(from: .default))
+        var panel = withoutRevision
+        panel.restoreHotkey = false
+        #expect(!panel.differsOnlyInLookaheadRevision(from: .default))
+        var keyOnly = EngineVariant.default
+        keyOnly.restoreHotkey = false
+        #expect(!keyOnly.differsOnlyInLookaheadRevision(from: .default))
     }
 }

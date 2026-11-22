@@ -32,6 +32,10 @@ public struct UserSettings: Sendable, Hashable {
     /// D29 "lookaheadRevision": revise the previous word once the next word shows the language (ENG-R828,
     /// PLT-R357). ANDed per app with the rule's `features.lookaheadRevision`.
     public var lookaheadRevision: Setting<Bool> = .unset
+    /// D30 "typoCorrection": correct one clearly mistyped English word at its commit (1.1.0, PRD-R80, ENG-R1119). The
+    /// engine gets it ANDed with D4, the rule's `features.englishRestore` and the restore key (D8 and the rule's
+    /// `features.restoreHotkey`).
+    public var typoCorrection: Setting<Bool> = .unset
 
     /// ENG-R860 user lists, keyed by lowercased raw keys ("englishRestoreLists" object). User-authored
     /// settings, allowed on disk (PLT-R901 a).
@@ -40,6 +44,9 @@ public struct UserSettings: Sendable, Hashable {
     /// ENG-R862: words learned from the user's toggles, each applying only in its app (`englishRestoreLists`
     /// `learnedWords`). `keepAsTyped` and `keepVietnamese` above are the global entries.
     public var learnedWords: Set<LearnedWord> = []
+    /// ENG-R1118, PRD-R81: the never-correct list, lowercase letters (`NeverCorrectEntry`), per user in every app
+    /// (`englishRestoreLists` `neverCorrect`). User content: never logged; diagnostics report its count only.
+    public var neverCorrect: Set<String> = []
     /// Shipped rules with `requiresUserOptIn: true` that the user enabled (PLT-R460) ("optedInRules").
     public var optedInRules: Set<RuleID> = []
     /// "onboarding" object (PRD-R42).
@@ -48,13 +55,14 @@ public struct UserSettings: Sendable, Hashable {
     public init() {}
 
     /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
-    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `optedInRules`
-    /// when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `neverCorrect`,
+    /// `optedInRules` when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
     public var explicitlySetKeys: [String] {
         let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
         let lists = [
             (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
-            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.optedInRules, optedInRules.isEmpty),
+            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.neverCorrect, neverCorrect.isEmpty),
+            (SettingListKey.optedInRules, optedInRules.isEmpty),
         ]
         return settings + lists.filter { !$0.1 }.map(\.0)
     }
@@ -103,8 +111,12 @@ public struct EffectiveSettings: Sendable, Hashable {
     public var layoutBinding: LayoutModeBinding
     public var learnCollisionChoices: Bool
     public var lookaheadRevision: Bool
+    /// D30 (1.1.0).
+    public var typoCorrection: Bool
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
+    /// ENG-R1118, PRD-R81 (1.1.0).
+    public var neverCorrect: Set<String>
     public var optedInRules: Set<RuleID>
 }
 
@@ -132,8 +144,10 @@ public enum DefaultSettings {
         layoutBinding: LayoutModeBinding(),
         learnCollisionChoices: true,  // D28 on (decision of the product owner, 15/11/2026)
         lookaheadRevision: true,  // D29 on, also at Return in chat apps (decision of the product owner, 15/11/2026)
+        typoCorrection: true,  // D30 on (decision of the product owner, 18/11/2026, ADR 0009 item 10)
         keepAsTyped: [],
         keepVietnamese: [],
+        neverCorrect: [],
         optedInRules: []
     )
 }
@@ -164,8 +178,10 @@ extension UserSettings {
             layoutBinding: layoutBinding.resolved(default: defaults.layoutBinding),
             learnCollisionChoices: learnCollisionChoices.resolved(default: defaults.learnCollisionChoices),
             lookaheadRevision: lookaheadRevision.resolved(default: defaults.lookaheadRevision),
+            typoCorrection: typoCorrection.resolved(default: defaults.typoCorrection),
             keepAsTyped: keepAsTyped,
             keepVietnamese: keepVietnamese,
+            neverCorrect: neverCorrect,
             optedInRules: optedInRules
         )
     }

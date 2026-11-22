@@ -65,6 +65,29 @@ struct BenchmarkReport: Codable {
         var max: Int64 = 1_000_000
         var resourcesLoadMilliseconds: Double = 50
         var resourcesResidentBytes: Int = 8 * 1_024 * 1_024
+        /// ENG-R1122: a commit that evaluates a typo correction candidate.
+        var correctionP99: Int64 = 50_000
+        var correctionMax: Int64 = 200_000
+    }
+
+    /// ENG-T55: the committing spaces of the candidate tokens (`Workloads.correctionCandidates`), always with the
+    /// typo correction on. `p50` and `p99` are the median over the runs; `p50Stable`, `p99Stable` and `max` take
+    /// each commit's fastest time over the runs first (the same events replay from the same states, so the minimum
+    /// drops preemption and keeps the engine's work, as `maxRemeasuredNanoseconds` does for ENG-R1230). The gate
+    /// of ENG-R1122 (`Benchmarks/compare.py`) reads `p99Stable` and `max`.
+    struct CorrectionFigures: Codable {
+        var events: Int
+        var tokens: Int
+        /// Commits that corrected the token (informational: the share depends on the bundled data).
+        var corrected: Int
+        var p50: Int64
+        var p99: Int64
+        var max: Int64
+        /// The slowest commit of the median run, preemption included.
+        var maxRaw: Int64
+        /// p50 and p99 of each commit's fastest time over the runs (preemption removed, as `max`).
+        var p50Stable: Int64
+        var p99Stable: Int64
     }
 
     var schema = 1
@@ -92,6 +115,10 @@ struct BenchmarkReport: Codable {
     var workloads: [WorkloadFigures]
     var worstCase: WorstCase
     var longTokens: [LongToken]
+    /// The typo correction switch the ENG-T40 workloads ran with (`--typo-correction`, default off: comparable with
+    /// `Benchmarks/baseline.json`, measured on 1.0); `Scripts/benchmark.sh` runs both (ENG-R1233).
+    var typoCorrection = false
+    var correction: CorrectionFigures?
     var budget = Budget()
 }
 
@@ -105,6 +132,10 @@ struct EngineBenchmark {
         var proseTokens = 50_000
         var prose: String?
         var output: String?
+        /// The typo correction switch of the ENG-T40 workloads; the `correction` workload always runs with it on.
+        var typoCorrection = false
+        var correctionCandidates = 10_000
+        var adversarialCandidates = 1_000
 
         init(_ arguments: [String]) {
             var iterator = arguments.dropFirst().makeIterator()
@@ -116,11 +147,21 @@ struct EngineBenchmark {
                 case "--output": output = iterator.next()
                 case "--prose": prose = iterator.next()
                 case "--prose-tokens": proseTokens = iterator.next().flatMap(Int.init) ?? proseTokens
+                case "--typo-correction":
+                    switch iterator.next() {
+                    case "on": typoCorrection = true
+                    case "off": typoCorrection = false
+                    default:
+                        FileHandle.standardError.write(Data("--typo-correction takes on or off\n".utf8))
+                        exit(2)
+                    }
                 case "--quick":
                     runs = 1
                     fuzzEvents = 100_000
                     worstCaseEvents = 1_000_000
                     proseTokens = 5_000
+                    correctionCandidates = 2_000
+                    adversarialCandidates = 200
                 default:
                     FileHandle.standardError.write(Data("unknown argument \(argument)\n".utf8))
                     exit(2)
@@ -141,7 +182,8 @@ struct EngineBenchmark {
 
         // The first engine of the process builds the generated tables (Engine.init).
         let coldStart = Timing.clock.now
-        let probe = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let probe = Engine(
+            configuration: EngineConfiguration(typoCorrection: options.typoCorrection), resources: .empty)
         let coldInit = Double(Timing.nanoseconds(coldStart.duration(to: Timing.clock.now))) / 1e6
         sink &+= probe.configuration.historyLimit
 
@@ -153,10 +195,12 @@ struct EngineBenchmark {
         let proseFile = options.prose.map { URL(fileURLWithPath: $0) } ?? Workloads.defaultProseCorpus
         let paragraphs = try Workloads.proseParagraphs(proseFile, limit: options.proseTokens)
         if paragraphs == nil { print("note: no prose corpus at \(proseFile.path); prose workloads skipped") }
+        let switchOn = options.typoCorrection
         let workloads =
-            Workloads.prose(resources: resources, paragraphs: paragraphs ?? [])
-            + Workloads.typists(resources: resources)
-            + Workloads.fuzz(resources: resources, events: options.fuzzEvents, seed: 0xBE7C_0F00)
+            Workloads.prose(resources: resources, paragraphs: paragraphs ?? [], typoCorrection: switchOn)
+            + Workloads.typists(resources: resources, typoCorrection: switchOn)
+            + Workloads.fuzz(
+                resources: resources, events: options.fuzzEvents, seed: 0xBE7C_0F00, typoCorrection: switchOn)
         for workload in workloads { _ = Timing.perEvent(workload, sink: &sink) }  // warm-up run
 
         var combinedRuns: [Percentiles] = []
@@ -176,8 +220,13 @@ struct EngineBenchmark {
         }
         let budget = BenchmarkReport.Budget()
         let worstCase = measureWorstCase(
-            Workloads.fuzz(resources: resources, events: options.worstCaseEvents, seed: 0xBE7C_1000),
+            Workloads.fuzz(
+                resources: resources, events: options.worstCaseEvents, seed: 0xBE7C_1000, typoCorrection: switchOn),
             budget: budget.max, sink: &sink)
+        let candidates = try Workloads.correctionCandidates(
+            resources: resources, count: options.correctionCandidates, adversarial: options.adversarialCandidates,
+            seed: 0xBE7C_11A0)
+        let correction = measureCorrection(candidates, runs: options.runs, sink: &sink)
         let longTokens = measureLongTokens(resources: resources, sink: &sink)
 
         var report = BenchmarkReport(
@@ -196,6 +245,8 @@ struct EngineBenchmark {
             },
             worstCase: worstCase, longTokens: longTokens)
         report.proseTokens = paragraphs?.reduce(0) { $0 + $1.count } ?? 0
+        report.typoCorrection = switchOn
+        report.correction = correction
         try write(report, to: options.output)
         printSummary(report)
         if sink == Int.min { print(sink) }  // keeps the measured work observable
@@ -217,6 +268,33 @@ struct EngineBenchmark {
         return .init(
             available: loaded.english.contains("the"), coldLoadMilliseconds: cold,
             medianLoadMilliseconds: Double(Percentiles(loads).p50) / 1e6, residentBytes: resident)
+    }
+
+    /// ENG-T55, ENG-R1122: the latency of each candidate's committing space over `runs` replays (after a warm-up),
+    /// nil when there is no candidate (no lexicon file).
+    static func measureCorrection(_ workload: Workload, runs: Int, sink: inout Int) -> BenchmarkReport
+        .CorrectionFigures?
+    {
+        guard !workload.commits.isEmpty else { return nil }
+        _ = Timing.perEvent(workload, sink: &sink)  // warm-up run
+        var perRun: [Percentiles] = []
+        var minimums = [Int64](repeating: .max, count: workload.commits.count)
+        for _ in 0..<max(1, runs) {
+            let samples = Timing.perEvent(workload, sink: &sink)
+            let commits = workload.commits.map { samples[$0] }
+            perRun.append(Percentiles(commits))
+            for (index, sample) in commits.enumerated() where sample < minimums[index] { minimums[index] = sample }
+        }
+        var session = Session(engine: workload.engine)
+        var corrected = 0
+        for event in workload.events {
+            if case .corrected? = session.handle(event).decision { corrected += 1 }
+        }
+        let median = Percentiles.median(perRun)
+        let stable = Percentiles(minimums)
+        return .init(
+            events: workload.events.count, tokens: workload.commits.count, corrected: corrected, p50: median.p50,
+            p99: median.p99, max: stable.max, maxRaw: median.max, p50Stable: stable.p50, p99Stable: stable.p99)
     }
 
     /// Events slower than this are re-run from the same state to separate preemption from engine work.
@@ -349,6 +427,15 @@ struct EngineBenchmark {
                 format: "engine cold init %.3f ms; reference loop %.3f ms; clock overhead %lld ns",
                 report.engineColdInitMilliseconds, Double(report.referenceNanoseconds) / 1e6,
                 report.clockOverheadNanoseconds))
+        if let correction = report.correction {
+            print(
+                "[ENG-R1122] typo correction: \(correction.tokens) candidate commits (\(correction.corrected) corrected): "
+                    + "p50 \(us(correction.p50)), p99 \(us(correction.p99)) (stable \(us(correction.p99Stable))), max \(us(correction.max)) "
+                    + "(raw \(us(correction.maxRaw))) (budget p99 50 µs, max 200 µs); ENG-T40 workloads with the switch "
+                    + (report.typoCorrection ? "on" : "off"))
+        } else {
+            print("note: no English lexicon file; the typo correction workload was skipped")
+        }
         for token in report.longTokens {
             print(
                 "  long token \(token.length) x \(token.keys): max key \(us(token.maxKeyNanoseconds)), "

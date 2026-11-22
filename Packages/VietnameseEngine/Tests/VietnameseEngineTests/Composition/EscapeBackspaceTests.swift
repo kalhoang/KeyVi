@@ -17,8 +17,10 @@ struct EscapeBackspaceTests {
 
         var configuration: EngineConfiguration {
             switch method {
-            case .telex: return EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: bracketKeys)))
-            case .vni: return EngineConfiguration(inputMethod: .vni)
+            case .telex:
+                return EngineConfiguration(
+                    inputMethod: .telex(TelexOptions(bracketKeys: bracketKeys)), typoCorrection: false)
+            case .vni: return EngineConfiguration(inputMethod: .vni, typoCorrection: false)
             }
         }
 
@@ -121,7 +123,7 @@ struct EscapeBackspaceTests {
         ("teee⌫epj", "tệp"), ("ass⌫s", "á"), ("ww⌫w", "ư"), ("booo⌫o", "bô"), ("dangdd⌫d", "đang"),
     ])
     func keysAfterTheBackspaceComposeAgain(keys: String, expected: String) throws {
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.send(KeyNotation.events(keys))
         #expect(driver.field.string == expected, "\(keys)")
     }
@@ -129,7 +131,7 @@ struct EscapeBackspaceTests {
     /// The raw keys lose the escaping key and the keys it undid, so the restore toggle gives what is left.
     @Test func rawKeysLoseTheEscapeAndWhatItUndid() throws {
         for (keys, raw) in [("boss⌫", "bo"), ("nhaamff⌫", "nhaam"), ("teee⌫", "te"), ("ww⌫", ""), ("WSw⌫", "")] {
-            var driver = EngineDriver(configuration: EngineConfiguration())
+            var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
             try driver.send(KeyNotation.events(keys))
             #expect(driver.state.activeRawKeys == raw, "\(keys)")
         }
@@ -145,7 +147,8 @@ struct EscapeBackspaceTests {
         ("]sow]⌫", "osw", true), ("[snw⌫", "osn", true), ("[szw⌫", "osz", true), ("]s[w⌫", "uso", true),
     ])
     func rawKeysKeepTheTypedOrder(keys: String, raw: String, bracketKeys: Bool) throws {
-        let configuration = EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: bracketKeys)))
+        let configuration = EngineConfiguration(
+            inputMethod: .telex(TelexOptions(bracketKeys: bracketKeys)), typoCorrection: false)
         var driver = EngineDriver(configuration: configuration)
         try driver.send(KeyNotation.events(keys))
         #expect(driver.state.activeRawKeys == raw, "\(keys)")
@@ -154,7 +157,7 @@ struct EscapeBackspaceTests {
     /// A retyped token (fallback 2) keeps deleting one character per press, and its raw keys are the
     /// keys that type the letters shown, without a tone key that no letter shown takes.
     @Test func retypedTokenWithoutItsToneKey() throws {
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.send(KeyNotation.events("dwngsdw"))
         #expect(driver.field.string == "đngw")
         try driver.send(.backspace)
@@ -170,7 +173,7 @@ struct EscapeBackspaceTests {
     /// the letter it is shown on: `sooocs` shows `soóc`, Backspace gives `sóo` (the tone moves, ENG-R714
     /// (a)), then `só`.
     @Test func escapeLetterThatStaysALetter() throws {
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.send(KeyNotation.events("sooocs"))
         #expect(driver.field.string == "soóc")
         try driver.send(.backspace)

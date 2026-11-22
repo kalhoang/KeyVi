@@ -29,11 +29,13 @@ struct LongTokenCostTests {
     func longLiteralCommit() throws {
         for length in [65, 1_000, 2_000] {
             let keys = "ddam" + String(repeating: "m", count: length)
-            var driver = EngineDriver(configuration: EngineConfiguration(), resources: SpecFixtures.commitResources())
+            var driver = EngineDriver(
+                configuration: EngineConfiguration(typoCorrection: false), resources: SpecFixtures.commitResources())
             try driver.type(keys + " ")
             #expect(driver.field.string == keys + " ")  // invalid: restored (L5)
             #expect(driver.outputs.last?.decision == .restored(.invalid))
-            var plain = EngineDriver(configuration: EngineConfiguration(), resources: SpecFixtures.commitResources())
+            var plain = EngineDriver(
+                configuration: EngineConfiguration(typoCorrection: false), resources: SpecFixtures.commitResources())
             try plain.type(String(repeating: "m", count: length) + " ")
             #expect(plain.outputs.last?.decision == .kept(.unchanged))
         }

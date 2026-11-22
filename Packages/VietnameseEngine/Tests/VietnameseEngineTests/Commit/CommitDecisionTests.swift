@@ -150,7 +150,7 @@ struct CommitDecisionTests {
         // 4 whitespace + 32 ASCII punctuation/symbols + 4 hard + 10 keypad + 10 main-row + 6 letters.
         #expect(telex.count == 66)
         #expect(Self.boundaries(for: .vni).count == 56)
-        let engine = Engine(configuration: EngineConfiguration(), resources: Self.resources)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: Self.resources)
         for boundary in telex {
             var session = Session(engine: engine)
             _ = session.handle(.key(KeyInput("a")))

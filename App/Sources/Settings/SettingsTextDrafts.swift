@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Text the user is typing in the Settings window: the practice field and the two word-list add fields
-// (PRD-R24, ENG-R860). It lives outside SettingsWindowModel so that a keystroke re-renders only the field that
+// Text the user is typing in the Settings window: the practice field and the add fields of the three word lists
+// (PRD-R24, ENG-R860, PRD-R81). It lives outside SettingsWindowModel so that a keystroke re-renders only the field that
 // shows it; every pane observes the window model, and ObservableObject publishes whole-object changes (ADR 0315).
 // The text stays in memory only (PLT-R901).
 

@@ -36,7 +36,8 @@ struct GeneratedCorpusCommitTests {
             var sessions: [EngineConfiguration: Session] = [:]
             for method in CorpusMethod.allCases {
                 for style in [ToneStyle.traditional, .modern] {
-                    let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+                    let configuration = EngineConfiguration(
+                        inputMethod: method.inputMethod, toneStyle: style, typoCorrection: false)
                     var session = Session(engine: Engine(configuration: configuration, resources: resources))
                     for key in GeneratedCorpusCommitTests.seed { _ = session.handle(.key(KeyInput(key))) }
                     sessions[configuration] = session

@@ -15,7 +15,11 @@ public import VietnameseEngine
 /// right after a word followed by exactly one space, restores that word's raw keys in the same edit (the
 /// engine's minimal edit over the word, the space and the token, then the boundary key, reason `phrase`); a
 /// restore toggle right after it undoes the revision (ENG-R829) and reports a strong collision signal; a toggle on
-/// the active word reports one too (ENG-R864).
+/// the active word reports one too (ENG-R864). Typo correction (ENG-R1115, ENG-R1117, 1.1.0): a token shown as typed
+/// whose raw keys end with `nn` commits as the raw keys without the last `n` (one edit over the display, then the
+/// boundary key; decision `corrected(unchanged)`); the toggle right after replaces the correction and the boundary with
+/// the raw keys and the boundary and carries `neverCorrect`; the next toggle passes through. The trigger is `nn`
+/// because `n` is a key of the random streams (`RandomEventGenerator`), so the property suites exercise it.
 struct ScriptedComposer {
     private struct Word {
         var display: String
@@ -23,6 +27,13 @@ struct ScriptedComposer {
         var english: Bool
         /// Decided by its own commit, not by a revision: the next commit may revise it.
         var revisable = true
+    }
+
+    /// The correcting commit just made, for the undo.
+    private struct Correction {
+        var text: String
+        var raw: String
+        var boundary: Character
     }
 
     /// The revising commit just made, for the undo.
@@ -44,6 +55,7 @@ struct ScriptedComposer {
     /// The separator that committed `previous`.
     private var previousBoundary: Character?
     private var revision: Revision?
+    private var correction: Correction?
     /// `EngineConfiguration.lookaheadRevision` (the variant's flag in these tests); a continued engine takes the new
     /// variant's flag and keeps the rest (ENG-R1211 amendment of 19/11/2026).
     var revisions: Bool
@@ -61,12 +73,15 @@ struct ScriptedComposer {
         restored = false
         let revised = revision
         revision = nil
+        let corrected = correction
+        correction = nil
         switch event {
         case .key(let input):
             if Self.separators.contains(input.character) { return commit(input.character) }
             return EngineOutput(action: key(input.character), composingText: display)
         case .backspace: return EngineOutput(action: backspace(), composingText: display)
         case .restoreToggle:
+            if let corrected, !wasRestored { return undo(corrected) }
             if let revised, !wasRestored { return undo(revised) }
             return restoreToggle(secondPress: wasRestored)
         case .reset:
@@ -101,6 +116,7 @@ struct ScriptedComposer {
             if previous != nil { separatorsAfterPrevious += 1 }
             return EngineOutput(action: .passThrough, composingText: "")
         }
+        if !english, display == raw, raw.hasSuffix("nn") { return correct(boundary) }
         let restores = english && display != raw
         let text = restores ? raw : display
         let decision: CommitDecision = restores ? .restored(.englishRun) : .kept(.notEnglish)
@@ -113,6 +129,33 @@ struct ScriptedComposer {
         guard restores else { return EngineOutput(action: .passThrough, composingText: "", decision: decision) }
         let edit = TextEdit(deleteCount: display.count, deleteUTF16Count: display.utf16.count, insert: raw)
         return EngineOutput(action: .edit(edit, thenPassThrough: true), composingText: "", decision: decision)
+    }
+
+    /// ENG-R1115: the correction replaces the display in one edit before the boundary key; the corrected token is never
+    /// revised (ENG-R1116) and, re-opened, is literal (ENG-R1117: its next commit changes nothing).
+    private mutating func correct(_ boundary: Character) -> EngineOutput {
+        let text = String(raw.dropLast())
+        let edit = TextEdit(deleteCount: display.count, deleteUTF16Count: display.utf16.count, insert: text)
+        correction = Correction(text: text, raw: raw, boundary: boundary)
+        previous = Word(display: text, raw: raw, english: false, revisable: false)
+        separatorsAfterPrevious = 1
+        previousBoundary = boundary
+        return EngineOutput(
+            action: .edit(edit, thenPassThrough: true), composingText: "", decision: .corrected(.unchanged))
+    }
+
+    /// ENG-R1117: the toggle right after a correcting commit replaces the correction and the boundary with the raw
+    /// keys and the same boundary, and carries the typed word for the never-correct list (ENG-R1118).
+    private mutating func undo(_ corrected: Correction) -> EngineOutput {
+        let boundary = String(corrected.boundary)
+        let removed = corrected.text + boundary
+        let edit = TextEdit(
+            deleteCount: removed.count, deleteUTF16Count: removed.utf16.count, insert: corrected.raw + boundary)
+        restored = true
+        previous = Word(display: corrected.raw, raw: corrected.raw, english: false, revisable: false)
+        return EngineOutput(
+            action: .edit(edit, thenPassThrough: false), composingText: display,
+            learning: .neverCorrect(raw: corrected.raw.lowercased()))
     }
 
     /// ENG-R828 shape: one minimal edit from `previous + " " + display` to `raw(previous) + " " + text`.

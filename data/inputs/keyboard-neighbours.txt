@@ -1,0 +1,34 @@
+# keyboard-neighbours.txt: the keyboard neighbours of the substitution edit of the typo correction
+# (spec/01-engine.md ENG-R1113, ENG-R1120). Written by the project; licensed with the engine (MPL-2.0).
+# Origin: the three letter rows of the standard ANSI QWERTY layout, qwertyuiop, asdfghjkl and zxcvbnm, from the
+# public layout (no other input method's data). A key's neighbours are, in this order, the two staggered keys of
+# the row above (indices i and i + 1), its row mates on each side (i - 1 and i + 1) and the two staggered keys of
+# the row below (i - 1 and i). The build fails unless the table is symmetric, covers the 26 letters and equals that
+# derivation (lexicon-builder KeyboardNeighbours.check). Reviewed with the lists.
+# Format: one line per letter, `letter<TAB>neighbours`. '#' starts a comment.
+q	wa
+w	qeas
+e	wrsd
+r	etdf
+t	ryfg
+y	tugh
+u	yihj
+i	uojk
+o	ipkl
+p	ol
+a	qwsz
+s	weadzx
+d	ersfxc
+f	rtdgcv
+g	tyfhvb
+h	yugjbn
+j	uihknm
+k	iojlm
+l	opk
+z	asx
+x	sdzc
+c	dfxv
+v	fgcb
+b	ghvn
+n	hjbm
+m	jkn

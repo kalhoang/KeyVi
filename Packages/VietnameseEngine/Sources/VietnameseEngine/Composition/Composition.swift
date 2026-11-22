@@ -30,6 +30,13 @@ package struct Composition: Sendable, Hashable {
     /// transform letter that came back later in a word typed through (`costs`: the second `s` after `t`; `leecher`:
     /// the third `e` after `ch`). Rule L4 then restores the keys (amended by the product owner on 17/11/2026, REG-37).
     package internal(set) var escapedAcrossKeys = false
+    /// ENG-R804 (REG-40): raw indices of the **w doublings**, the Telex escapes by the `w` key that come right after
+    /// the `w` key whose effect they remove (a horn, a breve or the `ư` of a standalone `w`, ENG-R413). `R′`, the raw
+    /// keys without them, is what rule L4 may restore (`wwebview` restores `webview`, amended by the product owner on
+    /// 20/11/2026). Set when the escape is appended, so replay (Backspace, ENG-R601) rebuilds it with the keys that stay.
+    package internal(set) var wDoublings = KeySet()
+    /// The w doublings that removed the `ư` of a standalone `w` (ENG-R103): the habit of typing `ww` for the letter.
+    package internal(set) var standaloneWDoublings = KeySet()
     /// Raw index of the key that started literal mode; nil while composing (4.5).
     package internal(set) var literalStart: Int?
     /// Set when the key that started literal mode was appended by an escape (4.7, ENG-R442: `ass`,
@@ -213,6 +220,17 @@ package struct Composition: Sendable, Hashable {
         escapeUsed = true
         if index == 0 || !undoing.contains(index - 1) { escapedAcrossKeys = true }
         appendLetterOrLiteral(key, at: index, flags: .escape, undoing: undoing)
+    }
+
+    /// ENG-R804 (REG-40): records the Telex `w` escape at `index` as a w doubling when it comes right after the `w` key
+    /// whose effect it removed (`undone`), and as a standalone one when that key's effect was the `ư` of a standalone
+    /// `w` (`standaloneSources`: the keys of the standalone `ư` letters the escape removed).
+    mutating func recordWDoubling(at index: Int, undone: KeySet, standaloneSources: KeySet) {
+        guard index > 0, undone.contains(index - 1), ASCII.lowercased(raw[index - 1]) == UInt8(ascii: "w") else {
+            return
+        }
+        wDoublings.formUnion(KeySet(index: index))
+        if standaloneSources.contains(index - 1) { standaloneWDoublings.formUnion(KeySet(index: index)) }
     }
 
     // MARK: - Orthography of the current letters

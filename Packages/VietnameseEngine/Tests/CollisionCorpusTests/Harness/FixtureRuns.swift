@@ -23,7 +23,8 @@ enum GateResources {
         var resources = try bundled()
         resources.collisionMemory = memory
         return Engine(
-            configuration: EngineConfiguration(appContext: appContext, lookaheadRevision: lookaheadRevision),
+            configuration: EngineConfiguration(
+                appContext: appContext, lookaheadRevision: lookaheadRevision, typoCorrection: false),
             resources: resources)
     }
 }

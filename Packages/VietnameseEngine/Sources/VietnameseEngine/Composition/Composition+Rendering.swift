@@ -46,11 +46,27 @@ extension Composition {
             let scalar = LetterTable.scalar(letter, tone: offset == toneOffset ? tone : .level, uppercase: uppercase)
             text.unicodeScalars.append(scalar)
         }
-        if let literalStart {
+        if var tailStart = literalStart {
+            if showsEscapedWAsCapital {
+                text.unicodeScalars.append("W")
+                tailStart += 1
+            }
             // The literal tail is ASCII keys: one validated copy, not one append per key (REG-02).
-            text += String(decoding: raw[literalStart...], as: UTF8.self)
+            text += String(decoding: raw[tailStart...], as: UTF8.self)
         }
         return text
+    }
+
+    /// ENG-R903, ENG-R804 (REG-41, the product owner's decision of 22/11/2026, ADR 0010 item 8): the escaped letter of a
+    /// standalone w doubling takes the place of the `ư` it removed, so it is a capital when either `w` key is: `Ww` shows
+    /// `W` as `WW` and `wW` do, and `ww` shows `w` (`Wwade` shows `Wade`, not `wade`). The escaped `w` is never viable
+    /// (no onset, vowel or coda, 3.3), so it is the key that starts the literal tail; the other keys of the tail and
+    /// every other escape keep the case of their own key, and the raw keys stay as typed (ENG-R602).
+    var showsEscapedWAsCapital: Bool {
+        guard let literalStart, standaloneWDoublings.contains(literalStart) else { return false }
+        // A doubling comes right after the key of the `ư` it removed (`recordWDoubling`), so that key is at
+        // `literalStart - 1` and the letter had its case (ENG-R903).
+        return ASCII.isUppercaseLetter(raw[literalStart - 1]) && !ASCII.isUppercaseLetter(raw[literalStart])
     }
 
     /// ENG-R906: the token has bracket letters and is an all-caps word, meaning at least two other letters
@@ -72,6 +88,32 @@ extension Composition {
 
     /// The raw keys as a string (restore reproduces them exactly, ENG-R705).
     package var rawText: String { ASCII.string(raw) }
+
+    /// `R′` of ENG-R804 (REG-40): the raw keys without the key of each w doubling, the other keys in their case.
+    package var rawWithoutWDoublings: [UInt8] {
+        guard !wDoublings.isEmpty else { return raw }
+        var kept: [UInt8] = []
+        kept.reserveCapacity(raw.count)
+        for (index, key) in raw.enumerated() where !wDoublings.contains(index) { kept.append(key) }
+        return kept
+    }
+
+    /// ENG-R804 (REG-40): the token has a w doubling, each one removed the `ư` of a standalone `w`, no `w` key follows
+    /// it, and none is a capital `W` right after a lowercase `w`: the habit of typing `ww`, `Ww` or `WW` for the letter
+    /// `w`. `www` typed as written (ENG-T12) is no habit: English has no word that starts with `ww` except `www`
+    /// (`wwwexample`, `wwwRoot` keep every `w`). Nor is Shift for the second key alone: the screen shows that capital
+    /// (`dwWidth` shows `dWidth`), and leaving it out would write a text nobody saw.
+    package var wDoublingsAreHabit: Bool {
+        guard !wDoublings.isEmpty, wDoublings == standaloneWDoublings else { return false }
+        // A doubling is recorded while composing, so its index is below 64 (`KeySet`) and a key precedes it.
+        let breaksHabit = raw.indices.prefix(64).contains { index in
+            guard wDoublings.contains(index) else { return false }
+            let followed = index + 1 < raw.count && ASCII.lowercased(raw[index + 1]) == UInt8(ascii: "w")
+            let shiftedAlone = ASCII.isUppercaseLetter(raw[index]) && !ASCII.isUppercaseLetter(raw[index - 1])
+            return followed || shiftedAlone
+        }
+        return !breaksHabit
+    }
 }
 
 extension Composition {

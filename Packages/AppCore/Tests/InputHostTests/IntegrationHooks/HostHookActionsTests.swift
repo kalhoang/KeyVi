@@ -77,6 +77,20 @@ struct HostHookActionsTests {
         #expect(rig.liveHandles.count == 1 && rig.liveHandles[0].isEnabled, "the same tap, re-enabled")
     }
 
+    /// ADR 0323, PRD-R45: the hook state and the report context read the correction counters of the host, numbers
+    /// only (ENG-R1121).
+    @Test func theCorrectionCountersReachTheHookStateAndTheReport() async throws {
+        let rig = HostRig(hooks: true)
+        await rig.start()
+        defer { rig.stop() }
+        for _ in 0..<3 { rig.controller.counters.corrections.increment() }
+        rig.controller.counters.correctionUndos.increment()
+        let state = await (try actions(rig)).state()
+        #expect(state.corrections == 3 && state.correctionUndos == 1)
+        let context = rig.controller.reportContext()
+        #expect(context.corrections == 3 && context.correctionUndos == 1)
+    }
+
     /// The simulated timeout disables the tap first, as macOS does, and is delivered on the tap thread.
     @Test func theTimeoutDisablesTheTapBeforeTheCallback() async throws {
         let rig = HostRig(hooks: true)

@@ -57,8 +57,9 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     }
 }
 
-/// Sixteen prebuilt engines: appContext x englishRestore x macros x lookaheadRevision (ENG-R850, `features`,
-/// ENG-R1107, PLT-R357). Lookup is an array index, so the tap never hashes or allocates to find an engine.
+/// Thirty-two prebuilt engines: appContext x englishRestore x macros x lookaheadRevision x restoreHotkey (ENG-R850,
+/// `features`, ENG-R1107, PLT-R357, ENG-R1119). They share one `Resources` value, so the bundled data, the correction
+/// data among it, is held once. Lookup is an array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
     /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
@@ -71,12 +72,13 @@ public struct EngineCatalog: Sendable {
     /// hard boundary instead of resetting the word being typed (ENG-R1211).
     public let memoryRevision: UInt64
 
-    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
+    /// Missing variants fall back to the default variant's engine (or a neutral engine without word lists for an empty
+    /// catalog; it makes no typo correction, ENG-R1119).
     public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil, memoryRevision: UInt64 = 0)
     {
         let fallback =
             engines[.default] ?? engines.values.first
-            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
+            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
         self.revision = revision
         self.memoryRevision = memoryRevision
@@ -91,7 +93,7 @@ public enum MacroTableBuildIssue: Sendable, Hashable {
 
 /// Pure mapping from settings to engine values. Runs on the utility queue when settings change.
 public enum EngineBridge {
-    /// D1, D2, D4, D5, D6 plus the variant.
+    /// D1, D2, D4, D5, D6, D29, D30 and D8's on or off state, plus the variant.
     public static func configuration(for settings: EffectiveSettings, variant: EngineVariant) -> EngineConfiguration {
         EngineSettingsMapping.configuration(for: settings, variant: variant)
     }
@@ -101,23 +103,26 @@ public enum EngineBridge {
         MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
-    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists and macros.
+    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists, the never-correct
+    /// list and the macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         try resources(
             wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese),
-            macros: macros, bundledLoader: bundledLoader)
+            neverCorrect: settings.neverCorrect, macros: macros, bundledLoader: bundledLoader)
     }
 
-    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862) and the
-    /// macros. The engine gets word sets only, never the app (ENG-R851).
+    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862), the
+    /// never-correct list (per user, the same in every app, ENG-R1118) and the macros. The engine gets word sets only,
+    /// never the app (ENG-R851).
     public static func resources(
-        wordLists: UserWordLists, macros: MacroTable, bundledLoader: () throws -> Resources
+        wordLists: UserWordLists, neverCorrect: Set<String>, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         var resources = try bundledLoader()
         resources.userKeepRaw = WordSet(wordLists.keepAsTyped)
         resources.userKeepVietnamese = WordSet(wordLists.keepVietnamese)
+        resources.userNeverCorrect = WordSet(neverCorrect)
         resources.macros = macros
         return resources
     }

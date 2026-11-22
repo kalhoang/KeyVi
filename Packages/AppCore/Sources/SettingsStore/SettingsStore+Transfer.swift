@@ -38,7 +38,7 @@ extension SettingsStore {
         switch scope {
         case .all(let includeMacros):
             let onboarding = user.onboarding  // not a preference: resetting must not replay onboarding
-            user = UserSettings()
+            user = UserSettings()  // every list too, the never-correct list included (PRD-R26, PRD-R81)
             user.onboarding = onboarding
             forgetRawValues(of: SettingFields.all)
             appModes = AppModesDocument(globalMode: appModes.globalMode)
@@ -52,6 +52,7 @@ extension SettingsStore {
             user.keepAsTyped = []
             user.keepVietnamese = []
             user.learnedWords = []  // ENG-R862: learned entries are shown and reset with the Typing pane lists
+            user.neverCorrect = []  // PRD-R81: the third list of the English restore section (ENG-R1118)
             collisionMemory.clearAll()  // PLT-R914: the learned collision choices go with the Typing pane
         case .apps:
             unset(.apps)

@@ -56,7 +56,8 @@ public enum SpotList {
     private static func commit(
         _ word: String, after seed: String, in appContext: AppContext, resources: Resources
     ) throws -> String {
-        var driver = EngineDriver(configuration: EngineConfiguration(appContext: appContext), resources: resources)
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(appContext: appContext, typoCorrection: false), resources: resources)
         try driver.send(KeyNotation.events(seed))
         let seedText = driver.field.string
         try driver.send(KeyNotation.events(word + " "))

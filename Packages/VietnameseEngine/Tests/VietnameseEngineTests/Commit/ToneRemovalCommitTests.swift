@@ -13,7 +13,7 @@ import VietnameseEngineTesting
 /// (`bortz`, `hertz`, `wootz` give `bot`, `het`, `uot`).
 @Suite("Rule L4a: a tone removal at commit (ENG-R411, REG-39)")
 struct ToneRemovalCommitTests {
-    static let vni = EngineConfiguration(inputMethod: .vni)
+    static let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
     /// The 13.9 fixtures with English words whose `z` removes a mark that the letters before it made: at the end
     /// (`quartz`, `hertz`) or before more letters (`booze`, `breeze`).
@@ -61,13 +61,14 @@ struct ToneRemovalCommitTests {
         // In an English run and in the code context alike: L4a reads only the raw keys.
         #expect(try Committing.text("and quartz ", resources: Self.englishWithZ) == "and quartz ")
         #expect(
-            try Committing.text("quartz ", EngineConfiguration(appContext: .code), resources: Self.englishWithZ)
+            try Committing.text(
+                "quartz ", EngineConfiguration(appContext: .code, typoCorrection: false), resources: Self.englishWithZ)
                 == "quartz ")
     }
 
     @Test("ENG-R802: with auto restore off L4a restores nothing and still names itself")
     func autoRestoreOff() throws {
-        let off = EngineConfiguration(autoRestore: false)
+        let off = EngineConfiguration(autoRestore: false, typoCorrection: false)
         let driver = try Committing.driver("quartz ", off, resources: Self.englishWithZ)
         #expect(driver.field.string == "quat " && driver.outputs.last?.decision == .kept(.toneRemoval))
         #expect(try Committing.decision("dduwowngfzz ", off) == .kept(.toneRemoval))

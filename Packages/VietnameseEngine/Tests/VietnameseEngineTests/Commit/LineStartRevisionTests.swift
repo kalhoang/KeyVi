@@ -13,8 +13,8 @@ import VietnameseEngineTesting
 @Suite("RV5: a code word at a line start, Vietnamese next (ENG-R828, ENG-R850, REG-36)")
 struct LineStartRevisionTests {
     /// The terminal configuration: the rules turn `lookaheadRevision` off in every code-context app (PLT-R357).
-    static let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
-    static let code = EngineConfiguration(appContext: .code)
+    static let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false)
+    static let code = EngineConfiguration(appContext: .code, typoCorrection: false)
 
     static func revisions(_ driver: EngineDriver) -> [RevisionReason] { driver.outputs.compactMap(\.revision) }
 
@@ -176,14 +176,15 @@ struct LineStartRevisionTests {
 
     @Test("ENG-R829: D29 off (`lineStartRevision`), auto restore off or the general context: no RV5")
     func switches() throws {
-        let off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        let off = EngineConfiguration(
+            appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false)
         #expect(try Committing.text("tar thuwr cais nayf ", off) == "tar thử cái này ")
-        let bothOff = EngineConfiguration(appContext: .code, lineStartRevision: false)
+        let bothOff = EngineConfiguration(appContext: .code, lineStartRevision: false, typoCorrection: false)
         #expect(try Committing.text("tar thuwr ", bothOff) == "tar thử ")
         // The sentence condition of L9 does not depend on the switch (ENG-R850).
         #expect(try Committing.text("Tar thuwr cais nayf ", off) == "Tả thử cái này ")
         // Auto restore off: L9 keeps `tả` (ENG-R802), so there is nothing to revise.
-        let manual = EngineConfiguration(autoRestore: false, appContext: .code)
+        let manual = EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false)
         let driver = try Committing.driver("tar thuwr ", manual)
         #expect(driver.field.string == "tả thử " && Self.revisions(driver).isEmpty)
         // The general context never reaches L9, so never RV5.

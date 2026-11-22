@@ -89,6 +89,9 @@ enum BlockFields {
         // Count only, never a word (PLT-R901, PLT-R914); empty when the report was built without it.
         list.add("settings.learnedCollisionEntries", settings.learnedCollisionEntries.map { String($0) })
         list.add("settings.lookaheadRevision", flag(settings.lookaheadRevision))  // D29
+        list.add("settings.typoCorrection", flag(settings.typoCorrection))  // D30 (1.1.0)
+        // Count only, never a word (PRD-R45, PRD-R81); empty when the report was built without it.
+        list.add("settings.neverCorrectEntries", settings.neverCorrectEntries.map { String($0) })
         list.add("settings.interfaceLanguage", settings.interfaceLanguage.rawValue)
         list.add("settings.updateChannel", settings.updateChannel.rawValue)
         list.add("settings.changed", settings.explicitlySetKeys.joined(separator: ","), maxLength: 2_000)
@@ -106,6 +109,9 @@ enum BlockFields {
             list.add("latency." + name + ".samples", String(histogram.count))
         }
         for (name, value) in counters(metrics) { list.add("counters." + name, String(value)) }
+        // ENG-R1115, ENG-R1117 (1.1.0): counts of the host, empty when the report was built without them.
+        list.add("counters.corrections", report.counters?.corrections.map { String($0) })
+        list.add("counters.correctionUndos", report.counters?.correctionUndos.map { String($0) })
         guard let probe = report.latency.probe else { return }
         list.add("probe.ranAt", probe.ranAt.formatted(.iso8601))
         for result in probe.results {

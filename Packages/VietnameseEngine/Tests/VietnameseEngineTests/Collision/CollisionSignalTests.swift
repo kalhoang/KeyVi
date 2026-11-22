@@ -177,7 +177,7 @@ struct CollisionSignalTests {
 
     @Test("ENG-R864: signals do not depend on lookaheadRevision")
     func signalsWithoutTheContextRules() throws {
-        let off = EngineConfiguration(lookaheadRevision: false)
+        let off = EngineConfiguration(lookaheadRevision: false, typoCorrection: false)
         #expect(F.signals(try F.driver("car\n", configuration: off)) == [weak("car", .sentenceStart, .vietnamese)])
         #expect(F.revisions(try F.driver("dduwowcj as hell\n", configuration: off)).isEmpty)
     }

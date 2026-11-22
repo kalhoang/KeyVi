@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-// Reading and validating the resource files written by lexicon-builder (format 1, data/README.md):
-// UTF-8, LF line ends, one entry per line, final newline, no blank lines, entries unique.
+// Reading and validating the resource files written by lexicon-builder (format 3, data/README.md):
+// UTF-8, LF line ends, one entry per line, final newline, no blank lines, entries unique; the guard list of the typo
+// correction is the one binary file (a 32-byte header, then the filter's bits).
 // manifest.json records size, entry count and SHA-256 of every file; a mismatch is an error so that a
 // truncated or hand-edited bundle never loads silently.
 
@@ -31,6 +32,11 @@ enum ResourceFile: String, CaseIterable {
     case tailWords = "vi-tail-words.txt"
     case tailParticles = "vi-tail-particles.txt"
     case preGuard = "english-pre-guard.txt"
+    // The typo correction data (format 3; spec/01-engine.md 11A, ENG-R1120).
+    case guardList = "guard-list.bloom"
+    case keyboardNeighbours = "keyboard-neighbours.txt"
+    case unmarkedShapes = "unmarked-shapes.txt"
+    case vietnameseKeyings = "vietnamese-keyings.txt"
 }
 
 /// The ambiguity table as the loader returns it (ENG-R821, ENG-R827).
@@ -55,8 +61,8 @@ struct ResourceManifest: Decodable {
     let files: [File]
 
     /// Format 2 (15/11/2026): the ambiguity table has the `run` and `viKind` columns and the collision lists
-    /// ship.
-    static let supportedFormat = 2
+    /// ship. Format 3 (19/11/2026): the typo correction data of ENG-R1120 ships too.
+    static let supportedFormat = 3
     static let fileName = "manifest.json"
 }
 
@@ -93,14 +99,40 @@ struct ResourceDirectory {
         case .techAlways, .techCodeOnly, .techCodeCapitalized:
             words = try Self.asciiLines(data, file: file, allowDigits: true)
         case .attested, .tailWords, .tailParticles: words = try Self.syllableLines(data, file: file)
-        case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard:
+        case .collisionSupplement, .boundaryParticles, .englishFunctionWords, .englishLean, .preGuard,
+            .unmarkedShapes, .vietnameseKeyings:
             words = try Self.asciiLines(data, file: file, allowDigits: false)
         case .phrases: words = try Self.phraseLines(data, file: file)
-        case .ambiguity, .notices: preconditionFailure("\(file.rawValue) is not a word list")
+        case .ambiguity, .notices, .guardList, .keyboardNeighbours:
+            preconditionFailure("\(file.rawValue) is not a word list")
         }
         try checkEntryCount(words.count, file: file)
+        // Spec 12.2 (API-stage amendment 5): the generated shapes and keyings are never empty; an empty list would
+        // silently turn off ENG-R1110 (d) and ENG-R1125 even when its manifest row agrees.
+        if words.isEmpty, file == .unmarkedShapes || file == .vietnameseKeyings {
+            throw LoadError.malformedResource("\(file.rawValue): no entry")
+        }
         try Self.checkUnique(words, file: file, firstLine: 1)
         return words
+    }
+
+    /// The unmarked shapes or the Vietnamese keyings as a packed set (spec 12.2, sixth amendment), with the checks of
+    /// `wordList`: parsed on raw bytes and packed line by line, so the sorted file becomes the set's sorted array in
+    /// storage of exactly its line count, without a `String` per word or a hash (ENG-R1120, ENG-R1231). A file in
+    /// another order takes the general path (`wordList`, then a sort).
+    func packedWordList(_ file: ResourceFile) throws -> PackedWordSet {
+        let data = try verifiedData(file)
+        guard let parsed = try Self.packedLines(data, file: file, expectedLines: manifest[file.rawValue]?.entries)
+        else {
+            return PackedWordSet(try wordList(file))
+        }
+        try checkEntryCount(parsed.count, file: file)
+        // Spec 12.2 (API-stage amendment 5): never empty, as in `wordList`.
+        if parsed.count == 0 { throw LoadError.malformedResource("\(file.rawValue): no entry") }
+        if let line = parsed.duplicateLine {
+            throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .duplicate)
+        }
+        return PackedWordSet(packed: parsed.packed, others: WordSet(parsed.others))
     }
 
     /// Rows `raw  decision  status  display  run  viKind  note` -> the language used by rule L11 (ENG-R821):
@@ -153,6 +185,91 @@ struct ResourceDirectory {
         return result
     }
 
+    // MARK: Typo correction data (ENG-R1120)
+
+    /// The guard list: a 32-byte header (`KVGL`, `UInt32` version 1, `UInt32` hashCount, `UInt64` bitCount,
+    /// `UInt64` wordCount, 4 zero bytes, all little-endian), then `bitCount / 64` little-endian `UInt64`. `bitCount` is
+    /// a power of two of at least 64 and the bits take at most 512 KB (ENG-R1120); the manifest's entry count is the
+    /// word count.
+    func guardList() throws -> ApproximateWordSet {
+        let file = ResourceFile.guardList
+        let data = try verifiedData(file)
+        let header = GuardListHeader.headerBytes
+        func problem(_ detail: String) -> LoadError { .malformedResource("\(file.rawValue): \(detail)") }
+        guard data.count >= header else {
+            throw problem("\(data.count) bytes, shorter than the \(header)-byte header")
+        }
+        let bytes = [UInt8](data.prefix(header))
+        func integer<T: FixedWidthInteger>(_ type: T.Type, at offset: Int) -> T {
+            var value: T = 0
+            for index in 0..<MemoryLayout<T>.size { value |= T(bytes[offset + index]) << (8 * index) }
+            return value
+        }
+        guard Array(bytes[0..<4]) == GuardListHeader.magic else { throw problem("bad magic") }
+        let version = integer(UInt32.self, at: 4)
+        guard version == GuardListHeader.version else { throw problem("unsupported version \(version)") }
+        let hashCount = Int(integer(UInt32.self, at: 8))
+        guard (1...GuardListHeader.maximumHashCount).contains(hashCount) else {
+            throw problem("hash count \(hashCount)")
+        }
+        let bitCount = integer(UInt64.self, at: 12)
+        guard bitCount >= 64, bitCount & (bitCount - 1) == 0, bitCount <= GuardListHeader.maximumBits else {
+            throw problem("bit count \(bitCount) is not a power of two from 64 to \(GuardListHeader.maximumBits)")
+        }
+        let wordCount = integer(UInt64.self, at: 20)
+        guard bytes[28..<32].allSatisfy({ $0 == 0 }) else { throw problem("reserved header bytes are not zero") }
+        guard data.count - header == Int(bitCount / 8) else {
+            throw problem("\(data.count - header) bytes of bits, expected \(bitCount / 8) for \(bitCount) bits")
+        }
+        guard wordCount <= UInt64(Int.max) else { throw problem("word count \(wordCount)") }
+        try checkEntryCount(Int(wordCount), file: file)
+        // The bits are copied as a block (ENG-R1231: the load budget); the file is little-endian.
+        var bits = [UInt64](repeating: 0, count: Int(bitCount / 64))
+        bits.withUnsafeMutableBytes { destination in
+            data.withUnsafeBytes { source in
+                destination.copyMemory(from: UnsafeRawBufferPointer(rebasing: source[header...]))
+            }
+        }
+        #if _endian(big)
+        for index in bits.indices { bits[index] = UInt64(littleEndian: bits[index]) }
+        #endif
+        return ApproximateWordSet(bits: bits, hashCount: hashCount, wordCount: Int(wordCount))
+    }
+
+    /// The keyboard neighbours of ENG-R1113: `letter<TAB>neighbours` lines, one per letter `a-z`; the table must cover
+    /// the 26 letters and be symmetric (ENG-R1120 (3)).
+    func neighbours() throws -> [Character: String] {
+        let file = ResourceFile.keyboardNeighbours
+        let lines = try Self.utf8Lines(try verifiedData(file), file: file)
+        var table: [Character: String] = [:]
+        for (index, line) in lines.enumerated() {
+            let number = index + 1
+            let fields = line.split(separator: "\t", omittingEmptySubsequences: false)
+            guard fields.count == 2 else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .wrongFieldCount)
+            }
+            guard fields[0].utf8.count == 1, let letter = fields[0].first, Self.isASCIILetter(letter),
+                !fields[1].isEmpty, fields[1].allSatisfy(Self.isASCIILetter), !fields[1].contains(letter)
+            else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .invalidCharacter)
+            }
+            guard table.updateValue(String(fields[1]), forKey: letter) == nil else {
+                throw LoadError.malformedEntry(resource: file.rawValue, line: number, reason: .duplicate)
+            }
+        }
+        try checkEntryCount(table.count, file: file)
+        guard table.count == 26 else {
+            throw LoadError.malformedResource("\(file.rawValue): \(table.count) letters, expected 26")
+        }
+        for (letter, neighbours) in table.sorted(by: { $0.key < $1.key }) {
+            for neighbour in neighbours where table[neighbour]?.contains(letter) != true {
+                throw LoadError.malformedResource(
+                    "\(file.rawValue): '\(letter)' lists '\(neighbour)' but '\(neighbour)' does not list '\(letter)'")
+            }
+        }
+        return table
+    }
+
     func notices() throws -> String {
         let data = try verifiedData(.notices)
         guard let text = String(data: data, encoding: .utf8) else {
@@ -198,41 +315,115 @@ struct ResourceDirectory {
 
     // MARK: Line parsing
 
-    /// ASCII lists: `a-z` (plus `0-9` with at least one letter for the tech lists). Parsed on raw bytes
-    /// so the 40,000-word English list loads well inside the ENG-R1231 budget.
+    /// ASCII lists: `a-z` (plus `0-9` with at least one letter for the tech lists). Parsed on raw bytes through a
+    /// raw pointer so the 40,000-word English list loads well inside the ENG-R1231 budget, in debug builds too.
     private static func asciiLines(_ data: Data, file: ResourceFile, allowDigits: Bool) throws -> [String] {
         try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> [String] in
-            let bytes = buffer.bindMemory(to: UInt8.self)
             var words: [String] = []
-            words.reserveCapacity(bytes.count / 8)
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return words }
+            let end = buffer.count
+            words.reserveCapacity(end / 8)
             var start = 0
             var line = 1
-            while start < bytes.count {
-                var end = start
+            while start < end {
+                var stop = start
                 var hasLetter = false
-                while end < bytes.count, bytes[end] != 0x0A {
-                    let byte = bytes[end]
+                while stop < end, base[stop] != 0x0A {
+                    let byte = base[stop]
                     if byte >= 0x61 && byte <= 0x7A {
                         hasLetter = true
                     } else if !(allowDigits && byte >= 0x30 && byte <= 0x39) {
                         throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
                     }
-                    end += 1
+                    stop &+= 1
                 }
-                guard end < bytes.count else {
+                guard stop < end else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .missingFinalNewline)
                 }
-                guard end > start else {
+                guard stop > start else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .emptyLine)
                 }
                 guard hasLetter else {
                     throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
                 }
-                words.append(String(decoding: UnsafeBufferPointer(rebasing: bytes[start..<end]), as: UTF8.self))
-                start = end + 1
-                line += 1
+                words.append(
+                    String(decoding: UnsafeBufferPointer(start: base + start, count: stop - start), as: UTF8.self))
+                start = stop &+ 1
+                line &+= 1
             }
             return words
+        }
+    }
+
+    /// The lines of a list of lowercase words `a-z` (the format of `asciiLines` without digits), each packed when it
+    /// fits (`PackedWordSet.pack`) and kept as text otherwise. Nil when the file is not strictly ascending, so the
+    /// caller takes the general path; within an ascending file an equal neighbour is the first duplicate.
+    /// `expectedLines` (the manifest's entry count, checked afterwards) sizes the array, so a well-formed file
+    /// fills it without growth or spare room.
+    private static func packedLines(_ data: Data, file: ResourceFile, expectedLines: Int?) throws -> PackedLines? {
+        try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> PackedLines? in
+            var result = PackedLines()
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return result }
+            let end = buffer.count
+            result.packed.reserveCapacity(min(expectedLines ?? 0, end / 2))
+            var start = 0
+            var line = 1
+            while start < end {
+                // A raw pointer: this loop reads every byte of the keyings at each load, in debug builds too.
+                var stop = start
+                while stop < end, base[stop] != 0x0A {
+                    guard base[stop] >= 0x61 && base[stop] <= 0x7A else {
+                        throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .invalidCharacter)
+                    }
+                    stop &+= 1
+                }
+                guard stop < end else {
+                    throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .missingFinalNewline)
+                }
+                guard stop > start else {
+                    throw LoadError.malformedEntry(resource: file.rawValue, line: line, reason: .emptyLine)
+                }
+                guard result.append(UnsafeBufferPointer(start: base + start, count: stop - start), line: line) else {
+                    return nil
+                }
+                start = stop &+ 1
+                line &+= 1
+            }
+            return result
+        }
+    }
+
+    /// The packed words of an ascending list and the words that do not pack, as `packedLines` reads them.
+    private struct PackedLines {
+        var packed: [UInt64] = []
+        var others: [String] = []
+        var duplicateLine: Int?
+        /// The lines read, duplicates included (the manifest counts lines).
+        var count = 0
+        private var lastPacked: UInt64 = 0
+
+        /// Adds a line; false when it breaks the ascending order of the packed words or of the others.
+        mutating func append(_ word: UnsafeBufferPointer<UInt8>, line: Int) -> Bool {
+            count &+= 1
+            if let value = PackedWordSet.pack(utf8: word) {
+                // A packed value is never 0, so 0 stands for "none yet".
+                if value <= lastPacked {
+                    guard value == lastPacked else { return false }
+                    duplicateLine = duplicateLine ?? line
+                    return true
+                }
+                packed.append(value)
+                lastPacked = value
+            } else {
+                let text = String(decoding: word, as: UTF8.self)
+                if let last = others.last, last >= text {
+                    guard last == text else { return false }
+                    duplicateLine = duplicateLine ?? line
+                    return true
+                }
+                others.append(text)
+            }
+            return true
         }
     }
 
@@ -270,18 +461,34 @@ struct ResourceDirectory {
         return lines
     }
 
-    /// Splits a UTF-8 file into lines; requires a final newline. Empty file -> no lines.
+    /// Splits a UTF-8 file into lines; requires a final newline. Empty file -> no lines. The file is validated as
+    /// UTF-8 once, then split on the LF byte (never part of a multi-byte sequence) through a raw pointer, without
+    /// iterating grapheme clusters, which costs most of the load in a debug build (ENG-R1231). A CR before the LF
+    /// stays in the line, where the entry checks reject it.
     private static func utf8Lines(_ data: Data, file: ResourceFile) throws -> [String] {
-        guard let text = String(data: data, encoding: .utf8) else {
+        guard String(data: data, encoding: .utf8) != nil else {
             throw LoadError.malformedResource("\(file.rawValue): not UTF-8")
         }
-        guard !text.isEmpty else { return [] }
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        guard lines.last == "" else {
-            throw LoadError.malformedEntry(resource: file.rawValue, line: lines.count, reason: .missingFinalNewline)
+        return try data.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) -> [String] in
+            var lines: [String] = []
+            guard let base = buffer.bindMemory(to: UInt8.self).baseAddress else { return lines }
+            let end = buffer.count
+            var start = 0
+            var index = 0
+            while index < end {
+                if base[index] == 0x0A {
+                    lines.append(
+                        String(decoding: UnsafeBufferPointer(start: base + start, count: index - start), as: UTF8.self))
+                    start = index &+ 1
+                }
+                index &+= 1
+            }
+            guard start == end else {
+                throw LoadError.malformedEntry(
+                    resource: file.rawValue, line: lines.count + 1, reason: .missingFinalNewline)
+            }
+            return lines
         }
-        lines.removeLast()
-        return lines
     }
 
     private static func checkUnique(_ words: [String], file: ResourceFile, firstLine: Int) throws {
@@ -301,10 +508,26 @@ struct ResourceDirectory {
         }
     }
 
+    private static func isASCIILetter(_ character: Character) -> Bool {
+        guard let value = character.asciiValue else { return false }
+        return value >= 0x61 && value <= 0x7A
+    }
+
     private static func isTechEntry(_ bytes: String.UTF8View) -> Bool {
         !bytes.isEmpty && bytes.allSatisfy { ($0 >= 0x61 && $0 <= 0x7A) || ($0 >= 0x30 && $0 <= 0x39) }
             && bytes.contains { $0 >= 0x61 && $0 <= 0x7A }
     }
+}
+
+/// The layout of `guard-list.bloom` (data/README.md, resource format 3).
+enum GuardListHeader {
+    static let magic = Array("KVGL".utf8)
+    static let version: UInt32 = 1
+    static let headerBytes = 32
+    /// More bit positions per word than this only slows a lookup down; the builder writes 8.
+    static let maximumHashCount = 64
+    /// ENG-R1120: at most 512 KB of bits.
+    static let maximumBits: UInt64 = 512 * 1024 * 8
 }
 
 /// Lowercase letters allowed in attested syllables: the 12 vowel letters with any of the six tones,

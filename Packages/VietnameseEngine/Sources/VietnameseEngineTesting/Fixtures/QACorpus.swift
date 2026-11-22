@@ -112,7 +112,7 @@ public struct QACorpusCase: Sendable, Hashable, CustomStringConvertible {
         return EngineConfiguration(
             inputMethod: inputMethod, toneStyle: options.contains("modern") ? .modern : .traditional,
             autoRestore: !options.contains("no-auto-restore"), appContext: options.contains("code") ? .code : .general,
-            historyLimit: historyLimit)
+            historyLimit: historyLimit, typoCorrection: false)
     }
 
     /// The 13.9 fixture resources (or empty ones), with `macros` unless the row says `no-macros`, the
@@ -157,10 +157,11 @@ public enum QACorpus {
         "editing.tsv", "crash-regressions.tsv", "restore-exact.tsv", "layouts.tsv",
     ]
 
-    /// The other files of the corpus folder: spec examples extracted by `Scripts/extract-spec-examples.py`
-    /// and the macro fixture table.
+    /// The other files of the corpus folder: spec examples extracted by `Scripts/extract-spec-examples.py`,
+    /// the macro fixture table and the hand-written rows of 13.12 (`typo-corrections.tsv`, read by the data tests).
     public static let fixtureFiles = [
         "worked-examples.tsv", "commit-decisions.tsv", "restore-toggle.tsv", "commit-fixtures.tsv", macroTableFile,
+        "typo-corrections.tsv",
     ]
 
     /// QA-R4 `english`: the hand list of English words and tech terms that must restore unchanged.

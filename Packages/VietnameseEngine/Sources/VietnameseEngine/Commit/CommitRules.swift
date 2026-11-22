@@ -1,5 +1,21 @@
 // SPDX-License-Identifier: MPL-2.0
 
+/// Keys of a token as a restore writes them (ENG-R803): as typed, and lowercased (ASCII only, ENG-R905) for the word
+/// lists.
+package struct RestoreKeys: Sendable, Hashable {
+    package let raw: String
+    package let lowercased: String
+
+    package init(raw: String, lowercased: String) {
+        self.raw = raw
+        self.lowercased = lowercased
+    }
+
+    package init(_ bytes: [UInt8]) {
+        self.init(raw: ASCII.string(bytes), lowercased: ASCII.string(bytes, lowercasing: true))
+    }
+}
+
 /// The inputs of the decision at commit (8.1) for one token.
 package struct CommitInputs: Sendable {
     /// `C`: the composed form after the 5.5 normalisation (`Composition.committedText(style:)`).
@@ -17,6 +33,15 @@ package struct CommitInputs: Sendable {
     /// The last key is a tone-removal key that removed the tone or the letter marks (`Composition.endsWithRemoval`,
     /// rule L4a, REG-39).
     package let endsWithRemoval: Bool
+    /// `R′` (ENG-R804, REG-40): `R` without the key of each w doubling (`Composition.wDoublings`), the other keys in
+    /// their case; nil when the token has none. Built here, at the commit, never per key (ENG-R1122).
+    package let withoutWDoublings: RestoreKeys?
+    /// The w doublings of the token are the habit of typing `ww` for `w` (`Composition.wDoublingsAreHabit`): each
+    /// removed the `ư` of a standalone `w`, no `w` key follows it and none is a capital after a lowercase `w`.
+    package let wDoublingsAreHabit: Bool
+    /// The token already shows `R′` (`ActiveToken.omitsWDoublings`): a re-opened token that a restore without its w
+    /// doublings committed (ENG-R1005). A restore of it writes `R′`, the keys it shows, never a `w` it does not show.
+    package let showsWithoutWDoublings: Bool
     package let camelCase: Bool
     package let userChoice: UserChoice
     /// The user's choice was already reported for these raw keys (ENG-R861, ENG-R864).
@@ -37,6 +62,10 @@ package struct CommitInputs: Sendable {
         endsWithEscape = token.composition.endsWithEscape
         escapedAcrossKeys = token.composition.escapedAcrossKeys
         endsWithRemoval = token.composition.endsWithRemoval
+        let doublings = token.composition.wDoublings
+        withoutWDoublings = doublings.isEmpty ? nil : RestoreKeys(token.composition.rawWithoutWDoublings)
+        wDoublingsAreHabit = token.composition.wDoublingsAreHabit
+        showsWithoutWDoublings = token.omitsWDoublings && token.literalKeys == nil
         camelCase = token.composition.isCamelCase
         userChoice = token.userChoice
         choiceSignalled = token.choiceSignalled
@@ -45,16 +74,18 @@ package struct CommitInputs: Sendable {
 }
 
 extension CommitDecision {
-    /// The decision writes the raw keys (`R`) instead of the composed form (`C`).
+    /// The decision writes the raw keys (`R`) instead of the composed form (`C`). False for a typo correction, which
+    /// writes a word of the lexicon (ENG-R1115).
     package var restores: Bool {
         if case .restored = self { return true }
         return false
     }
 
-    /// The rule that decided, nil for a macro expansion.
+    /// The rule that decided, nil for a macro expansion; for a typo correction the rule of 8.1 that would have
+    /// decided the token (ENG-R1115).
     package var rule: CommitRule? {
         switch self {
-        case .kept(let rule), .restored(let rule): return rule
+        case .kept(let rule), .restored(let rule), .corrected(let rule): return rule
         case .macro: return nil
         }
     }
@@ -78,10 +109,15 @@ package struct CommitContext: Sendable {
     /// Rule L9c may read the learned memory (ENG-R863). Off only where rule L4 asks what the keys of an escaped form
     /// commit on their own: the memory decides collision words, never an escape (ENG-R877, REG-37).
     package var readsMemory = true
+    /// ENG-R1112: the character right before the token's first letter (the newest boundary character of the
+    /// history), nil at the start of the history: the start of a field, of a line after Return or Tab, or after a
+    /// reset (`characterBefore(_:)`). Read only by the typo correction.
+    package var characterBefore: Character?
 
     package init(
         runIsEnglish: Bool, boundary: Character = " ", memoryContext: CollisionContext = .sentenceStart,
-        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false
+        phrases: PhraseChain = PhraseChain(), inVietnameseText: Bool = false, atLineStart: Bool = false,
+        characterBefore: Character? = nil
     ) {
         self.runIsEnglish = runIsEnglish
         self.boundary = boundary
@@ -89,6 +125,17 @@ package struct CommitContext: Sendable {
         self.phrases = phrases
         self.inVietnameseText = inVietnameseText
         self.atLineStart = atLineStart
+        self.characterBefore = characterBefore
+    }
+
+    /// The character right before a token that starts after `history`: its newest boundary character, or the last
+    /// character of its newest token when no boundary follows it; nil when the history is empty.
+    package static func characterBefore(_ history: History) -> Character? {
+        switch history.last {
+        case .boundary(let character)?: return character
+        case .token(let token)?: return token.committedText.last
+        case nil: return nil
+        }
     }
 }
 
@@ -135,6 +182,10 @@ package struct CommitPolicy: Sendable {
     /// RV5 of ENG-R828 is on: the code context with `lineStartRevision` (the user's D29, ENG-R850). It does not
     /// depend on `lookaheadRevision`, which the rules turn off in every code-context app (PLT-R357).
     package let lineRevision: Bool
+    /// The typo correction of section 11A, nil when `typoCorrection` is off (ENG-R1119), in the `code` context
+    /// (ENG-R1112) or with auto restore off (ENG-R802: the English data is not consulted). The host ANDs D4 in
+    /// anyway; the last two conditions protect consumers that build their own configuration.
+    package let corrector: TypoCorrector?
 
     /// The composition rules of the configuration: rule L4 composes the keys of an escaped form to learn whether
     /// the escape was needed (amended by the product owner on 17/11/2026, REG-37).
@@ -147,6 +198,8 @@ package struct CommitPolicy: Sendable {
         appContext = configuration.appContext
         collisionRules = configuration.lookaheadRevision
         lineRevision = configuration.appContext == .code && configuration.lineStartRevision
+        let corrects = configuration.typoCorrection && configuration.appContext == .general && configuration.autoRestore
+        corrector = corrects ? TypoCorrector(resources: resources, configuration: configuration) : nil
     }
 
     /// "R is English" (8.1): the lowercased word is in the English lexicon or the tech-always list.
@@ -264,6 +317,21 @@ package struct CommitPolicy: Sendable {
     @inline(__always)
     func restore(_ rule: CommitRule) -> CommitDecision {
         autoRestore ? .restored(rule) : .kept(rule)
+    }
+
+    /// ENG-R803: the keys a restore by `decision` puts back, also the typed word of the typo correction (11A): `R′`
+    /// (REG-40) when rule L4 restores the token without its w doublings (ENG-R804 (c′) and (d)), when rule L3b
+    /// restores camel case keys whose w doublings are a habit (ENG-R904), and for any restore of a re-opened token that
+    /// shows `R′` (ENG-R1005); otherwise `R`.
+    package func restoredKeys(_ inputs: CommitInputs, decision: CommitDecision) -> RestoreKeys {
+        let typed = RestoreKeys(raw: inputs.raw, lowercased: inputs.rawLowercased)
+        guard decision.restores, let keys = inputs.withoutWDoublings else { return typed }
+        if inputs.showsWithoutWDoublings { return keys }
+        switch decision {
+        case .restored(.escape): return escapeRestoreWithoutWDoublings(inputs) ?? typed
+        case .restored(.camelCase): return habitDoublingsLeftOut(inputs) ?? typed
+        default: return typed
+        }
     }
 
     /// ENG-R861: a learning signal when a token committed by the user's toggle differs from what the

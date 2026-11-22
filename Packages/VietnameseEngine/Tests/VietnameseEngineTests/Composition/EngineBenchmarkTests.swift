@@ -23,8 +23,9 @@ struct EngineBenchmarkTests {
     /// literal or are restored at a punctuation boundary, Backspace runs that re-open committed tokens,
     /// macro expansions and restore toggles.
     static func workload() -> [(Engine, [EngineEvent])] {
-        let telex = Engine(configuration: EngineConfiguration(), resources: resources)
-        let vni = Engine(configuration: EngineConfiguration(inputMethod: .vni), resources: resources)
+        let telex = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
+        let vni = Engine(
+            configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false), resources: resources)
         var telexEvents: [EngineEvent] = []
         var vniEvents: [EngineEvent] = []
         GeneratedCorpus.forEachOrderCase { generated in
@@ -79,6 +80,48 @@ struct EngineBenchmarkTests {
         #endif
         print("[ENG-R1230] \(Self.summary(samples, "events")) (\(mode); budget p50 5, p99 25, p99.9 100)")
         print("[ENG-R1230] \(Self.summary(commitSamples, "commits and macro expansions")) (\(mode))")
+    }
+
+    /// ENG-T55 sanity check, not a gate: the committing spaces of typo correction candidates (typos of the fixture's
+    /// words and 24-letter adversarial tokens, `CorrectionCandidates`) with the correction fixture, whose small
+    /// lexicon, four keyings and five shapes make the figures indicative only. The gate is `engine-benchmark`'s
+    /// `correction` workload in a release build with the bundled data (`Scripts/benchmark.sh`, ENG-R1122).
+    @Test func candidateLatency() {
+        let resources = SpecFixtures.correctionResources()
+        let lexicon = SpecFixtures.englishLexicon + SpecFixtures.correctionWords
+        let tokens =
+            CorrectionCandidates.typos(
+                of: lexicon, neighbours: SpecFixtures.keyboardNeighbours, count: 2_000, seed: 0xBE7C_11A0)
+            + CorrectionCandidates.adversarial(lexicon: lexicon, count: 200, seed: 0xBE7C_11A1)
+        let (events, commits) = CorrectionCandidates.events(tokens)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: true), resources: resources)
+        let clock = ContinuousClock()
+        var samples: [Int64] = []
+        var corrected = 0
+        var sink = 0
+        for round in 0..<2 {  // the first round warms the tables and caches
+            var session = Session(engine: engine)
+            var next = 0
+            for (index, event) in events.enumerated() {
+                let start = clock.now
+                let output = session.handle(event)
+                let elapsed = start.duration(to: clock.now)
+                sink &+= output.composingText.utf8.count
+                guard round == 1, next < commits.count, commits[next] == index else { continue }
+                next += 1
+                samples.append(Self.nanoseconds(elapsed))
+                if case .corrected? = output.decision { corrected += 1 }
+            }
+        }
+        #expect(samples.count == tokens.count && corrected > 0 && sink >= 0)
+        #if DEBUG
+        let mode = "debug build, fixture data: numbers are not comparable with the budget"
+        #else
+        let mode = "release build, fixture data"
+        #endif
+        print(
+            "[ENG-R1122] \(Self.summary(samples, "candidate commits")), \(corrected) corrected (\(mode); budget p99 50, "
+                + "max 200)")
     }
 
     private static func summary(_ unsorted: [Int64], _ label: String) -> String {

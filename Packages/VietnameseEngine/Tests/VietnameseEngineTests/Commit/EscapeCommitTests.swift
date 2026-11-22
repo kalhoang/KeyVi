@@ -24,17 +24,23 @@ struct EscapeCommitTests {
         return resources
     }()
 
-    static func driver(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws
+    static func driver(
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false)
+    ) throws
         -> EngineDriver
     {
         try Committing.driver(keys, configuration, resources: resources)
     }
 
-    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+        throws -> String
+    {
         try driver(keys, configuration).field.string
     }
 
-    static func decision(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws
+    static func decision(
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false)
+    ) throws
         -> CommitDecision?
     {
         try driver(keys, configuration).outputs.last?.decision
@@ -100,7 +106,7 @@ struct EscapeCommitTests {
 
     @Test("ENG-R802: with auto restore off L4 keeps C and still names itself")
     func autoRestoreOffKeepsTheEscapedForm() throws {
-        let off = EngineConfiguration(autoRestore: false)
+        let off = EngineConfiguration(autoRestore: false, typoCorrection: false)
         for (keys, text) in [("dessert ", "desert "), ("and off ", "and of "), ("leecher ", "lecher ")] {
             let driver = try Self.driver(keys, off)
             #expect(driver.field.string == text, "\(keys)")
@@ -119,7 +125,7 @@ struct EscapeCommitTests {
             #expect(driver.field.string == text, "\(keys)")
             #expect(driver.outputs.last?.decision == .kept(.escape), "\(keys)")
         }
-        #expect(try Self.text("tarr ", EngineConfiguration(appContext: .code)) == "tar ")
+        #expect(try Self.text("tarr ", EngineConfiguration(appContext: .code, typoCorrection: false)) == "tar ")
     }
 
     @Test("R English, C not English: restored (password, traffic, www of ENG-T12)")
@@ -185,7 +191,7 @@ struct EscapeCommitTests {
             #expect(driver.field.string == text, "\(keys)")
             #expect(driver.outputs.last?.decision == .kept(.escape), "\(keys)")
         }
-        let vni = EngineConfiguration(inputMethod: .vni)
+        let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
         #expect(try Self.text("a11 ", vni) == "a1 ")
         #expect(try Self.text("d99 ", vni) == "d9 ")
     }
@@ -214,7 +220,7 @@ struct EscapeCommitTests {
 
     @Test("Composition knows whether its last key was an escape")
     func endsWithEscape() {
-        let telex = ComposerRules(EngineConfiguration())
+        let telex = ComposerRules(EngineConfiguration(typoCorrection: false))
         func ends(_ keys: String, _ rules: ComposerRules = telex) -> Bool {
             Composition(replaying: Array(keys.utf8), rules: rules).endsWithEscape
         }
@@ -223,13 +229,13 @@ struct EscapeCommitTests {
         for keys in ["", "a", "aa", "www", "boooong", "leecher", "assa", "Anaab", "vieejt"] {
             #expect(!ends(keys), "\(keys)")
         }
-        let vni = ComposerRules(EngineConfiguration(inputMethod: .vni))
+        let vni = ComposerRules(EngineConfiguration(inputMethod: .vni, typoCorrection: false))
         #expect(ends("a11", vni) && ends("d99", vni) && !ends("a1", vni) && !ends("a111", vni))
     }
 
     @Test("Composition knows whether an escape key came after other keys instead of doubling its key")
     func escapedAcrossKeys() {
-        let telex = ComposerRules(EngineConfiguration())
+        let telex = ComposerRules(EngineConfiguration(typoCorrection: false))
         func across(_ keys: String, _ rules: ComposerRules = telex) -> Bool {
             Composition(replaying: Array(keys.utf8), rules: rules).escapedAcrossKeys
         }
@@ -245,7 +251,7 @@ struct EscapeCommitTests {
         for keys in ["costs", "leecher", "pajama", "beefer", "ddid", "wsaw", "cookout", "theesee"] {
             #expect(across(keys), "\(keys)")
         }
-        let vni = ComposerRules(EngineConfiguration(inputMethod: .vni))
+        let vni = ComposerRules(EngineConfiguration(inputMethod: .vni, typoCorrection: false))
         #expect(!across("a11", vni) && !across("d99", vni) && across("a1n1", vni))
     }
 }

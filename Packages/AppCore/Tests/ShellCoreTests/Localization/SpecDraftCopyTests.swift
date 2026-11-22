@@ -214,6 +214,37 @@ import Testing
             vi:
                 "Ví dụ: gõ cái này tricky as hell thì á đổi lại thành as khi bạn gõ hell. Trong Terminal và trình "
                 + "soạn mã, chỉ sửa chữ đầu dòng khi chữ sau là tiếng Việt (tar thử thành tả thử)."),
+        // D30 and the never-correct list (1.1.0, PRD-R80, PRD-R81), with the Q10 words "từ viết hoa toàn bộ" /
+        // "words in all capitals" (scripts/tests/test_correction_policy.py checks them against CorrectionPolicy).
+        Draft(
+            table: .settings, key: "settings.typing.typoCorrection.title", vi: "Tự sửa từ gõ nhầm",
+            en: "Fix mistyped words"),
+        Draft(
+            table: .settings, key: "settings.typing.typoCorrection.explanation", arguments: [app],
+            vi:
+                "Gõ nhầm một từ tiếng Anh (androdi, gramar) thì {{AppName}} sửa thành từ đúng (android, grammar) khi "
+                + "bạn gõ dấu cách. Không sửa từ tiếng Việt, từ viết hoa toàn bộ hay chữ gõ trong Terminal. Nhấn "
+                + "Escape ngay sau đó để lấy lại từ bạn đã gõ.",
+            en:
+                "When you mistype an English word (androdi, gramar), {{AppName}} replaces it with the one word it can "
+                + "be (android, grammar) as you type the space. Vietnamese words, words in all capitals and anything "
+                + "typed in Terminal are never changed. Press Escape right after to get the word you typed back."),
+        Draft(
+            table: .settings, key: "settings.typing.typoCorrection.disabledSuffix",
+            vi: "Bật Tự khôi phục từ tiếng Anh để dùng.", en: "Turn on Automatic English restore to use this."),
+        Draft(table: .settings, key: "settings.typing.neverCorrect.title", vi: "Không tự sửa", en: "Never correct"),
+        Draft(
+            table: .settings, key: "settings.typing.neverCorrect.explanation", arguments: [app],
+            vi:
+                "Những từ {{AppName}} luôn giữ như bạn gõ, không sửa. Từ bạn lấy lại bằng phím Escape được thêm vào "
+                + "đây.",
+            en: "Words {{AppName}} always leaves as you typed them. A word you take back with Escape is added here."),
+        Draft(
+            table: .settings, key: "settings.typing.neverCorrect.invalid",
+            vi: "Chỉ nhận chữ cái không dấu, không có số hay ký hiệu.",
+            en: "Letters only, without marks, digits or symbols."),
+        // PRD-R24 acceptance and PRD-R81: the entry field under each of the three lists.
+        Draft(table: .settings, key: "settings.typing.list.placeholder", vi: "Thêm từ mới"),
         Draft(table: .settings, key: "settings.control.resetConfirm.accessibilityLabel", vi: "Khôi phục mặc định"),
         Draft(table: .apps, key: "apps.rule.remember", vi: "Nhớ lựa chọn"),
         Draft(table: .apps, key: "apps.rule.alwaysEnglish", vi: "Luôn tiếng Anh"),

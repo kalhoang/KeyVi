@@ -1,0 +1,105 @@
+# spec/01-engine.md 13.12 (rows S01 to S84, 1.1.0): the worked examples of the typo correction, hand written from
+# the spec's table, one row per spec row in the spec's order (TypoCorrectionExampleTests.tableMatchesTheSpec keeps the
+# ids and the `expected` text equal to the spec). Read from the checkout by VietnameseEngineDataTests with the bundled
+# data (TypoCorrectionExampleTests, ENG-T50).
+# Columns:
+#   id            the spec row
+#   method        Telex (default options) or VNI
+#   setup         - | code (the code context) | off (typoCorrection off) | never:<word> (never-correct list) |
+#                 keep:<word> (keep-as-typed list) | macro:<trigger>=<expansion> | after:<id> (that row first, then
+#                 its signal's word on the never-correct list, then these keys in a new engine)
+#   keys          from an empty field, then the committing key; TSV escapes \s space at an end, \n Return, \t Tab;
+#                 markers ⌫ Backspace and ⎋ restore toggle (KeyNotation)
+#   expected      the field with typoCorrection on (the spec's text column)
+#   expected_off  the field the 1.0 rules leave with typoCorrection off (the spec's "What decided" column), checked
+#                 against the current engine by rowsWithTheSwitchOffMatchThe1_0Engine
+#   decision      the last commit's CommitDecision with the switch on: corrected(<rule>), kept(<rule>), restored(<rule>)
+#                 or macro; for a correction, <rule> is the rule of 8.1 that decides the token with the switch off
+#   signal        neverCorrect(<word>) when an output carries it with the switch on, otherwise -
+#   note          free text, except q10:<text> (S23, S24) and q11:<text> (S26): the field under the other answer to
+#                 open question Q10 or Q11 of spec section 15 (CorrectionPolicy)
+id	method	setup	keys	expected	expected_off	decision	signal	note
+S01	Telex	-	androdi\s	android\s	androdi\s	corrected(unchanged)	-	transposition di -> id; shown as typed (L0)
+S02	Telex	-	gramar\s	grammar\s	grẩm\s	corrected(extendedSpelling)	-	the cluster case of ENG-R1110 (b): grẩm kept by L6; a missing m
+S03	Telex	-	recieve\s	receive\s	recieve\s	corrected(unchanged)	-	transposition
+S04	Telex	-	whcih\s	which\s	whcih\s	corrected(invalid)	-	transposition; ưhcih restored by L5
+S05	Telex	-	becuase\s	because\s	becuase\s	corrected(unchanged)	-	transposition
+S06	Telex	-	abotu\s	about\s	abotu\s	corrected(unchanged)	-	transposition
+S07	Telex	-	wrold\s	world\s	wrold\s	corrected(invalid)	-	transposition; restored by L5 first
+S08	Telex	-	exapmle\s	example\s	exapmle\s	corrected(invalid)	-	transposition
+S09	Telex	-	documnets\s	documents\s	documnets\s	corrected(unchanged)	-	transposition
+S10	Telex	-	adress\s	address\s	adress\s	corrected(unchanged)	-	a missing double
+S11	Telex	-	tomorow\s	tomorrow\s	tomorow\s	corrected(escape)	-	a missing double
+S12	Telex	-	langage\s	language\s	langage\s	corrected(invalid)	-	an omitted letter; lângge restored by L5
+S13	Telex	-	libary\s	library\s	libary\s	corrected(unchanged)	-	an omitted letter
+S14	Telex	-	somthing\s	something\s	somthing\s	corrected(unchanged)	-	an omitted letter
+S15	Telex	-	untill\s	until\s	untill\s	corrected(unchanged)	-	an extra letter
+S16	VNI	-	messsage\s	message\s	messsage\s	corrected(unchanged)	-	an extra letter inside the word (L0 in VNI)
+S17	Telex	-	arguement\s	argument\s	arguement\s	corrected(invalid)	-	an extra letter inside the word
+S18	Telex	-	helpp\s	help\s	helpp\s	corrected(unchanged)	-	a doubled last letter; a four-letter correction
+S19	Telex	-	committ\s	commit\s	committ\s	corrected(unchanged)	-	a doubled last letter
+S20	Telex	-	okayy\s	okay\s	okayy\s	corrected(unchanged)	-	a doubled last letter
+S21	Telex	-	servet\s	server\s	servet\s	corrected(invalid)	-	neighbouring key t for r; sẻvet restored by L5
+S22	Telex	-	hwllo\s	hello\s	hwllo\s	corrected(invalid)	-	neighbouring key w for e; hưllo restored by L5
+S23	Telex	-	Androdi\s	Android\s	Androdi\s	corrected(unchanged)	-	q10:Androdi\s
+S24	Telex	-	xong. Recieve\s	xong. Receive\s	xong. Recieve\s	corrected(unchanged)	-	q10:xong. Recieve\s
+S25	Telex	-	androdi.	android.	androdi.	corrected(unchanged)	-	a closer of prose
+S26	Telex	-	androdi\n	android\n	androdi\n	corrected(unchanged)	-	q11:androdi\n
+S27	VNI	-	androdi\s	android\s	androdi\s	corrected(unchanged)	-	plain letters in VNI
+S28	Telex	-	(androdi)	(android)	(androdi)	corrected(unchanged)	-	an opening bracket before, a closer after
+S29	Telex	-	- androdi\s	- android\s	- androdi\s	corrected(unchanged)	-	a list marker and a space at a line start
+S30	Telex	-	ddi androdi\s	đi android\s	đi androdi\s	corrected(unchanged)	-	the corrected token is en for the window
+S31	Telex	-	thier\s	thier\s	thier\s	restored(invalid)	-	three words fit
+S32	Telex	-	wierd\s	wierd\s	wierd\s	restored(invalid)	-	two words fit
+S33	Telex	-	pleasee\s	pleasee\s	pleasee\s	kept(unchanged)	-	three words fit
+S34	Telex	-	grammer\s	grammer\s	grammer\s	kept(unchanged)	-	no word fits
+S35	Telex	-	eah\s	eah\s	eah\s	kept(unchanged)	-	three letters
+S36	Telex	-	wiht\s	wiht\s	wiht\s	restored(invalid)	-	four letters; restored by L5
+S37	Telex	-	truong\s	truong\s	truong\s	kept(unchanged)	-	the unmarked shape of trường
+S38	Telex	-	chuop\s	chuop\s	chuop\s	kept(unchanged)	-	the unmarked shape of a Tier A syllable
+S39	Telex	-	chinhs\s	chính\s	chính\s	kept(notEnglish)	-	Vietnamese, kept by L7
+S40	Telex	-	viejt\s	viejt\s	viejt\s	restored(invalid)	-	a Vietnamese typo restored by L5
+S41	Telex	-	ability\s	ability\s	ability\s	kept(unchanged)	-	an English word shown as typed
+S42	Telex	-	server\s	server\s	server\s	restored(invalid)	-	an English word restored by L5
+S43	Telex	-	oauth\s	oauth\s	oauth\s	kept(unchanged)	-	on the tech-always list
+S44	Telex	-	gradle\s	gradle\s	gradle\s	kept(unchanged)	-	on the code-only list only
+S45	Telex	never:androdi	androdi\s	androdi\s	androdi\s	kept(unchanged)	-	the never-correct list
+S46	Telex	keep:androdi	androdi\s	androdi\s	androdi\s	kept(unchanged)	-	L0 decides before L2; the keep-as-typed list makes it no candidate, ENG-R1110 (c)
+S47	Telex	-	ANDRODI\s	ANDRODI\s	ANDRODI\s	kept(unchanged)	-	capitals
+S48	Telex	-	AndroDi\s	AndroDi\s	AndroDi\s	kept(unchanged)	-	mixed case
+S49	Telex	-	ddi Androdi\s	đi Androdi\s	đi Androdi\s	kept(unchanged)	-	sentence case inside a sentence is a name
+S50	Telex	-	ddi Gramar\s	đi Grẩm\s	đi Grẩm\s	kept(extendedSpelling)	-	the cluster case is lowercase only
+S51	Telex	-	Glong\s	Glong\s	Glong\s	kept(unchanged)	-	L0 before L6, Tier B, an unmarked shape
+S52	Telex	-	glong\s	glong\s	glong\s	kept(unchanged)	-	the cluster case needs a display L6 keeps
+S53	Telex	-	stilll\s	stilll\s	stilll\s	kept(unchanged)	-	a chat elongation
+S54	Telex	-	messi\s	messi\s	messi\s	restored(escape)	-	no deletion of a last letter that is not doubled
+S55	Telex	-	pajama\s	pajama\s	pajama\s	restored(escape)	-	no insertion after the last letter
+S56	Telex	-	mbank\s	mbank\s	mbank\s	kept(unchanged)	-	no deletion of a first letter that is not doubled
+S57	Telex	-	leecher\s	leecher\s	leecher\s	restored(escape)	-	no er -> ed; the word of REG-37
+S58	Telex	-	androd1	androd1	androd1	kept(unchanged)	-	the digit is not a closer
+S59	Telex	-	www.exapmle.com	www.exapmle.com	www.exapmle.com	restored(invalid)	-	glued to .: a link
+S60	Telex	-	kal@exapmle.com	kal@exapmle.com	kal@exapmle.com	restored(invalid)	-	glued to @: an e-mail address
+S61	Telex	-	/opt/locla\s	/opt/locla\s	/opt/locla\s	kept(unchanged)	-	glued to /: a path
+S62	Telex	-	#androdi\s	#androdi\s	#androdi\s	kept(unchanged)	-	glued to # at a line start: a tag
+S63	Telex	-	well-knwon\s	well-knwon\s	well-knwon\s	kept(unchanged)	-	glued to -: a compound
+S64	Telex	-	weren't	weren't	weren't	restored(invalid)	-	the apostrophe is not a closer
+S65	Telex	code	androdi\s	androdi\s	androdi\s	kept(unchanged)	-	never in code
+S66	Telex	off	androdi\s	androdi\s	androdi\s	kept(unchanged)	-	the switch off
+S67	Telex	macro:androdi=Android Studio	androdi\s	Android Studio\s	Android Studio\s	macro	-	the macro expands first
+S68	Telex	-	androdi ⎋	androdi\s	androdi\s	corrected(unchanged)	neverCorrect(androdi)	the undo; the space stays
+S69	Telex	-	androdi ⎋⎋	androdi\s	androdi\s	corrected(unchanged)	neverCorrect(androdi)	the second toggle passes through
+S70	Telex	-	androdi ⌫⌫	androi	androd	corrected(unchanged)	-	Backspace re-opens the correction, then deletes one character
+S71	Telex	-	androdi ⌫⎋	androdi	androdi	corrected(unchanged)	neverCorrect(androdi)	the toggle after the re-opening
+S72	Telex	after:S68	androdi\s	androdi androdi\s	androdi androdi\s	kept(unchanged)	-	the never-correct list after S68
+S73	Telex	-	androdi ⌫\s	android\s	androdi\s	corrected(unchanged)	-	a re-opened corrected token reports corrected again
+S74	Telex	-	messsage\s	message\s	message\s	kept(escape)	-	Telex: the ss is an escape, L4 (b)
+S75	Telex	-	ddi pahir\s	đi pahir\s	đi pahir\s	kept(unchanged)	-	ENG-R1125: phair is one transposition away
+S76	Telex	-	pehis\s	pehis\s	pehis\s	kept(unchanged)	-	ENG-R1125: phis is one deletion away
+S77	Telex	-	hoand\s	hoand\s	hoand\s	kept(unchanged)	-	ENG-R1125: hoanf is one neighbouring key away
+S78	Telex	-	chihns\s	chihns\s	chihns\s	kept(unchanged)	-	ENG-R1125: chinhs is one transposition away
+S79	Telex	-	htach\s	htach\s	htach\s	kept(unchanged)	-	ENG-R1125 (2): the shape thach is one transposition away
+S80	Telex	-	androdi…	androdi…	androdi…	kept(unchanged)	-	… is not a closer
+S81	Telex	-	ddi #androdi\s	đi #androdi\s	đi #androdi\s	kept(unchanged)	-	glued to # inside a line
+S82	Telex	-	# androdi\s	# android\s	# androdi\s	corrected(unchanged)	-	a heading marker and a space
+S83	Telex	-	yesss\s	yess\s	yess\s	kept(escape)	-	Telex: L4 (d) keeps the deliberate form
+S84	Telex	-	gruop\s	gruop\s	gruop\s	kept(unchanged)	-	known cost: the unmarked shape of a Tier B syllable

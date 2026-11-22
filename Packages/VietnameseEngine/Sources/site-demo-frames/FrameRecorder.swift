@@ -137,7 +137,7 @@ struct FrameRecorder: Sendable {
         EngineConfiguration(
             inputMethod: settings.method == .telex ? .telex(TelexOptions()) : .vni,
             toneStyle: settings.toneStyle == .traditional ? .traditional : .modern,
-            autoRestore: true, appContext: .general, lookaheadRevision: true)
+            autoRestore: true, appContext: .general, lookaheadRevision: true, typoCorrection: false)
     }
 
     /// Plain typing, the reference of a kept word's plain form: the same method and tone placement with auto restore
@@ -226,6 +226,8 @@ struct FrameRecorder: Sendable {
         case (_, .kept): text = before.display
         case (_, .restored): text = before.raw
         case (_, .macro): throw Failure("\(demo): a macro expansion revised the previous token")
+        // ENG-R1116: a commit never both revises and corrects; the frames run with the switch off anyway.
+        case (_, .corrected): throw Failure("\(demo): a typo correction revised the previous token")
         }
         guard body.hasSuffix(text) else { throw Failure("\(demo): the field does not end with the committed token") }
         let english = isEnglish(text: text, raw: before.raw, restoredByRule: decision.isRestored)
@@ -275,12 +277,13 @@ struct FrameRecorder: Sendable {
 }
 
 extension CommitDecision {
-    /// `kept`, `restored` or `macro`.
+    /// `kept`, `restored`, `macro` or `corrected` (section 11A).
     var outcome: String {
         switch self {
         case .kept: "kept"
         case .restored: "restored"
         case .macro: "macro"
+        case .corrected: "corrected"
         }
     }
 
@@ -289,10 +292,10 @@ extension CommitDecision {
         return false
     }
 
-    /// The rule of spec 8.1 that decided; nil for a macro.
+    /// The rule of spec 8.1 that decided (for a correction, the rule that would have decided); nil for a macro.
     var rule: CommitRule? {
         switch self {
-        case .kept(let rule), .restored(let rule): rule
+        case .kept(let rule), .restored(let rule), .corrected(let rule): rule
         case .macro: nil
         }
     }

@@ -422,3 +422,28 @@ tox
 # use them (thế kỷ XIX); found by the ENG-T20 prose run (docs/decisions/0202). IX is not listed: it types ĩ (ầm
 # ĩ), an everyday syllable, so IX in Telex is an open issue for Pa instead.
 xix
+
+# Developer words in no other bundled list (not in the lexicon, the tech lists or the guard list) that the typo
+# correction of 1.1.0 changed into another English word one edit away: frontend -> fronted, rebase -> debase,
+# upsert -> upset, structs -> struts (ENG-R1124, the W11 row; docs/decisions/0203-correction-data.md section 10).
+# Found by the W11 corpus and a probe of 303 developer terms in Telex and VNI (19/11/2026); each inflection listed
+# was corrected too. Their composition is invalid in both methods, so rule L5 already restores them in 1.0 and
+# listing them moves no 1.0 output. esports (-> exports) is the one word outside software work.
+backend
+bundlers
+debounce
+debounced
+debounces
+debouncing
+diffed
+esports
+frontend
+initializers
+rebase
+rebased
+rebases
+rebasing
+structs
+upsert
+upserting
+upserts

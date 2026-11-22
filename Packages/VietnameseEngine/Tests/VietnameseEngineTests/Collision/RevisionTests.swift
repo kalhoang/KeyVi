@@ -90,9 +90,9 @@ struct RevisionTests {
         #expect(try F.field("dduwowcj as hellx\u{232B} ") == "được as hell ")
         // The previous token chosen by the user (L1) is never revised.
         #expect(try F.field("dduwowcj as\u{238B}\u{232B}s\u{238B} hell ") == "được á hell ")
-        let off = EngineConfiguration(lookaheadRevision: false)
+        let off = EngineConfiguration(lookaheadRevision: false, typoCorrection: false)
         #expect(try F.field("dduwowcj as hell ", configuration: off) == "được á hell ")
-        let manual = EngineConfiguration(autoRestore: false)
+        let manual = EngineConfiguration(autoRestore: false, typoCorrection: false)
         #expect(try F.field("dduwowcj as hell ", configuration: manual) == "được á hell ")
         #expect(try F.field("tricky as nha ", configuration: manual) == "tricky á nha ")
     }
@@ -195,7 +195,7 @@ struct RevisionTests {
     func snapshotIsNeverMutated() throws {
         let snapshot = CollisionMemorySnapshot([.init(word: "car", context: nil, choice: .english)])
         let resources = F.resources(memory: snapshot)
-        let engine = Engine(configuration: EngineConfiguration(), resources: resources)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
         var session = Session(engine: engine)
         for event in KeyNotation.events("car \u{232B}\u{238B} dduwowcj as hell \u{238B}nha\n") {
             _ = session.handle(event)

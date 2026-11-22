@@ -50,7 +50,7 @@ enum CollisionFixture {
 
     /// A driver over the fixture (Telex, defaults) after typing `keys` (`⌫` Backspace, `⎋` toggle, `⟲` reset).
     static func driver(
-        _ keys: String, configuration: EngineConfiguration = EngineConfiguration(),
+        _ keys: String, configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
         resources: Resources = CollisionFixture.resources()
     ) throws -> EngineDriver {
         var driver = EngineDriver(configuration: configuration, resources: resources)
@@ -60,7 +60,7 @@ enum CollisionFixture {
 
     /// The field after typing `keys`.
     static func field(
-        _ keys: String, configuration: EngineConfiguration = EngineConfiguration(),
+        _ keys: String, configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
         resources: Resources = CollisionFixture.resources()
     ) throws -> String {
         try driver(keys, configuration: configuration, resources: resources).field.string

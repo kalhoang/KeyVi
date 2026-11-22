@@ -31,7 +31,9 @@ enum HostDecisionMapping {
             variant: EngineVariant(
                 appContext: decision.engineContext, englishRestore: decision.features.englishRestore,
                 macros: decision.features.macros,
-                lookaheadRevision: decision.features.lookaheadRevision && allowsRevision(strategy)),
+                lookaheadRevision: decision.features.lookaheadRevision && allowsRevision(strategy),
+                // ENG-R1119: the engine corrects a typo only where this key can undo it.
+                restoreHotkey: decision.features.restoreHotkey),
             requireTextFocus: concrete(decision.requireTextFocus, engine: engine),
             verifyReentry: decision.verifyReentry, restoreHotkeyEnabled: decision.features.restoreHotkey,
             rule: decision.rule, source: decision.source, specificity: decision.specificity,

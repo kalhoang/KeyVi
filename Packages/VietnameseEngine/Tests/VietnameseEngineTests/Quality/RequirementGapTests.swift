@@ -8,7 +8,7 @@ import VietnameseEngineTesting
 struct RequirementGapTests {
     @Test("ENG-R421 literal mode ends when Backspace removes the key that caused it")
     func literalModeEndsWithItsKey() throws {
-        var driver = EngineDriver(configuration: EngineConfiguration())
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false))
         try driver.type("tieengks")
         #expect(driver.state.isLiteral && driver.field.string == "tiêngks")  // s appended verbatim (ENG-R420)
         try driver.type("⌫")
@@ -44,7 +44,7 @@ struct RequirementGapTests {
     func neverRestored() throws {
         let resources = SpecFixtures.commitResources()
         func commit(_ keys: String) throws -> (String, CommitDecision?) {
-            var driver = EngineDriver(configuration: EngineConfiguration(), resources: resources)
+            var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
             try driver.send(KeyNotation.events(keys))
             return (driver.field.string, driver.outputs.last?.decision)
         }

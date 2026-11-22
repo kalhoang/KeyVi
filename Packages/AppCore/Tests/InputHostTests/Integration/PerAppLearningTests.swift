@@ -219,6 +219,25 @@ struct HostPerAppLearningTests {
         #expect(user.learnedWords == [LearnedWord(list: .keepAsTyped, raw: "vieejt", app: editor)])
     }
 
+    /// ENG-R1118, PRD-R81: one `neverCorrect` signal is enough and applies in every app, so it is stored at once,
+    /// with or without an app, and never counted by the per-app tracker; no learning proposal is shown and the word
+    /// is never logged.
+    @Test func aNeverCorrectSignalReachesTheStoreAtOnceFromAnyApp_ENGR1118() async {
+        let rig = HostRig()
+        await rig.start()
+        defer { rig.stop() }
+        let pending = rig.controller.learning.pending
+        rig.controller.handle(MainNotice.learning(.neverCorrect(raw: "androdi"), bundle: nil))
+        rig.controller.handle(MainNotice.learning(.neverCorrect(raw: "gramar"), bundle: editor))
+        for _ in 0..<20 where await rig.store.store.state.user.neverCorrect.count < 2 { await Task.yield() }
+        let user = await rig.store.store.state.user
+        #expect(user.neverCorrect == ["androdi", "gramar"])
+        #expect(user.learnedWords.isEmpty && user.keepAsTyped.isEmpty)
+        #expect(rig.controller.learning.pending == pending)
+        #expect(!rig.events.contains { if case .learningProposal = $0 { true } else { false } })
+        #expect(!rig.logger.entries.contains { "\($0.event)".contains("androdi") }, "PLT-R901")
+    }
+
     /// At launch the engines get the focused app's learned words once focus is known.
     @Test func theFocusedAppsLearnedWordsReachTheTapSnapshot() async {
         let rig = HostRig()

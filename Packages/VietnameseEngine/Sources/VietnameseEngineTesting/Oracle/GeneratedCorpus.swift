@@ -31,7 +31,7 @@ public struct GeneratedCase: Sendable, Hashable {
 
     /// Default options with this case's method and style.
     public var configuration: EngineConfiguration {
-        EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+        EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style, typoCorrection: false)
     }
 
     /// One key event per typed character.

@@ -8,7 +8,8 @@ enum Committing {
     static let fixtures = SpecFixtures.commitResources()
 
     static func driver(
-        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(), resources: Resources = fixtures
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
+        resources: Resources = fixtures
     ) throws -> EngineDriver {
         var driver = EngineDriver(configuration: configuration, resources: resources)
         try driver.send(KeyNotation.events(keys))
@@ -17,14 +18,16 @@ enum Committing {
 
     /// The field after typing `keys`.
     static func text(
-        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(), resources: Resources = fixtures
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
+        resources: Resources = fixtures
     ) throws -> String {
         try driver(keys, configuration, resources: resources).field.string
     }
 
     /// The decision reported by the last event.
     static func decision(
-        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(), resources: Resources = fixtures
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false),
+        resources: Resources = fixtures
     ) throws -> CommitDecision? {
         try driver(keys, configuration, resources: resources).outputs.last?.decision
     }
@@ -83,7 +86,7 @@ struct CommitRuleTests {
         #expect(try Committing.decision("www ") == .restored(.escape))
         #expect(try Committing.text("ddd ") == "dd ")
         #expect(try Committing.decision("ddd ") == .kept(.escape))
-        #expect(try Committing.text("d99 ", EngineConfiguration(inputMethod: .vni)) == "d9 ")
+        #expect(try Committing.text("d99 ", EngineConfiguration(inputMethod: .vni, typoCorrection: false)) == "d9 ")
     }
 
     @Test func l3bCamelCase() throws {
@@ -103,7 +106,9 @@ struct CommitRuleTests {
         #expect(try Committing.decision("dzoo ") == .kept(.extendedSpelling))
         #expect(try Committing.decision("tets ") == .kept(.notEnglish))
         #expect(try Committing.decision("does ") == .restored(.notAttested))
-        #expect(try Committing.decision("tar ", EngineConfiguration(appContext: .code)) == .restored(.codeContext))
+        #expect(
+            try Committing.decision("tar ", EngineConfiguration(appContext: .code, typoCorrection: false))
+                == .restored(.codeContext))
         #expect(try Committing.decision("and this ") == .restored(.englishRun))
         #expect(try Committing.decision("test ") == .restored(.ambiguityTable))
         #expect(try Committing.decision("this ") == .kept(.ambiguityTable))
@@ -126,7 +131,7 @@ struct CommitRuleTests {
 
     @Test func autoRestoreOff() throws {
         // ENG-R802: L3b to L11 never restore; the rule that matched still names itself.
-        let off = EngineConfiguration(autoRestore: false)
+        let off = EngineConfiguration(autoRestore: false, typoCorrection: false)
         for (keys, text, rule) in [
             ("text ", "tẽt ", CommitRule.invalid), ("test ", "tét ", .ambiguityTable),
             ("password ", "pasword ", .escape),
@@ -267,7 +272,7 @@ struct EnglishRunTests {
     func autoRestoreOffKeepsTheReasonCodesOfTheRun() throws {
         // `test` is kept by L11 (`kept(.ambiguityTable)`, ENG-R802), so it is neutral and `and` makes the
         // run English for `this`: the same rule names itself as with auto restore on.
-        let off = EngineConfiguration(autoRestore: false)
+        let off = EngineConfiguration(autoRestore: false, typoCorrection: false)
         #expect(try Committing.text("test and this ", off) == "tét and thí ")
         #expect(try Committing.decision("test and this ", off) == .kept(.englishRun))
         #expect(try Committing.text("test and this ") == "test and this ")

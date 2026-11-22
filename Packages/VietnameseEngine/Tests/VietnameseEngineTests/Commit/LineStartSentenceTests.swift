@@ -12,12 +12,13 @@ import VietnameseEngineTesting
 @Suite("L9 sentence condition: a code word in sentence case at a line start (ENG-R850, REG-36)")
 struct LineStartSentenceTests {
     /// The terminal configuration: the rules turn `lookaheadRevision` off in every code-context app (PLT-R357).
-    static let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false)
+    static let terminal = EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false)
     /// Every combination of the two revision switches: the condition reads neither (ENG-R829).
     static let switches = [
-        terminal, EngineConfiguration(appContext: .code),
-        EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false),
-        EngineConfiguration(appContext: .code, lineStartRevision: false),
+        terminal, EngineConfiguration(appContext: .code, typoCorrection: false),
+        EngineConfiguration(
+            appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false),
+        EngineConfiguration(appContext: .code, lineStartRevision: false, typoCorrection: false),
     ]
 
     /// The 13.9 fixtures with `tar` on the capitalized code-word list, standing for the bundled `host`.
@@ -143,7 +144,8 @@ struct LineStartSentenceTests {
         // `Host nayf` gives `Hót này`: RV5's strict evidence, a Vietnamese-only letter kept by L7.
         let revised = try Committing.driver("Tar thuwr ", Self.terminal, resources: resources)
         #expect(revised.field.string == "Tả thử " && Self.revisions(revised) == [.lineVietnamese])
-        let off = EngineConfiguration(appContext: .code, lookaheadRevision: false, lineStartRevision: false)
+        let off = EngineConfiguration(
+            appContext: .code, lookaheadRevision: false, lineStartRevision: false, typoCorrection: false)
         #expect(try Committing.text("Tar thuwr ", off, resources: resources) == "Tar thử ")
         // The list is read only for the sentence condition: a lowercase word is the same with or without it.
         #expect(try Committing.text("tar thuwr ", Self.terminal, resources: resources) == "tả thử ")
@@ -167,7 +169,7 @@ struct LineStartSentenceTests {
         keepRaw.userKeepRaw = WordSet(["tar"])
         #expect(try Committing.decision("Tar ", Self.terminal, resources: keepRaw) == .restored(.userList))
         // Auto restore off: L9 would keep anyway (ENG-R802), and so do the rules after it.
-        let manual = EngineConfiguration(autoRestore: false, appContext: .code)
+        let manual = EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false)
         #expect(try Committing.decision("Tar ", manual) == .kept(.defaultVietnamese))
         #expect(try Committing.decision("TAR ", manual) == .kept(.codeContext))
     }
@@ -193,7 +195,7 @@ struct LineStartSentenceTests {
         // An English word after it is decided by its own run, which the kept word does not break.
         #expect(try Committing.text("and\nTar test ", Self.terminal) == "and\nTả test ")
         // The general context never reaches L9, so the English run restores the word there (ENG-R823).
-        let general = try Committing.driver("and\nTar ", EngineConfiguration())
+        let general = try Committing.driver("and\nTar ", EngineConfiguration(typoCorrection: false))
         #expect(general.field.string == "and\nTar " && general.outputs.last?.decision == .restored(.englishRun))
     }
 
@@ -214,7 +216,7 @@ struct LineStartSentenceTests {
         let toggled = try Committing.driver("Tar\u{238B} ", Self.terminal)
         #expect(toggled.field.string == "Tar " && toggled.outputs.last?.decision == .restored(.userChoice))
         // Right after the commit there is no revision to undo and no active token: the key passes through (ENG-R703).
-        var driver = try Committing.driver("Tar ", EngineConfiguration(appContext: .code))
+        var driver = try Committing.driver("Tar ", EngineConfiguration(appContext: .code, typoCorrection: false))
         #expect(try driver.send(.restoreToggle).action == .passThrough)
         #expect(driver.field.string == "Tả ")
         // Backspace over the space re-opens `Tả`; committed again by a space, the condition holds again, and by

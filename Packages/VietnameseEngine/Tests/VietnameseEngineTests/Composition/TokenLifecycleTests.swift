@@ -117,7 +117,8 @@ struct BoundaryAndResetTests {
 
     @Test func historyIsBounded() throws {
         // ENG-R1001: older entries are dropped; runs of boundaries cannot grow without bound.
-        let engine = Engine(configuration: EngineConfiguration(historyLimit: 3), resources: .empty)
+        let engine = Engine(
+            configuration: EngineConfiguration(historyLimit: 3, typoCorrection: false), resources: .empty)
         var session = Session(engine: engine)
         for _ in 0..<50 {
             for key in "ba " { _ = session.handle(.key(KeyInput(key))) }
@@ -125,7 +126,7 @@ struct BoundaryAndResetTests {
         #expect(session.state.historyCount == 3)
         for _ in 0..<10_000 { _ = session.handle(.key(KeyInput(" "))) }
         #expect(session.state.history.entries.count <= 3 * History.entriesPerToken)
-        #expect(EngineConfiguration(historyLimit: 0).historyLimit == 1)
+        #expect(EngineConfiguration(historyLimit: 0, typoCorrection: false).historyLimit == 1)
     }
 
     @Test func backspaceEmptiesTheToken() throws {
@@ -154,7 +155,7 @@ struct LongTokenTests {
     @Test(arguments: [33, 64, 65, 1_000, 100_000])
     func longLiteralTokenRestoresExactly(length: Int) {
         let keys = "as" + String(repeating: "b", count: length - 2)
-        let engine = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         var session = Session(engine: engine)
         for key in keys { _ = session.handle(.key(KeyInput(key))) }
         #expect(session.state.activeDisplay.unicodeScalars.count == length - 1)  // "áb..."

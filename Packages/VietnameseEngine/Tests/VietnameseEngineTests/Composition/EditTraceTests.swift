@@ -19,7 +19,9 @@ struct EditTraceTests {
         }
     }
 
-    private func trace(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> [Step] {
+    private func trace(
+        _ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false)
+    ) throws -> [Step] {
         var driver = EngineDriver(configuration: configuration)
         try driver.type(keys)
         return driver.outputs.map { output in
@@ -42,7 +44,7 @@ struct EditTraceTests {
     }
 
     @Test func vniDuoc795() throws {
-        let vni = EngineConfiguration(inputMethod: .vni)
+        let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
         #expect(
             try trace("duoc795", vni) == [
                 .pass, .pass, .pass, .pass, .edit(3, "ươc"), .edit(4, "đươc"), .edit(2, "ợc"),

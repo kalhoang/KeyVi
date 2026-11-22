@@ -8,6 +8,8 @@ Details and quotes: `docs/decisions/0200-data-sources-and-licences.md`.
 | Data | Shipped as | Source | Licence | Required attribution |
 |---|---|---|---|---|
 | English lexicon | `english.txt` | SCOWL 2020.12.07 by Kevin Atkinson, levels 10/20/35, `words` lists for English, American, British (-ise, -ize); http://wordlist.aspell.net/ | SCOWL permission notice (MIT/X11-style); component sources public domain (Moby Words II, Brian Kelk's UK list, 12dicts) or permissive with notice (WordNet 1.6, VarCon, Ispell) | Reproduce the full SCOWL `Copyright` file (`data/licenses/SCOWL-2020.12.07-Copyright.txt`) in the documentation / acknowledgements. Done in `NOTICES.txt`. |
+| Guard list of the typo correction (spec/01-engine.md ENG-R1120) | `guard-list.bloom` (a Bloom filter of hashed bits, not the words) | SCOWL 2020.12.07 as above: the `words` lists for English, American, British (-ise, -ize) at levels 40/50/55/60/70 and the `proper-names` lists (English 35/40/50/60/70, American 50), entries of five letters or more, lowercased, ASCII letters only, minus `english.txt` (the 26 files: docs/decisions/0203-correction-data.md) | SCOWL permission notice, as above | The same SCOWL `Copyright` file, already reproduced in `NOTICES.txt`, whose SCOWL section names the guard list. |
+| Typo correction tables: keyboard neighbours, unmarked shapes, Vietnamese keyings | `keyboard-neighbours.txt`, `unmarked-shapes.txt`, `vietnamese-keyings.txt` | written by the project: the QWERTY table from the public ANSI layout (`data/inputs/keyboard-neighbours.txt`), the shapes and keyings generated from the engine's syllable tables | MPL-2.0, as the engine package | Covered by the engine's licence (`data/LICENSE`, `data/NOTICE`). |
 | Attested syllables | `attested.txt` (syllables only) | 13 Vietnamese laws and codes listed in `data/inputs/legal/SOURCES.tsv`, downloaded from the portal of the Intellectual Property Office of Viet Nam (ipvietnam.gov.vn) and the Official Gazette (congbao.chinhphu.vn) | Not protected by copyright: Law on Intellectual Property No. 50/2005/QH11, Article 15(2) | None required. Courtesy credit, given in `NOTICES.txt`: "Legal texts obtained from the Intellectual Property Office of Viet Nam (ipvietnam.gov.vn) and the Official Gazette (congbao.chinhphu.vn)." (both portals ask for their name when information is republished) |
 | Prose corpus (tests only, not shipped) | `data/corpus/prose-vi.txt` | same legal texts | same | same courtesy credit |
 | Escape regression corpus (tests only, not shipped) | `Packages/VietnameseEngine/Tests/VietnameseEngineTests/Corpus/escape-regression.txt` (393 words: 343 from web2, 50 SCOWL words of `english.txt`) | web2, Webster's Second International Dictionary (1934), the `/usr/share/dict/words` list of macOS and the BSDs; SCOWL as above | web2: public domain ("The 1934 copyright has lapsed, according to the supplier", README of the list); SCOWL as above | None required for web2; SCOWL as above. Details: docs/decisions/0200 (amendment of 2026-11-17). |
@@ -17,9 +19,10 @@ Details and quotes: `docs/decisions/0200-data-sources-and-licences.md`.
 Text to paste into `THIRD_PARTY_NOTICES.md` (the SCOWL block must be the verbatim file):
 
 ```text
-English word list (VietnameseEngineData english.txt)
+English word lists (VietnameseEngineData english.txt and guard-list.bloom)
 Derived from SCOWL (Spell Checker Oriented Word Lists) release 2020.12.07 by Kevin Atkinson,
-http://wordlist.aspell.net/, size levels 10, 20 and 35.
+http://wordlist.aspell.net/: english.txt from size levels 10, 20 and 35; the guard list from the words lists of
+size levels 40 to 70 and the proper-names lists of size levels 35 to 70.
 <verbatim contents of data/licenses/SCOWL-2020.12.07-Copyright.txt>
 
 Vietnamese syllable list (VietnameseEngineData attested.txt)

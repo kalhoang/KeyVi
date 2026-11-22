@@ -24,10 +24,10 @@ struct SpotListGateTests {
         let resources = try RealData.resources()
         // ENG-R823: `việt` is a vi token, so the run is not English; `and` is an English word that is not
         // a Vietnamese syllable, so the run after it is English.
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: resources)
+        var driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
         try driver.type("vieejt ")
         #expect(driver.field.string == "việt " && !driver.state.recentLanguages.isEnglishRun)
-        driver = EngineDriver(configuration: EngineConfiguration(), resources: resources)
+        driver = EngineDriver(configuration: EngineConfiguration(typoCorrection: false), resources: resources)
         try driver.type("and ")
         #expect(driver.field.string == "and " && driver.state.recentLanguages.isEnglishRun)
         #expect(SpotList.seeds == ["", "vieejt ", "and "])

@@ -3141,13 +3141,15 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
     public var healthEvents: [HealthEvent]
     public var conflictingInputApps: [BundleKey]
     public var userReport: UserReportSection?
+    /// Counts of the host since launch (1.1.0, ADR 0323): numbers only. Nil when the report was built without them.
+    public var counters: CountersSection?
 
     public init(
         formatVersion: Int = DiagnosticsReport.formatVersion, generatedAt: Date, app: AppIdentity, system: SystemInfo,
         hostState: HostStateCode, keyboard: KeyboardSection, permissions: PermissionsSection, tap: TapSection,
         secureInput: SecureInputSection, focus: FocusSection?, rule: RuleSection?, settings: SettingsSection,
         reportedAppMode: AppModeSection?, latency: LatencySection, healthEvents: [HealthEvent],
-        conflictingInputApps: [BundleKey], userReport: UserReportSection?
+        conflictingInputApps: [BundleKey], userReport: UserReportSection?, counters: CountersSection? = nil
     ) {
         self.formatVersion = formatVersion
         self.generatedAt = generatedAt
@@ -3166,6 +3168,7 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         self.healthEvents = healthEvents
         self.conflictingInputApps = conflictingInputApps
         self.userReport = userReport
+        self.counters = counters
     }
 
     public struct KeyboardSection: Sendable, Hashable, Codable {
@@ -3430,19 +3433,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
         public var learnCollisionChoices: Bool
         /// D29: fix the previous word once the next word shows the language (PLT-R357).
         public var lookaheadRevision: Bool
+        /// D30: correct one clearly mistyped English word at its commit (PRD-R80, 1.1.0), the user's switch.
+        public var typoCorrection: Bool
         public var interfaceLanguage: InterfaceLanguage
         public var updateChannel: UpdateChannel
         public var explicitlySetKeys: [String]  // names of keys the user changed (PRD-R6), no values
         /// Entries of the learned collision memory: the count only, never a word (PLT-R901, PLT-R914). Nil when the
         /// report was built without it.
         public var learnedCollisionEntries: Int?
+        /// Entries of the never-correct list: the count only, never a word (PRD-R45, PRD-R81, ENG-R1118). Nil when the
+        /// report was built without it.
+        public var neverCorrectEntries: Int?
 
         public init(
             typingMethod: TypingMethod, tonePlacement: TonePlacement, englishRestore: Bool, standaloneW: Bool,
             bracketKeys: Bool, macrosEnabled: Bool, macroCount: Int, macrosInEnglishMode: Bool, rememberPerApp: Bool,
             toggleHotkey: HotkeyBinding, restoreHotkeySet: Bool, learnCollisionChoices: Bool = true,
-            lookaheadRevision: Bool = true, interfaceLanguage: InterfaceLanguage, updateChannel: UpdateChannel,
-            explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil
+            lookaheadRevision: Bool = true, typoCorrection: Bool = true, interfaceLanguage: InterfaceLanguage,
+            updateChannel: UpdateChannel, explicitlySetKeys: [String], learnedCollisionEntries: Int? = nil,
+            neverCorrectEntries: Int? = nil
         ) {
             self.typingMethod = typingMethod
             self.tonePlacement = tonePlacement
@@ -3457,10 +3466,25 @@ public struct DiagnosticsReport: Sendable, Hashable, Codable {
             self.restoreHotkeySet = restoreHotkeySet
             self.learnCollisionChoices = learnCollisionChoices
             self.lookaheadRevision = lookaheadRevision
+            self.typoCorrection = typoCorrection
             self.interfaceLanguage = interfaceLanguage
             self.updateChannel = updateChannel
             self.explicitlySetKeys = explicitlySetKeys
             self.learnedCollisionEntries = learnedCollisionEntries
+            self.neverCorrectEntries = neverCorrectEntries
+        }
+    }
+
+    /// Counts the host keeps since launch (`HostCounters`), numbers only (ENG-R1121, PRD-R45).
+    public struct CountersSection: Sendable, Hashable, Codable {
+        /// Commits the engine corrected (ENG-R1115).
+        public var corrections: UInt64?
+        /// Corrections the user took back with the restore key (ENG-R1117).
+        public var correctionUndos: UInt64?
+
+        public init(corrections: UInt64? = nil, correctionUndos: UInt64? = nil) {
+            self.corrections = corrections
+            self.correctionUndos = correctionUndos
         }
     }
 
@@ -4185,6 +4209,10 @@ public struct UserSettings: Sendable, Hashable {
     /// D29 "lookaheadRevision": revise the previous word once the next word shows the language (ENG-R828,
     /// PLT-R357). ANDed per app with the rule's `features.lookaheadRevision`.
     public var lookaheadRevision: Setting<Bool> = .unset
+    /// D30 "typoCorrection": correct one clearly mistyped English word at its commit (1.1.0, PRD-R80, ENG-R1119). The
+    /// engine gets it ANDed with D4, the rule's `features.englishRestore` and the restore key (D8 and the rule's
+    /// `features.restoreHotkey`).
+    public var typoCorrection: Setting<Bool> = .unset
 
     /// ENG-R860 user lists, keyed by lowercased raw keys ("englishRestoreLists" object). User-authored
     /// settings, allowed on disk (PLT-R901 a).
@@ -4193,6 +4221,9 @@ public struct UserSettings: Sendable, Hashable {
     /// ENG-R862: words learned from the user's toggles, each applying only in its app (`englishRestoreLists`
     /// `learnedWords`). `keepAsTyped` and `keepVietnamese` above are the global entries.
     public var learnedWords: Set<LearnedWord> = []
+    /// ENG-R1118, PRD-R81: the never-correct list, lowercase letters (`NeverCorrectEntry`), per user in every app
+    /// (`englishRestoreLists` `neverCorrect`). User content: never logged; diagnostics report its count only.
+    public var neverCorrect: Set<String> = []
     /// Shipped rules with `requiresUserOptIn: true` that the user enabled (PLT-R460) ("optedInRules").
     public var optedInRules: Set<RuleID> = []
     /// "onboarding" object (PRD-R42).
@@ -4201,13 +4232,14 @@ public struct UserSettings: Sendable, Hashable {
     public init() {}
 
     /// Names of keys that are explicitly set, for the content-free diagnostics report: the JSON names of set
-    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `optedInRules`
-    /// when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
+    /// `Setting` values in declaration order, then `keepAsTyped`, `keepVietnamese`, `learnedWords`, `neverCorrect`,
+    /// `optedInRules` when non-empty. Names only, never values or apps (PLT-R901, PRD-R6, ADR 0314).
     public var explicitlySetKeys: [String] {
         let settings = SettingFields.all.filter { $0.isSet(self) }.map(\.key)
         let lists = [
             (SettingListKey.keepAsTyped, keepAsTyped.isEmpty), (SettingListKey.keepVietnamese, keepVietnamese.isEmpty),
-            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.optedInRules, optedInRules.isEmpty),
+            (SettingListKey.learnedWords, learnedWords.isEmpty), (SettingListKey.neverCorrect, neverCorrect.isEmpty),
+            (SettingListKey.optedInRules, optedInRules.isEmpty),
         ]
         return settings + lists.filter { !$0.1 }.map(\.0)
     }
@@ -4256,8 +4288,12 @@ public struct EffectiveSettings: Sendable, Hashable {
     public var layoutBinding: LayoutModeBinding
     public var learnCollisionChoices: Bool
     public var lookaheadRevision: Bool
+    /// D30 (1.1.0).
+    public var typoCorrection: Bool
     public var keepAsTyped: Set<String>
     public var keepVietnamese: Set<String>
+    /// ENG-R1118, PRD-R81 (1.1.0).
+    public var neverCorrect: Set<String>
     public var optedInRules: Set<RuleID>
 }
 
@@ -4285,8 +4321,10 @@ public enum DefaultSettings {
         layoutBinding: LayoutModeBinding(),
         learnCollisionChoices: true,  // D28 on (decision of the product owner, 15/11/2026)
         lookaheadRevision: true,  // D29 on, also at Return in chat apps (decision of the product owner, 15/11/2026)
+        typoCorrection: true,  // D30 on (decision of the product owner, 18/11/2026, ADR 0009 item 10)
         keepAsTyped: [],
         keepVietnamese: [],
+        neverCorrect: [],
         optedInRules: []
     )
 }
@@ -4317,8 +4355,10 @@ extension UserSettings {
             layoutBinding: layoutBinding.resolved(default: defaults.layoutBinding),
             learnCollisionChoices: learnCollisionChoices.resolved(default: defaults.learnCollisionChoices),
             lookaheadRevision: lookaheadRevision.resolved(default: defaults.lookaheadRevision),
+            typoCorrection: typoCorrection.resolved(default: defaults.typoCorrection),
             keepAsTyped: keepAsTyped,
             keepVietnamese: keepVietnamese,
+            neverCorrect: neverCorrect,
             optedInRules: optedInRules
         )
     }
@@ -4482,6 +4522,11 @@ public struct MigrationChain: Sendable {
     /// optional `learnedWords` array, which builds without it keep unread (PLT-R1002). No step is needed for the
     /// files written before it: their `keepAsTyped` and `keepVietnamese` entries carry no app, so they are read as
     /// global entries, and so is a `learnedWords` item without an app (`LearnedWordsCodec`).
+    ///
+    /// It stays at version 1 for typo correction too (1.1.0, ADR 0323): `settings` gains the optional `typoCorrection`
+    /// (D30; absent is unset, so the shipped default applies, PRD-R6) and `englishRestoreLists` the optional
+    /// `neverCorrect` array (ENG-R1118). A file written before reads as D30 at its default and an empty list; 1.0.x
+    /// builds keep both keys unread through their rewrites (PLT-R1002).
     public static let shipped = MigrationChain([])
 }
 ```
@@ -5026,12 +5071,15 @@ struct SettingsImporter {
         return object
     }
 
-    /// Setting keys whose value would change; onboarding is machine state and never imported.
+    /// Setting keys whose value would change; onboarding is machine state and never imported. The never-correct list
+    /// is part of the settings (PRD-R72, PRD-R81: no checkbox of its own); an export of 1.0.x has none, which reads as
+    /// an empty list, so it is named only when the current list is not empty.
     static func changedKeys(from current: UserSettings, to imported: UserSettings) -> [String] {
         var keys = SettingFields.all.filter { !$0.isEqual(current, imported) }.map(\.key)
         if current.keepAsTyped != imported.keepAsTyped { keys.append(SettingListKey.keepAsTyped) }
         if current.keepVietnamese != imported.keepVietnamese { keys.append(SettingListKey.keepVietnamese) }
         if current.learnedWords != imported.learnedWords { keys.append(SettingListKey.learnedWords) }
+        if current.neverCorrect != imported.neverCorrect { keys.append(SettingListKey.neverCorrect) }
         if current.optedInRules != imported.optedInRules { keys.append(SettingListKey.optedInRules) }
         return keys
     }
@@ -7741,6 +7789,35 @@ exhaustively over `CommitRule` needs one more case (the app only prints reason c
 - No API change for REG-38: in the code context rule L9 now decides a code-only word whose keys are not English before
   L6 and L7 (`sudo chown -R` keeps `chown`), with the existing reason `codeContext`.
 
+Addition of 19/11/2026 for the typo correction of 1.1.0 (section 11A of the engine spec, ENG-R1110 to ENG-R1125; host
+decision record `docs/decisions/0323-never-correct-list.md`). It adds public API: `EngineConfiguration.typoCorrection`
+(default `true`), `CommitDecision.corrected(rule)`, `LearningSignal.neverCorrect(raw:)`, `Resources.userNeverCorrect`
+and `Resources.correction`. A consumer that switches exhaustively over `CommitDecision` or `LearningSignal` needs one
+more case each.
+
+- `corrected(rule)` is one edit of the restore kind (ENG-R803, ENG-R1115): the commit's action is one
+  `.edit(_, thenPassThrough: true)` whose `TextEdit` replaces the token's display with the correction, exactly the
+  shape of a `restored(rule)` commit, so the host injects it with the commit's own job kind and every strategy applies
+  it; there is no new edit job kind and no new compat rule flag. `rule` names the 8.1 rule that would have decided the
+  token and carries no text (ENG-R1121); the host counts it (`HostCounters.corrections`) and never records the words.
+  The restore key right after it answers with an edit that brings back the keys as typed and keeps the boundary
+  character: a `restore` job whose deletion is wider than the empty active display, as for the revision undo
+  (ENG-R1117, PLT-R353).
+- A `neverCorrect` signal may arrive on the restore key and must be stored at once: `EngineOutput.learning` of the
+  `restoreToggle` event (not only of a composing key) can be `LearningSignal.neverCorrect(raw:)`, the lowercased typed
+  word, so the pipeline forwards the learning of `restoreLastWord` as it does for `compose`. The host adds it to the
+  never-correct list on the first signal through `UserSettings.neverCorrect(_:)`, never through `LearningTracker` and
+  its two-signal threshold (ENG-R862 does not apply, ENG-R1118). The list is per user, the same in every app, and is
+  content: never logged, a count only in diagnostics.
+- The switch is the conjunction of ENG-R1119, and every one of its inputs rebuilds the catalog:
+  `EngineSettingsMapping.typoCorrection(_:variant:)` is D30 AND D4 AND the rule's `features.englishRestore` AND the
+  rule's `features.restoreHotkey` AND D8 on. D30, the on or off state of D8 (`EngineInputs.restoreKeyEnabled`, the
+  binding itself stays out, so a rebinding keeps the revision) and the never-correct list are `EngineInputs`, so a
+  change builds a new catalog with a new revision; the rule's `englishRestore` and `restoreHotkey` are variant bits,
+  so the catalog has 32 prebuilt engines. Every engine of the catalog shares one `Resources.correctionIndex` (a class
+  instance built once in `Resources.init`) and the one copy-on-write storage of `Resources.correction` (the guard
+  filter's bits, the packed shapes and keyings), so the doubled catalog does not double the correction data.
+
 <!-- include: Packages/AppCore/Sources/InputHost/Snapshots/Snapshots.swift -->
 ```swift
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -7843,19 +7920,27 @@ public struct EngineVariant: Sendable, Hashable {
     /// The rule allows revising the previous word (`features.lookaheadRevision`, PLT-R357); the engine gets it
     /// ANDed with the user's D29 (ENG-R829).
     public var lookaheadRevision: Bool
-    public init(appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true) {
+    /// The rule leaves the restore key on (`features.restoreHotkey`, PLT-R353): the typo correction is made only where
+    /// the key can undo it, so the engine gets D30 ANDed with it, D4, `englishRestore` and D8 (ENG-R1119, 1.1.0).
+    public var restoreHotkey: Bool
+    public init(
+        appContext: EngineContextKind, englishRestore: Bool, macros: Bool, lookaheadRevision: Bool = true,
+        restoreHotkey: Bool = true
+    ) {
         self.appContext = appContext
         self.englishRestore = englishRestore
         self.macros = macros
         self.lookaheadRevision = lookaheadRevision
+        self.restoreHotkey = restoreHotkey
     }
 
-    public static let `default` = EngineVariant(appContext: .general, englishRestore: true, macros: true)
+    public static let `default` = EngineVariant(
+        appContext: .general, englishRestore: true, macros: true, lookaheadRevision: true, restoreHotkey: true)
 
     /// The two variants differ in `lookaheadRevision` and nothing else (ENG-R1211 amendment of 19/11/2026).
     public func differsOnlyInLookaheadRevision(from other: EngineVariant) -> Bool {
         lookaheadRevision != other.lookaheadRevision && appContext == other.appContext
-            && englishRestore == other.englishRestore && macros == other.macros
+            && englishRestore == other.englishRestore && macros == other.macros && restoreHotkey == other.restoreHotkey
     }
 }
 
@@ -8183,8 +8268,9 @@ public struct VietnameseCompositionEngineFactory: CompositionEngineFactory, Send
     }
 }
 
-/// Sixteen prebuilt engines: appContext x englishRestore x macros x lookaheadRevision (ENG-R850, `features`,
-/// ENG-R1107, PLT-R357). Lookup is an array index, so the tap never hashes or allocates to find an engine.
+/// Thirty-two prebuilt engines: appContext x englishRestore x macros x lookaheadRevision x restoreHotkey (ENG-R850,
+/// `features`, ENG-R1107, PLT-R357, ENG-R1119). They share one `Resources` value, so the bundled data, the correction
+/// data among it, is held once. Lookup is an array index, so the tap never hashes or allocates to find an engine.
 public struct EngineCatalog: Sendable {
     private let slots: [VietnameseEngine.Engine]
     /// Identifies the engine-affecting settings the catalog was built from (PRD-R27, PLT-R340). The publisher
@@ -8197,12 +8283,13 @@ public struct EngineCatalog: Sendable {
     /// hard boundary instead of resetting the word being typed (ENG-R1211).
     public let memoryRevision: UInt64
 
-    /// Missing variants fall back to the default variant's engine (or a neutral engine for an empty catalog).
+    /// Missing variants fall back to the default variant's engine (or a neutral engine without word lists for an empty
+    /// catalog; it makes no typo correction, ENG-R1119).
     public init(engines: [EngineVariant: VietnameseEngine.Engine], revision: UInt64? = nil, memoryRevision: UInt64 = 0)
     {
         let fallback =
             engines[.default] ?? engines.values.first
-            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(), resources: .empty)
+            ?? VietnameseEngine.Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         slots = EngineVariant.catalogOrder.map { engines[$0] ?? fallback }
         self.revision = revision
         self.memoryRevision = memoryRevision
@@ -8217,7 +8304,7 @@ public enum MacroTableBuildIssue: Sendable, Hashable {
 
 /// Pure mapping from settings to engine values. Runs on the utility queue when settings change.
 public enum EngineBridge {
-    /// D1, D2, D4, D5, D6 plus the variant.
+    /// D1, D2, D4, D5, D6, D29, D30 and D8's on or off state, plus the variant.
     public static func configuration(for settings: EffectiveSettings, variant: EngineVariant) -> EngineConfiguration {
         EngineSettingsMapping.configuration(for: settings, variant: variant)
     }
@@ -8227,23 +8314,26 @@ public enum EngineBridge {
         MacroTableBuilder.build(from: macros) { try MacroTable($0) }
     }
 
-    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists and macros.
+    /// Loads bundled lexicons once (ENG-R1231: at most 50 ms) and attaches the global user lists, the never-correct
+    /// list and the macros.
     public static func resources(
         settings: EffectiveSettings, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         try resources(
             wordLists: UserWordLists(keepAsTyped: settings.keepAsTyped, keepVietnamese: settings.keepVietnamese),
-            macros: macros, bundledLoader: bundledLoader)
+            neverCorrect: settings.neverCorrect, macros: macros, bundledLoader: bundledLoader)
     }
 
-    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862) and the
-    /// macros. The engine gets word sets only, never the app (ENG-R851).
+    /// Attaches the focused app's user lists (global entries plus the words learned in that app, ENG-R862), the
+    /// never-correct list (per user, the same in every app, ENG-R1118) and the macros. The engine gets word sets only,
+    /// never the app (ENG-R851).
     public static func resources(
-        wordLists: UserWordLists, macros: MacroTable, bundledLoader: () throws -> Resources
+        wordLists: UserWordLists, neverCorrect: Set<String>, macros: MacroTable, bundledLoader: () throws -> Resources
     ) rethrows -> Resources {
         var resources = try bundledLoader()
         resources.userKeepRaw = WordSet(wordLists.keepAsTyped)
         resources.userKeepVietnamese = WordSet(wordLists.keepVietnamese)
+        resources.userNeverCorrect = WordSet(neverCorrect)
         resources.macros = macros
         return resources
     }
@@ -9956,7 +10046,7 @@ public final class InputHostController {
             enabledSources: dependencies.inputSources.enabledSources(),
             secureInput: channels.snapshots.secureInput.load(),
             permissions: latestPermissions ?? Self.unknownPermissions, tapEnabled: session?.thread.isEnabled ?? false,
-            conflicts: conflicts)
+            conflicts: conflicts, corrections: counters.correctionCount, correctionUndos: counters.correctionUndoCount)
     }
 }
 
@@ -9971,6 +10061,9 @@ public struct HostReportContext: Sendable {
     public var permissions: PermissionStatus
     public var tapEnabled: Bool
     public var conflicts: [ConflictingInput]
+    /// `HostCounters` since launch (ENG-R1115, ENG-R1117, 1.1.0): counts only, for the report (ADR 0323).
+    public var corrections: UInt64 = 0
+    public var correctionUndos: UInt64 = 0
 }
 ```
 <!-- /include -->
@@ -12072,7 +12165,7 @@ public enum ReportAssembler {
             reportedAppMode: ReportSections.reportedAppMode(settings, reportedApp: reportedApp),
             latency: DiagnosticsReport.LatencySection(metrics: metrics, probe: probe),
             healthEvents: ReportSections.recentHealth(health), conflictingInputApps: ReportSections.conflicts(host),
-            userReport: ReportSections.userReport(draft))
+            userReport: ReportSections.userReport(draft), counters: ReportSections.counters(host))
     }
 
     /// Typed projection of the reported app's user override (PLT-R541, ADR 0312): copies strategy, params,
@@ -14784,13 +14877,18 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     public var tapRecoveries: UInt64
     /// Of those, recoveries after which the engine state was reset (QA-R11 expects every one).
     public var engineResetsAfterTapRecovery: UInt64
+    /// Commits the engines corrected since launch (ENG-R1115, 1.1.0); nil from a build before 1.1.0. A count only.
+    public var corrections: UInt64?
+    /// Of those, corrections the restore key took back (ENG-R1117, 1.1.0); nil from a build before 1.1.0.
+    public var correctionUndos: UInt64?
     public var metrics: MetricsSnapshot
 
     public init(
         processIdentifier: Int32, state: State, mode: TypingMode? = nil, pauseReason: PauseCode? = nil,
         failOpenReason: FailOpenReason? = nil, secureInputHolderBundleId: BundleKey? = nil,
         firstKeyAfterSecureInputReleaseComposed: Bool? = nil, tapRecoveries: UInt64 = 0,
-        engineResetsAfterTapRecovery: UInt64 = 0, metrics: MetricsSnapshot
+        engineResetsAfterTapRecovery: UInt64 = 0, corrections: UInt64? = nil, correctionUndos: UInt64? = nil,
+        metrics: MetricsSnapshot
     ) {
         self.processIdentifier = processIdentifier
         self.state = state
@@ -14801,6 +14899,8 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
         self.firstKeyAfterSecureInputReleaseComposed = firstKeyAfterSecureInputReleaseComposed
         self.tapRecoveries = tapRecoveries
         self.engineResetsAfterTapRecovery = engineResetsAfterTapRecovery
+        self.corrections = corrections
+        self.correctionUndos = correctionUndos
         self.metrics = metrics
     }
 
@@ -14809,12 +14909,14 @@ public struct AppStateSnapshot: Sendable, Hashable, Codable {
     /// the holder appears as its bundle ID only, and only while paused for secure input.
     public init(
         processIdentifier: Int32, hostState: HostState, firstKeyAfterSecureInputReleaseComposed: Bool?,
-        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, metrics: MetricsSnapshot
+        tapRecoveries: UInt64, engineResetsAfterTapRecovery: UInt64, corrections: UInt64? = nil,
+        correctionUndos: UInt64? = nil, metrics: MetricsSnapshot
     ) {
         self.init(
             processIdentifier: processIdentifier, state: .starting,
             firstKeyAfterSecureInputReleaseComposed: firstKeyAfterSecureInputReleaseComposed,
-            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery, metrics: metrics)
+            tapRecoveries: tapRecoveries, engineResetsAfterTapRecovery: engineResetsAfterTapRecovery,
+            corrections: corrections, correctionUndos: correctionUndos, metrics: metrics)
         switch hostState {
         case .noPermission: state = .noPermission
         case .starting: state = .starting
@@ -14992,10 +15094,12 @@ public protocol IntegrationHookFileAccess: Sendable {
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Content-free observations of the host since launch that the integration hooks report in `AppStateSnapshot`
-// (ADR 0502, "Integration hooks"): tap recoveries after a timeout and the engine resets that came with them
-// (PLT-R330, QA-R11), and whether the first key-down after a secure-input release was composed (PLT-R398B). Always
-// on in every build (two counters and one byte); written on the tap thread with relaxed atomics only, no lock and
-// no allocation (PLT-R304, PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
+// (ADR 0502, "Integration hooks") and, for the typo correction, the diagnostics report (PRD-R45, ADR 0323): tap
+// recoveries after a timeout and the engine resets that came with them (PLT-R330, QA-R11), whether the first key-down
+// after a secure-input release was composed (PLT-R398B), and the corrections the engines made and the ones the
+// restore key undid (ENG-R1115, ENG-R1117, 1.1.0; counts only, never words, ENG-R1121). Always on in every build (four
+// counters and one byte); written on the tap thread with relaxed atomics only, no lock and no allocation (PLT-R304,
+// PLT-R305). Unlike `PlatformMetrics` they are never reset: they count since launch.
 
 internal import Diagnostics
 internal import RealtimeSupport
@@ -15005,6 +15109,10 @@ public final class HostCounters: Sendable {
     let tapRecoveries = AtomicCounter()
     /// The pipeline handled a `tapDisabledByTimeout` and its engine was left reset (QA-R11).
     let engineResetsAfterTapRecovery = AtomicCounter()
+    /// A commit the engine decided `corrected` (ENG-R1115).
+    let corrections = AtomicCounter()
+    /// A restore toggle that undid a correction: its output carried `LearningSignal.neverCorrect` (ENG-R1117).
+    let correctionUndos = AtomicCounter()
     /// 0: no secure-input release seen yet; 1: the first key-down after the latest release passed uncomposed;
     /// 2: it was composed.
     private let firstKeyAfterRelease = Atomic<UInt8>(0)
@@ -15013,6 +15121,8 @@ public final class HostCounters: Sendable {
 
     public var tapRecoveryCount: UInt64 { tapRecoveries.value }
     public var engineResetsAfterTapRecoveryCount: UInt64 { engineResetsAfterTapRecovery.value }
+    public var correctionCount: UInt64 { corrections.value }
+    public var correctionUndoCount: UInt64 { correctionUndos.value }
 
     /// PLT-R398B: nil before the first release of this process.
     public var firstKeyAfterSecureInputReleaseComposed: Bool? {

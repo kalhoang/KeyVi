@@ -70,6 +70,14 @@ public struct EngineConfiguration: Sendable, Hashable {
     /// code-context app (PLT-R357) while RV5 only completes L9's own line rule. Read only in the code context and
     /// with auto restore on; it does not depend on `lookaheadRevision`.
     public var lineStartRevision: Bool
+    /// The typo correction of section 11A (ENG-R1119), 1.1.0: at a commit, one clearly mistyped English word becomes
+    /// the only word it can be (`androdi` gives `android`). Default on. The host passes the user's D30 ANDed with D4,
+    /// with the rule's `features.englishRestore` and with the restore key (the rule's `features.restoreHotkey` and
+    /// the user's D8), so that a correction is made only where English restore runs and the restore key can undo it.
+    /// The engine also makes none with `autoRestore` off (the English data is not consulted, ENG-R802) or in the
+    /// `code` context (ENG-R1112). Off, no output carries `CommitDecision.corrected` or `LearningSignal.neverCorrect`
+    /// and every commit is exactly as without the section.
+    public var typoCorrection: Bool
 
     /// A configuration; every argument defaults to the spec's default. `historyLimit` is raised to 1 if
     /// smaller.
@@ -80,7 +88,8 @@ public struct EngineConfiguration: Sendable, Hashable {
         appContext: AppContext = .general,
         historyLimit: Int = 16,
         lookaheadRevision: Bool = true,
-        lineStartRevision: Bool = true
+        lineStartRevision: Bool = true,
+        typoCorrection: Bool = true
     ) {
         self.inputMethod = inputMethod
         self.toneStyle = toneStyle
@@ -89,6 +98,7 @@ public struct EngineConfiguration: Sendable, Hashable {
         self.historyLimit = max(1, historyLimit)
         self.lookaheadRevision = lookaheadRevision
         self.lineStartRevision = lineStartRevision
+        self.typoCorrection = typoCorrection
     }
 }
 
@@ -235,6 +245,10 @@ public enum CommitDecision: Sendable, Hashable {
     case restored(CommitRule)
     /// A macro trigger was expanded (ENG-R1103, ENG-R1104).
     case macro
+    /// The typo correction replaced the token with the one word it can be (section 11A, ENG-R1115), 1.1.0. The rule
+    /// is the one of 8.1 that would have decided the token (`unchanged`, `invalid`, `escape`, `extendedSpelling`);
+    /// it carries no text (ENG-R1121).
+    case corrected(CommitRule)
 }
 
 /// The user's text expansions (spec section 11). Matching is on the keys as typed, ignoring case, in
@@ -293,13 +307,16 @@ public struct MacroTable: Sendable {
     public static let empty = MacroTable(entries: [], lookup: [:])
 }
 
-/// A hint for the host's user lists (ENG-R861), sent when the user's toggle disagreed with the rules.
-/// The engine never stores it.
+/// A hint for the host's user lists (ENG-R861), sent when the user's toggle disagreed with the rules or undid a
+/// typo correction (ENG-R1118). The engine never stores it.
 public enum LearningSignal: Sendable, Hashable {
     /// The user restored a word the rules would keep: a candidate for the keep-as-typed list.
     case preferredRaw(raw: String)
     /// The user kept a word the rules would restore: a candidate for the keep-Vietnamese list.
     case preferredVietnamese(raw: String)
+    /// The user undid a typo correction with the restore toggle (section 11A, ENG-R1117), 1.1.0: the typed word,
+    /// lowercased ASCII letters, for the never-correct list, which the host updates at once (ENG-R1118).
+    case neverCorrect(raw: String)
 }
 
 /// The result of one event (spec 6.2, 6.3).
@@ -310,7 +327,8 @@ public struct EngineOutput: Sendable, Hashable {
     public var composingText: String
     /// Set when the event committed a token or expanded a macro (ENG-R801).
     public var decision: CommitDecision?
-    /// Set when a toggled token was committed against the rules (ENG-R861).
+    /// Set when a toggled token was committed against the rules (ENG-R861), or when the toggle undid a typo
+    /// correction (ENG-R1118).
     public var learning: LearningSignal?
     /// Set when the commit also revised the previous token (ENG-R828): `action` is then one edit that covers
     /// the previous token, its separator and the current token (ENG-R803).
@@ -354,6 +372,9 @@ public struct EngineState: Sendable, Hashable {
     /// The previous event was a commit that revised the token before it; a restore toggle now undoes the
     /// revision (ENG-R829).
     package var previousEventRevised = false
+    /// The previous event was a commit that corrected its token (section 11A) at a boundary that keeps the history;
+    /// a restore toggle now undoes the correction (ENG-R1117).
+    package var previousEventCorrected = false
     /// The weak signals of the newest committed tokens, not yet final (ENG-R864).
     package var pendingSignals = PendingSignals()
 
@@ -406,13 +427,59 @@ public enum Language: Sendable, Hashable {
     case english
 }
 
+/// The bundled data of the typo correction of section 11A (ENG-R1120), 1.1.0, built by `lexicon-builder` from
+/// pinned inputs (ENG-R810). The fields are constants: the engine derives its lookup structures from them, so they
+/// change only by assigning a new value to ``Resources/correction`` (spec 12.2 as amended by the API stage). The
+/// shapes and keyings are packed sets (spec 12.2, sixth amendment), which the engine reads in place.
+public struct CorrectionData: Sendable {
+    /// The guard list: the SCOWL words of sizes 40 to 70 and proper names of sizes 10 to 70, minus the correction
+    /// lexicon, lowercase. A word it may hold is never corrected; it may answer yes for a word it lacks.
+    public let guardList: ApproximateWordSet
+    /// The QWERTY neighbours of ENG-R1113: 26 entries, one per lowercase letter, symmetric.
+    public let keyboardNeighbours: [Character: String]
+    /// The unmarked shapes of ENG-R1110 (d): every Tier A and Tier B syllable with marks and stroke removed
+    /// (`truong`, `nguoi`), lowercase ASCII.
+    public let unmarkedShapes: PackedWordSet
+    /// The usual-order Telex keyings of the Tier A syllables (ENG-R1125: `phair`, `chinhs`), lowercase ASCII.
+    /// Generated by `lexicon-builder` and never empty in the bundled data.
+    public let vietnameseKeyings: PackedWordSet
+
+    /// Correction data from its four parts.
+    public init(
+        guardList: ApproximateWordSet, keyboardNeighbours: [Character: String], unmarkedShapes: PackedWordSet,
+        vietnameseKeyings: PackedWordSet
+    ) {
+        self.guardList = guardList
+        self.keyboardNeighbours = keyboardNeighbours
+        self.unmarkedShapes = unmarkedShapes
+        self.vietnameseKeyings = vietnameseKeyings
+    }
+
+    /// Correction data whose shapes and keyings are given as word sets, packed here (the form of 1.1.0 before the
+    /// sixth amendment of spec 12.2, kept so that existing callers compile unchanged).
+    public init(
+        guardList: ApproximateWordSet, keyboardNeighbours: [Character: String], unmarkedShapes: WordSet,
+        vietnameseKeyings: WordSet
+    ) {
+        self.init(
+            guardList: guardList, keyboardNeighbours: keyboardNeighbours,
+            unmarkedShapes: PackedWordSet(unmarkedShapes.storage),
+            vietnameseKeyings: PackedWordSet(vietnameseKeyings.storage))
+    }
+
+    /// No data: no guard list, no neighbours (no substitution edit), no shapes and no keyings.
+    public static let empty = CorrectionData(
+        guardList: .empty, keyboardNeighbours: [:], unmarkedShapes: PackedWordSet.empty,
+        vietnameseKeyings: PackedWordSet.empty)
+}
+
 /// The data the restore policy of spec 8.1 reads, supplied by the host (the bundled lists of
 /// VietnameseEngineData and the user's own lists, ENG-R812, ENG-R860).
 public struct Resources: Sendable {
     /// Common English words, lowercase ASCII ("R is English", 8.1).
-    public var english: WordSet
+    public var english: WordSet { didSet { rebuildCorrectionIndex() } }
     /// Words that always stay as typed (`wifi`, `usb`); also count as English.
-    public var techAlways: WordSet
+    public var techAlways: WordSet { didSet { rebuildCorrectionIndex() } }
     /// Shell words restored only in the code context, outside Vietnamese text (rule L9, ENG-R850).
     public var techCodeOnly: WordSet
     /// Code-only words that configuration and protocol text writes capitalized at the start of a line (`host`):
@@ -433,6 +500,16 @@ public struct Resources: Sendable {
     public var collision: CollisionLists
     /// The host's learned memory for collision words (ENG-R865); the engine only reads it.
     public var collisionMemory: CollisionMemorySnapshot
+    /// The user's never-correct list, lowercased typed words (ENG-R1118), 1.1.0: a word on it is never corrected
+    /// (ENG-R1110 (c)). User data: never logged (ENG-R1121).
+    public var userNeverCorrect: WordSet
+    /// The bundled data of the typo correction (ENG-R1120), 1.1.0; empty without the bundled files.
+    public var correction: CorrectionData { didSet { rebuildCorrectionIndex() } }
+    /// The lookup structures of the typo correction (ENG-R1122), derived from `english`, `techAlways` and
+    /// `correction`: built at the end of `init` and rebuilt when one of those three fields is assigned, so it can
+    /// never be stale. The other fields (the user lists, the macros and the memory the host assigns after loading)
+    /// leave it alone, so every copy of a resources value, and every engine of a catalog, shares one index.
+    package private(set) var correctionIndex: CorrectionIndex
 
     /// Resources from the given lists.
     public init(
@@ -440,7 +517,8 @@ public struct Resources: Sendable {
         attestedSyllables: WordSet, ambiguity: [String: Language],
         userKeepRaw: WordSet, userKeepVietnamese: WordSet,
         macros: MacroTable = .empty, collision: CollisionLists = .empty,
-        collisionMemory: CollisionMemorySnapshot = .empty
+        collisionMemory: CollisionMemorySnapshot = .empty,
+        userNeverCorrect: WordSet = WordSet([]), correction: CorrectionData = .empty
     ) {
         self.english = english
         self.techAlways = techAlways
@@ -453,6 +531,13 @@ public struct Resources: Sendable {
         self.macros = macros
         self.collision = collision
         self.collisionMemory = collisionMemory
+        self.userNeverCorrect = userNeverCorrect
+        self.correction = correction
+        correctionIndex = CorrectionIndex(english: english, techAlways: techAlways, correction: correction)
+    }
+
+    private mutating func rebuildCorrectionIndex() {
+        correctionIndex = CorrectionIndex(english: english, techAlways: techAlways, correction: correction)
     }
 
     /// No word lists and no macros: the rules that need data never match (tests, and a host without

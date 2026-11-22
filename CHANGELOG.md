@@ -10,6 +10,22 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.1.0-beta.1] - 2026-11-22
+
+### Added
+
+- KeyVi now fixes a mistyped English word when you finish it and only one word fits: "androdi" becomes "android" and "gramar" becomes "grammar". Vietnamese words, words in all capitals and anything typed in Terminal or a code editor are never changed. Press Escape right after to get the word you typed back. The setting "Fix mistyped words" in Settings > Typing is on by default.
+- A word you take back with Escape goes on the new "Never correct" list in Settings > Typing and is never fixed again. You can add and remove words there, and the list is exported and imported with your other settings.
+
+### Fixed
+
+- A word that starts with w and that you type with a doubled w, out of the habit of typing ww to get the letter w, now gives the word you meant when you finish it: "wwebview" gives "webview" instead of "wwebview", "WwordPress" gives "WordPress", and a word typed with a capital first keeps its capital: "Wwade" gives "Wade" instead of "wade". Deleting back into such a word and finishing it again keeps the text you see.
+
+### Known issues
+
+- Right after you click into the middle of a line, a word typed just after #, @ or / may be fixed ("#androdi" becomes "#android"). Press Escape to get it back.
+- A mistyped word before a dot is fixed at the dot, even when a web address follows: "googel.com" becomes "google.com".
+
 ## [1.0.1] - 2026-11-22
 
 ### Changed

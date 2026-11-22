@@ -122,15 +122,11 @@ public struct LearnedChoicesSheetState: Sendable, Hashable {
     }
 
     public static func emptyText(appName: String, restoreHotkey: HotkeyBinding?, _ localizer: Localizer) -> String {
-        switch restoreHotkey {
-        case nil: localizer.format(SettingsText.learnedChoicesEmptyNoKey, appName)
-        case .key(.escape)?: localizer.format(SettingsText.learnedChoicesEmpty, appName)
-        case let binding?:
-            localizer.format(
-                SettingsText.learnedChoicesEmptyOtherKey, appName,
-                ShortcutWords.string(for: binding, localizer: localizer))
-        }
+        emptyWording.text(appName: appName, restoreHotkey: restoreHotkey, localizer)
     }
+
+    static let emptyWording = RestoreKeyWording(
+        escape: .learnedChoicesEmpty, otherKey: .learnedChoicesEmptyOtherKey, noKey: .learnedChoicesEmptyNoKey)
 }
 
 /// The Vietnamese reading of a bundled collision word for the sheet, with the user's settings (D2 tone placement, D5
@@ -166,7 +162,8 @@ public enum LearnedChoiceReading {
 
     private static func engine(_ method: InputMethod, _ style: ToneStyle) -> Engine {
         Engine(
-            configuration: EngineConfiguration(inputMethod: method, toneStyle: style, autoRestore: false),
+            configuration: EngineConfiguration(
+                inputMethod: method, toneStyle: style, autoRestore: false, typoCorrection: false),
             resources: .empty)
     }
 }

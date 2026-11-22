@@ -3,6 +3,7 @@
 // The engine identity of dev traces (PLT-R904A, ADR 0007 decision 13).
 
 import Testing
+import VietnameseEngine
 
 @testable import Diagnostics
 @testable import TestSupport
@@ -16,6 +17,62 @@ import Testing
         #expect(scanner == EngineIdentityProbe.appIdentity())
         let probes = DevEngineIdentity.telexProbes.count + DevEngineIdentity.vniProbes.count
         #expect(scanner.hasPrefix("p" + String(probes) + "-") && scanner.count == String(probes).count + 18)
+    }
+
+    /// ENG-R1119, plan Task 24: the probes include worked examples of 13.12 that the typo correction decides (S01,
+    /// S02, the closer of S25 and the one-key Vietnamese case S75), so a build whose correction differs gets
+    /// another identity; the recorder and the scanner both digest with the switch on.
+    @Test func theProbesExerciseTheTypoCorrection() {
+        for probe in ["androdi ", "gramar ", "androdi. ", "ddi pahir "] {
+            #expect(DevEngineIdentity.telexProbes.contains(probe))
+        }
+    }
+
+    /// ENG-R804, REG-40: the probes include rows X28 and X29 of 13.9.5, which the restore without the doubled `w`
+    /// decides in the default configuration the identity is computed with (`wwebview ` gives `webview `, `Wwebview `
+    /// gives `Webview `), so a build from before the amendment (1.0.1-beta.2 committed `wwebview ` and `Wwebview `)
+    /// gets another identity. (`answwer ` would not tell them apart: the correction already gave `answer `.) The camel
+    /// case probe `WwordPress ` follows rule L3b (ENG-R904): it gives `WordPress `. Row X40, `Wwade `, gives `Wade `
+    /// since the escaped letter of a standalone `w` doubling takes the capital of the `Ư` it removed (ENG-R903, REG-41,
+    /// ADR 0010 item 8); a build from before gives `wade `.
+    @Test func theProbesExerciseTheWDoubling() throws {
+        let resources = try ReplayEngineFactory.bundledResources()
+        for (probe, expected) in [
+            ("wwebview ", "webview "), ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("Wwade ", "Wade "),
+        ] {
+            #expect(DevEngineIdentity.telexProbes.contains(probe))
+            var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: resources))
+            let typed = DevEngineIdentity.type(probe) { character in
+                switch session.handle(.key(KeyInput(character))).action {
+                case .passThrough: .passThrough
+                case .edit(let edit, let thenPassThrough):
+                    .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+                }
+            }
+            #expect(typed == expected, "\(probe)")
+        }
+    }
+
+    /// ENG-R1119: with the bundled correction data (engine track E1) and the correction itself (E2), both merged into
+    /// integration/1.1.0, the identity with the switch on differs from the identity with it off, so the probes above
+    /// reach the correction.
+    @Test func theIdentityFollowsTheCorrection() throws {
+        let resources = try ReplayEngineFactory.bundledResources()
+        func identity(_ typoCorrection: Bool) -> String {
+            DevEngineIdentity.digest { vni in
+                let method: InputMethod = vni ? .vni : .telex(TelexOptions())
+                let configuration = EngineConfiguration(inputMethod: method, typoCorrection: typoCorrection)
+                var session = Session(engine: Engine(configuration: configuration, resources: resources))
+                return { character in
+                    switch session.handle(.key(KeyInput(character))).action {
+                    case .passThrough: .passThrough
+                    case .edit(let edit, let thenPassThrough):
+                        .edit(deleteCount: edit.deleteCount, insert: edit.insert, thenPassThrough: thenPassThrough)
+                    }
+                }
+            }
+        }
+        #expect(identity(true) != identity(false))
     }
 
     @Test func anotherBehaviourGivesAnotherIdentity() {

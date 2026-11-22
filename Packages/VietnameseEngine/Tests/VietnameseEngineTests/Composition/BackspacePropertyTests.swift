@@ -56,7 +56,8 @@ struct BackspacePropertyTests {
             var engines: [EngineConfiguration: Engine] = [:]
             for method in CorpusMethod.allCases {
                 for style in [ToneStyle.traditional, .modern] {
-                    let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+                    let configuration = EngineConfiguration(
+                        inputMethod: method.inputMethod, toneStyle: style, typoCorrection: false)
                     engines[configuration] = Engine(configuration: configuration, resources: .empty)
                 }
             }
@@ -64,7 +65,8 @@ struct BackspacePropertyTests {
         }
 
         func engine(_ method: CorpusMethod, _ style: ToneStyle) -> Engine {
-            let configuration = EngineConfiguration(inputMethod: method.inputMethod, toneStyle: style)
+            let configuration = EngineConfiguration(
+                inputMethod: method.inputMethod, toneStyle: style, typoCorrection: false)
             return engines[configuration] ?? Engine(configuration: configuration, resources: .empty)
         }
     }

@@ -12,8 +12,9 @@ import VietnameseEngineTesting
 @Suite("Commit, history and macro properties (13.6)")
 struct CommitPropertyTests {
     static let configurations: [EngineConfiguration] = [
-        EngineConfiguration(), EngineConfiguration(inputMethod: .vni), EngineConfiguration(historyLimit: 2),
-        EngineConfiguration(autoRestore: false, appContext: .code),
+        EngineConfiguration(typoCorrection: false), EngineConfiguration(inputMethod: .vni, typoCorrection: false),
+        EngineConfiguration(historyLimit: 2, typoCorrection: false),
+        EngineConfiguration(autoRestore: false, appContext: .code, typoCorrection: false),
     ]
     static let seeds: [UInt64] = Array(1...6)
 
@@ -74,10 +75,11 @@ struct CommitPropertyTests {
     }
 
     /// ENG-T32: for an ordinary token whose display differs from its raw keys, the toggle produces exactly
-    /// the raw keys.
+    /// the raw keys. A re-opened token that shows `R′` after rule L4 (ENG-R804, REG-40) shows its raw keys: its toggle
+    /// composes it (ENG-R701 second branch).
     private func checkRestoreIsExact(_ driver: EngineDriver) throws {
         guard let token = driver.state.active, !token.isMacro, token.display != token.rawText,
-            !driver.state.previousEventWasRestoreToggle
+            token.display != token.shownRawText, !driver.state.previousEventWasRestoreToggle
         else { return }
         var copy = driver
         try copy.send(.restoreToggle)
@@ -89,7 +91,7 @@ struct CommitPropertyTests {
     func deterministicReplay(seed: UInt64) {
         var generator = SeededGenerator(seed: seed)
         let events = RandomEvents.events(count: 3_000, using: &generator)
-        let engine = Engine(configuration: EngineConfiguration(), resources: Self.resources)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: Self.resources)
         var session = Session(engine: engine)
         var state = EngineState.initial
         for event in events {

@@ -25,24 +25,27 @@ struct BackspaceExhaustiveTests {
     static let spaces: [Space] = [
         Space(
             name: "Telex escapes", alphabet: ["w", "s", "f", "z", "a", "o", "d", "n", "W", "e"],
-            configuration: EngineConfiguration()),
+            configuration: EngineConfiguration(typoCorrection: false)),
         Space(
             name: "Telex brackets", alphabet: ["]", "[", "s", "z", "a", "o", "u", "w"],
-            configuration: EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)))),
+            configuration: EngineConfiguration(
+                inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false)),
         Space(
             name: "Telex brackets, uppercase", alphabet: ["]", "[", "S", "Z", "A", "O", "U", "W", "d"],
-            configuration: EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true)))),
+            configuration: EngineConfiguration(
+                inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false)),
         Space(
             name: "VNI", alphabet: ["1", "2", "0", "6", "7", "8", "9", "a", "o", "u", "d"],
-            configuration: EngineConfiguration(inputMethod: .vni)),
+            configuration: EngineConfiguration(inputMethod: .vni, typoCorrection: false)),
         Space(
             name: "Telex re-opened after a space", alphabet: ["w", "s", "z", "a", "o", "d", "e"],
-            configuration: EngineConfiguration(), boundary: " "),
+            configuration: EngineConfiguration(typoCorrection: false), boundary: " "),
         // Six keys: a stroke that applied while an escaped `ư` stood, with a tone key that lost its vowel
         // (`dwnsdw`, `d]nsd]`, ENG-R711 fallback 2).
         Space(
             name: "Telex strokes and tones, six keys", alphabet: ["w", "s", "a", "d", "n", "]", "["],
-            configuration: EngineConfiguration(inputMethod: .telex(TelexOptions(bracketKeys: true))), length: 6),
+            configuration: EngineConfiguration(
+                inputMethod: .telex(TelexOptions(bracketKeys: true)), typoCorrection: false), length: 6),
     ]
 
     @Test(arguments: spaces)

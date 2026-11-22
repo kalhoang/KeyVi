@@ -42,8 +42,10 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
     // General (PRD-R24)
     case openAtLogin, toggleHotkey, rememberPerApp, switchIndicator, interfaceLanguage
     case soundOnSwitch, clickIconToToggle, layoutBinding
-    // Typing (PRD-R24); D28 under the two user lists, D29 under Advanced (PRD-R78, PRD-R79)
-    case typingMethod, tonePlacement, englishRestore, keepAsTyped, keepVietnamese, learnCollisionChoices
+    // Typing (PRD-R24); the never-correct list under the two user lists, then D28 and D30 (PRD-R78, PRD-R80,
+    // PRD-R81); D29 under Advanced (PRD-R79)
+    case typingMethod, tonePlacement, englishRestore, keepAsTyped, keepVietnamese, neverCorrect, learnCollisionChoices
+    case typoCorrection
     case telexStandaloneW, telexBracketKeys, restoreHotkey, lookaheadRevision
     // Macros (section 8)
     case macrosEnabled
@@ -55,8 +57,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .openAtLogin, .toggleHotkey, .rememberPerApp, .switchIndicator, .interfaceLanguage, .soundOnSwitch,
             .clickIconToToggle, .layoutBinding:
             .general
-        case .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices,
-            .telexStandaloneW, .telexBracketKeys, .restoreHotkey, .lookaheadRevision:
+        case .typingMethod, .tonePlacement, .englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect,
+            .learnCollisionChoices, .typoCorrection, .telexStandaloneW, .telexBracketKeys, .restoreHotkey,
+            .lookaheadRevision:
             .typing
         case .macrosEnabled: .macros
         case .updateChannel, .automaticallyCheckForUpdates, .automaticallyInstallUpdates: .about
@@ -95,13 +98,15 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .updateChannel: "D21"
         case .learnCollisionChoices: "D28"
         case .lookaheadRevision: "D29"
+        case .typoCorrection: "D30"
         case .layoutBinding: "PLT-R373"
         case .keepAsTyped, .keepVietnamese: "ENG-R860"
+        case .neverCorrect: "PRD-R81"
         }
     }
 
-    /// The `settings.json` key (`SettingFields`), or nil for D17 (`SMAppService` is the source of truth) and the
-    /// two word lists (plain sets in `UserSettings`).
+    /// The `settings.json` key (`SettingFields`; the three word lists are plain sets in `UserSettings` named by their
+    /// `SettingListKey`), or nil for D17 (`SMAppService` is the source of truth).
     public var settingsKey: String? {
         switch self {
         case .openAtLogin: nil
@@ -117,7 +122,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: "englishRestore"
         case .keepAsTyped: "keepAsTyped"
         case .keepVietnamese: "keepVietnamese"
+        case .neverCorrect: "neverCorrect"
         case .learnCollisionChoices: "learnCollisionChoices"
+        case .typoCorrection: "typoCorrection"
         case .telexStandaloneW: "telexStandaloneW"
         case .telexBracketKeys: "telexBracketKeys"
         case .restoreHotkey: "restoreHotkey"
@@ -144,7 +151,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: CatalogText(SettingsText.englishRestoreTitle)
         case .keepAsTyped: CatalogText(SettingsText.keepAsTypedTitle)
         case .keepVietnamese: CatalogText(SettingsText.keepVietnameseTitle)
+        case .neverCorrect: CatalogText(SettingsText.neverCorrectTitle)
         case .learnCollisionChoices: CatalogText(SettingsText.learnCollisionTitle)
+        case .typoCorrection: CatalogText(SettingsText.typoCorrectionTitle)
         case .telexStandaloneW: CatalogText(SettingsText.standaloneWTitle)
         case .telexBracketKeys: CatalogText(SettingsText.bracketsTitle)
         case .restoreHotkey: CatalogText(SettingsText.restoreHotkeyTitle)
@@ -156,7 +165,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         }
     }
 
-    /// PRD-R25: the one-line explanation under the setting. D17 and D28 take the app name as their argument.
+    /// PRD-R25: the one-line explanation under the setting. D17 and D28 take the app name as their argument; D30 and
+    /// the never-correct list take it too and name the restore key (`explanation(restoreHotkey:)`, the wording for
+    /// Escape here).
     public var explanation: CatalogText {
         switch self {
         case .openAtLogin: CatalogText(SettingsText.openAtLoginExplanation)
@@ -172,7 +183,9 @@ public enum SettingItem: String, Sendable, Hashable, CaseIterable {
         case .englishRestore: CatalogText(SettingsText.englishRestoreExplanation)
         case .keepAsTyped: CatalogText(SettingsText.keepAsTypedExplanation)
         case .keepVietnamese: CatalogText(SettingsText.keepVietnameseExplanation)
+        case .neverCorrect: CatalogText(SettingsText.neverCorrectExplanation)
         case .learnCollisionChoices: CatalogText(SettingsText.learnCollisionExplanation)
+        case .typoCorrection: CatalogText(SettingsText.typoCorrectionExplanation)
         case .telexStandaloneW: CatalogText(SettingsText.standaloneWExplanation)
         case .telexBracketKeys: CatalogText(SettingsText.bracketsExplanation)
         case .restoreHotkey: CatalogText(SettingsText.restoreHotkeyExplanation)

@@ -46,6 +46,10 @@ public struct FuzzStatistics: Sendable, Hashable {
     public var restoredCommits = 0
     /// Commits that kept the composed form.
     public var keptCommits = 0
+    /// Commits that corrected the token or re-committed a corrected token (section 11A, ENG-T54).
+    public var correctedCommits = 0
+    /// Undos of a correction by the restore toggle, each with its never-correct signal (ENG-R1117, ENG-R1118).
+    public var correctionUndos = 0
     /// Macro expansions (ENG-R1103).
     public var macroExpansions = 0
     /// Reset events.
@@ -79,6 +83,8 @@ public struct FuzzStatistics: Sendable, Hashable {
         commits += other.commits
         restoredCommits += other.restoredCommits
         keptCommits += other.keptCommits
+        correctedCommits += other.correctedCommits
+        correctionUndos += other.correctionUndos
         macroExpansions += other.macroExpansions
         resets += other.resets
         longestToken = max(longestToken, other.longestToken)
@@ -131,6 +137,14 @@ public struct FuzzStatistics: Sendable, Hashable {
 ///   Backspace deletes at most the active token's display.
 /// - ENG-R828: a commit that revises the previous token deletes at most that token, the one space after it
 ///   and the active token's display.
+/// - ENG-T54, with `typoCorrection` on (section 11A): no correction in `code`; none of a typed word on any list
+///   or within one edit of a Vietnamese keying or an unmarked shape (recomputed here with `EditModel` over the
+///   lists themselves); a correction writes a word of the correction lexicon (ENG-T35 extended), deletes at most
+///   the active token's display, is one edit with the committing key passed through and never comes with a
+///   revision; the toggle right after it gives exactly the raw keys typed (ENG-T32 extended; after Backspace
+///   re-opened a corrected token the restore check above covers it); every `neverCorrect` signal names the
+///   lowercased typed word of its token. With it off: no output carries `corrected` or `neverCorrect`, and a
+///   toggle with no active token passes through unless it undoes a revision (ENG-R703, ENG-R829).
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -172,13 +186,16 @@ public struct InvariantChecker: Sendable {
     /// The session the events go to.
     public private(set) var session: Session
     /// Counters of the stream so far.
-    public private(set) var statistics = FuzzStatistics()
+    public internal(set) var statistics = FuzzStatistics()
 
-    private var field: [Character] = []
+    /// The simulated field (read by the typo correction checks, InvariantChecker+Correction.swift).
+    private(set) var field: [Character] = []
     private var recent: [EngineEvent] = []
     private var recentNext = 0
     private var probeGenerator: SeededGenerator
     private let rules: ComposerRules
+    /// The edit model of the typo correction, for the ENG-T54 recomputation.
+    let edits: EditModel
 
     /// A checker for `engine`; `probeSeed` drives the escape probes (ENG-T36).
     public init(engine: Engine, options: Options = Options(), probeSeed: UInt64 = 0xE5CA_9E00) {
@@ -186,6 +203,7 @@ public struct InvariantChecker: Sendable {
         self.options = options
         session = Session(engine: engine)
         rules = ComposerRules(engine.configuration)
+        edits = EditModel(neighbours: engine.resources.correction.keyboardNeighbours)
         probeGenerator = SeededGenerator(seed: probeSeed)
     }
 
@@ -201,6 +219,7 @@ public struct InvariantChecker: Sendable {
         let beforeBackspace = tokenCountBeforeBackspace(event, index: index)
         let fieldBeforeBackspace = fieldTailBeforeBackspace(event, index: index)
         let revisionBound = Self.revisionBound(session.state)
+        let correctionBefore = CorrectionSnapshot(session.state)
         let before = takesPureReduceSample(index) ? session.state : nil
         let start = Self.uptimeNanoseconds()
         let cpuStart = Self.hangClockNanoseconds()
@@ -212,7 +231,9 @@ public struct InvariantChecker: Sendable {
         if let before { try checkPureReduce(before, event, output, index: index) }
         try checkEdit(output, produced: produced, index: index)
         try checkRevision(output, bound: revisionBound, index: index)
+        try checkCorrection(event, output, before: correctionBefore, index: index)
         try applyToField(event, output, index: index)
+        try checkCorrectionUndo(event, output, before: correctionBefore, index: index)
         try checkView(index: index)
         try checkBackspace(beforeBackspace, index: index)
         try checkBackspaceOnlyDeletes(fieldBeforeBackspace, output, index: index)
@@ -243,7 +264,9 @@ public struct InvariantChecker: Sendable {
     private func producedCount(before event: EngineEvent) -> (count: Int, exact: Bool) {
         let state = session.state
         var mayDeleteLongToken = false
-        if let token = state.active, token.composition.raw.count > Composition.composingKeyLimit || token.isMacro {
+        if let token = state.active,
+            token.composition.raw.count > Composition.composingKeyLimit || token.literalKeys != nil
+        {
             switch event {
             case .restoreToggle, .backspace: mayDeleteLongToken = true
             case .key(let input):
@@ -461,7 +484,8 @@ public struct InvariantChecker: Sendable {
         if output.composingText != state.activeDisplay {
             throw violation("ENG-R620", "composingText differs from the active display", index)
         }
-        guard let token = state.active, !token.isMacro else { return }
+        // A literal token (a macro expansion or a re-opened correction) shows text its raw keys do not compose.
+        guard let token = state.active, token.literalKeys == nil else { return }
         let composition = token.composition
         statistics.longestToken = max(statistics.longestToken, composition.raw.count)
         let perEvent = composition.raw.count <= options.perEventTokenLimit
@@ -489,7 +513,8 @@ public struct InvariantChecker: Sendable {
                 "ENG-T33", "cached composition differs from replay for \(token.rawText.debugDescription)", index)
         }
         if token.showsRawKeys {
-            guard token.display == token.rawText else {
+            // Without its w doublings when rule L4 restored them so (ENG-R804, REG-40).
+            guard token.display == token.shownRawText else {
                 throw violation("ENG-R701", "restored token does not show its raw keys", index)
             }
         } else {
@@ -536,8 +561,10 @@ public struct InvariantChecker: Sendable {
         // The size test comes first: comparing a long display with its raw keys is itself O(token).
         guard !state.previousEventWasRestoreToggle, let token = state.active,
             token.composition.raw.count <= options.perEventTokenLimit || index % options.fullCheckInterval == 0,
-            token.display != token.rawText
+            token.display != token.rawText, token.display != token.shownRawText
         else { return }
+        // A token showing its raw keys without its w doublings (REG-40) shows its raw keys: its toggle composes it
+        // (ENG-R701 second branch), as for any re-opened restored token.
         statistics.restoreChecks += 1
         let raw = token.rawText
         var probe = session
@@ -564,7 +591,7 @@ public struct InvariantChecker: Sendable {
     private mutating func checkEscape(index: Int) throws {
         guard probeGenerator.chance(1, in: options.escapeCheckOneIn) else { return }
         let state = session.state
-        guard let token = state.active, !token.isMacro, !token.showsRawKeys, !token.composition.isLiteral,
+        guard let token = state.active, token.literalKeys == nil, !token.showsRawKeys, !token.composition.isLiteral,
             token.composition.raw.count < Composition.composingKeyLimit - 2
         else { return }
         let key = transformKey()
@@ -626,8 +653,12 @@ public struct InvariantChecker: Sendable {
         case .kept?:
             statistics.commits += 1
             statistics.keptCommits += 1
+        case .corrected?:  // section 11A (ENG-R1115)
+            statistics.commits += 1
+            statistics.correctedCommits += 1
         case nil: break
         }
+        if case .neverCorrect? = output.learning { statistics.correctionUndos += 1 }
         statistics.digest(Self.digest(output))
     }
 
@@ -650,6 +681,7 @@ public struct InvariantChecker: Sendable {
         case .kept(let rule)?: mix(5 &+ UInt64(String(describing: rule).utf8.count))
         case .restored(let rule)?: mix(6 &+ UInt64(String(describing: rule).utf8.count))
         case nil: mix(7)
+        case .corrected(let rule)?: mix(8 &+ UInt64(String(describing: rule).utf8.count))
         }
         return hash
     }
@@ -663,7 +695,7 @@ public struct InvariantChecker: Sendable {
         recentNext = (recentNext + 1) % max(1, options.reportWindow)
     }
 
-    private func violation(_ invariant: String, _ detail: String, _ index: Int) -> FuzzViolation {
+    func violation(_ invariant: String, _ detail: String, _ index: Int) -> FuzzViolation {
         let ordered =
             recent.count < options.reportWindow ? recent : Array(recent[recentNext...] + recent[..<recentNext])
         return FuzzViolation(invariant: invariant, detail: detail, eventIndex: index, recentEvents: ordered)

@@ -26,7 +26,9 @@ struct CollisionFuzzTests {
             .init(word: "cos", context: nil, choice: .english),
             .init(word: "this", context: .sentenceStart, choice: .english),
         ])
-        for configuration in [EngineConfiguration(), EngineConfiguration(historyLimit: 2)] {
+        for configuration in [
+            EngineConfiguration(typoCorrection: false), EngineConfiguration(historyLimit: 2, typoCorrection: false),
+        ] {
             let engine = Engine(configuration: configuration, resources: CollisionFixture.resources(memory: memory))
             var options = InvariantChecker.Options()
             options.nfcCheck = { $0.precomposedStringWithCanonicalMapping == $0 }
@@ -69,9 +71,15 @@ struct CollisionFuzzTests {
         var capitalized = CollisionFixture.resources()
         capitalized.techCodeCapitalized = WordSet(["tar"])
         for (configuration, resources) in [
-            (EngineConfiguration(appContext: .code, lookaheadRevision: false), CollisionFixture.resources()),
-            (EngineConfiguration(appContext: .code, historyLimit: 2), CollisionFixture.resources()),
-            (EngineConfiguration(appContext: .code, lookaheadRevision: false), capitalized),
+            (
+                EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
+                CollisionFixture.resources()
+            ),
+            (
+                EngineConfiguration(appContext: .code, historyLimit: 2, typoCorrection: false),
+                CollisionFixture.resources()
+            ),
+            (EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false), capitalized),
         ] {
             let engine = Engine(configuration: configuration, resources: resources)
             var options = InvariantChecker.Options()

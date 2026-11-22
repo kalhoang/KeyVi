@@ -10,10 +10,11 @@ import VietnameseEngineTesting
 @Suite("Composition properties (ENG-R601, 13.6)")
 struct CompositionPropertyTests {
     static let configurations: [EngineConfiguration] = [
-        EngineConfiguration(),
-        EngineConfiguration(toneStyle: .modern),
-        EngineConfiguration(inputMethod: .vni),
-        EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false, bracketKeys: true))),
+        EngineConfiguration(typoCorrection: false),
+        EngineConfiguration(toneStyle: .modern, typoCorrection: false),
+        EngineConfiguration(inputMethod: .vni, typoCorrection: false),
+        EngineConfiguration(
+            inputMethod: .telex(TelexOptions(standaloneW: false, bracketKeys: true)), typoCorrection: false),
     ]
     static let seeds: [UInt64] = Array(1...8)
 
@@ -36,7 +37,7 @@ struct CompositionPropertyTests {
     func determinism(seed: UInt64) {
         var generator = SeededGenerator(seed: seed)
         let events = RandomEvents.events(count: 2_000, using: &generator)
-        let engine = Engine(configuration: EngineConfiguration(), resources: .empty)
+        let engine = Engine(configuration: EngineConfiguration(typoCorrection: false), resources: .empty)
         var first = Session(engine: engine)
         var second = Session(engine: engine)
         var state = EngineState.initial
@@ -66,7 +67,8 @@ struct CompositionPropertyTests {
         // A token re-opened by Backspace (ENG-R1002) shows what its commit wrote, which is the ENG-R532
         // spelling of an open `ươ` until the next key or Backspace recomputes the display.
         if token.showsRawKeys {
-            #expect(token.display == token.rawText, "display of \(token.rawText)")
+            // Without its w doublings when its commit restored them so (ENG-R804, ENG-R904, REG-40).
+            #expect(token.display == token.shownRawText, "display of \(token.rawText)")
         } else {
             let composed = replayed.display(style: rules.toneStyle)
             let committed = replayed.committedText(style: rules.toneStyle)

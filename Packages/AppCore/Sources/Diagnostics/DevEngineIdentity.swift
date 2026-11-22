@@ -18,7 +18,11 @@ public enum DevEngineIdentity {
     }
 
     /// Telex probes (default options): tones, marks, escapes, separators, capitals and code-switched phrases whose
-    /// English restore and collision rules change most often (ENG-R8xx).
+    /// English restore and collision rules change most often (ENG-R8xx), and since 1.1.0 worked examples of the typo
+    /// correction (13.12 rows S01, S02, S25 and S75, ENG-R1110 to ENG-R1125) and of a `w` doubled out of habit (13.9.5
+    /// rows X28 and X29, ENG-R804, REG-40; `WwordPress ` for the camel case restore, ENG-R904; row X40, `Wwade `, for the
+    /// capital of the escaped letter, ENG-R903, REG-41), so a build whose correction or escape restore differs gets
+    /// another identity.
     public static let telexProbes: [String] = [
         "vieejt nam ", "dduowngf ", "tieesng vieejt ", "hoaf binhf ", "quas ", "giaf ", "khuyeen ", "nguyeenx ",
         "thuowr ", "truwowngf hojc ", "nhaajn ", "ass ", "verr ", "Saff ", "ww ", "teee ", "boss ", "mass ",
@@ -26,6 +30,7 @@ public enum DevEngineIdentity {
         "hello world ", "facebook ", "windows ", "class ", "return ", "string ", "test case ", "user ", "dos ",
         "VIEEJT NAM ", "Ddaf Nawngx ", "w ", "uw ", "ow ", "aw ", "dd ", "vieejt, nam. ", "ddaau? ", "khoong! ",
         "xin chaof cacs banj ", "toi ddi hocj ", "awn uoongs ", "ngoaif troiwf ", "gif ", "quoocs ", "huyeenf ",
+        "androdi ", "gramar ", "androdi. ", "ddi pahir ", "wwebview ", "Wwebview ", "WwordPress ", "Wwade ",
     ]
 
     /// VNI probes.

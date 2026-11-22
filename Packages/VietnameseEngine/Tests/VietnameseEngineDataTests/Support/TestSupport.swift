@@ -7,6 +7,7 @@
 import CryptoKit
 import Foundation
 import Testing
+import VietnameseEngine
 
 enum TestPaths {
     /// `<repo>/Packages/VietnameseEngine`
@@ -130,27 +131,96 @@ enum ResourceFixture {
         "vi-tail-words.txt": "nha\nrồi\n",
         "vi-tail-particles.txt": "nha\n",
         "english-pre-guard.txt": "the\n",
+        // The typo correction data (format 3; spec/01-engine.md 11A, ENG-R1120). The guard list is binary:
+        // `validBinary`.
+        "keyboard-neighbours.txt": GuardListFixture.neighboursText,
+        "unmarked-shapes.txt": "thach\ntruong\n",
+        "vietnamese-keyings.txt": "phair\nphis\n",
+    ]
+
+    /// The binary files of a valid resource directory and their manifest entry counts.
+    static let validBinary: [String: (data: Data, entries: Int)] = [
+        "guard-list.bloom": (GuardListFixture.encode(GuardListFixture.filter), GuardListFixture.filter.wordCount)
     ]
 
     static func make(
         replacing overrides: [String: String] = [:], removing removed: Set<String> = [],
-        entryOverrides: [String: Int] = [:], manifestOverride: String? = nil
+        entryOverrides: [String: Int] = [:], manifestOverride: String? = nil,
+        replacingBinary binaryOverrides: [String: Data] = [:]
     ) throws -> URL {
         let directory = try TempDirectory.make("resources")
-        var files = valid.merging(overrides) { _, new in new }
+        var files: [String: (data: Data, entries: Int?)] = [:]
+        for (name, text) in valid.merging(overrides, uniquingKeysWith: { _, new in new }) {
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: true).count
+            files[name] = (Data(text.utf8), name == "NOTICES.txt" ? nil : (name == "ambiguity.tsv" ? lines - 1 : lines))
+        }
+        for (name, file) in validBinary { files[name] = (binaryOverrides[name] ?? file.data, file.entries) }
         for name in removed { files[name] = nil }
         var manifestFiles: [String] = []
-        for (name, text) in files.sorted(by: { $0.key < $1.key }) {
-            let data = Data(text.utf8)
-            try data.write(to: directory.appendingPathComponent(name))
-            let lines = text.split(separator: "\n", omittingEmptySubsequences: true).count
-            let entries = entryOverrides[name] ?? (name == "ambiguity.tsv" ? lines - 1 : lines)
-            let entryField = name == "NOTICES.txt" ? "" : ", \"entries\": \(entries)"
+        for (name, file) in files.sorted(by: { $0.key < $1.key }) {
+            try file.data.write(to: directory.appendingPathComponent(name))
+            let entryField = (entryOverrides[name] ?? file.entries).map { ", \"entries\": \($0)" } ?? ""
             manifestFiles.append(
-                "{\"name\": \"\(name)\", \"bytes\": \(data.count)\(entryField), \"sha256\": \"\(sha256Hex(data))\"}")
+                "{\"name\": \"\(name)\", \"bytes\": \(file.data.count)\(entryField), \"sha256\": \"\(sha256Hex(file.data))\"}"
+            )
         }
-        let manifest = manifestOverride ?? "{\"format\": 2, \"files\": [\(manifestFiles.joined(separator: ", "))]}"
+        let manifest = manifestOverride ?? "{\"format\": 3, \"files\": [\(manifestFiles.joined(separator: ", "))]}"
         try write(manifest, to: directory.appendingPathComponent("manifest.json"))
         return directory
     }
+}
+
+/// The guard list file of resource format 3, written here from its documented layout (data/README.md) rather than
+/// by lexicon-builder, so that the loader is tested against the format: a 32-byte header (`KVGL`, `UInt32` version
+/// 1, `UInt32` hashCount, `UInt64` bitCount, `UInt64` wordCount, 4 zero bytes), then the bits as little-endian
+/// `UInt64`.
+enum GuardListFixture {
+    static let filter = ApproximateWordSet(exactly: ["biden", "kbang"], bitCount: 256, hashCount: 8)
+
+    static func encode(
+        _ filter: ApproximateWordSet, magic: String = "KVGL", version: UInt32 = 1, bitCount: UInt64? = nil
+    ) -> Data {
+        var data = Data(magic.utf8)
+        func append<T: FixedWidthInteger>(_ value: T) {
+            withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+        }
+        append(version)
+        append(UInt32(filter.hashCount))
+        append(bitCount ?? UInt64(filter.bits.count * 64))
+        append(UInt64(filter.wordCount))
+        append(UInt32(0))
+        for word in filter.bits { append(word) }
+        return data
+    }
+
+    /// The QWERTY table of ENG-R1113 as resource lines.
+    static let neighboursText = """
+        a\tqwsz
+        b\tghvn
+        c\tdfxv
+        d\tersfxc
+        e\twrsd
+        f\trtdgcv
+        g\ttyfhvb
+        h\tyugjbn
+        i\tuojk
+        j\tuihknm
+        k\tiojlm
+        l\topk
+        m\tjkn
+        n\thjbm
+        o\tipkl
+        p\tol
+        q\twa
+        r\tetdf
+        s\tweadzx
+        t\tryfg
+        u\tyihj
+        v\tfgcb
+        w\tqeas
+        x\tsdzc
+        y\ttugh
+        z\tasx
+
+        """
 }

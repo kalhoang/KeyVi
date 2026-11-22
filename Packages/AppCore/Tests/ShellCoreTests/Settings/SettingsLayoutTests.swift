@@ -92,7 +92,10 @@ import Testing
         #expect(
             SettingsCatalog.sections(in: .typing).map(\.items) == [
                 [.typingMethod, .tonePlacement],
-                [.englishRestore, .keepAsTyped, .keepVietnamese, .learnCollisionChoices],
+                [
+                    .englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect, .learnCollisionChoices,
+                    .typoCorrection,
+                ],
             ])
         #expect(SettingsCatalog.sections(in: .about).first?.header == CatalogText(SupportText.updatesTitle))
         #expect(SettingsCatalog.sections(in: .support).isEmpty && SettingsCatalog.sections(in: .licences).isEmpty)
@@ -100,9 +103,23 @@ import Testing
         #expect(
             SettingsCatalog.sections(in: .typing).map(\.rows) == [
                 [[.typingMethod], [.tonePlacement]],
-                [[.englishRestore], [.keepAsTyped, .keepVietnamese], [.learnCollisionChoices]],
+                [
+                    [.englishRestore], [.keepAsTyped, .keepVietnamese], [.neverCorrect], [.learnCollisionChoices],
+                    [.typoCorrection],
+                ],
             ])
         #expect(SettingsSection(header: nil, items: [.keepVietnamese, .keepAsTyped]).rows.count == 2, "only in order")
+    }
+
+    @Test func theNeverCorrectListHasItsOwnRow() {
+        // PRD-R81: the third list sits under the pair at the full width, with its own label, box and add field, so
+        // the pair keeps its columns (PRD-R24 acceptance: the Typing pane scrolls).
+        let english = SettingsSection(
+            header: nil, items: [.englishRestore, .keepAsTyped, .keepVietnamese, .neverCorrect, .typoCorrection])
+        #expect(
+            english.rows == [[.englishRestore], [.keepAsTyped, .keepVietnamese], [.neverCorrect], [.typoCorrection]])
+        let afterOneList = SettingsSection(header: nil, items: [.keepVietnamese, .neverCorrect])
+        #expect(afterOneList.rows == [[.keepVietnamese], [.neverCorrect]], "never paired with a keep list")
     }
 
     @Test func sectionHeadersAndLayoutCopyExistInViAndEn() throws {

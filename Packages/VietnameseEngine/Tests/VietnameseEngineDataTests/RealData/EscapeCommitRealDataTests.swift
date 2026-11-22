@@ -15,7 +15,9 @@ import VietnameseEngineTesting
 
 @Suite("Rule L4 with the bundled data (ENG-R801, REG-37)")
 struct EscapeCommitRealDataTests {
-    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+    static func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+        throws -> String
+    {
         var driver = EngineDriver(configuration: configuration, resources: try RealData.resources())
         try driver.send(KeyNotation.events(keys))
         return driver.field.string
@@ -24,8 +26,9 @@ struct EscapeCommitRealDataTests {
     /// The configurations of the sweep: the default, the code context as the terminal rules set it (PLT-R357) and
     /// the collision rules off (ENG-R829).
     static let configurations = [
-        EngineConfiguration(), EngineConfiguration(appContext: .code, lookaheadRevision: false),
-        EngineConfiguration(lookaheadRevision: false),
+        EngineConfiguration(typoCorrection: false),
+        EngineConfiguration(appContext: .code, lookaheadRevision: false, typoCorrection: false),
+        EngineConfiguration(lookaheadRevision: false, typoCorrection: false),
     ]
 
     @Test(
@@ -99,9 +102,9 @@ struct EscapeCommitRealDataTests {
         return rows
     }()
 
-    @Test("13.9.5 has its 27 rows")
+    @Test("13.9.5 has its 43 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...27).map { String(format: "X%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...43).map { String(format: "X%02d", $0) })
     }
 
     /// 13.9.5: the rows that need the phrase or the English-lean word, which the collision rules switch on.
@@ -109,7 +112,8 @@ struct EscapeCommitRealDataTests {
 
     @Test("ENG-R804: every row of 13.9.5", arguments: rows)
     func row(_ row: Row) throws {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: try RealData.resources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: try RealData.resources())
         try driver.send(KeyNotation.events(row.keys + " "))
         #expect(driver.field.string == row.text, "\(row.id): \(driver.field.string.debugDescription)")
         #expect(driver.outputs.contains { $0.decision?.rule == .escape }, "\(row.id): L4 decided a word")
@@ -194,6 +198,249 @@ struct EscapeCommitRealDataTests {
         arguments: ["get 50% off today ", "log off ", "sign off ", "what a mess ", "take off ", "clean up the mess "])
     func englishEvidenceBefore(_ keys: String) throws {
         #expect(try Self.text(keys) == keys)
+    }
+
+    // MARK: - REG-40
+
+    @Test(
+        "REG-40: the product owner's report, a w doubled out of habit is left out of the restore",
+        arguments: [
+            ("wwebview ", "webview "), ("wwebsite ", "website "), ("wwebhook ", "webhook "), ("wwiki ", "wiki "),
+            ("wwidget ", "widget "), ("wwechat ", "wechat "), ("wwordpress ", "wordpress "), ("Wwebview ", "Webview "),
+            ("vieejt wwebview ", "việt webview "),
+        ])
+    func productOwnerReport(_ keys: String, _ expected: String) throws {
+        // 1.0.1-beta.2 committed the raw keys with both `w` (`wwebview`): neither form is English, so (d) restored R.
+        for configuration in Self.configurations {
+            #expect(try Self.text(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40: what the report found right does not change",
+        arguments: [
+            ("wwindows ", "windows "), ("wwifi ", "wifi "), ("wwork ", "work "), ("wweb ", "web "), ("wwhat ", "what "),
+            ("wwow ", "wow "), ("wwatch ", "watch "), ("wwebpack ", "webpack "), ("wwhatsapp ", "whatsapp "),
+            ("wwrapper ", "wrapper "), ("www ", "www "), ("webview ", "webview "), ("website ", "website "),
+            ("webhook ", "webhook "), ("powwow ", "powwow "), ("ww ", "w "), ("uww ", "uw "), ("aww ", "aw "),
+            ("wwww ", "www "),
+        ])
+    func reportedRightUnchanged(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurations {
+            #expect(try Self.text(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: the typed word of the correction is R′, what the screen shows (ENG-R1110, ENG-R1117)")
+    func correctionReadsTheKeysWithoutTheDoubling() throws {
+        // `wwindwos` shows `windwos`; L4 restores `R′` = `windwos`, which one transposition makes `windows`. Read on
+        // `R` = `wwindwos`, no single edit gives a word, so 1.0.1-beta.2 committed `wwindwos`.
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: true), resources: try RealData.resources())
+        try driver.send(KeyNotation.events("wwindwos "))
+        #expect(driver.field.string == "windows " && driver.outputs.last?.decision == .corrected(.escape))
+        // The undo brings back the typed word and names it in the signal, so the never-correct list holds what the
+        // next `wwindwos` reads.
+        try driver.send(.restoreToggle)
+        #expect(driver.field.string == "windwos " && driver.outputs.last?.learning == .neverCorrect(raw: "windwos"))
+        var resources = try RealData.resources()
+        resources.userNeverCorrect = WordSet(["windwos"])
+        var listed = EngineDriver(configuration: EngineConfiguration(typoCorrection: true), resources: resources)
+        try listed.send(KeyNotation.events("wwindwos "))
+        #expect(listed.field.string == "windwos ")
+        // Backspace re-opens the correction and the toggle brings back the typed word; after one more Backspace the
+        // token shows `windwo`, which is also its composed form `C`, so the next toggle passes through.
+        var reopened = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: true), resources: try RealData.resources())
+        try reopened.send(KeyNotation.events("wwindwos ⌫⎋"))
+        #expect(reopened.field.string == "windwos")
+        try reopened.send(KeyNotation.events("⌫⎋"))
+        #expect(reopened.field.string == "windwo")
+    }
+
+    /// The keys typed through the invariant checker of 13.6 with the bundled data (ENG-R701, ENG-T31 to ENG-T33),
+    /// and the field after them.
+    static func checked(_ keys: String, _ configuration: EngineConfiguration) throws -> String {
+        let resources = try RealData.resources()
+        var checker = InvariantChecker(engine: Engine(configuration: configuration, resources: resources))
+        try checker.send(KeyNotation.events(keys))
+        try checker.finish()
+        var driver = EngineDriver(configuration: configuration, resources: resources)
+        try driver.send(KeyNotation.events(keys))
+        return driver.field.string
+    }
+
+    /// The configurations of the sweep and the default one, where the typo correction is on (ENG-R1119).
+    static let configurationsWithCorrection = configurations + [EngineConfiguration(typoCorrection: true)]
+
+    @Test(
+        "REG-40: a re-opened token that shows R′ never gains a w it does not show (ENG-R1005, ENG-R701)",
+        arguments: [
+            ("answwer ⌫⌫ ", "answe "), ("answwer ⌫z ", "answerz "), ("answwer ⌫⌫ ⌫", "answe"),
+            ("answwer ⌫⌫ ⌫⌫⌫a ", "ấn "), ("softwware ⌫⌫⌫ ⌫", "softwa"), ("softwware ⌫⌫⌫ ⌫⌫⌫ ", "soft "),
+            ("wwebview ⌫Kit ", "webviewKit "), ("wwebview ⌫Kit ⌫", "webviewKit"),
+        ])
+    func reopenedTokenNeverGainsAW(_ keys: String, _ expected: String) throws {
+        // Each commit of the token sets or clears what it shows, so the second re-opening shows the text the first
+        // re-opened commit wrote; the invariant checker holds the display to the raw keys shown after every event.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40: once Backspace took the w doubling the token did not show, a w doubling typed again shows and stays",
+        arguments: [
+            ("answwer ⌫⌫⌫⌫ww⌫er ", "answer "), ("answwer ⌫⌫⌫⌫wwer ", "answer "), ("answwer ⌫⌫⌫⌫wwere ", "answwere "),
+            ("softwware ⌫⌫⌫⌫⌫⌫wware ", "sofwware "), ("softwware ⌫⌫⌫⌫⌫⌫ww⎋ ", "sòw "), ("answwer ⌫⌫⌫⌫ww⌫⌫⌫⌫", "a"),
+            ("answwer ⌫⌫ ⌫⌫⌫ww ", "ánw "),
+        ])
+    func backspacePastTheOmittedDoubling(_ keys: String, _ expected: String) throws {
+        // ENG-R1005, ENG-R701: the token holds one `w` doubling at most (the escape is sticky, ENG-R441), so once
+        // Backspace removed the one the token did not show, the token shows every raw key again; a `w` doubling typed
+        // after that is on screen, and the commit decides the keys as a token typed afresh with them (`ans` + `wwer`
+        // gives `answer`, as `answwer` does: (c′)).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40, 11A: a re-commit of the typed word the toggle took back keeps showing it (ENG-R1005, ENG-R1117)",
+        arguments: [
+            ("wwindwos ⎋⌫ ⌫", "windwos"), ("wwindwos ⎋⌫.⌫", "windwos"), ("wwindwos ⎋⌫s ⌫", "windwoss"),
+            ("wwindwos ⎋⌫ ⌫⌫", "windwo"), ("wwindwos ⌫ ⌫⎋", "windwos"),
+            ("wwindwos ⌫ ⌫⎋⌫⎋", "windwo"),
+        ])
+    func recommittedUndoneCorrectionShowsTheTypedWord(_ keys: String, _ expected: String) throws {
+        // `wwindwos` + space gives `windows`, the toggle gives back the typed word `windwos` (`R′`), Backspace re-opens
+        // it and the next boundary commits it unchanged (rule L1): the re-opening after that shows `windwos` again. A
+        // re-committed correction keeps its typed word the same way, so its toggle still composes every key typed.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: Backspace empties a re-committed typed word one character at a time (ENG-R1005)")
+    func recommittedUndoneCorrectionEmptiesCleanly() throws {
+        // The first Backspace re-opens the word, seven more delete its seven characters (eight raw keys), the last one
+        // finds an empty field.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked("wwindwos ⎋⌫ ⌫⌫⌫⌫⌫⌫⌫⌫⌫", configuration).isEmpty, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40, ENG-R904: a capital W typed right after a lowercase w is no habit, the keys stay as typed",
+        arguments: ["wWidth ", "dwWidth ", "swWidth ", "cwWidth ", "hwWallet ", "nwWest ", "wWinMain ", "rwWrite "])
+    func capitalAfterLowercaseWIsNoHabit(_ keys: String) throws {
+        // The screen shows the capital (`dWidth`); leaving it out would write a text nobody saw (`dwidth`).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == keys, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-40, ENG-R904: camel case keys whose w doublings are a habit restore R′ through rule L3b",
+        arguments: [
+            ("wwebView ", "webView "), ("WwebView ", "WebView "), ("WwordPress ", "WordPress "),
+            ("WweChat ", "WeChat "), ("WwhatsApp ", "WhatsApp "), ("WwiFi ", "WiFi "), ("wwebSocket ", "webSocket "),
+            ("wwwRoot ", "wwwRoot "), ("dowwnLoad ", "dowwnLoad "), ("wwwexample ", "wwwexample "),
+        ])
+    func camelCaseHabit(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-40, 11A: a one-syllable typo typed with the habit is a deliberate form of (d), no candidate (ENG-R1110)")
+    func oneSyllableTypoWithTheHabit() throws {
+        #expect(try Self.checked("wwhcih ", EngineConfiguration(typoCorrection: true)) == "whcih ")
+        #expect(try Self.checked("whcih ", EngineConfiguration(typoCorrection: true)) == "which ")
+    }
+
+    // MARK: - REG-41
+
+    @Test(
+        "REG-41: a capitalised word typed Ww keeps its capital (ENG-R804, ADR 0010 item 8)",
+        arguments: [
+            ("Wwade ", "Wade "), ("Wwarden ", "Warden "), ("Ww ", "W "), ("Wwatt ", "Watt "), ("Wwindows ", "Windows "),
+            ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("vieejt Wwade ", "việt Wade "),
+            ("Wwade Wwarden ", "Wade Warden "),
+        ])
+    func capitalisedWordTypedWithTheHabit(_ keys: String, _ expected: String) throws {
+        // Until 22/11/2026 the escape appended its own key, a lowercase `w`, so `C` was `wade` and rule L4 (b) kept
+        // it. The escaped letter takes the place of the `Ư` it removed: a capital when either `w` key is (ENG-R903).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41, 11A: the correction of a capitalised word typed Ww keeps the capital (ENG-R1111)")
+    func capitalisedCorrection() throws {
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: true)) == "Windows ")
+        #expect(try Self.checked("Wwindwos ⎋", EngineConfiguration(typoCorrection: true)) == "Windwos ")
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: false)) == "Windwos ")
+    }
+
+    @Test(
+        "REG-41: a capital W before the escaping w is kept, also where it is not word-initial (ENG-R903, ENG-R804)",
+        arguments: [
+            ("TWwitter ", "TWitter "), ("SWwab ", "SWab "), ("DWwell ", "DWell "), ("Wwww ", "Www "),
+            ("WwADE ", "WADE "),
+        ])
+    func capitalBeforeTheEscapeIsKept(_ keys: String, _ expected: String) throws {
+        // A known cost of REG-41 (ENG-R804, amendment of 22/11/2026): until then the escaped letter was the lowercase
+        // `w` of the escaping key, so a Shift held over the first `w` after a capital consonant (`TWwitter`) came out as
+        // the capitalised word (`Twitter`), `Wwww` gave `www` and `WwADE` gave `wADE`. The screen now shows the capital
+        // and the commit keeps it.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41: the toggle on a re-opened restored Webview passes through, as on webview (ENG-R1005, ENG-R701)")
+    func toggleOnReopenedRestoredCapital() throws {
+        // The re-opened token shows `R′` = `Webview`, which is also its composed form now that the escaped letter is a
+        // capital, so the toggle has nothing to switch to; until 22/11/2026 it gave `webview`, the composed form.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked("Wwebview ⌫⎋", configuration) == "Webview", "\(configuration)")
+            #expect(try Self.checked("wwebview ⌫⎋", configuration) == "webview", "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-41: the other w doublings commit as before",
+        arguments: [
+            ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),
+            ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
+            ("wwwexample ", "wwwexample "), ("wwwRoot ", "wwwRoot "), ("www ", "www "), ("Www ", "Www "),
+            ("powwow ", "powwow "),
+            ("glowworm ", "glowworm "), ("WWADE ", "WADE "), ("Uww ", "Uw "), ("Dowwnload ", "Dowwnload "),
+        ])
+    func otherDoublingsCommitAsBefore(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-41: re-opening, Backspace, keys typed into it, the toggle and the correction undo behave as for ww",
+        arguments: ["ade", "arden", "ebview", "indwos", "ordPress"])
+    func capitalBehavesAsLowercase(_ rest: String) throws {
+        let edits = [
+            " ", " ⌫", " ⌫⌫", " ⌫⌫⌫⌫⌫", " ⌫⌫⌫⌫⌫⌫⌫⌫⌫", " ⌫ ", " ⌫s ", " ⌫⎋", " ⌫⎋ ", " ⎋", " ⎋⌫", " ⎋⌫ ⌫", "⎋", "⎋ ",
+            "⎋⌫⎋", "⌫", "⌫⌫⌫", "⌫⌫⌫⌫⌫⌫⌫⌫", "⌫⎋", "⌫ ",
+        ]
+        for configuration in Self.configurationsWithCorrection {
+            for edit in edits {
+                let lowercase = try Self.checked("ww" + rest + edit, configuration)
+                let expected = lowercase.prefix(1).uppercased() + lowercase.dropFirst()
+                #expect(
+                    try Self.checked("Ww" + rest + edit, configuration) == expected,
+                    "\(configuration) \(rest.debugDescription) \(edit.debugDescription)")
+            }
+        }
     }
 
     @Test(

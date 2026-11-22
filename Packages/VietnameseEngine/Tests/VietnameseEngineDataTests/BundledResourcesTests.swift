@@ -6,8 +6,9 @@
 
 import Foundation
 import Testing
-import VietnameseEngine
 import VietnameseEngineData
+
+@testable import VietnameseEngine
 
 #if canImport(Darwin)
 import Darwin
@@ -66,12 +67,55 @@ struct BundledResourcesTests {
         #expect(!resources.userKeepRaw.contains("thoi"))
     }
 
+    /// ENG-R1118: the host's never-correct list reaches the engine through `bundled` and `load(from:)`, next to the
+    /// correction data of ENG-R1120.
+    @Test func passesTheNeverCorrectListThrough() throws {
+        let resources = try Resources.bundled(
+            userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]), userNeverCorrect: WordSet(["androdi"]))
+        #expect(resources.userNeverCorrect.contains("androdi"))
+        #expect(!resources.userKeepRaw.contains("androdi"))
+        #expect(resources.correction.keyboardNeighbours.count == 26)
+        let loaded = try Resources.load(
+            from: TestPaths.committedResources, userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]),
+            userNeverCorrect: WordSet(["gramar"]))
+        #expect(loaded.userNeverCorrect.contains("gramar"))
+        let withoutTheList = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([]))
+        #expect(!withoutTheList.userNeverCorrect.contains("androdi"))
+    }
+
+    /// ENG-R1120: the five resources of the typo correction load with the bundle: the QWERTY table of ENG-R1113, the
+    /// unmarked shapes, the Vietnamese keyings and the guard list (SCOWL words of sizes 40 to 70 and proper names,
+    /// minus the correction lexicon; the correction lexicon itself is `english` and `techAlways`).
+    @Test func loadsTheCorrectionData() throws {
+        let correction = try Resources.bundled(userKeepRaw: WordSet([]), userKeepVietnamese: WordSet([])).correction
+        #expect(correction.keyboardNeighbours.count == 26)
+        #expect(correction.keyboardNeighbours["q"] == "wa" && correction.keyboardNeighbours["m"] == "jkn")
+        for shape in ["truong", "nguoi", "khong", "thuong", "thach", "glong"] {
+            #expect(correction.unmarkedShapes.contains(shape), "\(shape)")
+        }
+        for keying in ["phair", "phis", "chinhs", "thieeus", "hoanf", "thwowngf"] {
+            #expect(correction.vietnameseKeyings.contains(keying), "\(keying)")
+        }
+        #expect(!correction.unmarkedShapes.contains("android") && !correction.vietnameseKeyings.contains("gamar"))
+        // Spec 12.2 (sixth amendment): packed sets, every bundled word packed (none longer than twelve letters).
+        #expect(correction.unmarkedShapes.count == 3_953 && correction.vietnameseKeyings.count == 27_277)
+        #expect(correction.unmarkedShapes.packed.count == 3_953 && correction.vietnameseKeyings.packed.count == 27_277)
+        // `Biden` is a proper name of size 50, `quixotic` a word of size 40; `android` is in the lexicon (size 35),
+        // so the guard list does not hold it.
+        #expect(correction.guardList.mayContain("biden") && correction.guardList.mayContain("quixotic"))
+        #expect(!correction.guardList.mayContain("android"))
+        #expect(correction.guardList.hashCount == 8)
+        #expect(correction.guardList.bits.count * 8 <= 512 * 1024)
+    }
+
     @Test func bundledNoticesCarryTheScowlNotice() throws {
         // ENG-R811: the app shows the SCOWL notice in its acknowledgements.
         let notices = try Resources.bundledNotices()
         #expect(notices.contains("Copyright 2000-2018 by Kevin Atkinson"))
         #expect(notices.contains("Permission to use, copy, modify, distribute and sell these word"))
         #expect(notices.contains("Article 15(2)"))
+        // ENG-R811, ENG-R1120: the guard list is under the same notice as the lexicon.
+        #expect(notices.contains("guard-list.bloom"))
     }
 
     @Test func bundledNoticesCreditTheLegalTextPortals() throws {

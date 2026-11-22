@@ -152,6 +152,7 @@ struct CorpusScore {
         case .kept(let kept): rule = kept
         case .restored(let restored): rule = restored
         case .macro: return "macro"
+        case .corrected: return "corrected"  // section 11A; the W11 harness runs with the switch off
         }
         switch rule {
         case .unchanged: return "L0"

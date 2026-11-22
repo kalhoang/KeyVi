@@ -9,7 +9,7 @@ import VietnameseEngineTesting
 /// restored with the toggle (L1) stays literal (ENG-R701, E02b). Resources: the 13.9 fixtures.
 @Suite("Re-opened restored token (ENG-R1005)")
 struct ReopenedRestoredTokenTests {
-    private let vni = EngineConfiguration(inputMethod: .vni)
+    private let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
     /// The product owner's traces and their siblings: deleting back past the keys that made the word
     /// invalid or English and typing again gives Vietnamese. The first version kept the keys as typed
@@ -93,7 +93,7 @@ struct ReopenedRestoredTokenTests {
     }
 
     private static func retypeFailure(_ keys: String, method: CorpusMethod) -> String? {
-        let configuration = EngineConfiguration(inputMethod: method.inputMethod)
+        let configuration = EngineConfiguration(inputMethod: method.inputMethod, typoCorrection: false)
         let resources = Resources.empty
         do {
             var fresh = EngineDriver(configuration: configuration, resources: resources)

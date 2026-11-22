@@ -71,11 +71,14 @@ struct TapSettingsPublisherTests {
         #expect(loader.count == 1, "ENG-R1231: bundled lists load once")
     }
 
-    /// D1, D2, D4, D5, D6, D9 and the two user lists (the W1-F1 revision contract).
+    /// D1, D2, D4, D5, D6, D9 and the two user lists (the W1-F1 revision contract); since 1.1.0 also D30, D8 turned
+    /// off and the never-correct list, the inputs of the typo correction switch that are not catalog variants
+    /// (ENG-R1119, ENG-R1118).
     static let engineChanges: [@Sendable (inout UserSettings) -> Void] = [
         { $0.typingMethod = .set(.vni) }, { $0.tonePlacement = .set(.modern) }, { $0.englishRestore = .set(false) },
         { $0.telexStandaloneW = .set(false) }, { $0.telexBracketKeys = .set(true) },
         { $0.macrosEnabled = .set(false) }, { $0.keepAsTyped = ["xyz"] }, { $0.keepVietnamese = ["ddi"] },
+        { $0.typoCorrection = .set(false) }, { $0.restoreHotkey = .set(nil) }, { $0.neverCorrect = ["androdi"] },
     ]
 
     @Test func macroChangesRebuildAndExpansionsAreComposed_ENG_R1101() {

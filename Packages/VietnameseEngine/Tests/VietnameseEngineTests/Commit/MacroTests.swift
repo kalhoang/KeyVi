@@ -139,7 +139,9 @@ struct MacroExpansionTests {
 
     static let resources = SpecFixtures.commitResources(macros: table)
 
-    private func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration()) throws -> String {
+    private func text(_ keys: String, _ configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false))
+        throws -> String
+    {
         try Committing.text(keys, configuration, resources: Self.resources)
     }
 
@@ -162,7 +164,8 @@ struct MacroExpansionTests {
         // ENG-R1102: boundary characters typed since the last whitespace are part of the span.
         #expect(try text("ad. ") == "địa chỉ ")
         #expect(try text("k1 ") == "khu 1 ")  // Telex: `1` is a boundary
-        #expect(try text("k1 ", EngineConfiguration(inputMethod: .vni)) == "khu 1 ")  // VNI: `1` is a key
+        // VNI: `1` is a key.
+        #expect(try text("k1 ", EngineConfiguration(inputMethod: .vni, typoCorrection: false)) == "khu 1 ")
         #expect(try text("@@,") == "kal@example.com,")
         #expect(try text("x ad. ") == "x địa chỉ ")
         // The terminator is the first boundary after a complete trigger.
@@ -252,7 +255,8 @@ struct MacroExpansionTests {
 
     @Test func expansionOutsideTheBasicMultilingualPlane() {
         // Edits that remove an expansion count clusters and UTF-16 units separately (ENG-R630, ENG-R631).
-        var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: Self.resources))
+        var session = Session(
+            engine: Engine(configuration: EngineConfiguration(typoCorrection: false), resources: Self.resources))
         for key in "smile " { _ = session.handle(.key(KeyInput(key))) }
         _ = session.handle(.backspace)
         #expect(session.state.activeDisplay == "\u{1F600}")

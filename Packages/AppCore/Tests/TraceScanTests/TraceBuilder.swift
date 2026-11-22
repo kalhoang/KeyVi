@@ -29,7 +29,12 @@ struct TraceBuilder {
     private var session: Session
     private let engine: Engine
 
-    init(start: Int64 = TraceBuilder.base, configuration: EngineConfiguration = EngineConfiguration()) {
+    /// `configuration`: the engine the trace records. Its default is what `ReplayEngineFactory` rebuilds from
+    /// `settings` below, which record no D30, so the typo correction is off (ENG-R1119).
+    init(
+        start: Int64 = TraceBuilder.base,
+        configuration: EngineConfiguration = EngineConfiguration(typoCorrection: false)
+    ) {
         t = start
         engine = Engine(configuration: configuration, resources: TraceBuilder.resources)
         session = Session(engine: engine)

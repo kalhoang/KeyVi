@@ -27,7 +27,8 @@ import VietnameseEngineData
                 for restore in [true, false] {
                     all.append(
                         EngineConfiguration(
-                            inputMethod: method, autoRestore: restore, appContext: context, lookaheadRevision: true))
+                            inputMethod: method, autoRestore: restore, appContext: context, lookaheadRevision: true,
+                            typoCorrection: false))
                 }
             }
         }

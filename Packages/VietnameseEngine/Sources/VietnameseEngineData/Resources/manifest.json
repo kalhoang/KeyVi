@@ -1,10 +1,10 @@
 {
-  "format": 2,
+  "format": 3,
   "generator": "lexicon-builder",
-  "inputsSHA256": "4b772529b4ed11edec2c0d83dd81717631517e59cc56cf2066cc307a214e809d",
+  "inputsSHA256": "df97532cbdbf71bbe6379a34c84e05e90765979562afbfa0393964d8ed0de77f",
   "files": [
     {"name": "english.txt", "bytes": 359554, "entries": 40205, "sha256": "0559f1a52aef1b59974b1c0be2e9a9bec9139e77a554ebe191f0ccf1c59f7c01"},
-    {"name": "tech-always.txt", "bytes": 2174, "entries": 388, "sha256": "9ed38dc89f5407a4c499fca259043c59bab9e9677584c32e0d5447e4cec95640"},
+    {"name": "tech-always.txt", "bytes": 2333, "entries": 406, "sha256": "654b1cebeded4397dcbf4ae5c5c777846b48c28bdbcdbc0d287a20a6f7bd7b6c"},
     {"name": "tech-code-only.txt", "bytes": 1169, "entries": 223, "sha256": "1d718c72491e7eb1afe87922ed01cd8cc5788b416fe2b01eb4ffe82f36b905ba"},
     {"name": "tech-code-capitalized.txt", "bytes": 5, "entries": 1, "sha256": "d329be9e3aea365ba02a318d9392e22abd64076bb7e33eaaacd8b3f29b7f6de8"},
     {"name": "attested.txt", "bytes": 11451, "entries": 1955, "sha256": "869e636ed0590d05856000b9ca0d6088e829b4bebf42e563be260462c08e560c"},
@@ -17,7 +17,11 @@
     {"name": "vi-tail-words.txt", "bytes": 322, "entries": 63, "sha256": "9aceba1ec3e8a9bfa1f462f7096de906deace11249911a41dbc0a14650262cdf"},
     {"name": "vi-tail-particles.txt", "bytes": 155, "entries": 31, "sha256": "ef4e03d1c14a7852445d536c9c840423b9efa76366950a3cf901441dfea7f87a"},
     {"name": "english-pre-guard.txt", "bytes": 172, "entries": 44, "sha256": "b5de644916494e189e73760f5d9c1134983313dd1db09ec0a7da78099e37628b"},
-    {"name": "NOTICES.txt", "bytes": 14272, "sha256": "d98354332ca9e835646da1551bbeab2ba37e7ad97ecba811b3a7d9c012088086"}
+    {"name": "guard-list.bloom", "bytes": 131104, "entries": 77488, "sha256": "04c42dad442b8445585665a185f87f38d685e5ee7380b04f1729302ee947e9f7"},
+    {"name": "keyboard-neighbours.txt", "bytes": 188, "entries": 26, "sha256": "05eda7e6df7c9bc222756aa736f31f50276b0529313c4596e446ab9f77070821"},
+    {"name": "unmarked-shapes.txt", "bytes": 20217, "entries": 3953, "sha256": "7ffdf769a9116f2bb79b43c9352cb4f2179c0f3aa6a80b77159255b799534b64"},
+    {"name": "vietnamese-keyings.txt", "bytes": 176005, "entries": 27277, "sha256": "e591d5e11bf5a5e6453f55faa773fad85554c3278aec89444a0f21baab2174b1"},
+    {"name": "NOTICES.txt", "bytes": 14802, "sha256": "0ad7b8d8482f80aa5470a2ad232a68fbeb484d3eab35d27ff1912065b901b195"}
   ],
   "stats": {
     "englishWords": 40205,
@@ -25,6 +29,10 @@
     "legalDistinctTokens": 1784,
     "attestedFromCorpus": 1678,
     "attestedFromAdditions": 264,
-    "attestedStyleVariants": 13
+    "attestedStyleVariants": 13,
+    "guardListWords": 77488,
+    "guardListBits": 1048576,
+    "unmarkedShapes": 3953,
+    "vietnameseKeyings": 27277
   }
 }

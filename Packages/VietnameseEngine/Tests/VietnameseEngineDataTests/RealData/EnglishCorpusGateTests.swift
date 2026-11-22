@@ -22,7 +22,7 @@ struct EnglishCorpusGateTests {
     private static let reportWithoutCollisionRules = Result { () throws -> EnglishCorpusReport in
         EnglishCorpusCheck.run(
             words: try RealData.englishCorpusWords(), resources: try RealData.resources(),
-            configuration: EngineConfiguration(lookaheadRevision: false))
+            configuration: EngineConfiguration(lookaheadRevision: false, typoCorrection: false))
     }
 
     /// The ENG-T11 exceptions of the English run: every entry but the L4 ones, which change only in Vietnamese context

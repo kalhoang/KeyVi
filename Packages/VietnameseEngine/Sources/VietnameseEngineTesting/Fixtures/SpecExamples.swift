@@ -47,7 +47,7 @@ public struct WorkedExample: Sendable, Hashable {
 
     /// The engine configuration of the row.
     public var configuration: EngineConfiguration {
-        EngineConfiguration(inputMethod: inputMethod, toneStyle: style)
+        EngineConfiguration(inputMethod: inputMethod, toneStyle: style, typoCorrection: false)
     }
 
     /// The input method with the row's Telex options.
@@ -95,7 +95,8 @@ public struct CommitDecisionExample: Sendable, Hashable {
 
     /// The engine configuration of the row.
     public var configuration: EngineConfiguration {
-        EngineConfiguration(inputMethod: method == .vni ? .vni : .telex(TelexOptions()), appContext: context)
+        EngineConfiguration(
+            inputMethod: method == .vni ? .vni : .telex(TelexOptions()), appContext: context, typoCorrection: false)
     }
 
     /// The keys of the row's seed token (13.9 "Previous token") in the row's method: `việt` is typed `vie65t`
@@ -164,7 +165,7 @@ public struct RestoreToggleExample: Sendable, Hashable {
 
     /// The engine configuration of the row.
     public var configuration: EngineConfiguration {
-        EngineConfiguration(inputMethod: method == .vni ? .vni : .telex(TelexOptions()))
+        EngineConfiguration(inputMethod: method == .vni ? .vni : .telex(TelexOptions()), typoCorrection: false)
     }
 }
 

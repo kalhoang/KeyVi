@@ -48,7 +48,8 @@ struct CollisionWorkedExampleTests {
 
     @Test("ENG-R825 to ENG-R828: every row of 13.9.3", arguments: rows)
     func row(_ row: Row) throws {
-        var driver = EngineDriver(configuration: EngineConfiguration(), resources: try RealData.resources())
+        var driver = EngineDriver(
+            configuration: EngineConfiguration(typoCorrection: false), resources: try RealData.resources())
         try driver.type(row.keys + "\n")
         #expect(driver.field.string == row.text + "\n", "\(row.id): \(driver.field.string.debugDescription)")
         let decisions = driver.outputs.compactMap(\.decision)
@@ -62,7 +63,8 @@ struct CollisionWorkedExampleTests {
     func rowsWithoutTheContextRules() throws {
         for row in Self.rows {
             var driver = EngineDriver(
-                configuration: EngineConfiguration(lookaheadRevision: false), resources: try RealData.resources())
+                configuration: EngineConfiguration(lookaheadRevision: false, typoCorrection: false),
+                resources: try RealData.resources())
             try driver.type(row.keys + "\n")
             #expect(driver.outputs.allSatisfy { $0.revision == nil }, "\(row.id)")
             let decisions = driver.outputs.compactMap(\.decision)
