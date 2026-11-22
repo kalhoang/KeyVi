@@ -977,7 +977,8 @@ during most of them.
   ENG-R442, ENG-R804 (d) and its known costs, ENG-R904, REG-41 and rows X40 to X43 of 13.9.5; the reference model; the
   probe `Wwade ` of the engine identity; the CHANGELOG lines; the TRACEABILITY rows ENG-R440, ENG-R442, ENG-R804,
   ENG-R903 and REG-41. It changes no word of `/usr/share/dict/words` typed as written; the Task 35 rerun at the stable
-  1.0.1 merge covers it.
+  1.0.1 merge covers it. The harness behind the measured figures of REG-41 and of the ENG-R804 amendment of 22/11/2026
+  is `Packages/VietnameseEngine/Scripts/w-doubling-measure/` (its README gives the commands and the figures).
 
 ---
 
