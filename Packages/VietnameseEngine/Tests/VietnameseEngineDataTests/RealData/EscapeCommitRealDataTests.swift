@@ -359,6 +359,64 @@ struct EscapeCommitRealDataTests {
         #expect(try Self.checked("whcih ", EngineConfiguration(typoCorrection: true)) == "which ")
     }
 
+    // MARK: - REG-41
+
+    @Test(
+        "REG-41: a capitalised word typed Ww keeps its capital (ENG-R804, ADR 0010 item 8)",
+        arguments: [
+            ("Wwade ", "Wade "), ("Wwarden ", "Warden "), ("Ww ", "W "), ("Wwatt ", "Watt "), ("Wwindows ", "Windows "),
+            ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("vieejt Wwade ", "việt Wade "),
+            ("Wwade Wwarden ", "Wade Warden "),
+        ])
+    func capitalisedWordTypedWithTheHabit(_ keys: String, _ expected: String) throws {
+        // Until 22/11/2026 the escape appended its own key, a lowercase `w`, so `C` was `wade` and rule L4 (b) kept
+        // it. The escaped letter takes the place of the `Ư` it removed: a capital when either `w` key is (ENG-R903).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41, 11A: the correction of a capitalised word typed Ww keeps the capital (ENG-R1111)")
+    func capitalisedCorrection() throws {
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: true)) == "Windows ")
+        #expect(try Self.checked("Wwindwos ⎋", EngineConfiguration(typoCorrection: true)) == "Windwos ")
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: false)) == "Windwos ")
+    }
+
+    @Test(
+        "REG-41: the other w doublings commit as before",
+        arguments: [
+            ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),
+            ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
+            ("wwwexample ", "wwwexample "), ("wwwRoot ", "wwwRoot "), ("www ", "www "), ("Www ", "Www "),
+            ("powwow ", "powwow "),
+            ("glowworm ", "glowworm "), ("WWADE ", "WADE "), ("Uww ", "Uw "), ("Dowwnload ", "Dowwnload "),
+        ])
+    func otherDoublingsCommitAsBefore(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-41: re-opening, Backspace, keys typed into it, the toggle and the correction undo behave as for ww",
+        arguments: ["ade", "arden", "ebview", "indwos", "ordPress"])
+    func capitalBehavesAsLowercase(_ rest: String) throws {
+        let edits = [
+            " ", " ⌫", " ⌫⌫", " ⌫⌫⌫⌫⌫", " ⌫⌫⌫⌫⌫⌫⌫⌫⌫", " ⌫ ", " ⌫s ", " ⌫⎋", " ⌫⎋ ", " ⎋", " ⎋⌫", " ⎋⌫ ⌫", "⎋", "⎋ ",
+            "⎋⌫⎋", "⌫", "⌫⌫⌫", "⌫⌫⌫⌫⌫⌫⌫⌫", "⌫⎋", "⌫ ",
+        ]
+        for configuration in Self.configurationsWithCorrection {
+            for edit in edits {
+                let lowercase = try Self.checked("ww" + rest + edit, configuration)
+                let expected = lowercase.prefix(1).uppercased() + lowercase.dropFirst()
+                #expect(
+                    try Self.checked("Ww" + rest + edit, configuration) == expected,
+                    "\(configuration) \(rest.debugDescription) \(edit.debugDescription)")
+            }
+        }
+    }
+
     @Test(
         "The deliberate escapes of Telex users and the escape examples of the spec do not change",
         arguments: [

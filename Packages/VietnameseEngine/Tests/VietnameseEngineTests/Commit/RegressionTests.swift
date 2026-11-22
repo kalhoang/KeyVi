@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-40, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-41, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-40 (13.5)")
+@Suite("Regressions REG-01 to REG-41 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
@@ -422,5 +422,23 @@ struct RegressionTests {
         // English keys decide first and the deliberate forms of 4.7 stay.
         #expect(try text("www ") == "www " && text("ww ") == "w " && text("uww ") == "uw " && text("aww ") == "aw ")
         #expect(try text("wwebview ", vni) == "wwebview ")
+    }
+
+    @Test("REG-41: a capitalised word typed Ww keeps its capital")
+    func reg41() throws {
+        // The product owner's decision of 22/11/2026 (ADR 0010 item 8): `Wwade` (Shift+W, then w, a, d, e) gave `wade`,
+        // because the escape appended its own key, a lowercase `w`, and rule L4 (b) kept that English `C`. The escaped
+        // letter now takes the place of the `Ư` it removed, so it is a capital when either `w` key is (ENG-R804, ENG-R903).
+        var resources = Committing.fixtures
+        resources.english = WordSet(SpecFixtures.englishLexicon + ["wade", "warden"])
+        #expect(try Committing.text("Wwade ", resources: resources) == "Wade ")
+        #expect(try Committing.text("Wwarden ", resources: resources) == "Warden ")
+        #expect(try Committing.decision("Wwade ", resources: resources) == .kept(.escape))
+        #expect(try text("Wwar ") == "War " && text("Ww ") == "W " && text("Ww") == "W")
+        // The other forms of the doubling, horn and breve doublings and the habit restore are unchanged.
+        #expect(try text("WW ") == "W " && text("wW ") == "W " && text("ww ") == "w " && text("Uww ") == "Uw ")
+        #expect(try text("Wwebview ") == "Webview " && text("WwordPress ") == "WordPress ")
+        #expect(try text("wWidth ") == "wWidth ")
+        #expect(try text("Wwade ", vni) == "Wwade ")
     }
 }

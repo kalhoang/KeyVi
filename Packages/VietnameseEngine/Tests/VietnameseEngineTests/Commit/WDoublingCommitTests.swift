@@ -11,13 +11,14 @@ import VietnameseEngineTesting
 /// w doubling** removed the `ư` of a standalone `w`. `R′` is `R` without the key of each `w` doubling. When `R′` differs
 /// from `R`: `R` English decides as before ((a), (c)); `C` English keeps `C` ((b)); (c′) `R′` English restores `R′`;
 /// (d) a deliberate form keeps `C`, otherwise `R′` is restored when every `w` doubling is a standalone one, else `R`.
-/// Resources: the 13.9 fixtures plus `answer` and `powwow`, and `sofw`, which stands for an English word
-/// whose doubled `w` follows a transformed key in a one-syllable display (no word of the bundled lexicon has that shape).
-@Suite("Rule L4: a w doubling typed out of habit (ENG-R804, REG-40)")
+/// Resources: the 13.9 fixtures plus `answer` and `powwow`, `sofw`, which stands for an English word whose doubled `w`
+/// follows a transformed key in a one-syllable display (no word of the bundled lexicon has that shape), and `wade` and
+/// `warden`, two English words that a writer with the habit types `Ww` when they start a sentence (REG-41).
+@Suite("Rule L4: a w doubling typed out of habit (ENG-R804, REG-40, REG-41)")
 struct WDoublingCommitTests {
     static let resources: Resources = {
         var resources = SpecFixtures.commitResources()
-        resources.english = WordSet(SpecFixtures.englishLexicon + ["answer", "powwow", "sofw"])
+        resources.english = WordSet(SpecFixtures.englishLexicon + ["answer", "powwow", "sofw", "wade", "warden"])
         return resources
     }()
 
@@ -127,7 +128,7 @@ struct WDoublingCommitTests {
 
     @Test(
         "The deliberate forms do not change (4.7)",
-        arguments: [("uww ", "uw "), ("ww ", "w "), ("aww ", "aw "), ("wwww ", "www "), ("Ww ", "w ")])
+        arguments: [("uww ", "uw "), ("ww ", "w "), ("aww ", "aw "), ("wwww ", "www "), ("WW ", "W ")])
     func deliberateFormsUnchanged(_ keys: String, _ expected: String) throws {
         #expect(try Self.text(keys) == expected)
         #expect(try Self.driver(keys).outputs.last?.decision == .kept(.escape))
@@ -333,5 +334,88 @@ struct WDoublingCommitTests {
         // `webview` is English evidence: `this` (row `vi`) is restored by L10 after it.
         #expect(try Self.text("wwebview this ") == "webview this ")
         #expect(try Self.text("answwer this ") == "answer this ")
+    }
+
+    // MARK: - REG-41: a capitalised word typed `Ww`
+
+    @Test(
+        "REG-41: the escaped letter of a standalone w doubling is a capital when either w key is (ENG-R903)",
+        arguments: [
+            ("Ww", "W"), ("WW", "W"), ("wW", "W"), ("ww", "w"), ("Wwade", "Wade"), ("Wwebview", "Webview"),
+            ("WwordPress", "WordPress"), ("Www", "Ww"), ("TWwitter", "TWitter"), ("Twwitter", "Twitter"),
+            ("WWADE", "WADE"), ("wWidth", "Width"), ("dwWidth", "dWidth"), ("WSw", "w"),
+        ])
+    func standaloneDoublingShowsTheCapital(_ keys: String, _ shown: String) {
+        // ADR 0010 item 8 (22/11/2026): the escaped letter takes the place of the `Ư` it removed, so `Ww` shows `W`
+        // as `WW` and `wW` do. `WSw` holds no doubling (the tone key comes between, ENG-R432) and shows `w` as before.
+        let composition = Composition(replaying: Array(keys.utf8), rules: Self.telex)
+        #expect(composition.display(style: .traditional) == shown, "\(keys)")
+        #expect(composition.rawText == keys, "\(keys): the raw keys stay as typed (ENG-R602)")
+    }
+
+    @Test(
+        "REG-41: every other escape keeps the case of its own key (ENG-R903)",
+        arguments: [
+            ("Uww", "Uw"), ("UWw", "Uw"), ("AWw", "Aw"), ("Aww", "Aw"), ("DOWwnload", "DOwnload"), ("Aaa", "Aa"),
+            ("Ass", "As"), ("Ddd", "Dd"), ("Thuoww", "Thuow"),
+        ])
+    func otherEscapesKeepTheirCase(_ keys: String, _ shown: String) {
+        // A horn or breve doubling, or an escape of another kind: the first key never produced a letter of its own,
+        // so no capital was lost.
+        let composition = Composition(replaying: Array(keys.utf8), rules: Self.telex)
+        #expect(composition.display(style: .traditional) == shown, "\(keys)")
+    }
+
+    @Test("REG-41: VNI and Telex with standalone w off have no standalone w doubling")
+    func capitalOtherConfigurations() throws {
+        let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
+        #expect(try Self.text("Wwade ", vni) == "Wwade ")
+        let off = EngineConfiguration(inputMethod: .telex(TelexOptions(standaloneW: false)), typoCorrection: false)
+        #expect(try Self.text("Wwade ", off) == "Wwade ")
+    }
+
+    @Test(
+        "REG-41: a capitalised word typed Ww commits with its capital (ENG-R804, ADR 0010 item 8)",
+        arguments: [
+            ("Wwade ", "Wade "), ("Wwarden ", "Warden "), ("Wwar ", "War "), ("Ww ", "W "), ("Wwatt ", "Watt "),
+            ("vieejt Wwade ", "việt Wade "),
+        ])
+    func capitalisedWordTypedWithTheHabit(_ keys: String, _ expected: String) throws {
+        // `C` is now `Wade`: (b) keeps an English `C` and (d) a deliberate form, as they kept `wade` before.
+        #expect(try Self.checked(keys) == expected)
+        #expect(try Self.driver(keys).outputs.last?.decision == .kept(.escape))
+    }
+
+    @Test(
+        "REG-41: the other w doublings commit as before",
+        arguments: [
+            ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),
+            ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("Twwitter ", "Twitter "),
+            ("TWwitter ", "TWitter "), ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
+            ("wwwexample ", "wwwexample "), ("wwwRoot ", "wwwRoot "), ("www ", "www "), ("Www ", "Www "),
+            ("powwow ", "powwow "), ("glowworm ", "glowworm "), ("WWADE ", "WADE "), ("Uww ", "Uw "),
+        ])
+    func otherDoublingsCommitAsBefore(_ keys: String, _ expected: String) throws {
+        #expect(try Self.checked(keys) == expected)
+    }
+
+    /// Edits after a word typed with the habit: the commit, Backspace re-opening it (ENG-R1005) and deleting the
+    /// escaped letter (ENG-R711), keys typed into it, the restore toggle while composing (ENG-R701), right after the
+    /// commit (ENG-R703) and after the re-opening (ENG-R704).
+    static let edits = [
+        "", " ", " ⌫", " ⌫⌫", " ⌫⌫⌫", " ⌫⌫⌫⌫", " ⌫⌫⌫⌫⌫", " ⌫⌫⌫⌫⌫⌫", " ⌫ ", " ⌫s ", " ⌫⎋", " ⌫⎋⎋", " ⌫⎋ ", " ⎋", " ⎋⌫",
+        "⎋", "⎋ ", "⎋⌫", "⎋⌫⎋", "⌫", "⌫⌫", "⌫⌫⌫", "⌫⌫⌫⌫", "⌫⌫⌫⌫⌫", "⌫⎋", "⌫ ",
+    ]
+
+    @Test(
+        "REG-41: re-opening, Backspace, keys typed into it and the toggle behave as for ww, only with the capital",
+        arguments: ["ade", "arden", "ebview", "ar", "", "atch"])
+    func capitalBehavesAsLowercase(_ rest: String) throws {
+        for edit in Self.edits {
+            let lowercase = try Self.checked("ww" + rest + edit)
+            let expected = lowercase.prefix(1).uppercased() + lowercase.dropFirst()
+            #expect(
+                try Self.checked("Ww" + rest + edit) == expected, "\(rest.debugDescription) \(edit.debugDescription)")
+        }
     }
 }

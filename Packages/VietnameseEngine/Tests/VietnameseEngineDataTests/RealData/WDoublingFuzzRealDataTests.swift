@@ -12,10 +12,13 @@ import VietnameseEngineTesting
 @Suite("REG-40: fuzz from a token committed without its w doubling (ENG-R701, ENG-R1005)")
 struct WDoublingFuzzRealDataTests {
     /// Words committed as `R′` by rule L4 or L3b, by the typo correction, or taken back from it by the toggle; some
-    /// re-opened and deleted down to the character before the doubling the token does not show.
+    /// re-opened and deleted down to the character before the doubling the token does not show. Since REG-41 also
+    /// capitalised words typed `Ww`, whose escaped letter is a capital (ADR 0010 item 8): kept by (b) or a deliberate
+    /// form, restored as `R′`, corrected, and one still composing.
     static let starts = [
         "answwer ", "wwebview ", "softwware ", "WwordPress ", "wwindwos ", "wwindwos ⎋", "wwindwos ⎋⌫ ", "dwWidth ",
-        "answwer ⌫⌫⌫", "softwware ⌫⌫⌫⌫", "answwer ⌫⌫ ⌫⌫",
+        "answwer ⌫⌫⌫", "softwware ⌫⌫⌫⌫", "answwer ⌫⌫ ⌫⌫", "Wwade ", "Ww ", "Wwebview ", "Wwindwos ", "Wwindwos ⎋",
+        "Wwa",
     ]
 
     /// The keys of the edits: Backspace, the doubled letter in both cases, letters that compose with it, boundaries.

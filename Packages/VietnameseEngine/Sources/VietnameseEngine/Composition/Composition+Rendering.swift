@@ -46,11 +46,27 @@ extension Composition {
             let scalar = LetterTable.scalar(letter, tone: offset == toneOffset ? tone : .level, uppercase: uppercase)
             text.unicodeScalars.append(scalar)
         }
-        if let literalStart {
+        if var tailStart = literalStart {
+            if showsEscapedWAsCapital {
+                text.unicodeScalars.append("W")
+                tailStart += 1
+            }
             // The literal tail is ASCII keys: one validated copy, not one append per key (REG-02).
-            text += String(decoding: raw[literalStart...], as: UTF8.self)
+            text += String(decoding: raw[tailStart...], as: UTF8.self)
         }
         return text
+    }
+
+    /// ENG-R903, ENG-R804 (REG-41, the product owner's decision of 22/11/2026, ADR 0010 item 8): the escaped letter of a
+    /// standalone w doubling takes the place of the `ư` it removed, so it is a capital when either `w` key is: `Ww` shows
+    /// `W` as `WW` and `wW` do, and `ww` shows `w` (`Wwade` shows `Wade`, not `wade`). The escaped `w` is never viable
+    /// (no onset, vowel or coda, 3.3), so it is the key that starts the literal tail; the other keys of the tail and
+    /// every other escape keep the case of their own key, and the raw keys stay as typed (ENG-R602).
+    var showsEscapedWAsCapital: Bool {
+        guard let literalStart, standaloneWDoublings.contains(literalStart) else { return false }
+        // A doubling comes right after the key of the `ư` it removed (`recordWDoubling`), so that key is at
+        // `literalStart - 1` and the letter had its case (ENG-R903).
+        return ASCII.isUppercaseLetter(raw[literalStart - 1]) && !ASCII.isUppercaseLetter(raw[literalStart])
     }
 
     /// ENG-R906: the token has bracket letters and is an all-caps word, meaning at least two other letters
