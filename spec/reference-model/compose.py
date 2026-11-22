@@ -209,7 +209,10 @@ def try_w(st, cfg, ch, allowed="aou", kind="w", standalone=False):
         # ENG-R804 (REG-40): a Telex `w` escape right after the `w` key whose effect it removes is a `w` doubling.
         if kind == "w" and index > 0 and index - 1 in undone and st.raw[index - 1] in "wW":
             st.w_doublings[index] = index - 1 in standalone
-        escape(st, cfg, kind, ch, undone)
+        # ENG-R903 (REG-41, product owner, 22/11/2026): the escaped letter of a standalone `w` doubling takes the place
+        # of the `ư` it removed, a capital when either `w` key is (`Ww` shows `W`); the raw keys stay as typed.
+        shown = ch.upper() if st.w_doublings.get(index) and st.raw[index - 1].isupper() else ch
+        escape(st, cfg, kind, shown, undone)
         return True
     if standalone and i == j:
         new = st.ls + [L("u", "horn", upper=ch.isupper(), fromw=True, src=len(st.raw) - 1)]
