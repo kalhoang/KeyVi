@@ -3,6 +3,7 @@
 #
 # Runs the harness of one prepared tree (prepare-tree.sh) over every input set of INPUTS (generate-inputs.py), with
 # typoCorrection off (c0) and on (c1), and writes OUT/LABEL-SET-c0.tsv and -c1.tsv with the test log next to each.
+# --lookahead-off and --autorestore-off run the engine with that switch off (give such a run its own LABEL).
 # Exit status 1 when a run fails or writes a different number of lines than its input has.
 set -euo pipefail
 
@@ -16,16 +17,22 @@ Usage: run-tree.sh [--scratch NAME] [--sets NAME[,NAME]] TREE INPUTS OUT LABEL
   LABEL           file name prefix of this tree, base or head for compare.py
   --scratch NAME  SwiftPM scratch directory used by prepare-tree.sh (default .build-measure)
   --sets LIST     comma-separated set names to run (default: every .txt file of INPUTS)
+  --lookahead-off    EngineConfiguration.lookaheadRevision off (default on)
+  --autorestore-off  EngineConfiguration.autoRestore off (default on)
 EOF
 }
 
 scratch=".build-measure"
 sets=""
+lookahead=1
+autorestore=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h | --help) usage; exit 0 ;;
     --scratch) scratch="${2:?--scratch needs a value}"; shift 2 ;;
     --sets) sets=",${2:?--sets needs a value},"; shift 2 ;;
+    --lookahead-off) lookahead=0; shift ;;
+    --autorestore-off) autorestore=0; shift ;;
     -*) usage >&2; exit 2 ;;
     *) break ;;
   esac
@@ -49,6 +56,7 @@ for input in "$inputs"/*.txt; do
     tsv="$out/$label-$name-c$correction.tsv"
     status=0
     CRM_INPUT="$input" CRM_OUTPUT="$tsv" CRM_CORRECTION="$correction" \
+      CRM_LOOKAHEAD="$lookahead" CRM_AUTORESTORE="$autorestore" \
       nice swift test --package-path "$package" --scratch-path "$package/$scratch" --skip-build \
       --filter ContextRestoreMeasureTests >"${tsv%.tsv}.log" 2>&1 || status=$?
     written=0

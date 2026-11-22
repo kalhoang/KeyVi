@@ -6,7 +6,8 @@
 // of 1.1.0-beta.1 (28dbd6d0) already has, so the same file runs against the base and the head.
 //
 // Types each line of $CRM_INPUT (KeyNotation: `⌫` Backspace, `⎋` the restore key; and here `↵` Return, `⇥` Tab) from
-// an empty field with the bundled data, Telex defaults and typoCorrection on when $CRM_CORRECTION is 1, off otherwise,
+// an empty field with the bundled data, Telex defaults and typoCorrection on when $CRM_CORRECTION is 1, off otherwise
+// (lookaheadRevision off when $CRM_LOOKAHEAD is 0, autoRestore off when $CRM_AUTORESTORE is 0, both on otherwise),
 // and writes one line per input to $CRM_OUTPUT: the number of restore keys that came right after a commit ENG-R706
 // covers (the flag; recomputed here from each commit's output and the history, never from the engine's own mark),
 // a tab, the final field, a tab and a 64-bit FNV-1a hash of every event's field and output (actions, decisions,
@@ -23,7 +24,9 @@ struct ContextRestoreMeasureTests {
     @Test func typesEveryInputLine() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let input = environment["CRM_INPUT"], let output = environment["CRM_OUTPUT"] else { return }
-        let configuration = EngineConfiguration(typoCorrection: environment["CRM_CORRECTION"] == "1")
+        let configuration = EngineConfiguration(
+            autoRestore: environment["CRM_AUTORESTORE"] != "0", lookaheadRevision: environment["CRM_LOOKAHEAD"] != "0",
+            typoCorrection: environment["CRM_CORRECTION"] == "1")
         let engine = Engine(configuration: configuration, resources: try RealData.resources())
         let text = try String(contentsOfFile: input, encoding: .utf8)
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
@@ -57,7 +60,9 @@ struct ContextRestoreMeasureTests {
     /// The previous event was a commit whose rule restored the token because of the tokens before it (L10 or L9b), the
     /// token alone keeping its composed form (rule L11 keeps the raw keys: a `vi` or unreviewed row, or no row and no
     /// tech-always word), with no revision of the token before it, at an ASCII boundary that keeps the history; the
-    /// restored text differs from the composed form (ENG-R706).
+    /// restored text differs from the composed form (ENG-R706). This restates the condition of ENG-R706 on purpose, so
+    /// the measurement shows that nothing outside it changed; it cannot judge the scope itself, which the census set
+    /// `i_census` lists word by word (README.md).
     private static func followsCoveredRestore(_ output: EngineOutput, _ state: EngineState, _ engine: Engine) -> Bool {
         guard output.revision == nil,
             output.decision == .restored(.englishRun) || output.decision == .restored(.phrase),

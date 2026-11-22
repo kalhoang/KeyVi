@@ -15,9 +15,12 @@ Sets:
              right after commits
   h_phrases  every bundled phrase typed from an empty field, after an English word and after a Vietnamese word,
              then a space and the restore key, and once more followed by a Vietnamese word
+  i_census   every word of the English lexicon and both tech lists (the word list of ENG-T10) typed after the English
+             run of the report, `Thanks Giving `, then a space and the restore key: the flagged lines are the words
+             ENG-R706 covers after an English run (compare.py --census lists them)
 
 The defaults reproduce the sets of 23/11/2026: seed 23112026, 60,000 mixed lines, the bundled data of this checkout
-(identical at 28dbd6d0 and at the head of REG-42). Standard library only.
+(identical at 28dbd6d0 and at the head of REG-42). The set i_census has no randomness. Standard library only.
 """
 import argparse
 import importlib.util
@@ -38,6 +41,8 @@ TAB = "⇥"
 # Boundaries between tokens and their weights: a space mostly, prose punctuation, the hard boundaries Return and Tab,
 # and non-ASCII characters (ellipsis, curly quote, no-break space), after which ENG-R706 passes through.
 BOUNDARIES = [" "] * 30 + [", ", ". ", "? ", "! ", "; ", ": ", ") "] + [RETURN, TAB] + ["\u2026", "\u201d", "\u00a0"]
+# The English run of the product owner's report (REG-42) that the census words follow.
+CENSUS_CONTEXT = "Thanks Giving "
 # What may follow a boundary: the restore key, twice, after a Backspace, or nothing.
 AFTER_BOUNDARY = [TOGGLE] * 7 + [TOGGLE + TOGGLE] + [BACKSPACE + TOGGLE] + [""] * 11
 
@@ -100,6 +105,14 @@ def phrases():
     return lines
 
 
+def census():
+    """ENG-T10's word list (english.txt and both tech lists, unique, in byte order) after an English run."""
+    words = set()
+    for name in ("english.txt", "tech-always.txt", "tech-code-only.txt"):
+        words.update(read_list(name))
+    return [CENSUS_CONTEXT + word + " " + TOGGLE for word in sorted(words, key=lambda word: word.encode("utf-8"))]
+
+
 def write(directory, name, lines):
     with open(os.path.join(directory, name + ".txt"), "w", encoding="utf-8", newline="\n") as handle:
         handle.write("".join(line + "\n" for line in lines))
@@ -113,7 +126,8 @@ def main(argv):
     parser.add_argument("--mixed", type=int, default=MIXED_COUNT, help=f"mixed lines (default {MIXED_COUNT})")
     args = parser.parse_args(argv)
     try:
-        sets = {"f_fuzz": w_doubling_fuzz(), "g_mixed": mixed(args.seed, args.mixed), "h_phrases": phrases()}
+        sets = {"f_fuzz": w_doubling_fuzz(), "g_mixed": mixed(args.seed, args.mixed), "h_phrases": phrases(),
+                "i_census": census()}
     except OSError as error:
         print(f"generate-inputs: {error}", file=sys.stderr)
         return 2
