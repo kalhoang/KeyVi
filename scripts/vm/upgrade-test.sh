@@ -23,7 +23,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/vm/upgrade-test.sh --previous DIR --candidate DIR [options]
 
-  --previous DIR       dist folder of the previous stable (DMG, KeyVi-style .app, SHA256SUMS, build-info.json)
+  --previous DIR       dist folder of the previous stable (DMG, the .app, SHA256SUMS, build-info.json)
   --candidate DIR      dist folder of the release candidate (.app, update zip, SHA256SUMS, build-info.json)
   --vm NAME            base VM (default VM_DEV, <slug>-dev); the test runs in the throwaway clone NAME-upgrade
   --output DIR         run folder (default VM_LAB_RUNS/<UTC timestamp>-upgrade)
@@ -31,6 +31,7 @@ Usage: scripts/vm/upgrade-test.sh --previous DIR --candidate DIR [options]
   --egress-minutes N   length of each egress phase (default 10, spec/02-platform.md 13.7)
   --no-channel         skip the channel switch check (release.md section 5 item 3)
   --no-egress          skip the egress test
+  --appcast FILE       published appcast to find the candidate's signature in (default site/static/appcast.xml)
   --sign               sign an unpublished candidate's zip with Sparkle's sign_update (SPARKLE_SIGN_UPDATE or the
                        copy scripts/publish-release keeps); without it such a candidate stops with exit 6
   --wait-idle MIN      wait up to MIN minutes for an idle host before the VM boots (default 240; 0 = check once)
@@ -66,6 +67,7 @@ run_egress=1
 sign=0
 wait_minutes=240
 watchdog_dir="${VM_LAB_WATCHDOG_DIR:-$VM_LAB_ROOT/kv-ops}"
+appcast="$REPO_ROOT/site/static/appcast.xml"
 bad_usage() {
   printf 'upgrade-test: %s\n' "$*" >&2
   usage >&2
@@ -74,7 +76,8 @@ bad_usage() {
 while (($#)); do
   case "$1" in
     -h | --help) usage; exit 0 ;;
-    --previous | --candidate | --vm | --output | --memory | --cpus | --egress-minutes | --wait-idle | --watchdog)
+    --previous | --candidate | --vm | --output | --memory | --cpus | --egress-minutes | --wait-idle | --watchdog | \
+      --appcast)
       (($# >= 2)) || bad_usage "$1 needs a value"
       case "$1" in
         --previous) previous="$2" ;;
@@ -86,6 +89,7 @@ while (($#)); do
         --egress-minutes) egress_minutes="$2" ;;
         --wait-idle) wait_minutes="$2" ;;
         --watchdog) watchdog_dir="$2" ;;
+        --appcast) appcast="$2" ;;
       esac
       shift 2
       ;;
@@ -100,6 +104,7 @@ done
 [[ -n "$previous" && -n "$candidate" ]] || bad_usage "--previous and --candidate are required"
 [[ -d "$previous" ]] || bad_usage "no such folder: $previous"
 [[ -d "$candidate" ]] || bad_usage "no such folder: $candidate"
+[[ -f "$appcast" ]] || bad_usage "no such appcast: $appcast"
 lab_validate_name "$base_vm" || exit
 lab_validate_int "memory (MB)" "$memory" 1024 "$VM_LAB_MAX_MEMORY_MB" || exit
 lab_validate_int "CPU count" "$cpus" 1 "$VM_LAB_MAX_CPUS" || exit
@@ -171,13 +176,13 @@ sign_candidate() { # prints the EdDSA signature
 openssl="$(openssl_bin)" || early_result 6 ERROR "no OpenSSL 3 for the Ed25519 check (set OPENSSL)"
 rc=0
 report artefacts --previous "$previous" --candidate "$candidate" --slug "$APP_SLUG" --name "$APP_DISPLAY_NAME" \
-  --appcast "$REPO_ROOT/site/static/appcast.xml" --openssl "$openssl" --out "$run_dir/artefacts.json" || rc=$?
+  --appcast "$appcast" --openssl "$openssl" --out "$run_dir/artefacts.json" || rc=$?
 if ((rc == 6)); then
   ((sign)) || early_result 6 ERROR "the candidate is not in the published appcast; rerun with --sign"
   signature="$(sign_candidate)" || early_result 6 ERROR "signing the candidate failed (see upgrade.log)"
   rc=0
   report artefacts --previous "$previous" --candidate "$candidate" --slug "$APP_SLUG" --name "$APP_DISPLAY_NAME" \
-    --appcast "$REPO_ROOT/site/static/appcast.xml" --openssl "$openssl" --signature "$signature" \
+    --appcast "$appcast" --openssl "$openssl" --signature "$signature" \
     --out "$run_dir/artefacts.json" || rc=$?
 fi
 ((rc == 0)) || early_result 6 ERROR "artefact check failed: $(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("error",""))' "$run_dir/artefacts.json" 2>/dev/null)"

@@ -44,7 +44,7 @@ contains() { # contains <name> <needle> (in the last command's output)
 }
 
 echo "== Python unit tests"
-for suite in test_scripts test_docs_and_workflows test_licences_and_wording test_site_deploy test_make_vietqr test_make_app_icon test_vm_lab test_pane_names test_tap_permission test_settings_snapshots test_correction_policy; do
+for suite in test_scripts test_docs_and_workflows test_licences_and_wording test_site_deploy test_make_vietqr test_make_app_icon test_vm_lab test_pane_names test_tap_permission test_settings_snapshots test_correction_policy test_upgrade_test; do
   if python3 -I "$S/tests/$suite.py" >"$T/py.log" 2>&1; then ok "python $suite"; else ko "python $suite"; tail -n 40 "$T/py.log"; fi
 done
 

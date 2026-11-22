@@ -309,6 +309,10 @@ def is_address(text: str) -> bool:
         return False
 
 
+def endpoint_text(address: str, port) -> str:
+    return f"[{address}]:{port}" if ":" in address else f"{address}:{port}"
+
+
 def is_loopback(address: str) -> bool:
     try:
         ip = ipaddress.ip_address(address)
@@ -807,7 +811,7 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
     ran = bool(report["started"])
     ok = ran and not report["disallowed"] and bool(menu.get("pressed")) and bool(allowed_seen) \
         and duration >= minutes * 60 - 5
-    endpoints = ", ".join(f"{c['process']} {c['remote']}:{c['port']}/{c['transport']}"
+    endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}/{c['transport']}"
                           f"{'' if c['allowed'] else ' NOT ALLOWED'}" for c in report["connections"])
     evidence = (f"{duration} s with a forced check ({menu.get('pressed')}); {report['lsofSamples']} lsof samples, "
                 f"{report['nettopLines']} nettop lines; allowed: {', '.join(report['allowedHosts'])} "
@@ -823,7 +827,7 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
 def check_update_egress(run: Run) -> tuple:
     report = egress_phase(run.out, "update", run.brand["APP_DISPLAY_NAME"], [])
     ok = bool(report["started"]) and not report["disallowed"]
-    endpoints = ", ".join(f"{c['process']} {c['remote']}:{c['port']}" for c in report["connections"])
+    endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}" for c in report["connections"])
     return check("egress-update", "spec/02-platform.md 13.7: the update itself contacts only the local feed", ok
                  if report["started"] else None, f"endpoints during the update: {endpoints or 'none'}",
                  ["upgrade-out/egress/update-nettop.csv", "upgrade-out/egress/update-lsof.txt"]), report
