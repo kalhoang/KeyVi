@@ -118,7 +118,8 @@ to undo.
 
 The census (`compare.py --census`): 289 of the 40,715 words are covered after `Thanks Giving `, every one a `vi` row of
 the ambiguity table whose `run` column is `en` (10 `proposed`, 279 `unreviewed`); those rows are 292, and the other
-three (`chown`, `ef`, `max`) are kept as Vietnamese there because only the code context makes them English. 32 of the
+three are not census words: `chown` and `ef` are on the code-only list, which only the code context makes English,
+and `max` is on no English list (only the collision supplement holds it). 32 of the
 289 are English function words (`english-function-words.txt`): `as away been did has here hers hes his how hows if ifs
 its last lest lets mes most must nor now of own sir thee there these this thus too us`. The flagged lines of
 `h_phrases` hold 104 of the 330 phrases (96 typed alone, 104 after `and`, 96 after `vieejt`).
