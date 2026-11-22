@@ -48,7 +48,7 @@ struct ContextRestoreUndoRealDataTests {
         #expect(driver.field.string == Self.expected)
     }
 
-    @Test("REG-42: Escape then the rest of the sentence; typing on without Escape is as before", arguments: [false, true])
+    @Test("REG-42: Escape then the rest of the sentence; typing on without Escape as before", arguments: [false, true])
     func theWholeSentence(typoCorrection: Bool) throws {
         let withEscape = try Self.driver(
             "Thanks Giving bar \u{238B}voiws KT qua nhaf oongr owr Ohio chowi ", typoCorrection: typoCorrection)
