@@ -130,8 +130,10 @@ value = data.get(sys.argv[2]) if isinstance(data, dict) else None
 print("" if value is None else value)' "$1" "$2" 2>/dev/null
 }
 strings_value() { # strings_value <file.strings> <key>: one localized value, empty when absent
+  # Not `plutil -extract`: it reads the dots of a key such as menu.checkForUpdates as a key path.
   [ -f "$1" ] || return 0
-  plutil -extract "$2" raw -o - "$1" 2>/dev/null || true
+  plutil -convert json -o - "$1" 2>/dev/null | /usr/bin/python3 -I -c 'import json, sys
+print(json.load(sys.stdin).get(sys.argv[1], ""))' "$2" 2>/dev/null || true
 }
 # Titles of one Sparkle string in every localization the app may show (its UI follows the macOS language).
 sparkle_titles() {
@@ -405,25 +407,27 @@ relaunch_titles="$(sparkle_titles "Install and Relaunch")"
 later_titles="$(sparkle_titles "Remind Me Later")"
 ok_titles="$(sparkle_titles "OK")"
 title_args=()
-build_title_args() { # build_title_args <titles>: --title arguments for the driver in title_args (bash 3.2)
+build_title_args() { # build_title_args <titles> <what>: --title arguments for the driver in title_args (bash 3.2)
   local line
   title_args=()
   while IFS= read -r line; do
     [ -z "$line" ] || title_args+=(--title "$line")
   done <<<"$1"
+  # An empty array is "unbound" for bash 3.2 under set -u: stop with the reason instead.
+  [ -n "$(printf '%s' "$1" | tr -d '[:space:]')" ] || stop "no localized title found for $2 in the installed app"
 }
 printf '%s\n' "$install_titles" >"$out/titles-install.txt"
-build_title_args "$menu_titles"
+build_title_args "$menu_titles" "the menu item Check for Updates"
 menu_title_args=("${title_args[@]}")
-build_title_args "$install_titles"
+build_title_args "$install_titles" "Sparkle's Install Update"
 install_args=("${title_args[@]}")
-build_title_args "$relaunch_titles"
+build_title_args "$relaunch_titles" "Sparkle's Install and Relaunch"
 relaunch_args=("${title_args[@]}")
-build_title_args "$later_titles"
+build_title_args "$later_titles" "Sparkle's Remind Me Later"
 later_args=("${title_args[@]}")
-build_title_args "$ok_titles"
+build_title_args "$ok_titles" "Sparkle's OK"
 ok_args=("${title_args[@]}")
-build_title_args "$(printf '%s\n%s\n' "$install_titles" "$ok_titles")"
+build_title_args "$(printf '%s\n%s\n' "$install_titles" "$ok_titles")" "Sparkle's buttons"
 offer_or_ok_args=("${title_args[@]}")
 step_ok
 
