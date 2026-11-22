@@ -548,12 +548,12 @@ if [ "$RUN_CHANNEL" = 1 ]; then
 fi
 
 # --- 10. Egress (13.7): 10 minutes on the local feed, 10 minutes on the production feed -----------------------------
-egress_phase() { # egress_phase <local|production>
+egress_phase() { # egress_phase <local|production>: sampling starts before the launch, so it covers the start too
   local phase="$1" end
   quit_app || return 1
-  launch_app || return 1
   sampler_start "$phase"
   end=$(($(date +%s) + EGRESS_MINUTES * 60))
+  launch_app || return 1
   sleep 3
   forced_check "egress-$phase" dismiss 120 || note "egress $phase: no Sparkle window after the forced check"
   while [ "$(date +%s)" -lt "$end" ]; do sleep 5; done
