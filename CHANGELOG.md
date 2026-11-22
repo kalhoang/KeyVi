@@ -10,6 +10,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.1.0-beta.1] - 2026-11-22
+
 ### Added
 
 - KeyVi now fixes a mistyped English word when you finish it and only one word fits: "androdi" becomes "android" and "gramar" becomes "grammar". Vietnamese words, words in all capitals and anything typed in Terminal or a code editor are never changed. Press Escape right after to get the word you typed back. The setting "Fix mistyped words" in Settings > Typing is on by default.

@@ -8,6 +8,8 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+## [1.1.0-beta.1] - 2026-11-22
+
 ### Thêm
 
 - KeyVi nay tự sửa một từ tiếng Anh bạn gõ nhầm khi bạn gõ xong từ đó và chỉ có đúng một từ phù hợp: "androdi" thành "android", "gramar" thành "grammar". Từ tiếng Việt, từ viết hoa toàn bộ và chữ gõ trong Terminal hay trình soạn mã không bao giờ bị đổi. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ. Tùy chọn "Tự sửa từ gõ nhầm" trong Cài đặt > Kiểu gõ được bật sẵn.
