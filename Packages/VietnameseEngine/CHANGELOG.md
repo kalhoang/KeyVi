@@ -100,6 +100,18 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   Every word of `/usr/share/dict/words` typed as written commits the same text as before; of its 3,947 words that
   start with `w` or `W`, typed with the habit, 3,947 commit the word with `typoCorrection` off (3,913 before). Spec
   rows X40 to X43; `spec/reference-model/compose.py` models it.
+- The restore toggle right after a commit whose restore the words before decided (product owner, 23/11/2026,
+  ENG-R706, REG-42): when rule L10 (the English run) or L9b (a phrase) restored the token and rule L11 alone would
+  keep it, the toggle answers with an edit that puts the composed form back, the boundary character unchanged
+  (`Thanks Giving bar`, space, toggle gives `Thanks Giving bả `; it passed through, ENG-R703), marks the token user-kept,
+  carries `preferredVietnamese(raw)` and a strong `CollisionSignal` for the Vietnamese side, as Backspace then the
+  toggle do, and withdraws the token's weak signal; the next toggle passes through. No undo after Return, Tab or a
+  non-ASCII boundary, and a commit that also revised the token before is undone as a revision (ENG-R829). Restores
+  that the token alone decides (`best`, an `en` row), L9, L9c and L4 are left as they were. The words covered after an
+  English run are the `vi` rows of the ambiguity table whose `run` column is `en`: 289 words of the bundled English
+  lists, common English words such as `there` and `this` among them (`I will be there`, space, toggle gives
+  `I will be thể `). No public API changes. Spec rows E09 to E13; the measurement harness, with the census of the
+  covered words, is `Scripts/context-restore-measure/`.
 
 ## [0.1.0] - 2026-11-18
 

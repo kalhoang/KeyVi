@@ -73,3 +73,48 @@ extension Engine {
             action: .edit(edit, thenPassThrough: false), composingText: "", learning: .neverCorrect(raw: word))
     }
 }
+
+extension Engine {
+    /// ENG-R706 (REG-42): a restore toggle right after a commit that restored its token because of the tokens before it
+    /// (rule L10 or L9b, while the token alone would keep it) puts the composed form `C` back; the boundary character
+    /// stays (one edit over the restored keys and the boundary, the shape of `undoRevision`). The token becomes the
+    /// user's choice, user-kept (rule L1 if it is re-opened), and the output carries what Backspace, the toggle and the
+    /// boundary key would give (ENG-R704): the learning signal of ENG-R861 and, for a word of the collision list, a
+    /// strong signal for the Vietnamese side (ENG-R864); the token's weak signal is withdrawn. Nil when the history no
+    /// longer has that shape (a Return or Tab cleared it, or the boundary is not ASCII), so the toggle is handled as
+    /// usual.
+    func undoContextRestore(_ state: inout EngineState) -> EngineOutput? {
+        guard case .boundary(let boundary)? = state.history.entry(beforeNewest: 0), boundary.asciiValue != nil,
+            let restored = state.history.token(beforeNewest: 1),
+            commitPolicy.restoresOnlyInContext(restored.decision, rawLowercased: restored.collision.rawLowercased),
+            restored.collision.composed != restored.committedText
+        else { return nil }
+        let composed = restored.collision.composed
+        let tail = String(boundary)
+        let edit = DisplayEdit.edit(from: restored.committedText + tail, to: composed + tail)
+        let decision = CommitDecision.kept(.userChoice)
+        let language = TokenLanguage.of(
+            committed: CommittedTextFacts(composed), decision: decision,
+            rawLowercased: restored.collision.rawLowercased, resources: resources,
+            collisionRules: commitPolicy.collisionRules)
+        let learning: LearningSignal? =
+            restored.token.choiceSignalled ? nil : .preferredVietnamese(raw: restored.collision.rawLowercased)
+        state.history.updateToken(beforeNewest: 1) { token in
+            token.committedText = composed
+            token.decision = decision
+            // ENG-R861, ENG-R864: the signals below report the choice; a later re-commit reports nothing new.
+            token.token = token.token.choosing(.kept).omittingWDoublings(false).reportingChoice()
+            token.language = language
+        }
+        state.recentLanguages.replace(atDistance: 1, with: language)
+        state.pendingSignals.withdraw(atDistance: 1)
+        var signals: [CollisionSignal] = []
+        if let word = restored.collision.listWord {
+            signals.append(
+                CollisionSignal(word: word, context: restored.collision.context, side: .vietnamese, strength: .strong))
+        }
+        return EngineOutput(
+            action: .edit(edit, thenPassThrough: false), composingText: "", learning: learning,
+            collisionSignals: signals)
+    }
+}

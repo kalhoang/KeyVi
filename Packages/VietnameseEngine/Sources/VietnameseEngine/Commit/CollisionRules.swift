@@ -56,6 +56,20 @@ extension CommitPolicy {
         return resources.collision.supplement.member(rawLowercased)
     }
 
+    /// ENG-R706 (REG-42): `decision` restored the token because of the tokens before it (rule L10, the English run of
+    /// ENG-R823, or rule L9b, a phrase, ENG-R826) while the token alone would keep its composed form: rule L11 keeps it
+    /// (a `vi` or unreviewed ambiguity row, or no row and not a tech-always word). The toggle right after such a commit
+    /// puts the composed form back. Rules that read the token alone (L5, L8, an `en` row, the tech-always list), the
+    /// code context's L9, the memory's L9c and rule L4 are left out (spec 7.2).
+    package func restoresOnlyInContext(_ decision: CommitDecision, rawLowercased: String) -> Bool {
+        guard decision == .restored(.englishRun) || decision == .restored(.phrase) else { return false }
+        switch resources.ambiguity[rawLowercased] {
+        case .english: return false
+        case .vietnamese: return true
+        case nil: return !resources.techAlways.contains(rawLowercased)
+        }
+    }
+
     /// L9b (ENG-R826): for some p in 1...3, the previous p tokens of the chain and this token are the first
     /// p + 1 words of a bundled phrase.
     func continuesPhrase(_ rawLowercased: String, chain: PhraseChain) -> Bool {

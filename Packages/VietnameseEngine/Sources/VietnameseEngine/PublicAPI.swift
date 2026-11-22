@@ -375,6 +375,10 @@ public struct EngineState: Sendable, Hashable {
     /// The previous event was a commit that corrected its token (section 11A) at a boundary that keeps the history;
     /// a restore toggle now undoes the correction (ENG-R1117).
     package var previousEventCorrected = false
+    /// The previous event was a commit that restored its token because of the tokens before it (rule L10 or L9b,
+    /// `CommitPolicy.restoresOnlyInContext`) at a boundary that keeps the history and without revising the token before
+    /// it; a restore toggle now puts the composed form back (ENG-R706, REG-42).
+    package var previousEventRestoredInContext = false
     /// The weak signals of the newest committed tokens, not yet final (ENG-R864).
     package var pendingSignals = PendingSignals()
 

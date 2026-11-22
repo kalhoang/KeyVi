@@ -41,6 +41,13 @@ extension Engine {
             state.newestTokenRevisable = true
             state.previousEventRevised = output.revision != nil && !isHard
             if case .corrected? = output.decision { state.previousEventCorrected = !isHard }
+            // ENG-R706: a commit that also revised the previous token is undone as a revision (ENG-R829).
+            if !isHard, output.revision == nil, let decision = output.decision,
+                let committed = state.history.token(beforeNewest: 0)
+            {
+                state.previousEventRestoredInContext = commitPolicy.restoresOnlyInContext(
+                    decision, rawLowercased: committed.collision.rawLowercased)
+            }
         }
         output.collisionSignals += finishBoundary(boundary, isHard: isHard, &state)
         return output

@@ -119,7 +119,9 @@ public struct FuzzStatistics: Sendable, Hashable {
 ///   more characters than the engine produced or let through.
 /// - ENG-T32 / P6: the restore toggle gives exactly the raw keys of the token, and toggling twice at the
 ///   token level gives the composed display back (the reducer passes a consecutive toggle through,
-///   ENG-R702).
+///   ENG-R702). Right after a commit that restored its token because of the tokens before it (rule L10 or L9b,
+///   the token alone keeping its composed form), the toggle turns the restored keys and the boundary character
+///   into exactly the composed form and the same character (ENG-R706), and the next toggle passes through.
 /// - ENG-T33: the cached composition equals a replay of its raw keys, and `Engine.reduce` on a copy of
 ///   the state gives the same output and state as `Session.handle`.
 /// - ENG-T34 / P5: inserts contain no combining marks, engine-produced inserts only ASCII and the 146
@@ -144,7 +146,8 @@ public struct FuzzStatistics: Sendable, Hashable {
 ///   revision; the toggle right after it gives exactly the raw keys typed (ENG-T32 extended; after Backspace
 ///   re-opened a corrected token the restore check above covers it); every `neverCorrect` signal names the
 ///   lowercased typed word of its token. With it off: no output carries `corrected` or `neverCorrect`, and a
-///   toggle with no active token passes through unless it undoes a revision (ENG-R703, ENG-R829).
+///   toggle with no active token passes through unless it undoes a revision or a context restore (ENG-R703,
+///   ENG-R706, ENG-R829).
 ///
 /// Checks that cost time proportional to the token are done every event for tokens up to a limit and
 /// periodically beyond it, so tokens of 100,000 keys stay linear; the field tail is compared every event
@@ -234,6 +237,7 @@ public struct InvariantChecker: Sendable {
         try checkCorrection(event, output, before: correctionBefore, index: index)
         try applyToField(event, output, index: index)
         try checkCorrectionUndo(event, output, before: correctionBefore, index: index)
+        try checkContextRestoreUndo(output, index: index)
         try checkView(index: index)
         try checkBackspace(beforeBackspace, index: index)
         try checkBackspaceOnlyDeletes(fieldBeforeBackspace, output, index: index)

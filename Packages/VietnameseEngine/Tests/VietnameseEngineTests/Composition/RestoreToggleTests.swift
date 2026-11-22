@@ -3,11 +3,14 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.10: every row E01-E08 and E02b, with the 13.9 fixture resources (E04 needs the commit restore
-/// of `test` by rule L11 and the history re-open of section 10).
+/// Spec 13.10: every row E01-E13 and E02b, with the 13.9 fixture resources (E04 needs the commit restore
+/// of `test` by rule L11 and the history re-open of section 10; E09 to E13 the English run of rule L10 and the undo
+/// of ENG-R706).
 @Suite("Restore toggle (7.2, 13.10)")
 struct RestoreToggleTests {
-    static let allRows: Set<String> = ["E01", "E02", "E02b", "E03", "E04", "E05", "E06", "E07", "E08"]
+    static let allRows: Set<String> = [
+        "E01", "E02", "E02b", "E03", "E04", "E05", "E06", "E07", "E08", "E09", "E10", "E11", "E12", "E13",
+    ]
 
     static let rows: [RestoreToggleExample] = {
         do {
@@ -27,6 +30,7 @@ struct RestoreToggleTests {
         var driver = EngineDriver(configuration: row.configuration, resources: SpecFixtures.commitResources())
         try driver.send(row.events)
         #expect(driver.state.activeDisplay == row.expectedActive, "\(row.id): \(row.eventsText)")
+        if let field = row.expectedField { #expect(driver.field.string == field, "\(row.id): \(row.eventsText)") }
         let last = try #require(driver.outputs.last)
         switch row.lastAction {
         case .passThrough: #expect(last.action == .passThrough, "\(row.id)")

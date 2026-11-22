@@ -9,9 +9,11 @@ struct CorrectionSnapshot {
     /// The active token and the length of its display.
     let token: ActiveToken?
     let displayCount: Int
-    /// The previous event was a commit that corrected its token, or revised the token before it, or a toggle.
+    /// The previous event was a commit that corrected its token, or revised the token before it, or restored its token
+    /// because of the tokens before it (ENG-R706), or a toggle.
     let followsCorrection: Bool
     let followsRevision: Bool
+    let followsContextRestore: Bool
     let followsToggle: Bool
     /// The typed word a toggle may name in a never-correct signal: the re-opened corrected token's, or the one of the
     /// correction the previous commit made.
@@ -22,6 +24,7 @@ struct CorrectionSnapshot {
         displayCount = state.active?.display.count ?? 0
         followsCorrection = state.previousEventCorrected
         followsRevision = state.previousEventRevised
+        followsContextRestore = state.previousEventRestoredInContext
         followsToggle = state.previousEventWasRestoreToggle
         undoableWord =
             state.active?.correctedWord
@@ -100,7 +103,7 @@ extension InvariantChecker {
     }
 
     /// ENG-R1119: with the switch off nothing carries the correction, and a toggle with no active token answers as
-    /// ENG-R703 and ENG-R829 say.
+    /// ENG-R703, ENG-R706 and ENG-R829 say.
     private func checkSwitchOff(_ event: EngineEvent, _ output: EngineOutput, before: CorrectionSnapshot, index: Int)
         throws
     {
@@ -110,7 +113,8 @@ extension InvariantChecker {
         if case .neverCorrect? = output.learning {
             throw violation("ENG-T54", "a neverCorrect signal with typoCorrection off", index)
         }
-        guard case .restoreToggle = event, before.token == nil, before.followsToggle || !before.followsRevision
+        guard case .restoreToggle = event, before.token == nil,
+            before.followsToggle || !(before.followsRevision || before.followsContextRestore)
         else { return }
         guard output.action == .passThrough else {
             throw violation("ENG-T54", "a toggle with no active token edited the field", index)
