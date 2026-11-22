@@ -102,9 +102,9 @@ struct EscapeCommitRealDataTests {
         return rows
     }()
 
-    @Test("13.9.5 has its 39 rows")
+    @Test("13.9.5 has its 43 rows")
     func tableIsComplete() {
-        #expect(Self.rows.map(\.id) == (1...39).map { String(format: "X%02d", $0) })
+        #expect(Self.rows.map(\.id) == (1...43).map { String(format: "X%02d", $0) })
     }
 
     /// 13.9.5: the rows that need the phrase or the English-lean word, which the collision rules switch on.
@@ -357,6 +357,90 @@ struct EscapeCommitRealDataTests {
     func oneSyllableTypoWithTheHabit() throws {
         #expect(try Self.checked("wwhcih ", EngineConfiguration(typoCorrection: true)) == "whcih ")
         #expect(try Self.checked("whcih ", EngineConfiguration(typoCorrection: true)) == "which ")
+    }
+
+    // MARK: - REG-41
+
+    @Test(
+        "REG-41: a capitalised word typed Ww keeps its capital (ENG-R804, ADR 0010 item 8)",
+        arguments: [
+            ("Wwade ", "Wade "), ("Wwarden ", "Warden "), ("Ww ", "W "), ("Wwatt ", "Watt "), ("Wwindows ", "Windows "),
+            ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("vieejt Wwade ", "việt Wade "),
+            ("Wwade Wwarden ", "Wade Warden "),
+        ])
+    func capitalisedWordTypedWithTheHabit(_ keys: String, _ expected: String) throws {
+        // Until 22/11/2026 the escape appended its own key, a lowercase `w`, so `C` was `wade` and rule L4 (b) kept
+        // it. The escaped letter takes the place of the `Ư` it removed: a capital when either `w` key is (ENG-R903).
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41, 11A: the correction of a capitalised word typed Ww keeps the capital (ENG-R1111)")
+    func capitalisedCorrection() throws {
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: true)) == "Windows ")
+        #expect(try Self.checked("Wwindwos ⎋", EngineConfiguration(typoCorrection: true)) == "Windwos ")
+        #expect(try Self.checked("Wwindwos ", EngineConfiguration(typoCorrection: false)) == "Windwos ")
+    }
+
+    @Test(
+        "REG-41: a capital W before the escaping w is kept, also where it is not word-initial (ENG-R903, ENG-R804)",
+        arguments: [
+            ("TWwitter ", "TWitter "), ("SWwab ", "SWab "), ("DWwell ", "DWell "), ("Wwww ", "Www "),
+            ("WwADE ", "WADE "),
+        ])
+    func capitalBeforeTheEscapeIsKept(_ keys: String, _ expected: String) throws {
+        // A known cost of REG-41 (ENG-R804, amendment of 22/11/2026): until then the escaped letter was the lowercase
+        // `w` of the escaping key, so a Shift held over the first `w` after a capital consonant (`TWwitter`) came out as
+        // the capitalised word (`Twitter`), `Wwww` gave `www` and `WwADE` gave `wADE`. The screen now shows the capital
+        // and the commit keeps it.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41: the toggle on a re-opened restored Webview passes through, as on webview (ENG-R1005, ENG-R701)")
+    func toggleOnReopenedRestoredCapital() throws {
+        // The re-opened token shows `R′` = `Webview`, which is also its composed form now that the escaped letter is a
+        // capital, so the toggle has nothing to switch to; until 22/11/2026 it gave `webview`, the composed form.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked("Wwebview ⌫⎋", configuration) == "Webview", "\(configuration)")
+            #expect(try Self.checked("wwebview ⌫⎋", configuration) == "webview", "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-41: the other w doublings commit as before",
+        arguments: [
+            ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),
+            ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
+            ("wwwexample ", "wwwexample "), ("wwwRoot ", "wwwRoot "), ("www ", "www "), ("Www ", "Www "),
+            ("powwow ", "powwow "),
+            ("glowworm ", "glowworm "), ("WWADE ", "WADE "), ("Uww ", "Uw "), ("Dowwnload ", "Dowwnload "),
+        ])
+    func otherDoublingsCommitAsBefore(_ keys: String, _ expected: String) throws {
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test(
+        "REG-41: re-opening, Backspace, keys typed into it, the toggle and the correction undo behave as for ww",
+        arguments: ["ade", "arden", "ebview", "indwos", "ordPress"])
+    func capitalBehavesAsLowercase(_ rest: String) throws {
+        let edits = [
+            " ", " ⌫", " ⌫⌫", " ⌫⌫⌫⌫⌫", " ⌫⌫⌫⌫⌫⌫⌫⌫⌫", " ⌫ ", " ⌫s ", " ⌫⎋", " ⌫⎋ ", " ⎋", " ⎋⌫", " ⎋⌫ ⌫", "⎋", "⎋ ",
+            "⎋⌫⎋", "⌫", "⌫⌫⌫", "⌫⌫⌫⌫⌫⌫⌫⌫", "⌫⎋", "⌫ ",
+        ]
+        for configuration in Self.configurationsWithCorrection {
+            for edit in edits {
+                let lowercase = try Self.checked("ww" + rest + edit, configuration)
+                let expected = lowercase.prefix(1).uppercased() + lowercase.dropFirst()
+                #expect(
+                    try Self.checked("Ww" + rest + edit, configuration) == expected,
+                    "\(configuration) \(rest.debugDescription) \(edit.debugDescription)")
+            }
+        }
     }
 
     @Test(

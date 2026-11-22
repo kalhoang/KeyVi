@@ -970,6 +970,14 @@ during most of them.
   suites (`WDoublingCommitTests`, `EscapeCommitRealDataTests`, `WDoublingFuzzRealDataTests`,
   `RegressionTests.reg40`). It changes no word of
   `/usr/share/dict/words` typed as written; the Task 35 rerun at the stable 1.0.1 merge covers it.
+- [ ] **REG-41, a capitalised word typed `Ww` (ADR 0010 item 8, 22/11/2026).** Built on `fix/ww-capital` from
+  `integration/1.1.0` at 0fdb9d98, for the integrator to merge with `--no-ff`: the escaped letter of a standalone `w`
+  doubling takes the capital of the `ư` it removed (`Composition.showsEscapedWAsCapital`, the literal tail of
+  `render`), so `Wwade` shows and commits `Wade` (it gave `wade`); no rule of 8.1 changes. Spec ENG-R903, ENG-R440,
+  ENG-R442, ENG-R804 (d) and its known costs, ENG-R904, REG-41 and rows X40 to X43 of 13.9.5; the reference model; the
+  probe `Wwade ` of the engine identity; the CHANGELOG lines; the TRACEABILITY rows ENG-R440, ENG-R442, ENG-R804,
+  ENG-R903 and REG-41. It changes no word of `/usr/share/dict/words` typed as written; the Task 35 rerun at the stable
+  1.0.1 merge covers it.
 
 ---
 
@@ -996,6 +1004,7 @@ during most of them.
 | PRD-R81 | 23, 25, 26, 28, 29 (copy review), 30 |
 | 12.2 amendments, contracts, traceability, provenance | 1, 5, 9, 18, 22, 27, 32, 33, 34 |
 | ENG-R804 and the typed word of 11A (REG-40, ADR 0010 item 7) | 36 |
+| ENG-R903, the escaped letter of a standalone `w` doubling (REG-41, ADR 0010 item 8) | 36 |
 
 ## Open questions for the product owner
 

@@ -32,11 +32,13 @@ import VietnameseEngine
     /// decides in the default configuration the identity is computed with (`wwebview ` gives `webview `, `Wwebview `
     /// gives `Webview `), so a build from before the amendment (1.0.1-beta.2 committed `wwebview ` and `Wwebview `)
     /// gets another identity. (`answwer ` would not tell them apart: the correction already gave `answer `.) The camel
-    /// case probe `WwordPress ` follows rule L3b (ENG-R904): it gives `WordPress `.
+    /// case probe `WwordPress ` follows rule L3b (ENG-R904): it gives `WordPress `. Row X40, `Wwade `, gives `Wade `
+    /// since the escaped letter of a standalone `w` doubling takes the capital of the `Ư` it removed (ENG-R903, REG-41,
+    /// ADR 0010 item 8); a build from before gives `wade `.
     @Test func theProbesExerciseTheWDoubling() throws {
         let resources = try ReplayEngineFactory.bundledResources()
         for (probe, expected) in [
-            ("wwebview ", "webview "), ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "),
+            ("wwebview ", "webview "), ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("Wwade ", "Wade "),
         ] {
             #expect(DevEngineIdentity.telexProbes.contains(probe))
             var session = Session(engine: Engine(configuration: EngineConfiguration(), resources: resources))

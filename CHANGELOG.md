@@ -17,7 +17,7 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ### Fixed
 
-- A word that starts with w and that you type with a doubled w, out of the habit of typing ww to get the letter w, now gives the word you meant when you finish it: "wwebview" gives "webview" instead of "wwebview", and "WwordPress" gives "WordPress". Deleting back into such a word and finishing it again keeps the text you see.
+- A word that starts with w and that you type with a doubled w, out of the habit of typing ww to get the letter w, now gives the word you meant when you finish it: "wwebview" gives "webview" instead of "wwebview", "WwordPress" gives "WordPress", and a word typed with a capital first keeps its capital: "Wwade" gives "Wade" instead of "wade". Deleting back into such a word and finishing it again keeps the text you see.
 
 ### Known issues
 
