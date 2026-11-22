@@ -20,9 +20,9 @@ anything.
 | Compatibility scenarios (13.2 minimum set, every rule's scenario) | Runner | Every merge to `main` | `compat-harness run --scenarios compat/scenarios --output .build/integration/compat` | Third-party apps, chromedriver, loopback server |
 | Soak, 1,000,000 keystrokes (QA-R16, 13.6) | Runner | Nightly | `compat-harness soak --keystrokes 1000000 --output .build/integration/soak` | About 8.3 hours |
 | Platform benchmarks T2 to T6, C1, C2, M1 (PLT-R821) | Runner | One run on every merge to `main`, five nightly (QA-R14) | `compat-harness bench --runs 5 --output .build/integration/platform-bench.json` | About 18 minutes per run |
-| Egress test (13.7, PLT-R906) | Runner, started by Pa | Before every release | `compat-harness egress --phase local` then `--phase production` (section 5) | Local appcast, production feed |
+| Egress test (13.7, PLT-R906) | tart VM lab, started by Pa | Before every release | `scripts/vm/upgrade-test.sh` (with the upgrade test, [vm-test-lab.md](vm-test-lab.md) section 12); on a physical runner with the hooks build: `compat-harness egress --phase local` then `--phase production` (section 5) | The release artefacts in `dist/` |
 | Scenarios that report `needsHuman` | Pa | Before every release | `compat-harness run --only <ids>` in a terminal session on the runner | A person at the runner |
-| Upgrade test (QA-R40, 13.5) | Pa | Before every release | [release.md](release.md) section 5 | Previous DMG |
+| Upgrade test (QA-R40, 13.5) and channel switch | tart VM lab, started by Pa (scripted since 2026-11-23, no longer by hand) | Before every release | `scripts/vm/upgrade-test.sh --previous dist/<previous stable> --candidate dist/<candidate>` ([release.md](release.md) section 5, [vm-test-lab.md](vm-test-lab.md) section 12) | Previous DMG, candidate update archive |
 
 All `compat-harness` commands are run as `swift run --package-path Packages/AppCore -c release compat-harness
 <command> ...`; the table drops the prefix.
@@ -145,6 +145,12 @@ metric (`C1.cpuPercent 0.120, gate 0.300, baseline 0.300 (placeholder): ok`).
 
 ## 5. Egress test (13.7), before every release
 
+The release candidate's egress test runs in the tart VM lab with the upgrade test, on the notarized build:
+`scripts/vm/upgrade-test.sh` ([vm-test-lab.md](vm-test-lab.md) section 12; checks `egress-local` and
+`egress-production`). The release build has no hooks, so that script forces the update check from the status menu
+and samples the app and Sparkle's helpers with `nettop` and `lsof`. The steps below are for a physical runner with the
+hooks build.
+
 1. Phase `local`: serve a local appcast on the loopback server, point the test build's feed at it (VERIFY the
    mechanism with Sparkle 2: `defaults write <APP_BUNDLE_ID_DEV> SUFeedURL http://127.0.0.1:8000/appcast.xml`, or a
    test build whose `SUFeedURL` is the local feed), start the test build, then run
@@ -205,8 +211,8 @@ baseline in a pull request labelled `perf-baseline` with the reason (QA-R15), as
 - Running the scenarios that report `needsHuman` (the `human` readbacks of the design, remote, office, JVM,
   overlay-panel and game rules; iTerm2's automatic password-prompt mode) and recording their rows in
   `compat/matrix.json` (PLT-R531, PRD-R1).
-- The one-time preparation of section 2, re-granting after macOS or Xcode updates, and the egress test of
-  section 5 before every release.
+- The one-time preparation of section 2, re-granting after macOS or Xcode updates, and starting
+  `scripts/vm/upgrade-test.sh` (upgrade test, channel switch and the egress test of section 5) before every release.
 - Until the runner exists: the interim checklist of
   [workstreams.md](../architecture/workstreams.md#interim-verification-before-the-self-hosted-runner-exists).
 
