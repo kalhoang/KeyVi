@@ -33,7 +33,10 @@ trees disagree on whether a line is flagged.
 | `g_mixed` | 60,000 | 2 to 9 tokens: words of the bundled lexicon (`english.txt`, 35 %), raw keys of the ambiguity table (`ambiguity.tsv`, the words valid in both languages, 30 %) and Telex keyings of Vietnamese syllables (`vietnamese-keyings.txt`, 35 %), the first one in sentence case 15 % of the time; between them a space mostly, or `, . ? ! ; : )` and a space, Return (`↵`), Tab (`⇥`), `…`, `”` or a no-break space; after each boundary the restore key 35 % of the time, twice 5 % and after a Backspace 5 %; seed 23112026 |
 | `h_phrases` | 1,320 | each of the 330 bundled phrases (`phrases.txt`) from an empty field, after `and` and after `vieejt`, then a space and the restore key; and followed by `nhaf` and a space |
 
-The bundled data is the same at both commits.
+The bundled data is the same at both commits. SHA-256 of the sets the defaults write: `f_fuzz.txt`
+`84ad4b74eedc658d3bda9744f663988c6f69da69f0b47454eb1c088a0ac47656`, `g_mixed.txt`
+`a0f5581663cf1dc26580e14d8aad7ad2fe661f54eee8547790bff8d30343c252`, `h_phrases.txt`
+`fa11f03018792d7a9b527a17f295eb64144f185d2da720c7e9d375b30e267a2d`.
 
 | File | Role |
 |---|---|
