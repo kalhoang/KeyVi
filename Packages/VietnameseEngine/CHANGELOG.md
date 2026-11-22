@@ -91,6 +91,15 @@ separately from the app (spec/04-quality-release.md QA-R27). Releases are tagged
   correction) keeps it showing `R′` (ENG-R701, ENG-R1005, ENG-R1117). Every
   word of `/usr/share/dict/words` typed as written commits the same text as before. Spec rows X28 to X39;
   `spec/reference-model/boundary.py` models the rule.
+- A capitalised word typed `Ww` (product owner, 22/11/2026, ENG-R903, ENG-R804, REG-41): the escaped letter of a
+  standalone `w` doubling takes the place of the `ư` it removed, so it is a capital when either `w` key is one (`Ww`
+  shows `W`, as `WW` and `wW` do; `ww` shows `w`; `Composition.showsEscapedWAsCapital`). `Wwade` shows and commits
+  `Wade` and `Wwarden` gives `Warden`, which gave `wade` and `warden`: the escape appended its own key, a lowercase
+  `w`, and rule L4 (b) or the deliberate form kept that display. No rule of 8.1 changes; horn and breve doublings,
+  every other escape and capitals typed on both keys keep the case of the escaping key, and the raw keys stay as typed.
+  Every word of `/usr/share/dict/words` typed as written commits the same text as before; of its 3,947 words that
+  start with `w` or `W`, typed with the habit, 3,947 commit the word with `typoCorrection` off (3,913 before). Spec
+  rows X40 to X43; `spec/reference-model/compose.py` models it.
 
 ## [0.1.0] - 2026-11-18
 
