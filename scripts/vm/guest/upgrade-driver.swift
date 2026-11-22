@@ -345,12 +345,19 @@ func menuCommand(_ arguments: Arguments, bundle: String) {
     guard let extras = element(attribute(app, "AXExtrasMenuBar")), let item = children(extras).first else {
         fail("\(bundle) has no status item", code: 1)
     }
-    // The press may time out while the menu is open; the menu is there all the same.
-    if AXUIElementPerformAction(item, kAXPressAction as CFString) != .success {
+    // The press may time out while the menu is open (AppKit tracks it in a nested loop); the menu is there all the
+    // same, so the result is ignored and AXShowMenu is tried only when no menu appeared.
+    AXUIElementPerformAction(item, kAXPressAction as CFString)
+    func menuOpen() -> Bool { children(item).contains { role($0) == kAXMenuRole } }
+    var waited = now() + 2
+    while !menuOpen(), now() < waited { pause(0.1) }
+    if !menuOpen() {
         AXUIElementPerformAction(item, "AXShowMenu" as CFString)
+        waited = now() + 3
+        while !menuOpen(), now() < waited { pause(0.1) }
     }
     let wanted = Set(titles.map(normalized))
-    let deadline = now() + 5
+    let deadline = now() + 3
     var seen: [String] = []
     while now() < deadline {
         for menu in children(item) where role(menu) == kAXMenuRole {

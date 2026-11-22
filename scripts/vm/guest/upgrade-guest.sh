@@ -436,6 +436,13 @@ clients=(--bundle "$app" --bundle "$testhost_app" --binary "$driver" --binary /u
 if [ -n "$agent" ] && [ -x "$agent" ]; then clients+=(--binary "$agent"); fi
 # shellcheck disable=SC2024 # the log belongs to this user on purpose
 sudo -n bash scripts/vm/grant-tcc.sh "${clients[@]}" >"$out/logs/grant.log" 2>&1 || stop "grant-tcc.sh failed"
+# screencapture runs from the guest agent: without Screen Recording its consent prompt would cover the windows the
+# test reads and look like a permission prompt after the update.
+if [ -n "$agent" ] && [ -x "$agent" ]; then
+  # shellcheck disable=SC2024
+  sudo -n bash scripts/vm/grant-tcc.sh --service kTCCServiceScreenCapture --binary "$agent" \
+    >>"$out/logs/grant.log" 2>&1 || stop "grant-tcc.sh (Screen Recording for the guest agent) failed"
+fi
 tcc_rows "$out/snapshots/tcc-granted.txt"
 note "$(grep -c . "$out/snapshots/tcc-granted.txt") TCC rows for $bundle"
 step_ok
