@@ -472,7 +472,7 @@ old_pid="$(app_pid)"
 [ -n "$old_pid" ] || stop "the previous stable is not running"
 "$driver" activate "$testhost_bundle" >/dev/null 2>&1
 "$driver" relaunch --executable "$exe" --old-pid "$old_pid" --snapshot-src "$support" \
-  --snapshot-dst "$out/snapshots/at-exit" --defaults-domain "$bundle" \
+  --snapshot-dst "$out/snapshots/at-exit" --loaded-snapshot-dst "$out/snapshots/loaded" --defaults-domain "$bundle" \
   --defaults-dst "$out/snapshots/defaults-at-exit.plist" --typing-bundle "$testhost_bundle" --field "$field" \
   --keys "$keys" --expect "$expect" --reset "$reset_id" --watch 30 --timeout 300 \
   >"$out/relaunch.json" 2>>"$out/logs/driver.log" &
@@ -513,6 +513,7 @@ dump_with() { # dump_with <store tool> <snapshot> <name>
 }
 dump_with "$prev_store" seeded seeded.previous || stop "dump of the seeded snapshot failed"
 dump_with "$prev_store" at-exit at-exit.previous || stop "dump of the exit snapshot failed"
+dump_with "$cand_store" loaded loaded.candidate || stop "dump of the loaded snapshot failed"
 dump_with "$cand_store" after after.candidate || stop "dump of the post-update snapshot failed"
 step_ok
 

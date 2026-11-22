@@ -19,11 +19,12 @@
 //   upgrade-driver type BUNDLE --field ID --keys K --expect E [--reset ID] [--seconds S]
 //       Types K (a-z and space) into the field with accessibility identifier ID until it reads E, at most S seconds.
 //   upgrade-driver relaunch --executable PATH --old-pid P --typing-bundle B --field ID --keys K --expect E
-//                           [--reset ID] [--snapshot-src DIR --snapshot-dst DIR] [--defaults-domain D
-//                           --defaults-dst FILE] [--timeout S] [--watch S]
+//                           [--reset ID] [--snapshot-src DIR --snapshot-dst DIR [--loaded-snapshot-dst DIR]]
+//                           [--defaults-domain D --defaults-dst FILE] [--timeout S] [--watch S]
 //       Waits for P to exit, copies DIR at once (the files as the old version left them) and exports D, waits for
 //       the new process of PATH, then records when its event tap is enabled (CGGetEventTapList) and when typing into
-//       the TestHost field first works, measured from the new process's start time.
+//       the TestHost field first works, measured from the new process's start time. With --loaded-snapshot-dst it
+//       copies DIR again once the new version has loaded it (0.5 s after its tap, at the latest 4 s after start).
 //   upgrade-driver quit BUNDLE [--timeout S]            asks BUNDLE to quit (as Quit in its menu) and waits
 //   upgrade-driver taps                                 every event tap with its process and state
 //   upgrade-driver processes --executable PATH          running processes of PATH with their start times
@@ -442,6 +443,24 @@ final class TapWatch: @unchecked Sendable {
     }
 }
 
+/// When the "loaded" snapshot was taken, and its error.
+final class SnapshotStamp: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: (Double, String?)?
+
+    func record(_ at: Double, _ error: String?) {
+        lock.lock()
+        defer { lock.unlock() }
+        value = (at, error)
+    }
+
+    var result: (Double, String?)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
+    }
+}
+
 func relaunchCommand(_ arguments: Arguments) {
     let executable = arguments.required("executable")
     guard let oldPid = pid_t(arguments.required("old-pid")) else { fail("--old-pid must be a process id", code: 2) }
@@ -504,6 +523,21 @@ func relaunchCommand(_ arguments: Arguments) {
         }
     }
     tapThread.start()
+    // The "loaded" snapshot: the settings as the new version has them once it loaded them and created its tap
+    // (a migration writes at load), but before a 5 s debounced app-modes write of its own session can land
+    // (PLT-R392). Taken 0.5 s after the tap is enabled, at the latest 4 s after the start.
+    let loadedStamp = SnapshotStamp()
+    let loadedThread = Thread {
+        guard let source = arguments.one("snapshot-src"), let destination = arguments.one("loaded-snapshot-dst") else {
+            return
+        }
+        while now() < started + 4 {
+            if let tapAt = tapWatch.result.0, now() >= tapAt + 0.5 { break }
+            pause(0.02)
+        }
+        loadedStamp.record(now(), copySnapshot(from: source, to: destination))
+    }
+    loadedThread.start()
 
     let bundle = arguments.required("typing-bundle")
     let field = arguments.required("field")
@@ -515,7 +549,11 @@ func relaunchCommand(_ arguments: Arguments) {
         attempts.append(attempt)
         if attempt.matched { break }
     }
-    while tapThread.isExecuting { pause(0.05) }
+    while !tapThread.isFinished || !loadedThread.isFinished { pause(0.05) }
+    if let (at, error) = loadedStamp.result {
+        report["loadedSnapshotAt"] = at
+        report["loadedSnapshotError"] = error ?? NSNull()
+    }
     let (tapAt, taps) = tapWatch.result
     report["tapEnabledAt"] = tapAt ?? NSNull()
     report["tapLatencySeconds"] = tapAt.map { $0 - started } ?? NSNull()

@@ -56,6 +56,9 @@ MIGRATION_RULES = {
                                         "ENG-R1118, schema version 1 unchanged per Migrations.swift)",
 }
 
+RUNTIME_RULE = ("use, not a migration: the app focused after the relaunch moves to the front or is recorded as seen for "
+                "the first time (AppModeMemory.activate, PLT-R390, PLT-R392)")
+
 # Keys of the app's defaults domain that change on every launch or update by design; every other key must be equal.
 DEFAULTS_RULES = {
     "launchGuard.inProgressSince": "start time of the current launch (LaunchGuard.beginLaunch, PLT-R1009)",
@@ -671,36 +674,79 @@ def check_version(run: Run) -> dict:
                  ["upgrade-out/evidence/app-after.txt", "upgrade-out/relaunch.json"])
 
 
+def runtime_changes(loaded: Path, after: Path) -> dict:
+    """Changes of the new version's own session between the loaded and the settled snapshot. Only app-modes.json may
+    change, and only by use: the app focused after the relaunch moves to the front or is recorded as seen for the
+    first time (AppModeMemory.activate, PLT-R390, PLT-R392); every earlier entry keeps its rule and mode."""
+    notes, unexplained = [], []
+    names = sorted({p.name for p in loaded.glob("*") if p.is_file()} | {p.name for p in after.glob("*") if p.is_file()})
+    for name in names:
+        left, right = loaded / name, after / name
+        if left.is_file() and right.is_file() and left.read_bytes() == right.read_bytes():
+            continue
+        if name != "app-modes.json" or not left.is_file() or not right.is_file():
+            unexplained.append(f"{name} changed in the new session without a user action")
+            continue
+        before, now_doc = json.loads(left.read_text(encoding="utf-8")), json.loads(right.read_text(encoding="utf-8"))
+        rest = [p for p in json_diff({k: v for k, v in before.items() if k != "apps"},
+                                     {k: v for k, v in now_doc.items() if k != "apps"})]
+        old_apps = {a["bundle"]: a for a in before.get("apps", [])}
+        new_apps = {a["bundle"]: a for a in now_doc.get("apps", [])}
+        changed = [b for b, a in old_apps.items() if new_apps.get(b) != a]
+        if rest or changed:
+            unexplained.append(f"app-modes.json: {[p[0] for p in rest] + changed} changed in the new session")
+        added = sorted(set(new_apps) - set(old_apps))
+        notes.append(f"app-modes.json in the new session: order {'changed' if list(old_apps) != [b for b in new_apps if b in old_apps] else 'kept'}"
+                     f", first seen {added or 'none'} ({RUNTIME_RULE})")
+    return {"notes": notes, "unexplained": unexplained}
+
+
 def check_files(run: Run) -> tuple:
-    before, after = run.out / "snapshots" / "at-exit", run.out / "snapshots" / "after"
-    if not before.is_dir() or not after.is_dir():
+    exit_snapshot = run.out / "snapshots" / "at-exit"
+    loaded, after = run.out / "snapshots" / "loaded", run.out / "snapshots" / "after"
+    if not exit_snapshot.is_dir() or not after.is_dir():
         return check("settings-files", "QA-R40 step 4; PLT-R1108", None, "snapshots missing", []), {}
-    result = compare_settings(before, after, run.prev["version"], run.cand["version"])
+    first = loaded if loaded.is_dir() else after
+    result = compare_settings(exit_snapshot, first, run.prev["version"], run.cand["version"])
+    runtime = runtime_changes(loaded, after) if loaded.is_dir() else {"notes": [], "unexplained": []}
     relaunch = run.json("relaunch.json", {}) or {}
     early = relaunch.get("newProcessBeforeSnapshot") is True
     summary = ", ".join(f"{f['file']} {f['status']}" for f in result["files"])
-    evidence = (f"{summary}; snapshot taken {relaunch.get('snapshotAt', 0) - relaunch.get('oldExitedAt', 0):.3f} s "
-                f"after {run.prev['version']} exited, before the candidate started: {not early}")
-    if result["unexplained"]:
-        evidence += "; NOT explained by a migration: " + "; ".join(result["unexplained"])
-    ok = not result["unexplained"] and not early
+    loaded_at = relaunch.get("loadedSnapshotAt")
+    evidence = (f"exit snapshot ({relaunch.get('snapshotAt', 0) - relaunch.get('oldExitedAt', 0):.3f} s after "
+                f"{run.prev['version']} exited, before the candidate started: {not early}) against the snapshot "
+                f"after the candidate loaded the folder ("
+                f"{'%.2f s after its start' % (loaded_at - relaunch.get('newStartedAt', 0)) if loaded_at else 'settled'}"
+                f"): {summary}")
+    if runtime["notes"]:
+        evidence += "; " + "; ".join(runtime["notes"])
+    problems = result["unexplained"] + runtime["unexplained"]
+    if problems:
+        evidence += "; NOT explained by a migration: " + "; ".join(problems)
+    ok = not problems and not early
+    result["runtime"] = runtime
     return check("settings-files", "QA-R40 step 4, release.md 5.2: files byte-identical apart from migrations",
-                 ok, evidence, ["upgrade-out/snapshots/at-exit/", "upgrade-out/snapshots/after/"]), result
+                 ok, evidence, ["upgrade-out/snapshots/at-exit/", "upgrade-out/snapshots/loaded/",
+                                "upgrade-out/snapshots/after/"]), result
 
 
 def check_content(run: Run) -> dict:
     at_exit = run.json("dumps/at-exit.previous.json")
+    loaded = run.json("dumps/loaded.candidate.json") or run.json("dumps/after.candidate.json")
     after = run.json("dumps/after.candidate.json")
     seeded = run.json("dumps/seeded.previous.json")
-    if not at_exit or not after or not seeded:
+    if not at_exit or not after or not seeded or not loaded:
         return check("settings-content", "QA-R40 step 4", None, "store dumps missing", [])
-    problems = content_equal(at_exit, after, CANDIDATE_ONLY_FIELDS)
-    lost = seeded_survived(seeded, after)
-    ok = not problems and not lost
-    evidence = (f"read by the {run.prev['version']} store before and the {run.cand['version']} store after: "
-                f"{len(after.get('user', {}))} user fields, {len(after.get('appModes', {}).get('apps', []))} per-app "
-                f"entries, {len(after.get('ruleOverrides', []))} overrides, {len(after.get('macros', []))} macros; "
-                f"differences: {problems or 'none'}; seeded values missing after the update: {lost or 'none'}")
+    problems = content_equal(at_exit, loaded, CANDIDATE_ONLY_FIELDS)
+    session = content_equal(dict(loaded, appModes=None), dict(after, appModes=None), {})
+    lost = seeded_survived(seeded, after) + seeded_survived(
+        {"appModes": at_exit.get("appModes", {})}, {"appModes": after.get("appModes", {})})
+    ok = not problems and not lost and not session
+    evidence = (f"read by the {run.prev['version']} store at exit and the {run.cand['version']} store after loading: "
+                f"{len(loaded.get('user', {}))} user fields, {len(loaded.get('appModes', {}).get('apps', []))} per-app "
+                f"entries, {len(loaded.get('ruleOverrides', []))} overrides, {len(loaded.get('macros', []))} macros; "
+                f"differences: {problems or 'none'}; changes later in the new session (per-app order aside): "
+                f"{session or 'none'}; seeded or exit values missing 15 s after the update: {lost or 'none'}")
     return check("settings-content", "QA-R40 step 4: settings, rules, per-app memory and macros identical", ok,
                  evidence, ["upgrade-out/dumps/"])
 

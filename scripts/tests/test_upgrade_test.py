@@ -351,6 +351,21 @@ class ComparisonTests(unittest.TestCase):
         removed = report.compare_settings(*self.folders({"macros.json": {"m": 1}}, {}), "1.0.1", "1.1.0")
         self.assertEqual(removed["unexplained"], ["macros.json removed"])
 
+    def test_the_new_session_may_only_reorder_or_add_per_app_entries(self):
+        apps = {"schemaVersion": 1, "globalMode": "vi", "apps": [{"bundle": "a", "mode": "vi"},
+                                                                  {"bundle": "b", "rule": "ignore"}]}
+        used = dict(apps, apps=[{"bundle": "c", "mode": "vi"}, {"bundle": "b", "rule": "ignore"},
+                                {"bundle": "a", "mode": "vi"}])
+        result = report.runtime_changes(*self.folders({"app-modes.json": apps}, {"app-modes.json": used}))
+        self.assertEqual(result["unexplained"], [])
+        self.assertIn("first seen ['c']", result["notes"][0])
+        lost = dict(apps, apps=[{"bundle": "a", "mode": "en"}, {"bundle": "b", "rule": "ignore"}])
+        self.assertEqual(len(report.runtime_changes(*self.folders({"app-modes.json": apps},
+                                                                  {"app-modes.json": lost}))["unexplained"]), 1)
+        settings = report.runtime_changes(*self.folders({"settings.json": settings_doc("1.1.0")},
+                                                        {"settings.json": settings_doc("1.1.0", x=1)}))
+        self.assertEqual(settings["unexplained"], ["settings.json changed in the new session without a user action"])
+
     def test_the_defaults_domain_allows_only_the_keys_that_change_by_design(self):
         before = {"diagnostics.redactionSalt": b"salt", "launchGuard.appVersion": "1.0.1 (1000199)",
                   "launchGuard.inProgressSince": 1.0, "SUEnableAutomaticChecks": False}
@@ -383,11 +398,12 @@ class ComparisonTests(unittest.TestCase):
 def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_probe: bool = True) -> dict:
     """A complete synthetic guest output, as upgrade-guest.sh writes it, for a passing run."""
     out = folder / "upgrade-out"
-    for sub in ("snapshots/at-exit", "snapshots/after", "snapshots/seeded", "evidence", "egress", "logs", "dumps"):
+    for sub in ("snapshots/at-exit", "snapshots/loaded", "snapshots/after", "snapshots/seeded", "evidence", "egress",
+                "logs", "dumps"):
         (out / sub).mkdir(parents=True, exist_ok=True)
     start = 1_800_000_000.0
     files = {"settings.json": json.dumps(settings_doc("1.0.1")), "macros.json": "{}"}
-    for snap in ("at-exit", "after", "seeded"):
+    for snap in ("at-exit", "loaded", "after", "seeded"):
         for name, text in files.items():
             (out / "snapshots" / snap / name).write_text(text)
     defaults = {"diagnostics.redactionSalt": b"s", "launchGuard.inProgressSince": start - 60}
@@ -431,6 +447,7 @@ def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_pr
     (out / "dumps" / "at-exit.previous.json").write_text(json.dumps(dump))
     after = dict(dump, user=dict(dump["user"], typoCorrection="unset", neverCorrect=[]))
     (out / "dumps" / "after.candidate.json").write_text(json.dumps(after))
+    (out / "dumps" / "loaded.candidate.json").write_text(json.dumps(after))
     probe = {"build": 1010002, "version": "1.1.0-beta.1-channelprobe"}
     rows = []
     for index, channel in ((1, "beta"), (2, "stable"), (3, "beta")):
@@ -574,6 +591,24 @@ class UpgradeScriptTests(LabTestCase):
         self.assertIn("--sign", result.stdout)
         self.assertEqual(json.loads((self.tmp / "run" / "result.json").read_text())["verdict"], "ERROR")
         self.assertEqual(self.tart_calls("run"), [])
+
+    def test_sign_asks_sign_update_and_a_hanging_call_stops_that_path(self):
+        self.write_appcast(published=False)
+        signer = self.tmp / "sign_update"
+        write_exe(signer, '#!/bin/bash\necho "sparkle:edSignature=\\"U0lH\\" length=\\"9\\""\n')
+        signed = self.upgrade("--sign", "--wait-idle", "0", "--no-watchdog", SPARKLE_SIGN_UPDATE=str(signer),
+                              FAKE_NO_AGENT="1")
+        self.assertEqual(signed.returncode, 1, signed.stdout + signed.stderr)  # reached the VM, the guest failed
+        artefacts = json.loads((self.tmp / "run" / "artefacts.json").read_text())
+        self.assertEqual(artefacts["candidate"]["signatureSource"], "sign_update")
+        self.assertEqual(self.running(), set())
+        hanging = self.tmp / "sign_hang"
+        write_exe(hanging, "#!/bin/bash\nexec sleep 30\n")  # one process, like the real sign_update
+        stuck = self.upgrade("--sign", "--wait-idle", "0", SPARKLE_SIGN_UPDATE=str(hanging), SIGN_TIMEOUT="1")
+        self.assertEqual(stuck.returncode, 6, stuck.stdout + stuck.stderr)
+        self.assertIn("did not finish within 1s", stuck.stderr)
+        missing = self.upgrade("--sign", "--wait-idle", "0", SPARKLE_SIGN_UPDATE=str(self.tmp / "absent"))
+        self.assertEqual(missing.returncode, 6)
 
     def test_a_busy_host_is_waited_for_and_then_skipped_with_exit_4(self):
         result = self.upgrade("--wait-idle", "0", FAKE_FREE="20")
