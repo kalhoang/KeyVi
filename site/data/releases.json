@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.1.0-beta.1",
+      "build": 1010001,
+      "channel": "beta",
+      "date": "2026-11-22",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.1.0-beta.1.dmg",
+      "sha256": "f5c39ffe548202c91534cc2e4e21fb6775b1495ab4aeaeec9df1667fb3496efc",
+      "size": 9932781,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "### Thêm\n\n- KeyVi nay tự sửa một từ tiếng Anh bạn gõ nhầm khi bạn gõ xong từ đó và chỉ có đúng một từ phù hợp: \"androdi\" thành \"android\", \"gramar\" thành \"grammar\". Từ tiếng Việt, từ viết hoa toàn bộ và chữ gõ trong Terminal hay trình soạn mã không bao giờ bị đổi. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ. Tùy chọn \"Tự sửa từ gõ nhầm\" trong Cài đặt > Kiểu gõ được bật sẵn.\n- Từ bạn lấy lại bằng phím Escape được thêm vào danh sách mới \"Không tự sửa\" trong Cài đặt > Kiểu gõ và không bao giờ bị sửa nữa. Bạn có thể thêm hay xóa từ trong danh sách này, và danh sách được xuất và nhập cùng các cài đặt khác.\n\n### Sửa lỗi\n\n- Từ bắt đầu bằng chữ w mà bạn gõ thành ww, theo thói quen gõ hai lần phím w để ra chữ w, nay ra đúng chữ bạn muốn gõ khi gõ xong: \"wwebview\" thành \"webview\" thay vì \"wwebview\", \"WwordPress\" thành \"WordPress\", và từ có chữ cái đầu viết hoa vẫn giữ chữ hoa: \"Wwade\" thành \"Wade\" thay vì \"wade\". Xóa lùi vào từ đó rồi gõ xong lần nữa vẫn giữ đúng chữ bạn đang thấy.\n\n### Lỗi đã biết\n\n- Ngay sau khi bạn bấm chuột vào giữa một dòng, từ gõ liền sau #, @ hay / có thể bị sửa (\"#androdi\" thành \"#android\"). Nhấn Escape để lấy lại từ đó.\n- Từ gõ nhầm đứng trước dấu chấm được sửa ngay khi bạn gõ dấu chấm, kể cả khi sau đó là một địa chỉ web: \"googel.com\" thành \"google.com\".",
+        "en": "### Added\n\n- KeyVi now fixes a mistyped English word when you finish it and only one word fits: \"androdi\" becomes \"android\" and \"gramar\" becomes \"grammar\". Vietnamese words, words in all capitals and anything typed in Terminal or a code editor are never changed. Press Escape right after to get the word you typed back. The setting \"Fix mistyped words\" in Settings > Typing is on by default.\n- A word you take back with Escape goes on the new \"Never correct\" list in Settings > Typing and is never fixed again. You can add and remove words there, and the list is exported and imported with your other settings.\n\n### Fixed\n\n- A word that starts with w and that you type with a doubled w, out of the habit of typing ww to get the letter w, now gives the word you meant when you finish it: \"wwebview\" gives \"webview\" instead of \"wwebview\", \"WwordPress\" gives \"WordPress\", and a word typed with a capital first keeps its capital: \"Wwade\" gives \"Wade\" instead of \"wade\". Deleting back into such a word and finishing it again keeps the text you see.\n\n### Known issues\n\n- Right after you click into the middle of a line, a word typed just after #, @ or / may be fixed (\"#androdi\" becomes \"#android\"). Press Escape to get it back.\n- A mistyped word before a dot is fixed at the dot, even when a web address follows: \"googel.com\" becomes \"google.com\"."
+      }
+    },
+    {
       "version": "1.0.1",
       "build": 1000199,
       "channel": "stable",

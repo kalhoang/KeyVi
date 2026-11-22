@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-G7+vjOKtYmndlkKwK5RTNJTXV8qyNE7J9zN82DUMg4k='; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>KeyVi 1.1.0-beta.1</title>
+<style>/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Release-notes pages written by scripts/publish-release (ADR 0304): shown inside the in-app update window, */
+/* so they are compact and carry no site navigation. Same palette as style.css. publish-release inlines this */
+/* file into each page, which then loads nothing else (PLT-R906). When it changes, add its new SHA-256 to */
+/* style-src in static/_headers and keep the old ones for pages already published (site/test.mjs checks). */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --ink: #1d1c1a;
+  --muted: #5a5850;
+  --line: #d9d4c6;
+  --link: #1a6a4f;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141513;
+    --ink: #ecebe6;
+    --muted: #b0aea4;
+    --line: #35362f;
+    --link: #7fd9b2;
+  }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-body);
+}
+main {
+  max-width: 40rem;
+  padding: 0.75rem 1rem 1rem;
+}
+h1 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+h2 {
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+h3 {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0.25rem;
+}
+ul {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+p {
+  margin: 0.25rem 0;
+}
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+a {
+  color: var(--link);
+}
+a:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>KeyVi 1.1.0-beta.1</h1>
+<section lang="vi" aria-labelledby="notes-vi">
+<h2 id="notes-vi">Tiếng Việt</h2>
+<h3>Thêm</h3>
+<ul>
+<li>KeyVi nay tự sửa một từ tiếng Anh bạn gõ nhầm khi bạn gõ xong từ đó và chỉ có đúng một từ phù hợp: &quot;androdi&quot; thành &quot;android&quot;, &quot;gramar&quot; thành &quot;grammar&quot;. Từ tiếng Việt, từ viết hoa toàn bộ và chữ gõ trong Terminal hay trình soạn mã không bao giờ bị đổi. Nhấn Escape ngay sau đó để lấy lại từ bạn đã gõ. Tùy chọn &quot;Tự sửa từ gõ nhầm&quot; trong Cài đặt &gt; Kiểu gõ được bật sẵn.</li>
+<li>Từ bạn lấy lại bằng phím Escape được thêm vào danh sách mới &quot;Không tự sửa&quot; trong Cài đặt &gt; Kiểu gõ và không bao giờ bị sửa nữa. Bạn có thể thêm hay xóa từ trong danh sách này, và danh sách được xuất và nhập cùng các cài đặt khác.</li>
+</ul>
+<h3>Sửa lỗi</h3>
+<ul>
+<li>Từ bắt đầu bằng chữ w mà bạn gõ thành ww, theo thói quen gõ hai lần phím w để ra chữ w, nay ra đúng chữ bạn muốn gõ khi gõ xong: &quot;wwebview&quot; thành &quot;webview&quot; thay vì &quot;wwebview&quot;, &quot;WwordPress&quot; thành &quot;WordPress&quot;, và từ có chữ cái đầu viết hoa vẫn giữ chữ hoa: &quot;Wwade&quot; thành &quot;Wade&quot; thay vì &quot;wade&quot;. Xóa lùi vào từ đó rồi gõ xong lần nữa vẫn giữ đúng chữ bạn đang thấy.</li>
+</ul>
+<h3>Lỗi đã biết</h3>
+<ul>
+<li>Ngay sau khi bạn bấm chuột vào giữa một dòng, từ gõ liền sau #, @ hay / có thể bị sửa (&quot;#androdi&quot; thành &quot;#android&quot;). Nhấn Escape để lấy lại từ đó.</li>
+<li>Từ gõ nhầm đứng trước dấu chấm được sửa ngay khi bạn gõ dấu chấm, kể cả khi sau đó là một địa chỉ web: &quot;googel.com&quot; thành &quot;google.com&quot;.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/nhat-ky-thay-doi/#v1.1.0-beta.1">Xem nhật ký thay đổi đầy đủ</a></p>
+</section>
+<section lang="en" aria-labelledby="notes-en">
+<h2 id="notes-en">English</h2>
+<h3>Added</h3>
+<ul>
+<li>KeyVi now fixes a mistyped English word when you finish it and only one word fits: &quot;androdi&quot; becomes &quot;android&quot; and &quot;gramar&quot; becomes &quot;grammar&quot;. Vietnamese words, words in all capitals and anything typed in Terminal or a code editor are never changed. Press Escape right after to get the word you typed back. The setting &quot;Fix mistyped words&quot; in Settings &gt; Typing is on by default.</li>
+<li>A word you take back with Escape goes on the new &quot;Never correct&quot; list in Settings &gt; Typing and is never fixed again. You can add and remove words there, and the list is exported and imported with your other settings.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>A word that starts with w and that you type with a doubled w, out of the habit of typing ww to get the letter w, now gives the word you meant when you finish it: &quot;wwebview&quot; gives &quot;webview&quot; instead of &quot;wwebview&quot;, &quot;WwordPress&quot; gives &quot;WordPress&quot;, and a word typed with a capital first keeps its capital: &quot;Wwade&quot; gives &quot;Wade&quot; instead of &quot;wade&quot;. Deleting back into such a word and finishing it again keeps the text you see.</li>
+</ul>
+<h3>Known issues</h3>
+<ul>
+<li>Right after you click into the middle of a line, a word typed just after #, @ or / may be fixed (&quot;#androdi&quot; becomes &quot;#android&quot;). Press Escape to get it back.</li>
+<li>A mistyped word before a dot is fixed at the dot, even when a web address follows: &quot;googel.com&quot; becomes &quot;google.com&quot;.</li>
+</ul>
+<p class="more"><a href="https://keyvi.kal.vn/en/changelog/#v1.1.0-beta.1">Read the full changelog</a></p>
+</section>
+</main>
+</body>
+</html>
