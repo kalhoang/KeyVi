@@ -116,7 +116,7 @@ export const support = {
   channels: [
     "<a href=\"{{repo}}/issues/new/choose\" rel=\"noopener\">GitHub Issues</a>: báo lỗi và tương thích ứng dụng.",
     "<a href=\"{{repo}}/discussions\" rel=\"noopener\">GitHub Discussions</a>: câu hỏi và ý tưởng.",
-    "Email <a href=\"mailto:{{email}}\">{{email}}</a> dành cho bạn nào không dùng GitHub.",
+    "Email {{emailLinkHtml}} dành cho bạn nào không dùng GitHub.",
   ],
   noDm: "Xin lỗi, chúng tôi không hỗ trợ qua tin nhắn riêng trên mạng xã hội. Dùng các kênh trên giúp mọi người cùng thấy câu trả lời.",
   targetsHeading: "Thời gian phản hồi",

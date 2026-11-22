@@ -83,6 +83,10 @@ function tokensFor(ctx, lang) {
     tap: config.homebrewTap,
     repo: config.githubRepo,
     email: config.supportEmail,
+    // The address as visible text or as a mailto link, wrapped so Cloudflare's Email Address Obfuscation leaves it as
+    // written instead of injecting its decoder script (PRD-R74; site/tests/site.mjs checks every page).
+    emailHtml: emailOff(esc(config.supportEmail)),
+    emailLinkHtml: emailOff(`<a href="mailto:${esc(config.supportEmail)}">${esc(config.supportEmail)}</a>`),
     securityEmail: config.securityEmail,
     sponsors: config.sponsorsUrl,
     appcastUrl: `https://${brand.host}/appcast.xml`,
@@ -91,6 +95,9 @@ function tokensFor(ctx, lang) {
   for (const route of ROUTES) tokens[`href${pascal(route.id)}`] = routePath(route.id, lang);
   return tokens;
 }
+
+/** Marks HTML that Cloudflare must not rewrite (Email Address Obfuscation honours these comments). */
+const emailOff = (html) => `<!--email_off-->${html}<!--/email_off-->`;
 
 /** Per-page helpers: UI strings, content, a token filler and an escaper. */
 export function kit(ctx, lang) {

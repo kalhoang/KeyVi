@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.0.1",
+      "build": 1000199,
+      "channel": "stable",
+      "date": "2026-11-22",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.0.1.dmg",
+      "sha256": "574a27e823a6c3e7c4957e8b841d9aa89bedbae50d1877a3149a6053e42061be",
+      "size": 8561177,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "- Trong các ứng dụng phản hồi chậm, từ bạn gõ ít bị tách đôi hay mất dấu hơn, chẳng hạn ngay sau Command+S hay Command+K (\"nguyeẽn\" thay vì \"nguyễn\").\n- Từ đầu tiên bạn gõ sau khi một ứng dụng tự chuyển sang ô nhập khác ít bị mất dấu hơn (\"tieengs\" thay vì \"tiếng\").\n- Trong Terminal, iTerm2 và các trình soạn mã, các lệnh như chown, awk và ps -ef giữ nguyên như bạn gõ.\n- Khi phím cuối của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên.\n- Các cụm \"day off\", \"sale off\" và \"a mess\" nay giữ đúng từ bạn gõ.",
+        "en": "- In apps that answer slowly, a word splits in two or loses its marks less often, for example right after Command+S or Command+K (\"nguyeẽn\" instead of \"nguyễn\").\n- The first word you type after an app moves to another field by itself loses its marks less often (\"tieengs\" instead of \"tiếng\").\n- In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef stay as you typed them.\n- When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see stay.\n- The phrases \"day off\", \"sale off\" and \"a mess\" now keep the word you typed."
+      }
+    },
+    {
       "version": "1.0.1-beta.2",
       "build": 1000102,
       "channel": "beta",

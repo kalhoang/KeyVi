@@ -22,6 +22,20 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 - Ngay sau khi bạn bấm chuột vào giữa một dòng, từ gõ liền sau #, @ hay / có thể bị sửa ("#androdi" thành "#android"). Nhấn Escape để lấy lại từ đó.
 - Từ gõ nhầm đứng trước dấu chấm được sửa ngay khi bạn gõ dấu chấm, kể cả khi sau đó là một địa chỉ web: "googel.com" thành "google.com".
 
+## [1.0.1] - 2026-11-22
+
+### Thay đổi
+
+- Khi phím cuối cùng của một từ là phím xóa dấu (z trong Telex, 0 trong VNI), chữ không dấu bạn đang thấy được giữ nguyên khi kết thúc từ, ví dụ "duong", thay vì trở lại các phím đã gõ.
+- Các cụm tiếng Anh "day off", "sale off" và "a mess" nay giữ đúng từ bạn gõ, không còn bị đổi thành "day of", "sale of" và "a mes".
+
+### Sửa lỗi
+
+- Trong Terminal, iTerm2 và các trình soạn mã, các lệnh như chown, awk và ps -ef nay giữ nguyên như bạn gõ, không còn bị đổi thành chữ tiếng Việt (chơn, ăk, è); trong câu tiếng Việt, chúng vẫn được gõ thành tiếng Việt.
+- Khi một ứng dụng tự chuyển sang ô nhập khác, từ đầu tiên bạn gõ ở đó ít bị mất dấu hay sai dấu hơn ("tieengs" thay vì "tiếng").
+- KeyVi nay tiếp tục theo dõi một ứng dụng đã từ chối thông báo chuyển ô nhập trong vài giây đầu sau khi mở, nên các lần chuyển ô trong ứng dụng đó không còn bị bỏ sót cho tới khi bạn chuyển sang ứng dụng khác.
+- Trong các ứng dụng phản hồi chậm, từ bạn gõ ít bị tách đôi hay mất dấu hơn, chẳng hạn sau khi ngừng gõ một lúc hoặc ngay sau khi một phím tắt như Command+S hay Command+K mở hộp thoại lưu hay khung tìm kiếm ("nguyeẽn" thay vì "nguyễn", "đuơngf" thay vì "đường").
+
 ## [1.0.1-beta.2] - 2026-11-19
 
 ### Sửa lỗi

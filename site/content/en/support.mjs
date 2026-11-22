@@ -114,7 +114,7 @@ export const support = {
   channels: [
     "<a href=\"{{repo}}/issues/new/choose\" rel=\"noopener\">GitHub Issues</a>: bugs and app compatibility.",
     "<a href=\"{{repo}}/discussions\" rel=\"noopener\">GitHub Discussions</a>: questions and ideas.",
-    "Email <a href=\"mailto:{{email}}\">{{email}}</a> for anyone who does not use GitHub.",
+    "Email {{emailLinkHtml}} for anyone who does not use GitHub.",
   ],
   noDm: "Sorry, we do not offer support through private messages on social networks. Using the channels above lets everyone see the answer.",
   targetsHeading: "Response targets",

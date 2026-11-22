@@ -24,6 +24,20 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 - Right after you click into the middle of a line, a word typed just after #, @ or / may be fixed ("#androdi" becomes "#android"). Press Escape to get it back.
 - A mistyped word before a dot is fixed at the dot, even when a web address follows: "googel.com" becomes "google.com".
 
+## [1.0.1] - 2026-11-22
+
+### Changed
+
+- When the last key of a word removes its marks (z in Telex, 0 in VNI), the plain letters you see now stay when you finish the word, for example "duong", instead of turning back into the keys you typed.
+- The English phrases "day off", "sale off" and "a mess" now keep the word you typed instead of becoming "day of", "sale of" and "a mes".
+
+### Fixed
+
+- In Terminal, iTerm2 and code editors, commands such as chown, awk and ps -ef now stay as you typed them instead of turning into Vietnamese words (chơn, ăk, è); inside a Vietnamese sentence they still type Vietnamese.
+- When an app moves the focus to another field by itself, the first word you type there loses its marks or gets a wrong one less often ("tieengs" instead of "tiếng").
+- KeyVi now keeps watching an app that refused its focus notifications for a few seconds after it launched, so moves between that app's fields are no longer missed until you switch apps.
+- In apps that answer slowly, a word splits in two or loses its marks less often, for example after a short pause or right after a shortcut such as Command+S or Command+K opens a save dialog or a search panel ("nguyeẽn" instead of "nguyễn", "đuơngf" instead of "đường").
+
 ## [1.0.1-beta.2] - 2026-11-19
 
 ### Fixed
