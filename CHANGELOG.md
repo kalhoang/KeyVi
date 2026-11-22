@@ -10,6 +10,10 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+### Fixed
+
+- When KeyVi turns a word back into the English you typed because the words before it are English, Escape pressed right after now gives you the Vietnamese word: in "Thanks Giving bả với", the space after "bả" gave "bar" and Escape kept it; Escape now brings back "bả". A second Escape keeps its usual meaning, and Escape still does nothing to a word that is English on its own, such as "best".
+
 ## [1.1.0-beta.1] - 2026-11-22
 
 ### Added

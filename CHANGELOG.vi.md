@@ -8,6 +8,10 @@ Mỗi phiên bản ghi đầy đủ các thay đổi ở đây. Cửa sổ cập
 
 ## [Unreleased]
 
+### Sửa lỗi
+
+- Khi KeyVi đổi một từ về lại chữ tiếng Anh bạn đã gõ vì các từ đứng trước là tiếng Anh, nhấn Escape ngay sau đó nay trả lại từ tiếng Việt: trong "Thanks Giving bả với", dấu cách sau "bả" làm từ này thành "bar" và nhấn Escape không đổi lại được; nay Escape trả lại "bả". Nhấn Escape lần thứ hai vẫn có tác dụng thông thường, và Escape vẫn không đổi một từ tự nó đã là tiếng Anh, chẳng hạn "best".
+
 ## [1.1.0-beta.1] - 2026-11-22
 
 ### Thêm
