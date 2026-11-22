@@ -173,7 +173,8 @@ func seed(_ arguments: Arguments) async {
     user.learnedWords = Set(
         plan.array("learnedWords").map { item in
             let list = RestoreList(rawValue: item["list"]?.stringValue ?? "") ?? .keepAsTyped
-            return LearnedWord(list: list, raw: item["raw"]?.stringValue ?? "", app: bundleKey(item["app"]?.stringValue ?? ""))
+            return LearnedWord(
+                list: list, raw: item["raw"]?.stringValue ?? "", app: bundleKey(item["app"]?.stringValue ?? ""))
         })
     // Onboarding finished in the previous version, as on a Mac that used it (PRD-R42).
     user.onboarding.completedVersion = writtenBy
@@ -189,7 +190,9 @@ func seed(_ arguments: Arguments) async {
     }
     await store.recordAppModes(AppModesDocument(globalMode: global, apps: remembered))
     for item in plan.array("appRules") {
-        guard let rule = PerAppRule(rawValue: item["rule"]?.stringValue ?? "") else { fail("bad per-app rule", code: 2) }
+        guard let rule = PerAppRule(rawValue: item["rule"]?.stringValue ?? "") else {
+            fail("bad per-app rule", code: 2)
+        }
         await store.setAppRule(rule, for: bundleKey(item["bundle"]?.stringValue ?? ""))
     }
 
@@ -254,7 +257,10 @@ func dumpStore(_ arguments: Arguments) async {
         user[label] = describe(child.value)
     }
     let apps = state.appModes.apps.map { entry -> [String: Any] in
-        ["bundle": entry.bundle.rawValue, "rule": entry.rule?.rawValue ?? NSNull(), "mode": entry.mode?.rawValue ?? NSNull()]
+        [
+            "bundle": entry.bundle.rawValue, "rule": entry.rule?.rawValue ?? NSNull(),
+            "mode": entry.mode?.rawValue ?? NSNull(),
+        ]
     }
     let overrides = state.ruleOverrides.map { override -> [String: Any] in
         ["createdAt": ISO8601DateFormatter().string(from: override.createdAt), "rule": jsonText(override.rule)]

@@ -159,7 +159,8 @@ func eventTaps() -> [TapInfo] {
     var list = [CGEventTapInformation](repeating: CGEventTapInformation(), count: Int(count))
     guard CGGetEventTapList(count, &list, &count) == .success else { return [] }
     return list.prefix(Int(count)).map {
-        TapInfo(pid: $0.tappingProcess, enabled: $0.enabled, options: $0.options.rawValue, location: $0.tapPoint.rawValue)
+        TapInfo(
+            pid: $0.tappingProcess, enabled: $0.enabled, options: $0.options.rawValue, location: $0.tapPoint.rawValue)
     }
 }
 
@@ -392,8 +393,10 @@ func pressCommand(_ arguments: Arguments, bundle: String) {
             if let file = arguments.one("dump") { try? jsonData(described).write(to: URL(fileURLWithPath: file)) }
             let pressed = title(button)
             if !arguments.flags.contains("find-only") { AXUIElementPerformAction(button, kAXPressAction as CFString) }
-            emit(["pressed": arguments.flags.contains("find-only") ? NSNull() : pressed, "found": pressed,
-                  "at": now(), "window": described])
+            emit([
+                "pressed": arguments.flags.contains("find-only") ? NSNull() : pressed, "found": pressed,
+                "at": now(), "window": described,
+            ])
             return
         }
         pause(0.25)
@@ -586,7 +589,9 @@ guard let command = arguments.positional.first else {
 }
 let needsAccessibility: Set<String> = ["menu", "press", "windows", "type", "relaunch", "frontmost", "activate"]
 if needsAccessibility.contains(command), !AXIsProcessTrusted() {
-    fail("not trusted for accessibility (grant-tcc.sh --binary for this tool and for the process that starts it)", code: 4)
+    fail(
+        "not trusted for accessibility (grant-tcc.sh --binary for this tool and for the process that starts it)",
+        code: 4)
 }
 func bundleArgument() -> String {
     guard arguments.positional.count >= 2 else { fail("\(command) needs a bundle identifier", code: 2) }
@@ -620,11 +625,12 @@ case "type":
 case "relaunch": relaunchCommand(arguments)
 case "quit": quitCommand(arguments, bundle: bundleArgument())
 case "taps":
-    emit(eventTaps().map { tap -> [String: Any] in
-        var json = tap.json
-        json["process"] = NSRunningApplication(processIdentifier: tap.pid)?.bundleIdentifier ?? ""
-        return json
-    })
+    emit(
+        eventTaps().map { tap -> [String: Any] in
+            var json = tap.json
+            json["process"] = NSRunningApplication(processIdentifier: tap.pid)?.bundleIdentifier ?? ""
+            return json
+        })
 case "processes":
     let executable = arguments.required("executable")
     emit(processIdentifiers(executable: executable).map { ["pid": Int($0), "startedAt": startTime($0) ?? 0] })
