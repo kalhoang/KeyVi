@@ -10,6 +10,8 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.1.0-beta.2] - 2026-11-23
+
 ### Fixed
 
 - Escape pressed right after a word now undoes a switch to English that KeyVi made only because the words before it were English: in "Thanks Giving bả với", the space after "bả" gave "bar" and Escape could not bring "bả" back; now it does. This also applies to common words such as "there" and "this" typed after English words, so Escape right after one of them changes it; press Escape again for its usual action. Words that are English on their own, such as "best", are not affected.
