@@ -6,6 +6,16 @@
     <description>Most recent updates</description>
     <language>en</language>
     <item>
+      <title>KeyVi 1.0.1</title>
+      <pubDate>Sun, 22 Nov 2026 08:33:24 +0000</pubDate>
+      <sparkle:version>1000199</sparkle:version>
+      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>12.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://keyvi.kal.vn/release-notes/1.0.1/</sparkle:releaseNotesLink>
+      <sparkle:phasedRolloutInterval>86400</sparkle:phasedRolloutInterval>
+      <enclosure url="https://keyvi.kal.vn/download/keyvi-1.0.1.zip" length="8595453" type="application/octet-stream" sparkle:edSignature="4AGKHlc0zAriEVKj2zewPShKN4dBX5p3ksEAdGnqptesP/2eZdCYzwghMRI3796CD9idwW0ImkPyD5jrQV+kBg==" />
+    </item>
+    <item>
       <title>KeyVi 1.0.1-beta.2</title>
       <pubDate>Thu, 19 Nov 2026 04:04:21 +0000</pubDate>
       <sparkle:version>1000102</sparkle:version>
