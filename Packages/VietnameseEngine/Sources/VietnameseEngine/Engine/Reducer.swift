@@ -21,9 +21,11 @@ extension Engine {
         let followsToggle = state.previousEventWasRestoreToggle
         let followsRevision = state.previousEventRevised
         let followsCorrection = state.previousEventCorrected
+        let followsContextRestore = state.previousEventRestoredInContext
         state.previousEventWasRestoreToggle = false
         state.previousEventRevised = false
         state.previousEventCorrected = false
+        state.previousEventRestoredInContext = false
         switch event {
         case .key(let input):
             switch TokenKey.classify(input, rules: rules) {
@@ -39,6 +41,9 @@ extension Engine {
             state.newestTokenRevisable = false
             if followsRevision, !followsToggle, state.active == nil, let undo = undoRevision(&state) { return undo }
             if followsCorrection, !followsToggle, state.active == nil, let undo = undoCorrection(&state) { return undo }
+            if followsContextRestore, !followsToggle, state.active == nil, let undo = undoContextRestore(&state) {
+                return undo
+            }
             return toggleRestore(&state, followsToggle: followsToggle)
         case .reset:
             // ENG-R1011, ENG-R831: drop the token, the history and the run's language window; edit
@@ -60,7 +65,8 @@ extension Engine {
 
     /// The restore toggle (7.2). ENG-R702: right after another toggle it passes through and changes
     /// nothing. ENG-R703: with no active token, or when neither branch of ENG-R701 applies, it passes
-    /// through so the key keeps its normal meaning. ENG-R1117: on a re-opened typo correction it brings the
+    /// through so the key keeps its normal meaning (the undos right after a commit, ENG-R706, ENG-R829 and
+    /// ENG-R1117, are tried before this). ENG-R1117: on a re-opened typo correction it brings the
     /// keys as typed back and carries the never-correct signal of the typed word (ENG-R1118).
     private func toggleRestore(_ state: inout EngineState, followsToggle: Bool) -> EngineOutput {
         guard !followsToggle, var token = state.active else {

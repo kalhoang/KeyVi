@@ -111,8 +111,11 @@ struct SpecFixtureFileTests {
 
     @Test func restoreToggles() throws {
         let rows = try SpecExamples.restoreToggles(tsv: CorpusFiles.text(SpecExamples.restoreToggleFile))
-        // 13.10 has E01 to E08 plus E02b.
-        #expect(rows.map(\.id) == ["E01", "E02", "E02b", "E03", "E04", "E05", "E06", "E07", "E08"])
+        // 13.10 has E01 to E13 plus E02b.
+        #expect(
+            rows.map(\.id) == [
+                "E01", "E02", "E02b", "E03", "E04", "E05", "E06", "E07", "E08", "E09", "E10", "E11", "E12", "E13",
+            ])
         let byID = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
         #expect(byID["E03"]?.method == .vni && byID["E07"]?.configuration.inputMethod == .vni)
         #expect(
@@ -124,6 +127,9 @@ struct SpecFixtureFileTests {
         #expect(byID["E02b"]?.expectedActive == "việ")
         #expect(byID["E06"]?.expectedActive == "" && byID["E06"]?.lastAction == .passThrough)
         #expect(byID["E08"]?.events.last == .restoreToggle)
+        // ENG-R706: a toggle right after a commit leaves no active token; the row gives the whole field.
+        #expect(byID["E09"]?.expectedActive == "" && byID["E09"]?.expectedField == "tricky á ")
+        #expect(byID["E05"]?.expectedField == nil && byID["E13"]?.events.dropLast().last == .key(KeyInput("\n")))
     }
 
     @Test func fixtureListsMatchTheSpec() throws {

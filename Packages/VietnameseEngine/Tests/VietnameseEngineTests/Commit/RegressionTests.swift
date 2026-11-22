@@ -4,9 +4,9 @@ import Testing
 import VietnameseEngine
 import VietnameseEngineTesting
 
-/// Spec 13.5: one test per regression REG-01 to REG-41, through the whole engine (composition, commit
+/// Spec 13.5: one test per regression REG-01 to REG-42, through the whole engine (composition, commit
 /// with the 13.9 fixture resources, history), each named after its REG id.
-@Suite("Regressions REG-01 to REG-41 (13.5)")
+@Suite("Regressions REG-01 to REG-42 (13.5)")
 struct RegressionTests {
     private let vni = EngineConfiguration(inputMethod: .vni, typoCorrection: false)
 
@@ -440,5 +440,30 @@ struct RegressionTests {
         #expect(try text("Wwebview ") == "Webview " && text("WwordPress ") == "WordPress ")
         #expect(try text("wWidth ") == "wWidth ")
         #expect(try text("Wwade ", vni) == "Wwade ")
+    }
+
+    @Test("REG-42: Escape right after an English-run restore gives the Vietnamese word back")
+    func reg42() throws {
+        // The product owner's report of 23/11/2026 (ADR 0010 item 9): after the English `Thanks Giving` the space
+        // restored `bả` to `bar` (rule L10), and Escape right after passed through, so the word stayed English. The
+        // toggle right after such a restore now puts the composed form back (ENG-R706). The 13.9 fixtures plus the
+        // sentence's English words and a `vi` row for `bar`, as the bundled data has it.
+        var resources = Committing.fixtures
+        resources.english = WordSet(SpecFixtures.englishLexicon + ["thanks", "giving", "bar"])
+        var ambiguity = resources.ambiguity
+        ambiguity["bar"] = .vietnamese
+        resources.ambiguity = ambiguity
+        let sentence = "Thanks Giving bar \u{238B}voiws KT qua nhaf oongr owr Ohio chowi"
+        var driver = try Committing.driver("Thanks Giving bar ", resources: resources)
+        #expect(driver.field.string == "Thanks Giving bar " && driver.outputs.last?.decision == .restored(.englishRun))
+        let undo = try driver.send(.restoreToggle)
+        #expect(driver.field.string == "Thanks Giving bả ")
+        #expect(undo.learning == .preferredVietnamese(raw: "bar"))
+        let expected = "Thanks Giving bả với KT qua nhà ổng ở Ohio chơi"
+        #expect(try Committing.text(sentence, resources: resources) == expected)
+        // The second press passes through (ENG-R702); a word the token alone restores is left alone (rule L11 `en`).
+        #expect(try driver.send(.restoreToggle).action == .passThrough)
+        var enRow = try Committing.driver("Thanks Giving test ", resources: resources)
+        #expect(try enRow.send(.restoreToggle).action == .passThrough && enRow.field.string == "Thanks Giving test ")
     }
 }

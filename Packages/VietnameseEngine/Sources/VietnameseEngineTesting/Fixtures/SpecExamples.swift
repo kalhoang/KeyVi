@@ -143,7 +143,7 @@ public struct CommitDecisionExample: Sendable, Hashable {
     }
 }
 
-/// A restore-toggle example of spec 13.10 (E01-E08 and E02b).
+/// A restore-toggle example of spec 13.10 (E01-E13 and E02b).
 public struct RestoreToggleExample: Sendable, Hashable {
     /// The action expected for the row's last event.
     public enum Action: String, Sendable, Hashable { case edit, passThrough }
@@ -156,6 +156,9 @@ public struct RestoreToggleExample: Sendable, Hashable {
     public let events: [EngineEvent]
     /// Display of the active token after the last event (empty when there is none).
     public let expectedActive: String
+    /// The whole field after the last event, for a row that ends with no active token (a toggle right after a
+    /// commit, ENG-R706); nil when the row does not give it.
+    public let expectedField: String?
     /// What the last toggle returns.
     public let lastAction: Action
     /// The events column as written in the spec.
@@ -247,6 +250,8 @@ public enum SpecExamples {
                 case "toggle": events.append(.restoreToggle)
                 case "backspace": events.append(.backspace)
                 case "space": events.append(.key(KeyInput(" ")))
+                case "return": events.append(.key(KeyInput("\n")))
+                case "tab": events.append(.key(KeyInput("\t")))
                 default:
                     guard token.hasPrefix("keys:") else {
                         throw FixtureError(file: table.name, line: row.line, reason: "unknown event \(token)")
@@ -259,7 +264,8 @@ public enum SpecExamples {
             }
             return RestoreToggleExample(
                 id: row["id"], method: try method(row, table), events: events, expectedActive: row["expected_active"],
-                lastAction: action, eventsText: row["events_text"], resultText: row["result_text"])
+                expectedField: row["expected_field"].isEmpty ? nil : row["expected_field"], lastAction: action,
+                eventsText: row["events_text"], resultText: row["result_text"])
         }
     }
 
