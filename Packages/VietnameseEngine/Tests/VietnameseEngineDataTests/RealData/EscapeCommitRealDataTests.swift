@@ -384,6 +384,32 @@ struct EscapeCommitRealDataTests {
     }
 
     @Test(
+        "REG-41: a capital W before the escaping w is kept, also where it is not word-initial (ENG-R903, ENG-R804)",
+        arguments: [
+            ("TWwitter ", "TWitter "), ("SWwab ", "SWab "), ("DWwell ", "DWell "), ("Wwww ", "Www "),
+            ("WwADE ", "WADE "),
+        ])
+    func capitalBeforeTheEscapeIsKept(_ keys: String, _ expected: String) throws {
+        // A known cost of REG-41 (ENG-R804, amendment of 22/11/2026): until then the escaped letter was the lowercase
+        // `w` of the escaping key, so a Shift held over the first `w` after a capital consonant (`TWwitter`) came out as
+        // the capitalised word (`Twitter`), `Wwww` gave `www` and `WwADE` gave `wADE`. The screen now shows the capital
+        // and the commit keeps it.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked(keys, configuration) == expected, "\(configuration)")
+        }
+    }
+
+    @Test("REG-41: the toggle on a re-opened restored Webview passes through, as on webview (ENG-R1005, ENG-R701)")
+    func toggleOnReopenedRestoredCapital() throws {
+        // The re-opened token shows `R′` = `Webview`, which is also its composed form now that the escaped letter is a
+        // capital, so the toggle has nothing to switch to; until 22/11/2026 it gave `webview`, the composed form.
+        for configuration in Self.configurationsWithCorrection {
+            #expect(try Self.checked("Wwebview ⌫⎋", configuration) == "Webview", "\(configuration)")
+            #expect(try Self.checked("wwebview ⌫⎋", configuration) == "webview", "\(configuration)")
+        }
+    }
+
+    @Test(
         "REG-41: the other w doublings commit as before",
         arguments: [
             ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),

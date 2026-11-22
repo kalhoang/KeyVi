@@ -391,11 +391,21 @@ struct WDoublingCommitTests {
         arguments: [
             ("WW ", "W "), ("wW ", "W "), ("ww ", "w "), ("wwade ", "wade "), ("WWade ", "Wade "), ("wWade ", "wWade "),
             ("Wwebview ", "Webview "), ("WwordPress ", "WordPress "), ("Twwitter ", "Twitter "),
-            ("TWwitter ", "TWitter "), ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
+            ("wWidth ", "wWidth "), ("dwWidth ", "dwWidth "), ("hwWallet ", "hwWallet "),
             ("wwwexample ", "wwwexample "), ("wwwRoot ", "wwwRoot "), ("www ", "www "), ("Www ", "Www "),
             ("powwow ", "powwow "), ("glowworm ", "glowworm "), ("WWADE ", "WADE "), ("Uww ", "Uw "),
         ])
     func otherDoublingsCommitAsBefore(_ keys: String, _ expected: String) throws {
+        #expect(try Self.checked(keys) == expected)
+    }
+
+    @Test(
+        "REG-41: a capital W before the escaping w is kept in the text, also where it is not word-initial (ENG-R903)",
+        arguments: [("TWwitter ", "TWitter "), ("WwADE ", "WADE "), ("Wwww ", "Www ")])
+    func capitalBeforeTheEscapeIsKept(_ keys: String, _ expected: String) throws {
+        // These commits changed with REG-41 (ADR 0010 item 8): the escaped letter of `Ww` is a capital, so a Shift
+        // held over the first `w` after a capital (`TWwitter`) shows and keeps `TWitter`; before, the lowercase
+        // escaped letter gave `Twitter` with the bundled data and `TWitter` with this fixture lexicon.
         #expect(try Self.checked(keys) == expected)
     }
 
