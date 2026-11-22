@@ -400,7 +400,8 @@ A defaults override of `SUFeedURL` would test a feed URL no user has, and the ap
 re-signed. So everything happens inside the VM, which is thrown away afterwards:
 
 - the guest creates a throwaway certificate authority and a certificate for the site host, and trusts that authority
-  in the VM's System keychain only (`security add-trusted-cert`; its private key never leaves the VM);
+  in the VM's System keychain only (`sudo security add-trusted-cert -d`, which root may do in the lab image without a
+  prompt; its private key never leaves the VM);
 - `scripts/vm/guest/local-feed-server.py` serves the run's feed folder over HTTPS on `127.0.0.1` and `::1`, port
   443, and logs every request (`feed-requests.jsonl`: path, status, size, user agent);
 - the VM's `/etc/hosts` maps the site host to both loopback addresses, so the build fetches its own, unchanged URLs
@@ -455,9 +456,12 @@ memory free, no other VM runs and no `xcodebuild` runs. It starts `watchdog.sh` 
 8. channel switch: with the probe item in the feed, beta (the probe is offered, Remind Me Later), stable (up to date:
    no beta build and nothing older), beta again;
 9. egress: 10 minutes with the local feed and a forced check, then the mapping and the server are removed and 10
-   minutes follow with the production feed and a forced check. `nettop` (every flow of every process, each second),
-   `lsof` of the app and Sparkle's helpers (`Autoupdate`, `Updater`, each second) and `dscacheutil` for the site host
-   (every 20 seconds) run throughout; the update itself is sampled too.
+   minutes follow with the production feed and a forced check. `tcpdump` on the PKTAP interface (`-i pktap,all -k NP`:
+   every TCP SYN and UDP datagram with the process that sent it, and the names of the DNS lookups mDNSResponder makes
+   for the app), `nettop` (every open flow of every process, each second), `lsof` of the app and Sparkle's helpers
+   (`Autoupdate`, `Updater`, each second) and `dscacheutil` for the site host (every 20 seconds) run throughout; the
+   update itself is sampled too. `nettop` alone would miss a connection that opens and closes between two samples
+   (seen in the lab on 2026-11-23), `tcpdump` does not.
 
 ### 12.3 Checks and evidence
 
@@ -478,10 +482,10 @@ part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
 | `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process or prompt in the `tccd` log, and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
 | `typing-within-5s` | TestHost reads `duyệt` at most 5 seconds after the process started |
-| `egress-update` | During the update the app and Sparkle's helpers reached only loopback (the local feed) |
+| `egress-update` | During the update the app and Sparkle's helpers reached only loopback (the local feed) and looked up no other name |
 | `channel-switch` | Beta offers the probe build, stable offers nothing, beta offers it again |
-| `egress-local` | 10 minutes, a forced check, a connection to the local feed, and no remote address but loopback |
-| `egress-production` | 10 minutes, a forced check, a connection to the site host, and no remote address outside loopback and the addresses the VM resolved for the site host during the phase |
+| `egress-local` | 10 minutes, a forced check, a connection to the local feed, no remote address but loopback and no DNS lookup of another name |
+| `egress-production` | 10 minutes, a forced check, a connection to the site host, no remote address outside loopback and the addresses the VM resolved for the site host during the phase, and no DNS lookup of another name |
 
 The allowed host is the site host of `scripts/brand.env` only (PLT-R906, 13.7: "only the allowed host"). The other
 hosts of `scripts/url-hosts.allow` are identifiers or archive hosts for a choice Pa has not made (GitHub Releases);
