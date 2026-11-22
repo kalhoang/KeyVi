@@ -834,7 +834,8 @@ def check_defaults(run: Run) -> dict:
 
 
 def check_permissions(run: Run) -> dict:
-    granted = run.text("snapshots/tcc-granted.txt").strip()
+    # The rows as the previous version used them (after its own launch), against the rows after the update.
+    granted = (run.text("snapshots/tcc-before.txt") or run.text("snapshots/tcc-granted.txt")).strip()
     after = run.text("snapshots/tcc-after.txt").strip()
     rows = [r.split("|") for r in after.splitlines() if r]
     relaunch = run.json("relaunch.json", {}) or {}
@@ -859,7 +860,7 @@ def check_permissions(run: Run) -> dict:
                 f"{len(windows)} (the self-check shows the permission screen when a grant is lost, QA-R42)")
     return check("permissions", "QA-R40 step 4: permissions still granted, no new prompt (PRD-R52)",
                  ok if after else None, evidence,
-                 ["upgrade-out/snapshots/tcc-granted.txt", "upgrade-out/snapshots/tcc-after.txt",
+                 ["upgrade-out/snapshots/tcc-before.txt", "upgrade-out/snapshots/tcc-after.txt",
                   "upgrade-out/logs/tccd.log", "upgrade-out/evidence/after-relaunch.png"])
 
 
