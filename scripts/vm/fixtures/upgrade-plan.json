@@ -1,5 +1,5 @@
 {
-  "comment": "Fixture of scripts/vm/upgrade-test.sh (QA-R40): what the previous stable's own settings store writes before the update. Bundle IDs are test fixtures (PLT-R501). D16 clickIconToToggle stays unset: with it the status item toggles the mode instead of opening the menu the test uses for its forced update check.",
+  "comment": "Fixture of scripts/vm/upgrade-test.sh (QA-R40): what the previous stable's own settings store writes before the update. Bundle IDs are test fixtures (PLT-R501). D16 clickIconToToggle stays unset: with it the status item toggles the mode instead of opening the menu the test uses for its forced update check. collisionMemory: learned collision choices (PLT-R914) for words on the bundled collision lists of both versions (ambiguity.tsv, collision-supplement.txt); strong signals are corrections, weak ones acceptances.",
   "settings": {
     "tonePlacement": "modern",
     "englishRestore": false,
@@ -514,6 +514,32 @@
       "expansion": "mật khẩu mới",
       "adaptCase": false,
       "enabled": true
+    }
+  ],
+  "collisionMemory": [
+    {
+      "word": "bar",
+      "context": "afterEnglish",
+      "side": "vietnamese",
+      "strength": "strong"
+    },
+    {
+      "word": "air",
+      "context": "sentenceStart",
+      "side": "english",
+      "strength": "strong"
+    },
+    {
+      "word": "arcs",
+      "context": "afterVietnamese",
+      "side": "vietnamese",
+      "strength": "weak"
+    },
+    {
+      "word": "asap",
+      "context": "afterNeutral",
+      "side": "english",
+      "strength": "strong"
     }
   ]
 }

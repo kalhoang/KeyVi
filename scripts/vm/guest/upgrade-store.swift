@@ -3,14 +3,15 @@
 // Guest tool of scripts/vm/upgrade-test.sh (QA-R40, PLT-R1108, docs/runbooks/vm-test-lab.md section 12): writes and
 // reads the settings folder through the app's own `SettingsStore`, so the files on disk are the ones a user of that
 // version has. scripts/vm/guest/upgrade-guest.sh builds it twice inside the VM: against the AppCore package of the
-// previous stable (the commit in its build-info.json) to seed the settings before the update, and against this
-// commit's AppCore to read them back as the candidate does. It uses only API that both versions have.
+// previous stable (the commit in its build-info.json) to seed the settings before the update, and against the
+// candidate's (the commit in its build-info.json) to read them back as the candidate does. It uses only API that
+// both versions have.
 //
 // Usage (inside the VM only; it refuses a real Mac):
 //   upgrade-store seed --dir DIR --written-by VERSION --plan PLAN.json --channel stable|beta
 //       Loads DIR (the app's Application Support folder), applies the plan (settings, word lists, learned words,
-//       per-app memory and rules, compatibility overrides, macros, onboarding finished) through the store's own
-//       update calls and flushes. The app must not be running.
+//       per-app memory and rules, compatibility overrides, macros, learned collision choices, onboarding finished)
+//       through the store's own update calls and flushes. The app must not be running.
 //   upgrade-store set-channel --dir DIR --written-by VERSION --channel stable|beta
 //       D21 only (the channel switch check of release.md section 5 item 3). The app must not be running.
 //   upgrade-store dump --dir DIR
@@ -211,13 +212,34 @@ func seed(_ arguments: Arguments) async {
             adaptCase: item["adaptCase"] == .bool(true), enabled: item["enabled"] == .bool(true))
     }
     await store.replaceMacros(macros)
+    seedCollisionMemory(plan, into: store)
+    // Writes the four settings files and collision-memory.json (SettingsStore.flush flushes the collision memory).
     await store.flush()
     let state = await store.state
     let summary: [String: Any] = [
         "explicitSettings": state.user.explicitlySetKeys, "appEntries": state.appModes.apps.count,
         "ruleOverrides": state.ruleOverrides.count, "macros": state.macros.count,
+        "collisionEntries": store.collisionMemory.entryCount,
     ]
     print(String(data: try! JSONSerialization.data(withJSONObject: summary, options: [.sortedKeys]), encoding: .utf8)!)
+}
+
+/// The learned collision choices (PLT-R914, ENG-R863), `collision-memory.json` next to the settings files, recorded
+/// as the app records them: signals for words of the bundled collision list (the plan's words are on the lists of
+/// both versions; the app drops any other word at load).
+func seedCollisionMemory(_ plan: Plan, into store: SettingsStore) {
+    let signals = plan.array("collisionMemory").map { item -> CollisionMemorySignal in
+        guard let word = item["word"]?.stringValue, !word.isEmpty,
+            let context = CollisionMemoryContext(rawValue: item["context"]?.stringValue ?? ""),
+            let side = CollisionMemorySide(rawValue: item["side"]?.stringValue ?? "")
+        else { fail("bad collision memory entry in the plan", code: 2) }
+        let strength: CollisionMemorySignal.Strength = item["strength"]?.stringValue == "weak" ? .weak : .strong
+        return CollisionMemorySignal(word: word, context: context, side: side, strength: strength)
+    }
+    guard !signals.isEmpty else { return }
+    let memory = store.collisionMemory
+    memory.load(vocabulary: CollisionVocabulary(Set(signals.map(\.word))))
+    memory.apply(signals)
 }
 
 func setChannel(_ arguments: Arguments) async {
@@ -271,10 +293,16 @@ func dumpStore(_ arguments: Arguments) async {
             "adaptCase": macro.adaptCase, "enabled": macro.enabled,
         ]
     }
+    // Every entry the file holds (any word: which words the app keeps is its bundled list's business, and a word it
+    // drops at load would rewrite the file, which the snapshots show), sorted by word and context.
+    let collision = store.collisionMemory
+    collision.load(vocabulary: CollisionVocabulary(contains: { _ in true }))
+    var collisionEntries: [String] = []
+    if case .array(let entries)? = collision.exportSection() { collisionEntries = entries.map(jsonText) }
     let output: [String: Any] = [
         "user": user, "explicitSettings": state.user.explicitlySetKeys,
         "appModes": ["globalMode": state.appModes.globalMode.rawValue, "apps": apps],
-        "ruleOverrides": overrides, "macros": macros, "safeMode": state.safeMode,
+        "ruleOverrides": overrides, "macros": macros, "collisionMemory": collisionEntries, "safeMode": state.safeMode,
         "readOnlyFiles": state.readOnlyFiles.map(\.rawValue).sorted(),
         "notices": state.notices.map { String(describing: $0) }.sorted(),
     ]

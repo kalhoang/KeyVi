@@ -23,7 +23,8 @@
 //                           [--defaults-domain D --defaults-dst FILE] [--timeout S] [--watch S]
 //       Waits for P to exit, copies DIR at once (the files as the old version left them) and exports D, waits for
 //       the new process of PATH, then records when its event tap is enabled (CGGetEventTapList) and when typing into
-//       the TestHost field first works, measured from the new process's start time. With --loaded-snapshot-dst it
+//       the TestHost field first works (attempts start once that tap is enabled), measured from the new process's
+//       start time. With --loaded-snapshot-dst it
 //       copies DIR again once the new version has loaded it (0.5 s after its tap, at the latest 4 s after start).
 //   upgrade-driver quit BUNDLE [--timeout S]            asks BUNDLE to quit (as Quit in its menu) and waits
 //   upgrade-driver taps                                 every event tap with its process and state
@@ -637,10 +638,19 @@ func relaunchCommand(_ arguments: Arguments) {
     let keys = arguments.required("keys")
     let expect = arguments.required("expect")
     var attempts: [TypingAttempt] = []
+    // An attempt starts only once the new process's tap is enabled, and it counts only when its first key was posted
+    // after that: a key posted earlier passes through unchanged, and the first keys of the word (d, u, y) read the
+    // same with or without the app, so a word typed partly before the tap could read back right with only its last
+    // keys composed (QA-R40 times the app, not the harness).
     while now() < started + watch {
+        guard let tapAt = tapWatch.result.0 else {
+            if tapThread.isFinished { break }
+            pause(0.01)
+            continue
+        }
         let attempt = target.attempt(keys: keys, expect: expect)
         attempts.append(attempt)
-        if attempt.matched { break }
+        if attempt.matched, attempt.keysStartedAt >= tapAt { break }
     }
     while !tapThread.isFinished || !loadedThread.isFinished { pause(0.05) }
     if let (at, error) = loadedStamp.result {
@@ -652,9 +662,10 @@ func relaunchCommand(_ arguments: Arguments) {
     report["tapLatencySeconds"] = tapAt.map { $0 - started } ?? NSNull()
     report["taps"] = taps
     report["attempts"] = attempts.map(\.json)
-    // Typing works from the moment the keys of the first attempt that read back right were typed: those keystrokes
-    // were composed correctly. The read-back itself comes 0.3 s after the last key.
-    let worked = attempts.first(where: \.matched)
+    // Typing works from the moment the first key of the first attempt typed wholly after the tap was enabled, and
+    // read back right, was posted: every keystroke of that word went through the app. The read-back itself comes
+    // 0.3 s after the last key (the upper bound). The host's upgrade-report.py recomputes both from the attempts.
+    let worked = attempts.first { attempt in attempt.matched && tapAt.map { attempt.keysStartedAt >= $0 } == true }
     report["typingWorkedAt"] = worked?.keysStartedAt ?? NSNull()
     report["typingLatencySeconds"] = worked.map { $0.keysStartedAt - started } ?? NSNull()
     report["typingVerifiedLatencySeconds"] = worked.map { $0.endedAt - started } ?? NSNull()

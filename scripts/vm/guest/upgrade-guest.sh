@@ -17,11 +17,12 @@
 # previous version's own SettingsStore (upgrade-store.swift); grant TCC with grant-tcc.sh; launch it and type in
 # TestHost; force an update check from its menu and accept Sparkle's install; record the relaunch (upgrade-driver
 # relaunch); snapshot every file and the defaults domain before and after; then the channel switch and the two
-# 10-minute egress phases (local feed, production feed) with nettop and lsof sampling.
+# 10-minute egress phases (local feed, production feed) with tcpdump (PKTAP), nettop and lsof sampling.
 #
 # Usage: upgrade-guest.sh --in DIR --out DIR   (from the checkout root, inside the VM only; it exits 3 on a real Mac)
-# DIR of --in holds params.env, previous.dmg, prev-src/ (AppCore and VietnameseEngine of the previous stable's commit)
-# and feed/ (appcast-upgrade.xml, appcast-channel.xml, download/, release-notes/), all written by upgrade-test.sh.
+# DIR of --in holds params.env, previous.dmg, prev-src/ and cand-src/ (AppCore and VietnameseEngine of the commits in
+# the previous stable's and the candidate's build-info.json) and feed/ (appcast-upgrade.xml, appcast-channel.xml,
+# download/, release-notes/), all written by upgrade-test.sh.
 # Exit 0 when every step ran (not a verdict), 1 when a step failed and later steps were skipped.
 set -uo pipefail
 
@@ -99,6 +100,11 @@ keys="duyeetj"
 expect="duyệt"
 feed="$in_dir/feed"
 tools="/tmp/upgrade-tools"
+# Capture buffer of the egress samplers and the kernel's limit for it (16 MiB, the largest debug.bpf_maxbufsize
+# takes); snapshot length in bytes.
+TCPDUMP_BUFFER_KIB=16384
+BPF_MAX_BUFFER_BYTES=16777216
+TCPDUMP_SNAPLEN=768
 driver="$tools/upgrade-driver"
 tls="/tmp/upgrade-tls"
 hosts_backup="/tmp/upgrade-hosts.orig"
@@ -111,9 +117,14 @@ finish() {
   sampler_stop 2>/dev/null
   cp "$app_logs/diagnostics.jsonl" "$out/logs/app-diagnostics.jsonl" 2>/dev/null
   # /usr/bin/log: scripts/lib/common.sh defines a shell function named log.
-  /usr/bin/log show --start "$log_start" --style compact --predicate 'subsystem BEGINSWITH "org.sparkle-project"' \
-    >"$out/logs/sparkle.log" 2>&1
-  /usr/bin/log show --start "$log_start" --style compact --predicate 'process == "tccd"' >"$out/logs/tccd.log" 2>&1
+  # Compact timestamps carry no zone: UTC, and a first line that says so (the host places TCC requests in time).
+  /usr/bin/log show --start "$log_start" --style compact --timezone UTC \
+    --predicate 'subsystem BEGINSWITH "org.sparkle-project"' >"$out/logs/sparkle.log" 2>&1
+  {
+    echo "#timezone=UTC"
+    /usr/bin/log show --start "$log_start" --style compact --timezone UTC --predicate 'process == "tccd"'
+    echo "#exit=$?"
+  } >"$out/logs/tccd.log" 2>&1
   screencapture -x "$out/evidence/screen-final.png" 2>/dev/null
   restore_hosts
   feed_stop
@@ -209,9 +220,14 @@ sampler_start() { # sampler_start <phase> [light]: light = tcpdump only, for the
   # the names of DNS lookups (mDNSResponder's packets carry the app as the effective process). nettop misses a
   # connection that opens and closes between two samples; this does not.
   # shellcheck disable=SC2024 # the samples belong to this user on purpose; only the samplers need root
-  sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-tcpdump.pid; exec /usr/sbin/tcpdump -i pktap,all -k NP -n -l -tt "$1"' \
+  # PKTAP filters in user space: every packet of every interface crosses the capture buffer, and a burst of system
+  # downloads overflowed the default one (14,655 drops in a local phase on 2026-11-23). Hence the buffer of
+  # TCPDUMP_BUFFER_KIB (debug.bpf_maxbufsize is raised in step 1) and a snapshot of TCPDUMP_SNAPLEN bytes, enough
+  # for the headers and a DNS answer; the drop count is in <phase>-tcpdump.err and the host checks it.
+  sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-tcpdump.pid
+    exec /usr/sbin/tcpdump -i pktap,all -k NP -n -l -tt -B "$2" -s "$3" "$1"' \
     sh "(tcp and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0) or (ip6 and tcp and (ip6[53] & 0x12) == 0x02) or (udp and not port 5353)" \
-    >"$dir/$phase-tcpdump.txt" 2>"$dir/$phase-tcpdump.err" &
+    "$TCPDUMP_BUFFER_KIB" "$TCPDUMP_SNAPLEN" >"$dir/$phase-tcpdump.txt" 2>"$dir/$phase-tcpdump.err" &
   if [ "$mode" = light ]; then
     sleep 2
     return 0
@@ -300,6 +316,10 @@ for key in NSAutomaticCapitalizationEnabled NSAutomaticDashSubstitutionEnabled N
   defaults write -g "$key" -bool false
 done
 sudo -n mdutil -a -i off >/dev/null 2>&1
+# Room for the egress capture (section 10): the default limit of a capture buffer is 512 KiB.
+# shellcheck disable=SC2024 # the evidence file belongs to this user on purpose; only sysctl needs root
+sudo -n sysctl -w "debug.bpf_maxbufsize=$BPF_MAX_BUFFER_BYTES" >>"$out/system.txt" 2>&1
+sysctl debug.bpf_maxbufsize >>"$out/system.txt" 2>&1
 step_ok
 
 # --- 2. Local feed over HTTPS, site host mapped to loopback (first: it needs no build) -------------------------
@@ -359,7 +379,7 @@ note "feed: https://$APP_SITE_HOST/appcast.xml served from this VM ($(grep -c '<
 step_ok
 
 # --- 3. Tools: TestHost, the driver, the store tool (previous and candidate AppCore) ---------------------------
-step "build: upgrade-driver, TestHost and upgrade-store (previous and candidate AppCore)"
+step "build: upgrade-driver, TestHost and upgrade-store (AppCore of the previous stable's and the candidate's commits)"
 xcrun swiftc -O -o "$driver" scripts/vm/guest/upgrade-driver.swift >"$out/logs/build-driver.log" 2>&1 ||
   stop "upgrade-driver.swift did not compile (logs/build-driver.log)"
 xcodegen_bin="$(scripts/install-xcodegen.sh --prefer-system 2>>"$out/logs/build-testhost.log")" ||
@@ -397,7 +417,8 @@ EOF
 }
 prev_store="$(store_tool previous "$in_dir/prev-src/Packages/AppCore")" ||
   stop "upgrade-store did not build against the previous stable's AppCore (logs/build-store-previous.log)"
-cand_store="$(store_tool candidate "$PWD/Packages/AppCore")" ||
+# The candidate's store as the shipped app has it: its own commit (build-info.json), not this checkout's.
+cand_store="$(store_tool candidate "$in_dir/cand-src/Packages/AppCore")" ||
   stop "upgrade-store did not build against the candidate's AppCore (logs/build-store-candidate.log)"
 note "built: upgrade-driver, TestHost ($testhost_bundle), upgrade-store x2"
 step_ok
@@ -515,11 +536,18 @@ snapshot after
 app_identity "$out/evidence/app-after.txt"
 # The Accessibility and Input Monitoring prompts are shown by universalAccessAuthWarn; System Settings would open
 # for a permission screen. Their windows, if any, are in the screenshot.
-pgrep -lx 'universalAccessAuthWarn|System Settings|UserNotificationCenter' >"$out/evidence/prompt-processes.txt" 2>&1
+{
+  pgrep -lx 'universalAccessAuthWarn|System Settings|UserNotificationCenter'
+  echo "#exit=$?" # 0 found, 1 none: anything else means the list is not evidence
+} >"$out/evidence/prompt-processes.txt" 2>&1
 pgrep -x universalAccessAuthWarn >/dev/null 2>&1 && note "permission prompt process running after the update"
 screencapture -x "$out/evidence/after-relaunch.png" 2>/dev/null
 # PRD-R52: the first launch after an update shows nothing; the QA-R42 self-check would show the permission screen.
-run_driver "$out/evidence/app-windows-after.json" windows "$bundle"
+# A failed listing leaves no file: the host then cannot show "no window" and reports the check as not run.
+run_driver "$out/evidence/app-windows-after.json" windows "$bundle" || {
+  note "the window listing failed (logs/driver.log)"
+  rm -f "$out/evidence/app-windows-after.json"
+}
 sampler_stop
 note "now: $(sed -n 's/^version=//p' "$out/evidence/app-after.txt") ($(sed -n 's/^build=//p' "$out/evidence/app-after.txt"))"
 step_ok
@@ -546,6 +574,8 @@ step_ok
 if [ "$RUN_CHANNEL" = 1 ]; then
   step "channel switch: beta to stable and back, against a feed with a beta-only probe item $PROBE_BUILD"
   use_appcast appcast-channel.xml || stop "no appcast-channel.xml in the feed"
+  # What Sparkle says when nothing is offered, in the localizations of the installed (candidate) app.
+  sparkle_titles "You’re up to date!" >"$out/titles-uptodate.txt"
   : >"$out/channel.tsv"
   n=0
   for channel in beta stable beta; do
@@ -553,10 +583,13 @@ if [ "$RUN_CHANNEL" = 1 ]; then
     quit_app || stop "the app did not quit"
     "$cand_store" set-channel --dir "$support" --written-by "$CAND_VERSION" --channel "$channel" \
       >>"$out/logs/channel.log" 2>&1 || stop "set-channel $channel failed"
+    channel_start="$(date +%s)"
     launch_app || stop "the app did not enable its tap after the channel change"
     sleep 3
     forced_check "channel-$n-$channel" dismiss 90 || stop "no Sparkle window after the forced check ($channel)"
-    printf '%s\t%s\t%s\n' "$n" "$channel" "$(json_field "$out/evidence/channel-$n-$channel-find.json" found)" \
+    # n, channel, the button found, and when the step ran (the host counts update.updateFound in that window).
+    printf '%s\t%s\t%s\t%s\t%s\n' "$n" "$channel" \
+      "$(json_field "$out/evidence/channel-$n-$channel-find.json" found)" "$channel_start" "$(date +%s)" \
       >>"$out/channel.tsv"
     sleep 2
   done
