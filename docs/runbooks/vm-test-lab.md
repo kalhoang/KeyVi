@@ -24,7 +24,7 @@ that is allowed. The scripts in `scripts/vm/` only run apps inside VMs.
 | `/Volumes/Data/tart/runs` | One folder per smoke test run (`<UTC timestamp>-macos12/`) |
 | `scripts/vm/lab.sh` | The command line (section 4); `scripts/vm/lib.sh` holds the shared functions |
 | `scripts/vm/smoke-macos12.sh` | The macOS 12 smoke test (section 6); `scripts/vm/guest/smoke-guest.sh` is its half that runs inside the VM, `scripts/vm/macho-info.pl` reads slices and `minos` without Xcode |
-| `scripts/vm/upgrade-test.sh` | The release candidate's upgrade test, channel switch and egress test (section 12); `scripts/vm/guest/upgrade-guest.sh` and the guest tools next to it run inside the VM, `scripts/vm/upgrade-report.py` checks the artefacts and decides on the host |
+| `scripts/vm/upgrade-test.sh` | The release candidate's upgrade test, channel switch and egress test (section 12); `scripts/vm/guest/upgrade-guest.sh` and the guest tools next to it run inside the VM, `scripts/vm/upgrade-report.py` (with `upgrade_feed.py` and `upgrade_evidence.py` next to it) checks the artefacts and decides on the host |
 
 The two local VMs. Their names follow the slug of `scripts/brand.env` (`VM_MONTEREY`, `VM_DEV`):
 
@@ -485,9 +485,9 @@ part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
 | `seeded` | At least 10 settings besides the update switches, per-app rules, remembered per-app modes, overrides and 50 macros, read back by the previous store |
 | `sparkle-update` | Sparkle offered the candidate, the local feed served the update archive, Install and Relaunch was pressed |
 | `version-after` | `/Applications` holds the candidate, the relaunched process logged the candidate's version and build, the designated requirement is unchanged |
-| `settings-files` | The exit snapshot holds no file written after the candidate started (Autoupdate relaunches within milliseconds of the exit, before the copy ends, so the files' modification times decide), and every file of the snapshot taken once the candidate loaded the folder is byte-identical to it, or each difference is a migration the candidate's code explains (`MIGRATION_RULES` in `upgrade-report.py`, each citing its code); anything else fails. Until the snapshot 15 seconds after the relaunch, only `app-modes.json` may change, and only by use (the app focused after the relaunch moves to the front or is recorded as seen for the first time); every earlier entry keeps its rule and mode |
+| `settings-files` | The exit snapshot holds no file written after the candidate started (Autoupdate relaunches within milliseconds of the exit, before the copy ends, so the files' modification times decide), and every file of the snapshot taken once the candidate loaded the folder is byte-identical to it, or each difference is a migration the candidate's code explains (`MIGRATION_RULES` in `scripts/vm/upgrade_evidence.py`, each citing its code); anything else fails. Until the snapshot 15 seconds after the relaunch, only `app-modes.json` may change, and only by use (the app focused after the relaunch moves to the front or is recorded as seen for the first time); every earlier entry keeps its rule and mode |
 | `settings-content` | The candidate's store reads the same settings, per-app entries, overrides and macros right after loading as the previous store read at exit; fields new in the candidate read as not set; 15 seconds later every seeded and exit value is still there |
-| `defaults-domain` | Every key of the app's defaults domain is equal, except the keys that change on each launch by design (`DEFAULTS_RULES`: the launch guard, the post-update self-check's version, Sparkle's check time) |
+| `defaults-domain` | Every key of the app's defaults domain is equal, except the keys that change on each launch by design (`DEFAULTS_RULES` in the same file: the launch guard, the post-update self-check's version, Sparkle's check time) |
 | `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds answered by a consent prompt (`tccd` log, auth reason 2 or 9), and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
 | `typing-within-5s` | Keys typed into TestHost at most 5 seconds after the process started read back as `duyệt`: the time is the first key of the first attempt that reads back right (those keystrokes were composed correctly); the read-back time, 0.3 seconds after the last key, is in the evidence too |
@@ -511,9 +511,11 @@ the system checks the revocation of the Developer ID certificate online (Apple's
 whether an operating-system revocation check counts as the app's egress is open for Pa, so the check stays advisory
 and reports the endpoint instead of deciding.
 
-Self-tests: `python3 -I scripts/tests/test_upgrade_test.py` (part of `scripts/tests/run.sh`): the artefact and
-signature checks with a throwaway key, the feed, the `nettop`, `lsof` and `dscacheutil` parsers, the comparisons, the
-verdict, and the host script with fake `tart`, `ssh`, `git`, OpenSSL and host-load tools; no VM starts.
+Self-tests (part of `scripts/tests/run.sh`): `python3 -I scripts/tests/test_upgrade_report.py` (the artefact and
+signature checks with a throwaway key, the feed, the `tcpdump`, `nettop`, `lsof`, `dscacheutil` and `tccd` parsers, the
+comparisons, the verdict, the feed server's DNS and request log) and `python3 -I scripts/tests/test_upgrade_test.py`
+(the host script with fake `tart`, `ssh`, `git`, OpenSSL and host-load tools: idle gate, watchdog stops and restarts,
+signing path, clone cleanup; the guest scripts' guards and fixture); no VM starts.
 
 ### 12.4 Results
 
@@ -521,6 +523,7 @@ Recorded per release candidate (run folder, verdict, notable evidence):
 
 | Date | Previous, candidate | Run folder | Verdict | Notes |
 |---|---|---|---|---|
+| 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T042942Z-upgrade` | PASS, every check, one run end to end (`fedef875`, exit 0) | Archive served by the local feed (8,968,733 bytes, Sparkle 2.10.1 user agent); tap enabled 1.00 s after the relaunch; keys typed from 0.59 s read back `duyệt` at 2.84 s; settings folder byte-identical (exit snapshot 2 ms after the exit, loaded snapshot 1.54 s after the start); store contents identical (28 user fields, 15 per-app entries, 3 overrides, 50 macros); defaults domain changed only in the three launch keys; TCC rows unchanged, requests Accessibility, ListenEvent and PostEvent 2/4, no consent prompt, no window; channel switch as expected; egress local only `[::1]:443`, production only the site host (TCP and QUIC to its addresses); advisory `egress-update`: `Autoupdate` to `17.253.61.161:443` after a lookup of `ocsp2.g.aaplimg.com` |
 | 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T020752Z-upgrade` | PASS, every check (guest at `8f61053e`; analysis re-run with `ddee8f57`) | The first analysis, kept as `result-first-analysis.json`, failed `sparkle-update` and `egress-production` on two report bugs fixed in `ddee8f57` (the Install and Relaunch label read after the press; an inbound QUIC reply counted as an endpoint). Tap enabled 0.85 s after the relaunch, typing matched at 3.48 s, settings folder byte-identical (exit snapshot against the one the candidate loaded), store contents identical, defaults domain changed only in the three launch keys, TCC rows unchanged with no consent prompt, no window. Channel switch: beta offered the probe, stable nothing, beta the probe again. Egress: local phase only `[::1]:443`; production phase only the site host's addresses, over TCP and QUIC; advisory `egress-update` above |
 | 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T035338Z-upgrade` | FAIL on `typing-within-5s` only (guest at `ddee8f57`) | Every other check passed (tap 1.82 s on a host swapping at 31 to 36 % free memory). One typing attempt, started 0.39 s after the relaunch and reading `duyệt` at 5.01 s, spent most of its time in harness steps on the loaded guest before its keys; the check now times the first key of the attempt that reads back right (`typingVerifiedLatencySeconds` keeps the read-back time) |
 | 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261122T191432Z` to `20261123T004514Z-upgrade` | test faults, fixed | Development runs: the CA trust step, a menu title read through `plutil -extract`, the site's HTTPS DNS record (the archive came from the production host over HTTP/3, past the local feed), Sparkle's window without Remind Me Later. The update itself worked from the third run on |
