@@ -862,7 +862,7 @@ Gates from section 8.1 enforced on every merge to the main branch (hosted subset
 - Fresh install from the notarized DMG on macOS 12, 15, 26 and 27 (and on an Intel Mac with macOS 26 or earlier when available): Gatekeeper passes without warnings; the move offer appears when launched from the DMG.
 - Update from the previous release through a local appcast: settings byte-identical apart from migrations; per-app memory intact; Accessibility trust intact; tap active within 2 s after relaunch; typing works without user action.
 - Beta to stable channel switch and back.
-- Rollback drill: pull an item, publish N+1 from N-1 source, confirm clients on N move to N+1.
+- Rollback drill, optional (QA-R39, amended 2026-11-23): pull an item, publish N+1 from N-1 source, confirm clients on N move to N+1.
 
 ### 13.6 Soak
 
@@ -876,7 +876,7 @@ The test also samples the install of an update from the local appcast, from the 
 
 ### 13.8 Release gate summary
 
-A release is publishable only if: hosted CI green; nightly self-hosted green within 24 hours; tier-1 matrix rows current; update tests green on three OS versions; no rule past `reviewBy` by more than 30 days; egress test green; signing, notarization and EdDSA verification checks green.
+A release is publishable only if: hosted CI green; nightly self-hosted green within 24 hours; tier-1 matrix rows current; update tests green on three OS versions (the optional rollback drill of 13.5 excepted, QA-R39); no rule past `reviewBy` by more than 30 days; egress test green; signing, notarization and EdDSA verification checks green.
 
 ## 14. Open questions for Pa
 

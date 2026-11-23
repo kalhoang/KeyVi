@@ -25,7 +25,7 @@ Do these once; the sections linked from each line explain how.
 - [x] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`). Enabled, checked on 2026-11-18.
 - [x] GitHub Discussions is enabled in the repository settings (General, Features): the question link of the New Issue chooser (`.github/ISSUE_TEMPLATE/config.yml`), `CONTRIBUTING.md` and the README send questions there (QA-R43, QA-R51). Check with `gh api repos/kalhoang/{{AppName}} --jq .has_discussions` (`true`). Enabled, checked on 2026-11-18.
 - [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
-- [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
+- [ ] Optional, not a release gate: rollback rehearsed on the beta channel, for example before a release that changes the update pipeline (QA-R39, amended 2026-11-23 by [ADR 0011](../decisions/0011-pa-decisions-2026-11-23.md) item 3; [rollback](rollback.md) section 5).
 
 ## 1. Decide the version and build number
 

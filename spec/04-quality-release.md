@@ -190,7 +190,7 @@ QA-R38 If a release is bad:
 3. Ship a fix as a new, higher version. Sparkle does not downgrade, so a rollback is published as a new build number containing the previous good code (for example 1.4.1 built from 1.3.2 plus the version bump).
 4. Keep every previous DMG downloadable from the archive page so a user can reinstall manually; reinstalling an older version MUST keep settings (settings schema is backward-readable for one MINOR version; newer unknown fields are preserved, not dropped).
 
-QA-R39 The release runbook MUST contain a rehearsed rollback, executed once on the beta channel before public beta.
+QA-R39 The release runbooks MUST document the rollback procedure of QA-R38 and `02-platform.md` PLT-R1107 (`docs/runbooks/rollback.md`). A rehearsal of it on the beta channel is an optional drill, not a release gate: the maintainer SHOULD run one when they judge it useful, for example before a release that changes the update pipeline (the Sparkle version, the appcast, signing or the archive host), and records it in the runbook. No release waits for a rehearsal. *(Amendment of 2026-11-23, the product owner's decision, `docs/decisions/0011-pa-decisions-2026-11-23.md` item 3: the text asked for a rehearsed rollback, executed once on the beta channel before public beta; it was waived for 1.0 (`docs/decisions/0507-first-public-release-1-0.md`) and listed as open for the stable 1.0.1 and 1.1.0. The procedure itself is unchanged.)*
 
 ### 3.6 Update safety
 
@@ -330,7 +330,7 @@ QA-R67 Docs are part of the definition of done: a PR that changes user-visible b
 
 ## 9. Acceptance for this file
 
-- A new release can be produced from a tag by following `docs/runbooks/release.md` with no undocumented step, and the rollback runbook has been rehearsed once.
+- A new release can be produced from a tag by following `docs/runbooks/release.md` with no undocumented step, and the rollback runbook documents the procedure (a rehearsal is an optional drill, QA-R39, amended 2026-11-23).
 - The issue forms auto-label a sample report correctly from its diagnostics block.
 - The monthly metrics script produces reopen rate and time-to-fix numbers from the live repository.
 - `SECURITY.md`, `CONTRIBUTING.md` (with the chosen sign-off), `CODE_OF_CONDUCT.md` and `THIRD_PARTY_NOTICES.md` exist before the repository is public.

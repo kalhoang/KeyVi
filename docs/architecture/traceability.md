@@ -38,7 +38,7 @@ synthetic events, taps, permission or input-source changes, credentials).
 | Spike S1 | PLT-R398D | Build and install `SpikeIMK`, enable it as an input source, test iTerm2 and Terminal with secure keyboard entry, record the result ADR |
 | VERIFY on hardware | PLT-R301, PLT-R320, PLT-R323, PLT-R363, PLT-R385, PLT-R462, PLT-R510, PLT-R704, PRD-R17, PRD-R64, PRD-R68 | Confirm echo delivery, suppression defaults, Unicode string presence, AX behaviour, fingerprints, pane names on a Vietnamese system |
 | Notarization and signing | PLT-R750, PLT-R752, QA-R31 | Developer ID certificate, App Store Connect API key, approve the protected `release` environment |
-| Update key and channel | PLT-R1101, PLT-R1102, PLT-R1103, PLT-R1105, PLT-R1107, PLT-R1108, PRD-R50, PRD-R52, QA-R32, QA-R33, QA-R38, QA-R39, QA-R40 | Generate the EdDSA key pair (fill `SPARKLE_PUBLIC_ED_KEY`), keep backups, publish from Pa's Mac, rehearse rollback, run the upgrade test |
+| Update key and channel | PLT-R1101, PLT-R1102, PLT-R1103, PLT-R1105, PLT-R1107, PLT-R1108, PRD-R50, PRD-R52, QA-R32, QA-R33, QA-R38, QA-R39, QA-R40 | Generate the EdDSA key pair (fill `SPARKLE_PUBLIC_ED_KEY`), keep backups, publish from Pa's Mac, run the upgrade test; a rollback rehearsal is an optional drill (QA-R39, amended 2026-11-23) |
 | VoiceOver and accessibility | PLT-R211, PRD-R10, PRD-R12, PRD-R66, PRD-R67, PRD-R68 | VoiceOver labels and announcements, Increase Contrast, Reduce Motion, keyboard-only Settings and onboarding |
 | Diagnostics run by hand | PLT-R810, PLT-R905, PLT-R1201, PLT-R1204, PLT-R1205 | Latency probe, typing trace with HUD and review, guided test on a local inline-completion page |
 | Accounts and data | PRD-R59, QA-R12, QA-R23, QA-R25, PLT-R205, PRD-R9 | Donation account details and QR images (done, S8); self-hosted runner (the tart VM, confirmed 2026-11-18); branch protection (`main` and `prod` refuse force pushes and deletions; QA-R25 amended 2026-11-18); login item and icon behaviour on Pa's menu bar |
@@ -406,7 +406,7 @@ evidence for engine requirements whose behaviour depends on the host (decision 0
 | QA-R36 | Homebrew cask | `packaging/homebrew` | R | release track |  |
 | QA-R37 | Same script updates appcast, site and changelog | release scripts | R | release track |  |
 | QA-R38 | Rollback steps | runbooks | M | docs track; Pa | **Pa** |
-| QA-R39 | Rehearsed rollback before public beta | runbooks | M | Pa | **Pa** |
+| QA-R39 | Rollback procedure documented; rehearsal an optional drill, no release gate (amended 2026-11-23) | runbooks | D, M | Pa | **Pa** |
 | QA-R40 | Upgrade test before every release | self-hosted runner or VM | I, M | W2-E2; Pa | **Pa** |
 | QA-R41 | Versioned migrations with backups and fixtures | `MigrationChain`, fixtures | U | W1-B |  |
 | QA-R42 | Self-check on first launch after update | `AppEnvironment`, `InputHostController` | U, I | W2-A |  |
