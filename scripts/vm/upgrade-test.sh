@@ -54,6 +54,9 @@ IDLE_PRESSURE_MAX="${IDLE_PRESSURE_MAX:-4}"
 IDLE_FREE_MIN="${IDLE_FREE_MIN:-45}"
 IDLE_POLL="${IDLE_POLL:-120}"
 SIGN_TIMEOUT="${SIGN_TIMEOUT:-60}"
+# watchdog.sh polls the shared stop file every 5 s: when one ends while this run's VM runs, the file stays this long
+# before it is removed and the watchdog restarted, so another session's watchdog sees it too.
+WATCHDOG_RESTART_GAP="${WATCHDOG_RESTART_GAP:-6}"
 
 base_vm="$VM_DEV"
 previous=""
@@ -194,14 +197,20 @@ prev_build="$(field previous build)"
 prev_commit="$(field previous commit)"
 cand_version="$(field candidate version)"
 cand_build="$(field candidate build)"
-[[ "$prev_commit" =~ ^[0-9a-f]{7,40}$ ]] || early_result 6 ERROR "the previous build-info.json has no commit"
-git -C "$REPO_ROOT" cat-file -e "$prev_commit^{commit}" 2>/dev/null ||
-  early_result 6 ERROR "the previous stable's commit $prev_commit is not in this repository"
+cand_commit="$(field candidate commit)"
+# The store tools are built from the AppCore each app shipped with: the commits of the build-info.json files.
+for label_commit in "previous stable:$prev_commit" "candidate:$cand_commit"; do
+  label="${label_commit%%:*}"
+  commit="${label_commit#*:}"
+  [[ "$commit" =~ ^[0-9a-f]{7,40}$ ]] || early_result 6 ERROR "the $label's build-info.json has no commit"
+  git -C "$REPO_ROOT" cat-file -e "$commit^{commit}" 2>/dev/null ||
+    early_result 6 ERROR "the $label's commit $commit is not in this repository"
+done
 
-# --- 2. The run's inputs: feed, previous DMG, previous AppCore, parameters ------------------------------------------
+# --- 2. The run's inputs: feed, previous DMG, previous and candidate AppCore, parameters ----------------------------
 in_dir="$run_dir/in"
 rm -rf "$in_dir"
-mkdir -p "$in_dir/feed" "$in_dir/prev-src"
+mkdir -p "$in_dir/feed" "$in_dir/prev-src" "$in_dir/cand-src"
 probe_line="$(report feed --artefacts "$run_dir/artefacts.json" --out "$in_dir/feed" --name "$APP_DISPLAY_NAME" \
   --site-host "$APP_SITE_HOST" --release-notes "$REPO_ROOT/site/static/release-notes" --plan "$run_dir/feed.json")"
 probe_build="${probe_line#PROBE_BUILD=}"
@@ -209,6 +218,8 @@ cp "$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["previo
   "$run_dir/artefacts.json")" "$in_dir/previous.dmg"
 git -C "$REPO_ROOT" archive --format=tar "$prev_commit" Packages/AppCore Packages/VietnameseEngine |
   tar -C "$in_dir/prev-src" -xf -
+git -C "$REPO_ROOT" archive --format=tar "$cand_commit" Packages/AppCore Packages/VietnameseEngine |
+  tar -C "$in_dir/cand-src" -xf -
 seed_channel=stable
 [[ "$cand_version" == *-beta.* ]] && seed_channel=beta
 cat >"$in_dir/params.env" <<EOF
@@ -256,6 +267,8 @@ WATCHDOG_LINES=0
 # Runs watchdog.sh as run-lab.sh does (watchdog.stop removed, the script in the background, watchdog.stop touched at
 # the end) and starts it again if it ends while this run's VM still runs: every lab script shares the stop file, and
 # on 2026-11-23 another one touched it two seconds after this run's watchdog started, which left the VM unguarded.
+# The stop file stays WATCHDOG_RESTART_GAP seconds before the restart removes it: that session's own watchdog, in its
+# 5 s sleep, must still see it.
 watchdog_keeper() {
   local pid
   while [[ ! -e "$run_dir/.watchdog-done" ]]; do
@@ -264,8 +277,10 @@ watchdog_keeper() {
     pid=$!
     wait "$pid" 2>/dev/null || true
     [[ -e "$run_dir/.watchdog-done" ]] && break
-    printf '%s watchdog.sh ended while the VM ran; started again\n' "$(date '+%F %T')" >>"$run_dir/watchdog-restarts.txt"
-    sleep 1
+    sleep "$WATCHDOG_RESTART_GAP"
+    [[ -e "$run_dir/.watchdog-done" ]] && break
+    printf '%s watchdog.sh ended while the VM ran; stop file left %ss for the other lab sessions, started again\n' \
+      "$(date '+%F %T')" "$WATCHDOG_RESTART_GAP" >>"$run_dir/watchdog-restarts.txt"
   done
 }
 start_watchdog() {

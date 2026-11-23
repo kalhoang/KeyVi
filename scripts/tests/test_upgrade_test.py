@@ -17,7 +17,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True  # keep scripts/ free of __pycache__
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from support import SCRIPTS  # noqa: E402
+from support import REPO, SCRIPTS  # noqa: E402
 from test_upgrade_report import (  # noqa: E402
     BUNDLE, DRIVER, FEED_SERVER, GUEST, HOST, NAME, PLAN, REPORT_PATH, SLUG, STORE, UPGRADE, appcast, item, report,
     write_dist,
@@ -47,7 +47,7 @@ printf 'git %s\\n' "$*" >>"$FAKE_DIR/calls.log"
 case " $* " in
   *" status "*) exit 0 ;;
   *" rev-parse "*) echo 1234abc ;;
-  *" cat-file "*) exit 0 ;;
+  *" cat-file "*) [[ -n "${FAKE_MISSING_COMMIT:-}" && " $* " == *" $FAKE_MISSING_COMMIT^{commit} "* ]] && exit 1; exit 0 ;;
   *" archive "*) mkdir -p "$FAKE_DIR/empty"; tar -C "$FAKE_DIR/empty" -cf - . ;;
   *) echo "fake git: unsupported $*" >&2; exit 64 ;;
 esac
@@ -114,6 +114,19 @@ class UpgradeScriptTests(LabTestCase):
         missing = self.upgrade("--sign", "--wait-idle", "0", SPARKLE_SIGN_UPDATE=str(self.tmp / "absent"))
         self.assertEqual(missing.returncode, 6)
 
+    def test_both_store_tools_come_from_the_commits_the_apps_were_built_from(self):
+        result = self.upgrade("--wait-idle", "0", "--no-watchdog", FAKE_NO_AGENT="1")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        archives = [line for line in (self.fake / "calls.log").read_text().splitlines() if " archive " in line]
+        self.assertTrue(any("archive --format=tar 1234abc Packages/AppCore" in line for line in archives), archives)
+        self.assertTrue(any("archive --format=tar abc1234 Packages/AppCore" in line for line in archives), archives)
+        self.assertTrue((self.tmp / "run" / "in" / "cand-src").is_dir())
+        runs = len(self.tart_calls("run"))
+        missing = self.upgrade("--wait-idle", "0", FAKE_MISSING_COMMIT="abc1234")
+        self.assertEqual(missing.returncode, 6, missing.stdout + missing.stderr)
+        self.assertIn("the candidate's commit abc1234 is not in this repository", missing.stdout)
+        self.assertEqual(len(self.tart_calls("run")), runs)  # stopped before any VM
+
     def test_a_busy_host_is_waited_for_and_then_skipped_with_exit_4(self):
         result = self.upgrade("--wait-idle", "0", FAKE_FREE="20")
         self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
@@ -155,15 +168,22 @@ class UpgradeScriptTests(LabTestCase):
         self.assertIn("stop vm", (self.tmp / "run" / "watchdog-stops.txt").read_text())
         self.assertEqual(json.loads((self.tmp / "run" / "result.json").read_text())["verdict"], "ABORTED")
 
-    def test_a_watchdog_ended_by_another_script_is_started_again(self):
+    def test_a_watchdog_ended_by_another_script_is_started_again_after_a_gap(self):
         ops = self.tmp / "ops2"
         ops.mkdir()
-        write_exe(ops / "watchdog.sh", '#!/bin/bash\necho "start"\n')  # ends at once, as when watchdog.stop appears
-        result = self.upgrade("--wait-idle", "0", "--watchdog", str(ops), FAKE_NO_AGENT="1", VM_AGENT_TIMEOUT="3")
+        # Ends at once after touching the shared stop file, as when another session's script ends; records when it
+        # started, so the gap before the restart (the stop file still in place) can be measured.
+        write_exe(ops / "watchdog.sh", '#!/bin/bash\nOPS="$(dirname "$0")"\necho "start"\n'
+                                       'python3 -I -c "import time; print(time.time())" >>"$OPS/starts.txt"\n'
+                                       'touch "$OPS/watchdog.stop"\n')
+        result = self.upgrade("--wait-idle", "0", "--watchdog", str(ops), FAKE_NO_AGENT="1", VM_AGENT_TIMEOUT="4",
+                              WATCHDOG_RESTART_GAP="1")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         restarts = (self.tmp / "run" / "watchdog-restarts.txt").read_text()
-        self.assertIn("started again", restarts)
-        self.assertGreaterEqual(len((ops / "watchdog.log").read_text().splitlines()), 2)
+        self.assertIn("stop file left 1s for the other lab sessions, started again", restarts)
+        starts = [float(line) for line in (ops / "starts.txt").read_text().splitlines()]
+        self.assertGreaterEqual(len(starts), 2)
+        self.assertTrue(all(b - a >= 1.0 for a, b in zip(starts, starts[1:])), starts)
         self.assertTrue((ops / "watchdog.stop").exists())
         self.assertIn("started again", (self.tmp / "run" / "summary.txt").read_text())
 
@@ -206,6 +226,20 @@ class GuestScriptTests(unittest.TestCase):
         self.assertNotIn("typingMethod", plan["settings"])  # the typing check types Telex keys
         self.assertTrue(all(o["rule"]["id"].startswith("user.") for o in plan["ruleOverrides"]))
 
+    def test_the_seeded_collision_choices_use_words_of_the_bundled_collision_lists(self):
+        # The app drops a word that is not on its bundled lists at load (PLT-R914): such a seed would test nothing.
+        resources = REPO / "Packages" / "VietnameseEngine" / "Sources" / "VietnameseEngineData" / "Resources"
+        ambiguity = {line.split("\t", 1)[0] for line in (resources / "ambiguity.tsv").read_text().splitlines()[1:]}
+        supplement = {line.strip() for line in (resources / "collision-supplement.txt").read_text().splitlines()
+                      if line.strip() and not line.startswith("#")}
+        entries = json.loads(PLAN.read_text(encoding="utf-8"))["collisionMemory"]
+        self.assertGreaterEqual(len(entries), 3)
+        for entry in entries:
+            self.assertIn(entry["word"], ambiguity | supplement)
+            self.assertIn(entry["context"], {"sentenceStart", "afterVietnamese", "afterEnglish", "afterNeutral"})
+            self.assertIn(entry["side"], {"english", "vietnamese"})
+            self.assertIn(entry["strength"], {"strong", "weak"})
+
     def test_the_guest_takes_the_exit_snapshot_before_the_new_version_starts_and_types_in_testhost(self):
         guest = GUEST.read_text(encoding="utf-8")
         relaunch = guest.index('"$driver" relaunch')
@@ -214,6 +248,29 @@ class GuestScriptTests(unittest.TestCase):
         self.assertIn('"$prev_store" seed --dir "$support" --written-by "$PREV_VERSION"', guest)
         self.assertIn("grant-tcc.sh", guest)
         self.assertIn('printf \'127.0.0.1 %s\\n::1 %s\\n\' "$APP_SITE_HOST"', guest)
+
+    def test_the_guest_leaves_evidence_the_host_can_trust(self):
+        guest = GUEST.read_text(encoding="utf-8")
+        # The candidate's store from its own commit, not from this checkout.
+        self.assertIn('store_tool candidate "$in_dir/cand-src/Packages/AppCore"', guest)
+        # The tccd log in UTC with a marker line; the exit status of the prompt-process listing.
+        self.assertIn('echo "#timezone=UTC"', guest)
+        self.assertIn("--style compact --timezone UTC --predicate 'process == \"tccd\"'", guest)
+        self.assertIn('echo "#exit=$?" # 0 found, 1 none', guest)
+        # A failed window listing leaves no file (the host reports the permissions check as not run).
+        self.assertIn('rm -f "$out/evidence/app-windows-after.json"', guest)
+        # The capture buffer and snapshot of the egress samplers, the kernel limit raised first.
+        self.assertIn('-B "$2" -s "$3"', guest)
+        self.assertIn('sysctl -w "debug.bpf_maxbufsize=$BPF_MAX_BUFFER_BYTES"', guest)
+        # Channel rows carry when each step ran; Sparkle's up-to-date text in the candidate's localizations.
+        self.assertIn('sparkle_titles "You\u2019re up to date!" >"$out/titles-uptodate.txt"', guest)
+        self.assertIn('"$channel_start" "$(date +%s)"', guest)
+
+    def test_the_driver_types_only_once_the_new_tap_is_enabled(self):
+        driver = DRIVER.read_text(encoding="utf-8")
+        loop = driver[driver.index("var attempts: [TypingAttempt] = []\n    // An attempt starts"):]
+        self.assertLess(loop.index("guard let tapAt = tapWatch.result.0"), loop.index("target.attempt(keys:"))
+        self.assertIn("if attempt.matched, attempt.keysStartedAt >= tapAt { break }", loop)
 
 
 class RunShTests(unittest.TestCase):
