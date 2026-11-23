@@ -478,11 +478,15 @@ throwaway clone `<vm>-upgrade` (4096 MB, 4 CPUs by default; deleted at the end),
    minutes follow with the production feed and a forced check. `tcpdump` on the PKTAP interface (`-i pktap,all -k NP`:
    every TCP SYN and UDP datagram with the process that sent it, and the names of the DNS lookups mDNSResponder makes
    for the app), `nettop` (every open flow of every process, each second), `lsof` of the app and Sparkle's helpers
-   (`Autoupdate`, `Updater`, each second) and `dscacheutil` for the site host (every 20 seconds) run throughout; the
-   update itself is sampled too. `nettop` alone would miss a connection that opens and closes between two samples
-   (seen in the lab on 2026-11-23), `tcpdump` does not, as long as the kernel drops no packet: PKTAP filters in user
-   space, so every packet of every interface crosses the capture buffer, and a burst of background system downloads
-   overflowed the default 512 KiB buffer (14,655 drops in the local phase of run `20261123T042942Z-upgrade`). The
+   (`Autoupdate`, `Updater`, each second) and `dscacheutil` for the site host (every 20 seconds) run throughout. The
+   update of step 6 is captured too, with `tcpdump` alone (`nettop` and `lsof` walk every process each second and
+   would slow the timed relaunch): from before the forced check to the end of the step (`update-started`,
+   `update-ended`), with the DNS cache flushed once it runs, so every name resolved during the install is looked up
+   inside the capture (`egress-update` in section 12.3). `nettop` alone would miss a connection that opens and closes
+   between two samples (seen in the lab on 2026-11-23), `tcpdump` does not, as long as the kernel drops no packet:
+   PKTAP filters in user space, so every packet of every interface crosses the capture buffer, and a burst of
+   background system downloads overflowed the default 512 KiB buffer (14,655 drops in the local phase of run
+   `20261123T042942Z-upgrade`). The
    guest raises `debug.bpf_maxbufsize` to 16 MiB and runs `tcpdump -B 16384 -s 768`; the drop count it prints when it
    stops (`<phase>-tcpdump.err`) is part of the evidence.
 
@@ -491,7 +495,8 @@ throwaway clone `<vm>-upgrade` (4096 MB, 4 CPUs by default; deleted at the end),
 `upgrade-report.py analyse` writes `result.json` (one entry per check: result, evidence, files) and `summary.txt`.
 Verdict `PASS` only when every check passed; `FAIL` when one failed; `INCOMPLETE` when one could not run or its
 evidence is missing (a skipped part, a guest step that stopped, an egress phase shorter than 10 minutes or with
-dropped packets, a permission listing that could not be read); `ABORTED` when the watchdog stopped the VM.
+dropped packets, a capture of the install with dropped packets, a permission listing that could not be read);
+`ABORTED` when the watchdog stopped the VM.
 
 | Check | Passes when |
 |---|---|
@@ -506,25 +511,52 @@ dropped packets, a permission listing that could not be read); `ABORTED` when th
 | `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds that prompted (`tccd` log: auth reason 2 or 9, or a request that may prompt and has no answer), and no window after the relaunch (the QA-R42 self-check would show the permission screen). Not run when that evidence is missing: the prompt-process listing (its exit status), the window listing, or at least one TCC request of the candidate in its first 20 seconds in a `tccd` log marked UTC (the app checks its permissions at launch) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
 | `typing-within-5s` | Keys typed into TestHost at most 5 seconds after the process started read back as `duyệt`: the time is the first key of the first attempt typed wholly after the candidate's tap was enabled that reads back right (an attempt with a key posted before the tap does not count); the read-back time, 0.3 seconds after the last key, is in the evidence too |
-| `egress-update` (advisory, outside the verdict) | Records what the download, the signature checks and the install reached; passes when that was only loopback (the local feed) and no other name was looked up |
+| `egress-update` | During the install (the forced check, the download, Sparkle's signature checks, Install and Relaunch) the app and Sparkle's helpers reach only loopback (the local feed), addresses the capture saw resolved for the site host, and the system's revocation check of the update's signature as allowed below; any other endpoint or DNS lookup fails, even when other evidence is missing. Passes only with a capture of the install (`update-tcpdump.txt` and its start time), no packet dropped by the kernel (the statistics in `update-tcpdump.err`), a download of the candidate's archive from the local feed while it ran, and a connection of the app to the local feed in it. The evidence names each allowed revocation check (process, name, address) and everything not allowed |
 | `channel-switch` | Beta offers the probe build and the app logs `update.updateFound` for it in that step; on stable Sparkle shows its up-to-date text (`titles-uptodate.txt`: "You’re up to date!" in the candidate's localizations) and the app logs no `update.updateFound` in that step; beta offers the probe again |
 | `egress-local` | Fails on any remote address but loopback or a DNS lookup of another name. Passes only with 10 minutes (13.7; `--egress-minutes` below 10 makes it not run), a forced check, an appcast request of the app at the local feed during the phase, and no packet dropped by the kernel. The evidence names the window Sparkle showed for the forced check, or none |
 | `egress-production` | Fails on any remote address outside loopback and the addresses the VM resolved for the site host during the phase, or a DNS lookup of another name. Passes only with 10 minutes, a forced check, a connection of the app to the site host, and no packet dropped by the kernel |
 
-The allowed host is the site host of `scripts/brand.env` only (PLT-R906, 13.7: "only the allowed host"). The other
-hosts of `scripts/url-hosts.allow` are identifiers or archive hosts for a choice Pa has not made (GitHub Releases);
-an endpoint of the app or a helper outside the allowed set fails the check and is listed by address and process.
+The allowed host is the site host of `scripts/brand.env` only (PLT-R906, 13.7: "only the allowed host"); during the
+install the system's revocation check of the update's signature is allowed too (below). The other hosts of
+`scripts/url-hosts.allow` are identifiers or archive hosts for a choice Pa has not made (GitHub Releases); an endpoint
+of the app or a helper outside the allowed set fails the check and is listed by address and process.
 `com.apple.WebKit.Networking` flows (the release-notes view of Sparkle's window) count too.
 
 A `settings-files`, `settings-content`, `defaults-domain` or `permissions` failure is a release blocker (PRD-R52):
 open an `update-regression` issue with the run folder.
 
-`egress-update` has failed in every run so far on one endpoint: while Sparkle's `Autoupdate` installs the update,
-the system checks the revocation of the Developer ID certificate online (Apple's OCSP service: a lookup of
-`ocsp2.g.aaplimg.com` in run `20261123T004514Z-upgrade`, a connection of `Autoupdate` to `17.253.61.142:443` in run
-`20261123T020752Z-upgrade`). The app's own requests went only to the local feed. PLT-R906 names only the site host;
-whether an operating-system revocation check counts as the app's egress is open for Pa, so the check stays advisory
-and reports the endpoint instead of deciding.
+The revocation check during the install (decided 2026-11-23). In every run so far, while Sparkle's `Autoupdate`
+installed the update, macOS checked the signing certificate of the downloaded app with Apple's certificate revocation
+service (OCSP): `mDNSResponder` looked up `ocsp2.g.aaplimg.com` (the CDN name behind `ocsp2.apple.com`) for
+`Autoupdate`, then `trustd` connected for `Autoupdate` to an address of the answer on TCP 443 (`17.253.61.136` in run
+`20261123T055630Z-upgrade`, `17.253.61.161` in `20261123T042942Z-upgrade`). The app's own requests went only to the
+local feed. While PLT-R906 and 13.7 named only the site host, this was an open question and `egress-update` stayed
+outside the verdict. The product owner decided on 2026-11-23 to allow this operating-system check explicitly and to keep
+everything else as strict as before: PLT-R906 and spec/02-platform.md section 13.7 as amended that day
+(`docs/decisions/0011-pa-decisions-2026-11-23.md`). `egress-update` is part of the verdict since, and the allowance is
+narrow (`REVOCATION_NAMES`, `REVOCATION_PORT` and `REVOCATION_CLIENTS` in `scripts/vm/upgrade_evidence.py`):
+
+- names: `ocsp.apple.com` and `ocspN.apple.com`, and their CDN names `ocsp.g.aaplimg.com` and `ocspN.g.aaplimg.com`
+  (N one digit), the whole name in any case. A name that only resembles them (`ocsp.apple.com.evil.example`,
+  `xocsp.apple.com`, `ocsp.aaplimg.com.example`) is a disallowed lookup;
+- the lookup only for `Autoupdate`; the connection only by `trustd` for `Autoupdate` (PKTAP's `proc` and `eproc`), to
+  TCP or UDP port 443 of an address the capture saw resolved from one of those names before the connection (a query
+  and its answer are paired by transaction ID and client port). No address is allowed by itself: Apple's CDN serves
+  other names from the same addresses (`17.253.61.154` answered for both `ocsp2.g.aaplimg.com` and Safari's
+  `safebrowsing.g.aaplimg.com`), so an address seen only under another name, only after the connection, or not at
+  all fails;
+- the app, `Updater`, or `Autoupdate` on its own socket reaching such an address fails, as does any other port. The
+  system's own processes (`softwareupdated`, XProtect, `syspolicyd` and others, which check revocation in the other
+  phases too) are not the app's egress and are not counted, as before;
+- `egress-local` and `egress-production` are unchanged: the revocation check is not allowed there.
+
+The guest flushes the DNS cache once the capture of the install runs: in run `20261123T020752Z-upgrade` a cached
+answer left a connection of `trustd` for `Autoupdate` to `17.253.61.142:443` without its lookup in the capture, which
+the check would now fail. Analysed again with the check on 2026-11-23 (on copies of the run folders):
+`20261123T055630Z-upgrade` stays PASS and `egress-update` passes (`trustd` for `Autoupdate` to `17.253.61.136:443`
+over TCP after the lookup of `ocsp2.g.aaplimg.com`, the app only `[::1]:443`); in `20261123T042942Z-upgrade`
+`egress-update` is not run (259 packets dropped by the kernel during the install) and shows nothing outside the
+allowance (`trustd` for `Autoupdate` to `17.253.61.161:443` after the same lookup).
 
 Self-tests (part of `scripts/tests/run.sh`): `python3 -I scripts/tests/test_upgrade_report.py` (the artefact and
 signature checks with a throwaway key, the feed, the `tcpdump`, `nettop`, `lsof`, `dscacheutil` and `tccd` parsers, the
