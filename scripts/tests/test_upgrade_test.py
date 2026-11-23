@@ -266,6 +266,21 @@ class GuestScriptTests(unittest.TestCase):
         self.assertIn('sparkle_titles "You\u2019re up to date!" >"$out/titles-uptodate.txt"', guest)
         self.assertIn('"$channel_start" "$(date +%s)"', guest)
 
+    def test_the_install_capture_sees_every_lookup_and_records_its_end(self):
+        # The host allows the revocation check only to an address the capture saw resolved from Apple's OCSP names:
+        # the DNS cache is flushed once tcpdump runs, before the forced check (a cached answer left a connection of
+        # trustd for Autoupdate without its lookup in run 20261123T020752Z-upgrade).
+        guest = GUEST.read_text(encoding="utf-8")
+        step = guest[guest.index("sampler_start update light"):guest.index("# --- 8b.")]
+        self.assertLess(step.index("flush_dns"), step.index("forced_check update-offer install"))
+        self.assertLess(step.index("sampler_stop"), step.index('>"$out/egress/update-ended"'))
+        # The host passes the install only with a captured packet at or after the relaunch: the guest sends one
+        # datagram to the discard port on loopback, after the relaunch and before it stops the capture.
+        self.assertLess(step.index('wait "$watcher"'), step.index("capture_mark"))
+        self.assertLess(step.index("capture_mark"), step.index("sampler_stop"))
+        mark = guest[guest.index("capture_mark() {"):]
+        self.assertIn(">/dev/udp/127.0.0.1/9", mark[:mark.index("\n}")])
+
     def test_the_driver_types_only_once_the_new_tap_is_enabled(self):
         driver = DRIVER.read_text(encoding="utf-8")
         loop = driver[driver.index("var attempts: [TypingAttempt] = []\n    // An attempt starts"):]
