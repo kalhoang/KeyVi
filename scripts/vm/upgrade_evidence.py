@@ -26,6 +26,9 @@ REVOCATION_NAMES = (re.compile(r"ocsp2?\.apple\.com"), re.compile(r"ocsp2?\.g\.a
 REVOCATION_PORT = 443
 REVOCATION_TRANSPORT = "tcp"
 REVOCATION_CLIENTS = {"Autoupdate": ("trustd",)}  # the process checked for: the processes that may send for it
+# The only process that may send a DNS query for the app and the helpers: a query from their own socket reaches its DNS
+# server directly, so it is an endpoint like any other (whatever name it asks for).
+SYSTEM_RESOLVER = "mDNSResponder"
 # The question of a DNS query in tcpdump's summary, of any record type (`A?`, `TXT?`, `SRV?`, `Type65?`, with the class
 # when it is not IN: `TXT CHAOS?`). A query of the app or a helper whose question this cannot read is a lookup of
 # UNPARSED_QUERY, which no allowed host matches: an unknown format fails closed.
@@ -387,7 +390,8 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list, revo
     captured = tcpdump_events(read("tcpdump.txt"))
     events = [e for e in captured if matches(e["process"], names)]
     flows = [f for f in nettop_flows(read("nettop.csv")) + lsof_flows(read("lsof.txt"))
-             if matches(f["process"], names)] + [e for e in events if e["kind"] in ("syn", "udp")]
+             if matches(f["process"], names)] + [e for e in events if e["kind"] in ("syn", "udp")] + [
+        dict(e, kind="udp") for e in events if e["kind"] == "dns-query" and e["sender"] != SYSTEM_RESOLVER]
     hosts = {dns_name(h) for h in allowed_hosts}
     resolved = dns_resolutions(captured)
     allowed, described = set(), ["loopback (local feed)"]

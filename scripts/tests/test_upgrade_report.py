@@ -971,6 +971,24 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
         # The site host looked up with another record type is still the allowed host.
         self.assert_update(self.evaluate(capture_append(lookup("TXT", HOST), "update")), "pass", "PASS")
 
+    def test_a_dns_query_from_a_process_own_socket_is_an_endpoint_in_every_phase(self):
+        # Only the system resolver may send DNS for the app and the helpers: a query from their own socket to any DNS
+        # server reaches that server, whatever name it asks for (an allowed host, an OCSP name).
+        def own_query(process: str, server: str, name: str) -> str:
+            return (f"1799999990.000000 (proc {process}:1946) IP 192.168.64.55.50021 > {server}.53: "
+                    f"912+ [1au] A? {name}. (40)\n")
+        for phase, check_id in (("update", "egress-update"), ("local", "egress-local"),
+                                ("production", "egress-production")):
+            with self.subTest(phase=phase):
+                result = self.evaluate(capture_append(own_query(NAME, "203.0.113.9", HOST), phase))
+                self.assertEqual(self.results(result)[check_id], "fail", self.evidence(result, check_id))
+                self.assertIn(f"{NAME} 203.0.113.9:53/udp", self.evidence(result, check_id).split("NOT ALLOWED")[0])
+        ocsp = self.evaluate(capture_append(own_query("Autoupdate", "8.8.8.8", "ocsp2.apple.com"), "update"))
+        self.assertIn("Autoupdate 8.8.8.8:53/udp", self.assert_update(ocsp, "fail", "FAIL"))
+        # A query of the app's own socket to the loopback feed server stays loopback.
+        loopback = capture_append(own_query(NAME, "127.0.0.1", HOST), "update")
+        self.assert_update(self.evaluate(loopback), "pass", "PASS")
+
     def test_a_disallowed_host_fails_even_when_the_capture_dropped_packets_or_has_no_start(self):
         leak = (f"1799999983.000000 (proc {NAME}:1946) IP 192.168.64.55.50301 > 93.184.216.34.443: Flags [S], "
                 "seq 7, win 65535, length 0\n")

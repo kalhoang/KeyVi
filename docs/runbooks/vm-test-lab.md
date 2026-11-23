@@ -516,6 +516,10 @@ not be read); `ABORTED` when the watchdog stopped the VM.
 | `egress-local` | Fails on any remote address but loopback or a DNS lookup of another name (of any record type; a query whose question cannot be read counts as one). Passes only with 10 minutes (13.7; `--egress-minutes` below 10 makes it not run), a forced check, an appcast request of the app at the local feed during the phase, and no packet dropped by the kernel. The evidence names the window Sparkle showed for the forced check, or none |
 | `egress-production` | Fails on any remote address outside loopback and the addresses the VM resolved for the site host during the phase, or a DNS lookup of another name (as in `egress-local`). Passes only with 10 minutes, a forced check, a connection of the app to the site host, and no packet dropped by the kernel |
 
+In all three egress checks only the system resolver (`mDNSResponder`) may send a DNS query for the app and Sparkle's
+helpers: a query from their own socket goes straight to a DNS server, so it counts as an endpoint
+(`<process> <server>:53/udp`), allowed only on loopback, whatever name it asks for.
+
 The allowed host is the site host of `scripts/brand.env` only (PLT-R906, 13.7: "only the allowed host"); during the
 install the site host is mapped to the local feed, so only loopback and the system's revocation check of the update's
 signature (below) are allowed then. The other hosts of `scripts/url-hosts.allow` are identifiers or archive hosts for a
