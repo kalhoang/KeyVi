@@ -10,9 +10,9 @@
 // Usage:
 //   upgrade-driver menu BUNDLE --title T [--title T...] [--timeout S]
 //       Opens the status item menu of BUNDLE and presses the first item whose title is one of T.
-//   upgrade-driver press BUNDLE --title T [--title T...] [--timeout S] [--dump FILE] [--find-only]
+//   upgrade-driver press BUNDLE --title T [--title T...] [--timeout S] [--dump FILE] [--find-only|--close-window]
 //       Waits for an enabled button titled T in a window of BUNDLE (Sparkle's windows run in the app), writes the
-//       window to FILE and presses the button (not with --find-only).
+//       window to FILE and presses the button (not with --find-only; --close-window closes that window instead).
 //   upgrade-driver windows BUNDLE                      windows of BUNDLE: titles, texts, buttons
 //   upgrade-driver activate BUNDLE                     brings BUNDLE to the front
 //   upgrade-driver frontmost                           the frontmost application
@@ -75,7 +75,7 @@ struct Arguments {
     var positional: [String] = []
     var values: [String: [String]] = [:]
     var flags: Set<String> = []
-    static let flagNames: Set<String> = ["find-only"]
+    static let flagNames: Set<String> = ["find-only", "close-window"]
 
     init(_ raw: [String]) {
         var index = 0
@@ -436,12 +436,19 @@ func pressCommand(_ arguments: Arguments, bundle: String) {
         {
             let described = describeWindow(window)
             if let file = arguments.one("dump") { try? jsonData(described).write(to: URL(fileURLWithPath: file)) }
-            let pressed = title(button)
-            if !arguments.flags.contains("find-only") { AXUIElementPerformAction(button, kAXPressAction as CFString) }
-            emit([
-                "pressed": arguments.flags.contains("find-only") ? NSNull() : pressed, "found": pressed,
-                "at": now(), "window": described,
-            ])
+            var pressed: Any = NSNull()
+            if arguments.flags.contains("close-window") {
+                // Sparkle 2.10's update window has no Remind Me Later button: closing it dismisses the offer without
+                // the SUSkippedVersion that Skip This Version would store.
+                if let close = element(attribute(window, kAXCloseButtonAttribute)) {
+                    AXUIElementPerformAction(close, kAXPressAction as CFString)
+                    pressed = "<close window>"
+                }
+            } else if !arguments.flags.contains("find-only") {
+                AXUIElementPerformAction(button, kAXPressAction as CFString)
+                pressed = title(button)
+            }
+            emit(["pressed": pressed, "found": title(button), "at": now(), "window": described])
             return
         }
         pause(0.25)
@@ -459,6 +466,20 @@ func copySnapshot(from source: String, to destination: String) -> String? {
     } catch {
         return "\(error)"
     }
+}
+
+/// Modification times of the files a snapshot copied (APFS clones keep them): a file the new version wrote would be
+/// newer than its start.
+func modificationTimes(in folder: String) -> [String: Double] {
+    let names = (try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? []
+    var times: [String: Double] = [:]
+    for name in names {
+        let path = (folder as NSString).appendingPathComponent(name)
+        if let date = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date {
+            times[name] = date.timeIntervalSince1970
+        }
+    }
+    return times
 }
 
 func exportDefaults(domain: String, to file: String) -> Int32 {
@@ -538,6 +559,7 @@ func relaunchCommand(_ arguments: Arguments) {
         report["snapshotAt"] = now()
         report["newProcessBeforeSnapshot"] = !processIdentifiers(executable: executable).filter { $0 != oldPid }
             .isEmpty
+        report["snapshotModified"] = modificationTimes(in: destination)
     }
     if let domain = arguments.one("defaults-domain"), let file = arguments.one("defaults-dst") {
         report["defaultsExportStatus"] = Int(exportDefaults(domain: domain, to: file))

@@ -253,8 +253,9 @@ flush_dns() {
 }
 use_appcast() { cp "$feed/$1" "$feed/appcast.xml.tmp" && mv "$feed/appcast.xml.tmp" "$feed/appcast.xml"; }
 
-# Forced update check from the status menu, then the first Sparkle window: Install Update (pressed only when asked),
-# Remind Me Later or OK. Writes <name>-menu.json, <name>-window.json and <name>-press.json.
+# Forced update check from the status menu, then the first Sparkle window: Install Update (pressed only when asked;
+# otherwise the offer is dismissed by closing its window, which stores no skipped version) or OK. Writes
+# <name>-menu.json, <name>-window.json and <name>-press.json.
 forced_check() { # forced_check <name> <install|dismiss> [timeout]
   local name="$1" mode="$2" timeout="${3:-90}" found
   "$driver" activate "$testhost_bundle" >/dev/null 2>&1
@@ -267,7 +268,7 @@ forced_check() { # forced_check <name> <install|dismiss> [timeout]
     if [ "$mode" = install ]; then
       run_driver "$out/evidence/$name-press.json" press "$bundle" "${install_args[@]}" --timeout 10
     else
-      run_driver "$out/evidence/$name-press.json" press "$bundle" "${later_args[@]}" --timeout 10
+      run_driver "$out/evidence/$name-press.json" press "$bundle" "${install_args[@]}" --close-window --timeout 10
     fi
   else
     run_driver "$out/evidence/$name-press.json" press "$bundle" "${ok_args[@]}" --timeout 10
@@ -414,7 +415,6 @@ menu_titles="$(printf '%s\n%s\n' \
   "$(strings_value "$app/Contents/Resources/vi.lproj/Menu.strings" menu.checkForUpdates)")"
 install_titles="$(sparkle_titles "Install Update")"
 relaunch_titles="$(sparkle_titles "Install and Relaunch")"
-later_titles="$(sparkle_titles "Remind Me Later")"
 ok_titles="$(sparkle_titles "OK")"
 title_args=()
 build_title_args() { # build_title_args <titles> <what>: --title arguments for the driver in title_args (bash 3.2)
@@ -433,8 +433,6 @@ build_title_args "$install_titles" "Sparkle's Install Update"
 install_args=("${title_args[@]}")
 build_title_args "$relaunch_titles" "Sparkle's Install and Relaunch"
 relaunch_args=("${title_args[@]}")
-build_title_args "$later_titles" "Sparkle's Remind Me Later"
-later_args=("${title_args[@]}")
 build_title_args "$ok_titles" "Sparkle's OK"
 ok_args=("${title_args[@]}")
 build_title_args "$(printf '%s\n%s\n' "$install_titles" "$ok_titles")" "Sparkle's buttons"

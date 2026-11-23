@@ -460,8 +460,9 @@ the VM runs (every lab script shares `watchdog.stop`; the restarts go to `watchd
    memory cannot have landed yet (written 5 seconds after the change, PLT-R392);
 7. 15 seconds after the relaunch snapshots again, records the installed version, TCC rows, prompt processes and the
    app's windows, and reads each snapshot with the matching version's store;
-8. channel switch: with the probe item in the feed, beta (the probe is offered, Remind Me Later), stable (up to date:
-   no beta build and nothing older), beta again;
+8. channel switch: with the probe item in the feed, beta (the probe is offered; the offer is dismissed by closing
+   Sparkle's window, since Sparkle 2.10 has no Remind Me Later button and Skip This Version would store a skipped
+   version), stable (up to date: no beta build and nothing older), beta again;
 9. egress: 10 minutes with the local feed and a forced check, then the mapping and the server are removed and 10
    minutes follow with the production feed and a forced check. `tcpdump` on the PKTAP interface (`-i pktap,all -k NP`:
    every TCP SYN and UDP datagram with the process that sent it, and the names of the DNS lookups mDNSResponder makes
@@ -483,10 +484,10 @@ part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
 | `seeded` | At least 10 settings besides the update switches, per-app rules, remembered per-app modes, overrides and 50 macros, read back by the previous store |
 | `sparkle-update` | Sparkle offered the candidate, the local feed served the update archive, Install and Relaunch was pressed |
 | `version-after` | `/Applications` holds the candidate, the relaunched process logged the candidate's version and build, the designated requirement is unchanged |
-| `settings-files` | Every file of the snapshot taken once the candidate loaded the folder is byte-identical to the exit snapshot, or each difference is a migration the candidate's code explains (`MIGRATION_RULES` in `upgrade-report.py`, each citing its code); anything else fails. Until the snapshot 15 seconds after the relaunch, only `app-modes.json` may change, and only by use (the app focused after the relaunch moves to the front or is recorded as seen for the first time); every earlier entry keeps its rule and mode |
+| `settings-files` | The exit snapshot holds no file written after the candidate started (Autoupdate relaunches within milliseconds of the exit, before the copy ends, so the files' modification times decide), and every file of the snapshot taken once the candidate loaded the folder is byte-identical to it, or each difference is a migration the candidate's code explains (`MIGRATION_RULES` in `upgrade-report.py`, each citing its code); anything else fails. Until the snapshot 15 seconds after the relaunch, only `app-modes.json` may change, and only by use (the app focused after the relaunch moves to the front or is recorded as seen for the first time); every earlier entry keeps its rule and mode |
 | `settings-content` | The candidate's store reads the same settings, per-app entries, overrides and macros right after loading as the previous store read at exit; fields new in the candidate read as not set; 15 seconds later every seeded and exit value is still there |
 | `defaults-domain` | Every key of the app's defaults domain is equal, except the keys that change on each launch by design (`DEFAULTS_RULES`: the launch guard, the post-update self-check's version, Sparkle's check time) |
-| `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process or prompt in the `tccd` log, and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
+| `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds answered by a consent prompt (`tccd` log, auth reason 2 or 9), and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
 | `typing-within-5s` | TestHost reads `duyệt` at most 5 seconds after the process started |
 | `egress-update` (advisory, outside the verdict) | Records what the download, the signature checks and the install reached; passes when that was only loopback (the local feed) and no other name was looked up |

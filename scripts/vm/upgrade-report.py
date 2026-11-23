@@ -475,6 +475,36 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> d
             "started": read("started").strip(), "ended": read("ended").strip()}
 
 
+TCC_LINE = re.compile(r"^(?P<time>\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) .*?(?P<kind>AUTHREQ_[A-Z]+): msgID=(?P<msg>[\d.]+), "
+                      r"(?P<rest>.*)$")
+# TCC auth reasons that mean a consent prompt was shown: 2 user consent, 9 prompt timeout.
+PROMPT_REASONS = {"2", "9"}
+
+
+def tcc_requests(text: str, bundle: str) -> list:
+    """TCC requests of `bundle` in the tccd log (`log show --predicate 'process == "tccd"'`), joined by message ID:
+    time (UTC epoch), service, preflight, authValue, authReason."""
+    requests = {}
+    for line in text.splitlines():
+        match = TCC_LINE.match(line)
+        if not match:
+            continue
+        entry = requests.setdefault(match.group("msg"), {"msgID": match.group("msg"), "subject": False})
+        rest, kind = match.group("rest"), match.group("kind")
+        if kind == "AUTHREQ_CTX":
+            entry["service"] = (re.search(r"service=(\w+)", rest) or [None, ""])[1]
+            entry["preflight"] = "preflight=yes" in rest
+            entry["time"] = dt.datetime.strptime(match.group("time")[:26], "%Y-%m-%d %H:%M:%S.%f").replace(
+                tzinfo=dt.timezone.utc).timestamp()
+        elif kind in ("AUTHREQ_SUBJECT", "AUTHREQ_ATTRIBUTION"):
+            if re.search(rf"(?:subject|requesting=\{{TCCDProcess: identifier)={re.escape(bundle)}[,}}]", rest):
+                entry["subject"] = True
+        elif kind == "AUTHREQ_RESULT":
+            entry["authValue"] = (re.search(r"authValue=(\d+)", rest) or [None, ""])[1]
+            entry["authReason"] = (re.search(r"authReason=(\d+)", rest) or [None, ""])[1]
+    return [r for r in requests.values() if r["subject"] and r.get("service")]
+
+
 def diagnostics_events(text: str) -> list:
     events = []
     for line in text.splitlines():
@@ -783,15 +813,17 @@ def check_files(run: Run) -> tuple:
     result = compare_settings(exit_snapshot, first, run.prev["version"], run.cand["version"])
     runtime = runtime_changes(loaded, after) if loaded.is_dir() else {"notes": [], "unexplained": []}
     relaunch = run.json("relaunch.json", {}) or {}
-    # The exit snapshot counts only when it was complete before the new process started.
-    if relaunch.get("snapshotAt") and relaunch.get("newStartedAt"):
-        early = relaunch["snapshotAt"] >= relaunch["newStartedAt"]
-    else:
-        early = relaunch.get("newProcessBeforeSnapshot") is True
+    # The exit snapshot is the old version's only if no file in it was written after the new process started (the
+    # copy may end a few ms after Autoupdate relaunched the app; the new version loads its settings later).
+    started = relaunch.get("newStartedAt") or 0
+    modified = relaunch.get("snapshotModified") or {}
+    late_files = sorted(name for name, at in modified.items() if started and at >= started)
+    early = bool(late_files) if modified else relaunch.get("newProcessBeforeSnapshot") is True
     summary = ", ".join(f"{f['file']} {f['status']}" for f in result["files"])
     loaded_at = relaunch.get("loadedSnapshotAt")
     evidence = (f"exit snapshot ({relaunch.get('snapshotAt', 0) - relaunch.get('oldExitedAt', 0):.3f} s after "
-                f"{run.prev['version']} exited, before the candidate started: {not early}) against the snapshot "
+                f"{run.prev['version']} exited; files written after the candidate started: {late_files or 'none'}) "
+                f"against the snapshot "
                 f"after the candidate loaded the folder ("
                 f"{'%.2f s after its start' % (loaded_at - relaunch.get('newStartedAt', 0)) if loaded_at else 'settled'}"
                 f"): {summary}")
@@ -855,9 +887,11 @@ def check_permissions(run: Run) -> dict:
     transitions = [e for e in events if e.get("code") == "health.permissionTransition"]
     prompts = [line for line in run.text("evidence/prompt-processes.txt").splitlines()
                if "universalAccessAuthWarn" in line]
-    tcc_prompts = [line for line in run.text("logs/tccd.log").splitlines()
-                   if run.brand["APP_BUNDLE_ID_RELEASE"] in line and re.search(r"[Pp]rompt", line)
-                   and "not prompting" not in line.lower()]
+    requests = [r for r in tcc_requests(run.text("logs/tccd.log"), run.brand["APP_BUNDLE_ID_RELEASE"])
+                if int(started) - 1 <= r.get("time", 0) <= started + 20]
+    tcc_prompts = [r for r in requests if r.get("authReason") in PROMPT_REASONS]
+    asked = sorted({f"{r['service'].replace('kTCCService', '')}={r.get('authValue', '?')}/{r.get('authReason', '?')}"
+                    for r in requests})
     windows = run.json("evidence/app-windows-after.json", []) or []
     ok = bool(granted) and granted == after and rows and all(r[3] == "2" for r in rows if len(r) > 3) \
         and any(s.startswith("ready") for s in states) and "noPermission" not in states and not transitions \
@@ -865,7 +899,8 @@ def check_permissions(run: Run) -> dict:
     evidence = (f"TCC rows for the bundle before and after identical: {granted == after} "
                 f"({len(rows)} rows, auth_value {sorted({r[3] for r in rows if len(r) > 3})}); host states after "
                 f"the relaunch {states}; permission transitions {len(transitions)}; prompt processes "
-                f"{prompts or 'none'}; tccd prompt lines {len(tcc_prompts)}; app windows after the relaunch "
+                f"{prompts or 'none'}; TCC requests of the candidate in its first 20 s (service=authValue/authReason) {asked}, "
+                f"answered by a consent prompt {len(tcc_prompts)}; app windows after the relaunch "
                 f"{len(windows)} (the self-check shows the permission screen when a grant is lost, QA-R42)")
     return check("permissions", "QA-R40 step 4: permissions still granted, no new prompt (PRD-R52)",
                  ok if after else None, evidence,

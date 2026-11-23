@@ -505,7 +505,8 @@ class VerdictTests(unittest.TestCase):
             nettop = "\n".join([NETTOP.splitlines()[0], NETTOP.splitlines()[5], NETTOP.splitlines()[6]]) + "\n"
             (Path(tmp) / "upgrade-out" / "egress" / "update-nettop.csv").write_text(nettop)  # Autoupdate to Apple
             relaunch = json.loads((Path(tmp) / "upgrade-out" / "relaunch.json").read_text())
-            relaunch["snapshotAt"] = relaunch["newStartedAt"] + 0.1
+            relaunch["snapshotAt"] = relaunch["newStartedAt"] + 0.1  # copied after the start: allowed by itself
+            relaunch["snapshotModified"] = {"settings.json": relaunch["newStartedAt"] + 0.05}  # but written after it
             (Path(tmp) / "upgrade-out" / "relaunch.json").write_text(json.dumps(relaunch))
             run = report.Run(Path(tmp), data["artefacts"], report.brand_values(REPO / "scripts" / "brand.env"))
             result = report.evaluate(run, data["feed"], {"channel": True, "egress": True, "minutes": 10,
@@ -718,6 +719,26 @@ class TcpdumpTests(unittest.TestCase):
         self.assertEqual({c["remote"] for c in result["disallowed"]}, {"93.184.216.34"})  # softwareupdated ignored
         self.assertIn("104.21.1.1", result["allowedAddresses"])  # from the app's own DNS answer
         self.assertEqual(result["disallowedLookups"], ["tracker.example"])
+
+
+TCCD = """2026-11-23 01:57:50.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=7.1, function=<private>, service=kTCCServiceAccessibility, preflight=yes, query=1, client_dict=(null)
+2026-11-23 01:57:50.301 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_ATTRIBUTION: msgID=7.1, attribution={requesting={TCCDProcess: identifier={bundle}, pid=2227, auid=501, euid=501, binary_path=/x}, },
+2026-11-23 01:57:50.302 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_RESULT: msgID=7.1, authValue=2, authReason=4, authVersion=1, desired_auth=0, error=(null),
+2026-11-23 01:57:51.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=8.1, function=<private>, service=kTCCServiceListenEvent, preflight=no, query=1, client_dict=(null)
+2026-11-23 01:57:51.301 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_SUBJECT: msgID=8.1, subject={bundle},
+2026-11-23 01:57:59.302 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_RESULT: msgID=8.1, authValue=2, authReason=2, authVersion=1, desired_auth=0, error=(null),
+2026-11-23 01:57:52.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=9.1, function=<private>, service=kTCCServiceAccessibility, preflight=yes, query=1, client_dict=(null)
+2026-11-23 01:57:52.301 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_SUBJECT: msgID=9.1, subject={bundle}.dev.testhost,
+""".replace("{bundle}", BUNDLE)
+
+
+class TccLogTests(unittest.TestCase):
+    def test_requests_are_joined_by_message_and_a_consent_answer_shows_a_prompt(self):
+        requests = sorted(report.tcc_requests(TCCD, BUNDLE), key=lambda r: r["msgID"])
+        self.assertEqual([(r["service"], r["authValue"], r["authReason"]) for r in requests],
+                         [("kTCCServiceAccessibility", "2", "4"), ("kTCCServiceListenEvent", "2", "2")])
+        self.assertEqual([r["msgID"] for r in requests if r["authReason"] in report.PROMPT_REASONS], ["8.1"])
+        self.assertAlmostEqual(requests[0]["time"], 1795399070.3, places=1)
 
 
 class FeedServerTests(unittest.TestCase):
