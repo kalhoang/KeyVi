@@ -227,7 +227,7 @@ func setChannel(_ arguments: Arguments) async {
     let chosen = channel(arguments.required("channel"))
     await store.updateSettings { $0.updateChannel = .set(chosen) }
     await store.flush()
-    print("updateChannel=\(chosen.rawValue)")
+    print("updateChannel=" + chosen.rawValue)
 }
 
 // MARK: - Dump
