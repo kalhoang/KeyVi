@@ -74,7 +74,7 @@ Search the repository with `grep -rn VERIFY` to find them all. Each row names th
 | 24 | Data, asset and site entries | `THIRD_PARTY_NOTICES.md` sections 3 to 5 | Data, app and site tracks fill their parts (`data/NOTICES.md` is the data source) |
 | 25 | `compat/matrix.json` field names | `compat/SCRIPT.md` section 5 | The schema in `compat/schema/` wins; adjust the example if names differ |
 | 26 | App licence, DCO or CLA | `CONTRIBUTING.md` section 3 | Decided: GPL-3.0-or-later, MPL-2.0 for the engine parts (amended 15/11/2026), DCO with inbound MIT, no CLA ([0006](0006-app-licence-and-pro-edition.md)) |
-| 27 | Rollback rehearsal log | `docs/runbooks/rollback.md` section 5 | Fill the table after the drill on the beta channel (QA-R39) |
+| 27 | Rollback rehearsal log | `docs/runbooks/rollback.md` section 5 | Fill the table after a drill on the beta channel, if one is run: the drill is optional and no release gate since 2026-11-23 (QA-R39, [0011](0011-pa-decisions-2026-11-23.md) item 3) |
 
 Closed on 2026-11-13 by the cross-track integration (no input from Pa needed):
 

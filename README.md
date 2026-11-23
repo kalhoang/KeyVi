@@ -45,7 +45,7 @@ Move the app to `/Applications` before the first launch. The app offers to move 
 ## Privacy
 
 - Typed content never leaves your Mac and is never written to disk. The only exception is a typing trace for a bug report that you start by hand: 60 to 180 seconds, visible countdown, reviewed by you before sharing, deleted after 24 hours, never sent automatically.
-- The only automatic network traffic is the update check (the appcast and update archives on `keyvi.kal.vn`).
+- The only automatic network traffic of the app is the update check (the appcast and update archives on `keyvi.kal.vn`). While an update installs, macOS may check the update's signature with Apple, as it does for any signed app; the app sends no data in that check.
 - No telemetry, no analytics, no crash-reporting service, no remote configuration.
 - Diagnostics contain no typed characters, words, macro contents, clipboard contents or window titles.
 

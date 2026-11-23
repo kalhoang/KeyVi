@@ -257,7 +257,7 @@ export const donate = {
 export const privacy = {
   h1: "Riêng tư",
   lede: "Nguyên tắc: nội dung bạn gõ không rời khỏi máy và không được ghi xuống ổ đĩa, trừ một trường hợp do chính bạn bắt đầu (bản ghi thao tác gõ để báo lỗi, mô tả bên dưới). Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật.",
-  updated: "Cập nhật lần cuối: 17/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
+  updated: "Cập nhật lần cuối: 23/11/2026. Trang này được lưu cùng mã nguồn; mọi điểm kết nối mạng mới phải được ghi vào đây trước khi phát hành.",
   // The "Trang web" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
@@ -297,6 +297,7 @@ export const privacy = {
   <li>Ứng dụng tải <code>https://{{host}}/appcast.xml</code> qua HTTPS. Trang ghi chú phát hành trong cửa sổ cập nhật và chính bản cập nhật đều lấy từ cùng máy chủ đó; bản cập nhật được tải khi bạn đồng ý hoặc khi cập nhật tự động đang bật. Các file này cũng được đính kèm vào trang phát hành của từng phiên bản trên GitHub cho bạn nào muốn tải ở đó; ứng dụng không tải gì từ GitHub.</li>
   <li>Như mọi yêu cầu web, máy chủ thấy địa chỉ IP của bạn và tên cùng phiên bản ứng dụng. Ứng dụng không gửi hồ sơ cấu hình hệ thống (tính năng này của Sparkle bị tắt).</li>
   <li>Bản cập nhật phải mang chữ ký EdDSA hợp lệ, nếu không ứng dụng từ chối cài.</li>
+  <li>Khi cài bản cập nhật, macOS có thể kiểm tra chữ ký của bản cập nhật với Apple (xem chứng chỉ của nhà phát triển có bị thu hồi hay không), như với mọi ứng dụng có chữ ký. Như mọi yêu cầu web, Apple thấy địa chỉ IP của bạn; ứng dụng không gửi dữ liệu nào trong lần kiểm tra này.</li>
   <li>Ngoài ra không có yêu cầu mạng nào khác. Có kiểm tra tự động trong quy trình phát hành để bảo đảm file chạy chỉ chứa các địa chỉ máy chủ đã khai báo.</li>
 </ul>
 

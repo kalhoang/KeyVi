@@ -53,9 +53,9 @@ Settings compatibility: the settings schema is backward-readable for one MINOR v
 
 Every previous DMG stays downloadable from the archive page so a user can reinstall manually; reinstalling an older version must keep settings (QA-R38 step 4). Do not delete release assets.
 
-## 5. Rehearsal (QA-R39)
+## 5. Rehearsal (QA-R39, optional)
 
-The rollback must be rehearsed once on the beta channel before the public beta. Procedure (spec/02-platform.md section 13.5):
+A rehearsal on the beta channel is an optional drill, not a release gate (QA-R39, amended 2026-11-23 by [ADR 0011](../decisions/0011-pa-decisions-2026-11-23.md) item 3). Run it when it is worth the time, for example before a release that changes the update pipeline (the Sparkle version, the appcast, signing or the archive host). Sections 1 to 4 apply whether or not a drill has run. Procedure (spec/02-platform.md section 13.5):
 
 1. Publish beta `0.9.0-beta.1` (or the current beta N) through [release](release.md).
 2. Install it on a test Mac and confirm the update arrives.

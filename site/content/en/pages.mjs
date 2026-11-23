@@ -246,7 +246,7 @@ export const donate = {
 export const privacy = {
   h1: "Privacy",
   lede: "The principle: what you type never leaves your Mac and is never written to disk, except in one case you start yourself (a typing trace for a bug report, described below). The only automatic network traffic is the update check.",
-  updated: "Last updated: 17 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
+  updated: "Last updated: 23 Nov 2026. This page is kept with the source code; any new network connection must be added here before it ships.",
   // The "This website" analytics line: `off` when site/config.json has no analytics, `umami` when it configures the
   // self-hosted Umami (Q7, ADR 0602 amendment). {{analyticsOrigin}} is the configured script origin.
   // Where the page's files come from; the Umami variant excepts the script the analytics line discloses.
@@ -286,6 +286,7 @@ export const privacy = {
   <li>The app fetches <code>https://{{host}}/appcast.xml</code> over HTTPS. The release notes page in the update window and the update itself come from the same server; the update is downloaded when you agree or when automatic updates are on. The same files are also attached to each version's release on GitHub for anyone who prefers to get them there; the app never downloads anything from GitHub.</li>
   <li>As with any web request, the server sees your IP address and the app name and version. The app does not send a system profile (that Sparkle feature is disabled).</li>
   <li>An update must carry a valid EdDSA signature or the app refuses to install it.</li>
+  <li>When an update installs, macOS may check the update's signature with Apple (whether the developer's certificate has been revoked), as it does for any signed app. As with any web request, Apple sees your IP address; the app sends no data in that check.</li>
   <li>There is no other network request. The release pipeline includes an automated check that the shipped binary contains only the declared server addresses.</li>
 </ul>
 

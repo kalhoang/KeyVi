@@ -25,7 +25,7 @@ Do these once; the sections linked from each line explain how.
 - [x] GitHub private vulnerability reporting is enabled in the repository settings (Security, "Private vulnerability reporting"): `SECURITY.md` names it as the preferred channel. Check with `gh api repos/kalhoang/{{AppName}}/private-vulnerability-reporting` (`"enabled": true`). Enabled, checked on 2026-11-18.
 - [x] GitHub Discussions is enabled in the repository settings (General, Features): the question link of the New Issue chooser (`.github/ISSUE_TEMPLATE/config.yml`), `CONTRIBUTING.md` and the README send questions there (QA-R43, QA-R51). Check with `gh api repos/kalhoang/{{AppName}} --jq .has_discussions` (`true`). Enabled, checked on 2026-11-18.
 - [ ] Homebrew tap repository `kalhoang/homebrew-tap` exists (brew name `kalhoang/tap`; template: `packaging/homebrew/Casks/cask.rb.template`).
-- [ ] Rollback rehearsed once on the beta channel before public beta (QA-R39, [rollback](rollback.md) section 5).
+- [ ] Optional, not a release gate: rollback rehearsed on the beta channel, for example before a release that changes the update pipeline (QA-R39, amended 2026-11-23 by [ADR 0011](../decisions/0011-pa-decisions-2026-11-23.md) item 3; [rollback](rollback.md) section 5).
 
 ## 1. Decide the version and build number
 
@@ -45,9 +45,11 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 - [ ] **P0 tests pass** (PRD-R0). A build that fails any P0 test is not released, not even as a private alpha.
 - [ ] Tier 1 compatibility script done for this release candidate: [compat/SCRIPT.md](../../compat/SCRIPT.md), results in `compat/matrix.json`. Tier 1 rows are at most 90 days old (QA-R19).
 - [ ] Upgrade test passed (section 5 below).
-- [ ] Network egress test green: only the allowed host (spec/02-platform.md section 13.7). It runs with the upgrade
-  test of section 5 (`scripts/vm/upgrade-test.sh`, checks `egress-local` and `egress-production` of its
-  `result.json`; a run with `--egress-minutes` below 10 does not count).
+- [ ] Network egress test green: only the allowed host, and while the update installs nothing else but the
+  certificate revocation check that macOS makes with Apple's OCSP service (spec/02-platform.md PLT-R906 and section
+  13.7, amended 2026-11-23 by [ADR 0011](../decisions/0011-pa-decisions-2026-11-23.md) item 1). It runs with the
+  upgrade test of section 5 (`scripts/vm/upgrade-test.sh`, checks `egress-local` and `egress-production` of its
+  `result.json`, and its sample of the install; a run with `--egress-minutes` below 10 does not count).
 - [ ] No compatibility rule is past `reviewBy` by more than 30 days (spec/02-platform.md section 13.8).
 - [ ] Provenance review done for the first public release and for 1.0, and a report exists for this release (CLR-R13, [provenance](../provenance/README.md)). The comparison against other codebases follows the [similarity review](similarity-review.md) runbook: a release that changes engine or input-handling code is covered by a similarity report or, while one is commissioned and not finished, its provenance report says so; a `fail` verdict blocks the release.
 - [ ] `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7).
