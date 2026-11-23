@@ -10,9 +10,11 @@ Release headings use the form `## [X.Y.Z] - YYYY-MM-DD` for stable releases and 
 
 ## [Unreleased]
 
+## [1.1.0-beta.2] - 2026-11-23
+
 ### Fixed
 
-- When KeyVi turns a word back into the English you typed because the words before it are English, Escape pressed right after now gives you the Vietnamese word: in "Thanks Giving bả với", the space after "bả" gave "bar" and Escape kept it; Escape now brings back "bả". This covers every word that KeyVi keeps in Vietnamese on its own and turns into English only because of the words before it, common English words such as "there" and "this" included, so Escape pressed right after one of them changes it; a second Escape keeps its usual meaning, and Escape still does nothing to a word that is English on its own, such as "best".
+- Escape pressed right after a word now undoes a switch to English that KeyVi made only because the words before it were English: in "Thanks Giving bả với", the space after "bả" gave "bar" and Escape could not bring "bả" back; now it does. This also applies to common words such as "there" and "this" typed after English words, so Escape right after one of them changes it; press Escape again for its usual action. Words that are English on their own, such as "best", are not affected.
 
 ## [1.1.0-beta.1] - 2026-11-22
 
