@@ -47,7 +47,7 @@ All must be true on the commit you will tag. Record the evidence (links) in the 
 - [ ] Upgrade test passed (section 5 below).
 - [ ] Network egress test green: only the allowed host (spec/02-platform.md section 13.7). It runs with the upgrade
   test of section 5 (`scripts/vm/upgrade-test.sh`, checks `egress-local` and `egress-production` of its
-  `result.json`).
+  `result.json`; a run with `--egress-minutes` below 10 does not count).
 - [ ] No compatibility rule is past `reviewBy` by more than 30 days (spec/02-platform.md section 13.8).
 - [ ] Provenance review done for the first public release and for 1.0, and a report exists for this release (CLR-R13, [provenance](../provenance/README.md)). The comparison against other codebases follows the [similarity review](similarity-review.md) runbook: a release that changes engine or input-handling code is covered by a similarity report or, while one is commissioned and not finished, its provenance report says so; a `fail` verdict blocks the release.
 - [ ] `THIRD_PARTY_NOTICES.md` complete (CLR-R6, CLR-R7).
@@ -133,7 +133,8 @@ Run these on the notarized artefact, not on a debug build.
    and the limits: [VM test lab](vm-test-lab.md) section 12. Attach `summary.txt` to the release checklist; a
    `settings-files`, `settings-content`, `defaults-domain` or `permissions` failure is a release blocker (below).
 3. **Channel switch**: beta to stable and back. `scripts/vm/upgrade-test.sh` checks it after the update (check
-   `channel-switch`: on beta a beta-only build is offered, on stable it is not and nothing older is offered).
+   `channel-switch`: on beta a beta-only build is offered, on stable Sparkle says it is up to date, so neither that
+   build nor anything older is offered).
 4. **Tier 1 compatibility script** on the candidate (section 2).
 5. **First-launch self-check** (QA-R42): permission state, tap creation; on failure the targeted permission screen shows, not a silent failure.
 

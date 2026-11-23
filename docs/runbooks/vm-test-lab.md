@@ -434,67 +434,81 @@ the resource rule of section 3 as a gate: it waits, checking every 2 minutes for
 (default 240), until the load average is under 5, the memory pressure level under 4 (critical), at least 45 % of the
 memory free, no other VM runs and no `xcodebuild` runs. It starts `watchdog.sh` from `--watchdog DIR` (default
 `VM_LAB_ROOT/kv-ops`) beside the VM as `run-lab.sh` does, records its stops, and starts it again when it ends while
-the VM runs (every lab script shares `watchdog.stop`; the restarts go to `watchdog-restarts.txt`). Then, in the throwaway clone `<vm>-upgrade` (4096 MB,
-4 CPUs by default; deleted at the end), the guest half:
+the VM runs (every lab script shares `watchdog.stop`: the file stays 6 seconds first, so the watchdog of the session
+that touched it, polling every 5 seconds, still sees it; the restarts go to `watchdog-restarts.txt`). Then, in the
+throwaway clone `<vm>-upgrade` (4096 MB, 4 CPUs by default; deleted at the end), the guest half:
 
 1. builds `upgrade-driver.swift` (accessibility, synthetic keys, event-tap list, relaunch watch), TestHost from this
-   commit, and `upgrade-store.swift` twice: against the previous stable's `Packages/AppCore` (the commit in its
-   `build-info.json`) and against this commit's;
+   commit, and `upgrade-store.swift` twice: against the previous stable's `Packages/AppCore` and against the
+   candidate's, each from the commit in that version's `build-info.json` (`git archive`; a commit that is not in the
+   repository stops the run with exit 6 before any VM starts), so each store reads the files as the shipped app does;
 2. starts the local feed (section 12.1);
 3. installs the previous stable from its DMG into `/Applications` and records its signature and Gatekeeper verdict;
 4. seeds, through the previous version's own `SettingsStore` (so the files are what a user of that version has):
    14 settings, 12 of them besides the update switches (D16 click-to-toggle stays unset: it would turn the status
    item into a mode switch), the channel of the candidate, word lists, per-app learned
-   words, 5 per-app rules, 8 remembered per-app modes, 3 compatibility overrides and 50 macros
-   (`scripts/vm/fixtures/upgrade-plan.json`), with onboarding finished;
+   words, 5 per-app rules, 8 remembered per-app modes, 3 compatibility overrides, 50 macros and 4 learned collision
+   choices (`collision-memory.json`, PLT-R914: words on the bundled collision lists of both versions, since the app
+   drops any other word at load) (`scripts/vm/fixtures/upgrade-plan.json`), with onboarding finished;
 5. grants Accessibility, Input Monitoring and event posting with `grant-tcc.sh` (the app's row carries its
    designated requirement, as a grant in System Settings does), launches the app and types `duyeetj` into TestHost
-   (expected `duyệt`), then snapshots the settings folder, the defaults domain and the TCC rows;
+   (expected `duyệt`), then snapshots the settings folder, the defaults domain and the TCC rows (this defaults export,
+   taken while the previous version runs and before the update check, is the baseline of `defaults-domain`);
 6. forces an update check from the status menu, presses Sparkle's Install Update and Install and Relaunch, copies
    the settings folder and the defaults domain the moment the old process exits (before the new version can load
    or write them), then records the new process's start time, when its event tap is enabled (`CGGetEventTapList`,
    every 10 ms) and from when typing into TestHost gives `duyệt`, without any click in between (the field is found
-   and focused before the relaunch; attempts repeat until one reads back right, and the result is when that
-   attempt's first key was typed). It copies the
+   and focused before the relaunch; attempts start once the new process's tap is enabled and repeat until one reads
+   back right, and the result is when that attempt's first key was posted: `d`, `u` and `y` read the same with or
+   without the app, so a word typed partly before the tap proves nothing). It copies the
    settings folder again 0.5 seconds after that tap is enabled (at the latest 4 seconds after the start): the
    store has loaded the folder by then, so a migration has written, while a change of the new session's own per-app
    memory cannot have landed yet (written 5 seconds after the change, PLT-R392);
-7. 15 seconds after the relaunch snapshots again, records the installed version, TCC rows, prompt processes and the
-   app's windows, and reads each snapshot with the matching version's store;
+7. 15 seconds after the relaunch snapshots again, records the installed version, TCC rows, prompt processes (with
+   the exit status of the listing) and the app's windows (no file when the listing fails), and reads each snapshot
+   with the matching version's store; at the end it saves the `tccd` log in UTC (`log show --timezone UTC`, under a
+   `#timezone=UTC` line: compact timestamps carry no zone);
 8. channel switch: with the probe item in the feed, beta (the probe is offered; the offer is dismissed by closing
    Sparkle's window, since Sparkle 2.10 has no Remind Me Later button and Skip This Version would store a skipped
-   version), stable (up to date: no beta build and nothing older), beta again;
+   version), stable (Sparkle says it is up to date, in its own localized text: no beta build and nothing older),
+   beta again; each row of `channel.tsv` carries when its step ran, so the `update.updateFound` events of the app's
+   log are counted per step;
 9. egress: 10 minutes with the local feed and a forced check, then the mapping and the server are removed and 10
    minutes follow with the production feed and a forced check. `tcpdump` on the PKTAP interface (`-i pktap,all -k NP`:
    every TCP SYN and UDP datagram with the process that sent it, and the names of the DNS lookups mDNSResponder makes
    for the app), `nettop` (every open flow of every process, each second), `lsof` of the app and Sparkle's helpers
    (`Autoupdate`, `Updater`, each second) and `dscacheutil` for the site host (every 20 seconds) run throughout; the
    update itself is sampled too. `nettop` alone would miss a connection that opens and closes between two samples
-   (seen in the lab on 2026-11-23), `tcpdump` does not.
+   (seen in the lab on 2026-11-23), `tcpdump` does not, as long as the kernel drops no packet: PKTAP filters in user
+   space, so every packet of every interface crosses the capture buffer, and a burst of background system downloads
+   overflowed the default 512 KiB buffer (14,655 drops in the local phase of run `20261123T042942Z-upgrade`). The
+   guest raises `debug.bpf_maxbufsize` to 16 MiB and runs `tcpdump -B 16384 -s 768`; the drop count it prints when it
+   stops (`<phase>-tcpdump.err`) is part of the evidence.
 
 ### 12.3 Checks and evidence
 
 `upgrade-report.py analyse` writes `result.json` (one entry per check: result, evidence, files) and `summary.txt`.
-Verdict `PASS` only when every check passed; `FAIL` when one failed; `INCOMPLETE` when one could not run (a skipped
-part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
+Verdict `PASS` only when every check passed; `FAIL` when one failed; `INCOMPLETE` when one could not run or its
+evidence is missing (a skipped part, a guest step that stopped, an egress phase shorter than 10 minutes or with
+dropped packets, a permission listing that could not be read); `ABORTED` when the watchdog stopped the VM.
 
 | Check | Passes when |
 |---|---|
 | `artefacts` | DMG and update archive equal `SHA256SUMS`, versions and builds match `build-info.json`, both apps carry the same `SUPublicEDKey`, the signature verifies |
 | `previous-stable` | The DMG installed the previous version, Gatekeeper accepts it, typing works in it |
-| `seeded` | At least 10 settings besides the update switches, per-app rules, remembered per-app modes, overrides and 50 macros, read back by the previous store |
+| `seeded` | At least 10 settings besides the update switches, per-app rules, remembered per-app modes, overrides, 50 macros and learned collision choices, read back by the previous store |
 | `sparkle-update` | Sparkle offered the candidate, the local feed served the update archive, Install and Relaunch was pressed |
 | `version-after` | `/Applications` holds the candidate, the relaunched process logged the candidate's version and build, the designated requirement is unchanged |
 | `settings-files` | The exit snapshot holds no file written after the candidate started (Autoupdate relaunches within milliseconds of the exit, before the copy ends, so the files' modification times decide), and every file of the snapshot taken once the candidate loaded the folder is byte-identical to it, or each difference is a migration the candidate's code explains (`MIGRATION_RULES` in `scripts/vm/upgrade_evidence.py`, each citing its code); anything else fails. Until the snapshot 15 seconds after the relaunch, only `app-modes.json` may change, and only by use (the app focused after the relaunch moves to the front or is recorded as seen for the first time); every earlier entry keeps its rule and mode |
-| `settings-content` | The candidate's store reads the same settings, per-app entries, overrides and macros right after loading as the previous store read at exit; fields new in the candidate read as not set; 15 seconds later every seeded and exit value is still there |
-| `defaults-domain` | Every key of the app's defaults domain is equal, except the keys that change on each launch by design (`DEFAULTS_RULES` in the same file: the launch guard, the post-update self-check's version, Sparkle's check time) |
-| `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds answered by a consent prompt (`tccd` log, auth reason 2 or 9), and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
+| `settings-content` | The candidate's store (built from the candidate's commit) reads the same settings, per-app entries, overrides, macros and learned collision choices right after loading as the previous store read at exit; fields new in the candidate read as not set; 15 seconds later every seeded and exit value is still there |
+| `defaults-domain` | Against the export taken while the previous version ran (the export at its exit runs after the copy of the settings folder, up to half a second after the candidate started, so it is evidence only), every key of the app's defaults domain is equal, except keys that the previous version's update check and quit or the candidate's launch write by design, and only with the values that code writes (`DEFAULTS_RULES` and `DEFAULTS_PREFIX_RULES` in the same file: the launch guard and its crash streak, the post-update self-check's version, Sparkle's check time and first-launch marker, the frame AppKit saves for Sparkle's update window); a key that disappears always fails |
+| `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds that prompted (`tccd` log: auth reason 2 or 9, or a request that may prompt and has no answer), and no window after the relaunch (the QA-R42 self-check would show the permission screen). Not run when that evidence is missing: the prompt-process listing (its exit status), the window listing, or at least one TCC request of the candidate in its first 20 seconds in a `tccd` log marked UTC (the app checks its permissions at launch) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
-| `typing-within-5s` | Keys typed into TestHost at most 5 seconds after the process started read back as `duyệt`: the time is the first key of the first attempt that reads back right (those keystrokes were composed correctly); the read-back time, 0.3 seconds after the last key, is in the evidence too |
+| `typing-within-5s` | Keys typed into TestHost at most 5 seconds after the process started read back as `duyệt`: the time is the first key of the first attempt typed wholly after the candidate's tap was enabled that reads back right (an attempt with a key posted before the tap does not count); the read-back time, 0.3 seconds after the last key, is in the evidence too |
 | `egress-update` (advisory, outside the verdict) | Records what the download, the signature checks and the install reached; passes when that was only loopback (the local feed) and no other name was looked up |
-| `channel-switch` | Beta offers the probe build, stable offers nothing, beta offers it again |
-| `egress-local` | 10 minutes, a forced check, a connection to the local feed, no remote address but loopback and no DNS lookup of another name |
-| `egress-production` | 10 minutes, a forced check, a connection to the site host, no remote address outside loopback and the addresses the VM resolved for the site host during the phase, and no DNS lookup of another name |
+| `channel-switch` | Beta offers the probe build and the app logs `update.updateFound` for it in that step; on stable Sparkle shows its up-to-date text (`titles-uptodate.txt`: "You’re up to date!" in the candidate's localizations) and the app logs no `update.updateFound` in that step; beta offers the probe again |
+| `egress-local` | Fails on any remote address but loopback or a DNS lookup of another name. Passes only with 10 minutes (13.7; `--egress-minutes` below 10 makes it not run), a forced check, an appcast request of the app at the local feed during the phase, and no packet dropped by the kernel. The evidence names the window Sparkle showed for the forced check, or none |
+| `egress-production` | Fails on any remote address outside loopback and the addresses the VM resolved for the site host during the phase, or a DNS lookup of another name. Passes only with 10 minutes, a forced check, a connection of the app to the site host, and no packet dropped by the kernel |
 
 The allowed host is the site host of `scripts/brand.env` only (PLT-R906, 13.7: "only the allowed host"). The other
 hosts of `scripts/url-hosts.allow` are identifiers or archive hosts for a choice Pa has not made (GitHub Releases);

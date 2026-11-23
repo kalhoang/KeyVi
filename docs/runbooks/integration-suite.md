@@ -148,8 +148,9 @@ metric (`C1.cpuPercent 0.120, gate 0.300, baseline 0.300 (placeholder): ok`).
 The release candidate's egress test runs in the tart VM lab with the upgrade test, on the notarized build:
 `scripts/vm/upgrade-test.sh` ([vm-test-lab.md](vm-test-lab.md) section 12; checks `egress-local` and
 `egress-production`). The release build has no hooks, so that script forces the update check from the status menu
-and samples the app and Sparkle's helpers with `nettop` and `lsof`. The steps below are for a physical runner with the
-hooks build.
+and samples the app and Sparkle's helpers with `tcpdump` on the PKTAP interface (every connection attempt and DNS
+lookup with the process that made it; a phase in which the kernel dropped packets does not pass), with `nettop` and
+`lsof` beside it. The steps below are for a physical runner with the hooks build.
 
 1. Phase `local`: serve a local appcast on the loopback server, point the test build's feed at it (VERIFY the
    mechanism with Sparkle 2: `defaults write <APP_BUNDLE_ID_DEV> SUFeedURL http://127.0.0.1:8000/appcast.xml`, or a
