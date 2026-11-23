@@ -210,6 +210,20 @@ func windows(of pid: pid_t) -> [AXUIElement] {
     (attribute(axApplication(pid), kAXWindowsAttribute) as? [AXUIElement]) ?? []
 }
 
+/// The app's windows as evidence (PRD-R52: the first launch after an update shows nothing): nil when accessibility
+/// could not list them, so an error never reads as "no window". A busy app is asked again a few times.
+func listedWindows(of pid: pid_t, attempts: Int = 3) -> [AXUIElement]? {
+    for attempt in 1...attempts {
+        var value: CFTypeRef?
+        switch AXUIElementCopyAttributeValue(axApplication(pid), kAXWindowsAttribute as CFString, &value) {
+        case .success: return (value as? [AXUIElement]) ?? []
+        case .noValue: return []
+        default: if attempt < attempts { pause(0.5) }
+        }
+    }
+    return nil
+}
+
 /// Texts, buttons and the default button of one window; long texts (release notes) are cut.
 func describeWindow(_ window: AXUIElement) -> [String: Any] {
     var texts: [String] = []
@@ -707,7 +721,11 @@ case "menu": menuCommand(arguments, bundle: bundleArgument())
 case "press": pressCommand(arguments, bundle: bundleArgument())
 case "windows":
     let bundle = bundleArgument()
-    emit(runningApplication(bundle).map { windows(of: $0.processIdentifier).map(describeWindow) } ?? [])
+    guard let app = runningApplication(bundle) else { fail(bundle + " is not running", code: 1) }
+    guard let listed = listedWindows(of: app.processIdentifier) else {
+        fail("accessibility could not list the windows of " + bundle, code: 1)
+    }
+    emit(listed.map(describeWindow))
 case "activate":
     let bundle = bundleArgument()
     activate(bundle)

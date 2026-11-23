@@ -465,7 +465,8 @@ throwaway clone `<vm>-upgrade` (4096 MB, 4 CPUs by default; deleted at the end),
    store has loaded the folder by then, so a migration has written, while a change of the new session's own per-app
    memory cannot have landed yet (written 5 seconds after the change, PLT-R392);
 7. 15 seconds after the relaunch snapshots again, records the installed version, TCC rows, prompt processes (with
-   the exit status of the listing) and the app's windows (no file when the listing fails), and reads each snapshot
+   the exit status of the listing) and the app's windows (no file when the listing fails: the app is not running or
+   accessibility returns an error three times), and reads each snapshot
    with the matching version's store; at the end it saves the `tccd` log in UTC (`log show --timezone UTC`, under a
    `#timezone=UTC` line: compact timestamps carry no zone);
 8. channel switch: with the probe item in the feed, beta (the probe is offered; the offer is dismissed by closing

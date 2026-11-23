@@ -379,8 +379,11 @@ def check_channel(run: Run, probe: dict) -> dict:
     install = {"Install Update"} | {t for t in run.text("titles-install.txt").splitlines() if t}
     up_to_date = [fold(t) for t in run.text("titles-uptodate.txt").splitlines() if t.strip()]
     found_events = [e for e in run.events() if e.get("code") == "update.updateFound"]
-    outcome, ok = [], len(rows) == 3
+    outcome, ok, untimed = [], len(rows) == 3, False
     for index, channel, found, start, end in [(r + [""] * 5)[:5] for r in rows]:
+        # Without its start and end a step cannot show what was (not) found in it: not evidence either way.
+        timed = start.isdigit() and end.isdigit()
+        untimed = untimed or not timed
         window = run.json(f"evidence/channel-{index}-{channel}-window.json", {}) or {}
         texts = " ".join(window.get("texts", []))
         offered = found in install
@@ -394,12 +397,14 @@ def check_channel(run: Run, probe: dict) -> dict:
             good = not offered and not logged and bool(told)
             seen = f"up to date ({told[0]!r})" if told else f"'{found}' with {texts[:120]!r}"
         outcome.append(f"{channel}: {seen}, update.updateFound in this step {len(logged)} "
-                       f"(probe build {len(probe_logged)}){'' if good else ' (WRONG)'}")
-        ok = ok and good
+                       f"(probe build {len(probe_logged)})"
+                       f"{'' if timed else ' (no step times)'}{'' if good or not timed else ' (WRONG)'}")
+        ok = ok and (good or not timed)
     evidence = (f"feed with the candidate, the previous stable and a beta-only probe build {probe['build']}; "
                 f"{'; '.join(outcome)}; on stable Sparkle must say it is up to date (its own localized text, "
                 f"titles-uptodate.txt), which also shows that nothing older was offered")
-    return check("channel-switch", "release.md 5.3: beta to stable and back (PLT-R1101, PRD-R53)", ok, evidence,
+    result = None if ok and untimed else ok
+    return check("channel-switch", "release.md 5.3: beta to stable and back (PLT-R1101, PRD-R53)", result, evidence,
                  ["upgrade-out/channel.tsv", "upgrade-out/evidence/"])
 
 

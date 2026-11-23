@@ -644,6 +644,17 @@ class VerdictTests(unittest.TestCase):
         # The probe build found later (the production phase: the real next beta has the same build) is not counted.
         self.assertIn("update.updateFound in this step 1 (probe build 1)", self.evidence(self.evaluate(), "channel-switch"))
 
+    def test_a_channel_row_without_step_times_is_not_evidence(self):
+        def untimed_stable(out: Path) -> None:
+            rows = [line.split("\t") for line in (out / "channel.tsv").read_text().splitlines()]
+            rows[1] = rows[1][:3]
+            (out / "channel.tsv").write_text("".join("\t".join(row) + "\n" for row in rows))
+        result = self.evaluate(untimed_stable)
+        self.assertEqual(self.results(result)["channel-switch"], "not-run")
+        self.assertEqual(result["verdict"], "INCOMPLETE")
+        self.assertIn("stable: up to date", self.evidence(result, "channel-switch"))
+        self.assertIn("(no step times)", self.evidence(result, "channel-switch"))
+
     def test_a_shortened_or_incomplete_egress_phase_is_not_a_pass(self):
         short = self.evaluate(minutes=1)
         self.assertEqual(self.results(short)["egress-local"], "not-run")
