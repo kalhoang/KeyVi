@@ -503,6 +503,13 @@ an endpoint of the app or a helper outside the allowed set fails the check and i
 A `settings-files`, `settings-content`, `defaults-domain` or `permissions` failure is a release blocker (PRD-R52):
 open an `update-regression` issue with the run folder.
 
+`egress-update` has failed in every run so far on one endpoint: while Sparkle's `Autoupdate` installs the update,
+the system checks the revocation of the Developer ID certificate online (Apple's OCSP service: a lookup of
+`ocsp2.g.aaplimg.com` in run `20261123T004514Z-upgrade`, a connection of `Autoupdate` to `17.253.61.142:443` in run
+`20261123T020752Z-upgrade`). The app's own requests went only to the local feed. PLT-R906 names only the site host;
+whether an operating-system revocation check counts as the app's egress is open for Pa, so the check stays advisory
+and reports the endpoint instead of deciding.
+
 Self-tests: `python3 -I scripts/tests/test_upgrade_test.py` (part of `scripts/tests/run.sh`): the artefact and
 signature checks with a throwaway key, the feed, the `nettop`, `lsof` and `dscacheutil` parsers, the comparisons, the
 verdict, and the host script with fake `tart`, `ssh`, `git`, OpenSSL and host-load tools; no VM starts.
@@ -513,3 +520,5 @@ Recorded per release candidate (run folder, verdict, notable evidence):
 
 | Date | Previous, candidate | Run folder | Verdict | Notes |
 |---|---|---|---|---|
+| 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T020752Z-upgrade` | PASS, every check (guest at `8f61053e`; analysis re-run with `ddee8f57`) | The first analysis, kept as `result-first-analysis.json`, failed `sparkle-update` and `egress-production` on two report bugs fixed in `ddee8f57` (the Install and Relaunch label read after the press; an inbound QUIC reply counted as an endpoint). Tap enabled 0.85 s after the relaunch, typing matched at 3.48 s, settings folder byte-identical (exit snapshot against the one the candidate loaded), store contents identical, defaults domain changed only in the three launch keys, TCC rows unchanged with no consent prompt, no window. Channel switch: beta offered the probe, stable nothing, beta the probe again. Egress: local phase only `[::1]:443`; production phase only the site host's addresses, over TCP and QUIC; advisory `egress-update` above |
+| 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261122T191432Z` to `20261123T004514Z-upgrade` | test faults, fixed | Development runs: the CA trust step, a menu title read through `plutil -extract`, the site's HTTPS DNS record (the archive came from the production host over HTTP/3, past the local feed), Sparkle's window without Remind Me Later. The update itself worked from the third run on |
