@@ -30,15 +30,33 @@ MIGRATION_RULES = {
 RUNTIME_RULE = ("use, not a migration: the app focused after the relaunch moves to the front or is recorded as seen for "
                 "the first time (AppModeMemory.activate, PLT-R390, PLT-R392)")
 
-# Keys of the app's defaults domain that change on every launch or update by design; every other key must be equal.
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+# Keys of the app's defaults domain that the previous version (its update check, its quit) or the candidate's launch
+# write by design, each with the values that code writes. The baseline is the export taken while the previous version
+# ran, before the update check. Every other key must be equal, and no key may disappear (PLT-R1108).
 DEFAULTS_RULES = {
-    "launchGuard.inProgressSince": "start time of the current launch (LaunchGuard.beginLaunch, PLT-R1009)",
-    "launchGuard.appVersion": "fingerprint of the running build's version, new after an update (LaunchGuard.adoptVersion, "
-                              "PLT-R1009)",
-    "launch.lastVersionFingerprint": "version of the running build for the post-update self-check "
-                                     "(UpdateSelfCheck.noteLaunch, QA-R42)",
-    "SULastCheckTime": "Sparkle's time of the last update check",
-    "SUHasLaunchedBefore": "Sparkle's first-launch marker",
+    "launchGuard.inProgressSince": ("start time of the current launch, 0 once it survived or quit cleanly "
+                                    "(LaunchGuard.beginLaunch, markSurvived, PLT-R1009)", _is_number),
+    "launchGuard.appVersion": ("fingerprint of the running build's version, new after an update "
+                               "(LaunchGuard.adoptVersion, PLT-R1009)", _is_number),
+    "launchGuard.recentCrashes": ("crash streak, cleared to 0 when a launch survives 60 s, quits cleanly or runs a new "
+                                  "version (LaunchGuard.clearStreak, PLT-R1009)", lambda value: value == 0),
+    "launchGuard.firstCrashAt": ("start of the crash streak, cleared with it (LaunchGuard.clearStreak, PLT-R1009)",
+                                 lambda value: value == 0),
+    "launch.lastVersionFingerprint": ("version of the running build for the post-update self-check "
+                                      "(UpdateSelfCheck.noteLaunch, QA-R42)", _is_number),
+    "SULastCheckTime": ("Sparkle's time of the last update check (the forced check)",
+                        lambda value: isinstance(value, dt.datetime)),
+    "SUHasLaunchedBefore": ("Sparkle's first-launch marker", lambda value: value is True),
+}
+# Key prefixes with the same meaning: AppKit saves the frame of a Sparkle window (the update window the previous
+# version showed) under "NSWindow Frame <autosave name>".
+DEFAULTS_PREFIX_RULES = {
+    "NSWindow Frame SU": ("AppKit's saved frame of a Sparkle window (the update window the previous version showed)",
+                          lambda value: isinstance(value, str)),
 }
 
 
@@ -198,14 +216,23 @@ def tcpdump_events(text: str) -> list:
     return events
 
 
+def tcpdump_dropped(stderr_text: str):
+    """Packets the kernel dropped, from the statistics tcpdump prints when it stops; None when they are missing (the
+    capture did not end normally). PKTAP filters in user space, so every packet of every interface crosses the
+    capture buffer: a drop can be one the filter would have kept."""
+    match = re.search(r"^(\d+) packets? dropped by kernel", stderr_text, re.M)
+    return int(match.group(1)) if match else None
+
+
 def matches(process: str, names: tuple) -> bool:
     return any(process == n or process.startswith(n) or n.startswith(process) and len(process) >= 15 for n in names)
 
 
 def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> dict:
     """Every remote endpoint and DNS lookup of the app and Sparkle's helpers in one phase, classified (13.7).
-    tcpdump (PKTAP) sees every connection attempt with its process; nettop and lsof add what was open at each
-    second. Allowed: loopback (the local feed) and, on the production feed, the addresses the VM resolved for the
+    tcpdump (PKTAP) sees every connection attempt with its process as long as the kernel dropped no packet
+    (tcpdumpDropped); nettop and lsof add what was open at each second. Allowed: loopback (the local feed) and, on
+    the production feed, the addresses the VM resolved for the
     allowed hosts during the phase; a DNS lookup of any other name is a disallowed attempt too."""
     egress = run / "egress"
     read = lambda suffix: (egress / f"{phase}-{suffix}").read_text(encoding="utf-8", errors="replace") \
@@ -239,6 +266,7 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> d
     return {"phase": phase, "allowedHosts": sorted(hosts) if phase == "production" else ["loopback (local feed)"],
             "allowedAddresses": sorted(allowed), "lsofSamples": samples_taken(read("lsof.txt")),
             "nettopLines": len(read("nettop.csv").splitlines()), "tcpdumpLines": len(read("tcpdump.txt").splitlines()),
+            "tcpdumpDropped": tcpdump_dropped(read("tcpdump.err")),
             "connections": connections, "lookups": lookups, "disallowedLookups": bad_lookups,
             "disallowed": [c for c in connections if not c["allowed"]],
             "started": read("started").strip(), "ended": read("ended").strip()}
@@ -248,30 +276,45 @@ TCC_LINE = re.compile(r"^(?P<time>\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) .*?(?P<ki
                       r"(?P<rest>.*)$")
 # TCC auth reasons that mean a consent prompt was shown: 2 user consent, 9 prompt timeout.
 PROMPT_REASONS = {"2", "9"}
+# First line the guest writes above `log show --timezone UTC` output: compact timestamps carry no zone, so a log
+# without it cannot be placed in time (upgrade-guest.sh, finish).
+TCC_TIMEZONE_MARKER = "#timezone=UTC"
 
 
 def tcc_requests(text: str, bundle: str) -> list:
-    """TCC requests of `bundle` in the tccd log (`log show --predicate 'process == "tccd"'`), joined by message ID:
-    time (UTC epoch), service, preflight, authValue, authReason."""
+    """TCC requests of `bundle` in the tccd log (`log show --timezone UTC --predicate 'process == "tccd"'`), joined
+    by message ID: time (UTC epoch; None when the log lacks the UTC marker), service, preflight, answered,
+    authValue, authReason."""
+    utc = TCC_TIMEZONE_MARKER in (line.strip() for line in text.splitlines()[:3])
     requests = {}
     for line in text.splitlines():
         match = TCC_LINE.match(line)
         if not match:
             continue
-        entry = requests.setdefault(match.group("msg"), {"msgID": match.group("msg"), "subject": False})
+        entry = requests.setdefault(match.group("msg"), {"msgID": match.group("msg"), "subject": False,
+                                                         "answered": False})
         rest, kind = match.group("rest"), match.group("kind")
         if kind == "AUTHREQ_CTX":
             entry["service"] = (re.search(r"service=(\w+)", rest) or [None, ""])[1]
             entry["preflight"] = "preflight=yes" in rest
             entry["time"] = dt.datetime.strptime(match.group("time")[:26], "%Y-%m-%d %H:%M:%S.%f").replace(
-                tzinfo=dt.timezone.utc).timestamp()
+                tzinfo=dt.timezone.utc).timestamp() if utc else None
         elif kind in ("AUTHREQ_SUBJECT", "AUTHREQ_ATTRIBUTION"):
             if re.search(rf"(?:subject|requesting=\{{TCCDProcess: identifier)={re.escape(bundle)}[,}}]", rest):
                 entry["subject"] = True
         elif kind == "AUTHREQ_RESULT":
+            entry["answered"] = True
             entry["authValue"] = (re.search(r"authValue=(\d+)", rest) or [None, ""])[1]
             entry["authReason"] = (re.search(r"authReason=(\d+)", rest) or [None, ""])[1]
     return [r for r in requests.values() if r["subject"] and r.get("service")]
+
+
+def tcc_prompted(request: dict) -> bool:
+    """A consent prompt was shown for the request: answered by the user or by its timeout, or still waiting (a request
+    that may prompt, not a preflight, with no result: nobody answered it)."""
+    if request.get("authReason") in PROMPT_REASONS:
+        return True
+    return not request.get("answered") and request.get("preflight") is False
 
 
 def diagnostics_events(text: str) -> list:
@@ -374,17 +417,37 @@ def load_plist(path: Path) -> dict:
         return {}
 
 
-def compare_defaults(before: dict, after: dict, cand_version: str, cand_build: str) -> dict:
+def defaults_rule(key: str) -> tuple:
+    """(reason, accepts) of the rule for a defaults key, ("", None) when no rule covers it."""
+    if key in DEFAULTS_RULES:
+        return DEFAULTS_RULES[key]
+    for prefix, rule in DEFAULTS_PREFIX_RULES.items():
+        if key.startswith(prefix):
+            return rule
+    return "", None
+
+
+def compare_defaults(before: dict, after: dict) -> dict:
+    """Changes between two exports of the app's defaults domain. A change is explained only when a rule covers the
+    key and the new value is one that rule's code writes; a removed key is never explained."""
+    absent = object()
     changes, unexplained = [], []
     for key in sorted(set(before) | set(after)):
-        old, new = before.get(key, "<absent>"), after.get(key, "<absent>")
+        old, new = before.get(key, absent), after.get(key, absent)
         if old == new:
             continue
-        reason = DEFAULTS_RULES.get(key, "")
-        changes.append({"key": key, "before": repr(old)[:120], "after": repr(new)[:120], "explainedBy": reason})
-        if not reason:
+        reason, accepts = defaults_rule(key)
+        explained = reason if reason and new is not absent and accepts(new) else ""
+        changes.append({"key": key, "before": "<absent>" if old is absent else repr(old)[:120],
+                        "after": "<absent>" if new is absent else repr(new)[:120], "explainedBy": explained})
+        if not explained:
             unexplained.append(key)
     return {"changes": changes, "unexplained": unexplained, "keys": len(after)}
+
+
+# Sections of a store dump (upgrade-store.swift dump) that must be equal; collisionMemory is collision-memory.json
+# (PLT-R914), read by the same store.
+STORE_SECTIONS = ("appModes", "ruleOverrides", "macros", "collisionMemory", "safeMode", "readOnlyFiles", "notices")
 
 
 def content_equal(before: dict, after: dict, new_fields: dict) -> list:
@@ -397,7 +460,7 @@ def content_equal(before: dict, after: dict, new_fields: dict) -> list:
                 problems.append(f"user.{key}: new in the candidate with {new!r}, expected {new_fields[key]!r}")
         elif old != new:
             problems.append(f"user.{key}: {old!r} -> {new!r}")
-    for section in ("appModes", "ruleOverrides", "macros", "safeMode", "readOnlyFiles", "notices"):
+    for section in STORE_SECTIONS:
         if before.get(section) != after.get(section):
             problems.append(f"{section} differs")
     return problems
@@ -412,7 +475,7 @@ def seeded_survived(seeded: dict, after: dict) -> list:
     for app in seeded.get("appModes", {}).get("apps", []):
         if after_apps.get(app["bundle"]) != app:
             problems.append(f"appModes {app['bundle']}")
-    for section in ("ruleOverrides", "macros"):
+    for section in ("ruleOverrides", "macros", "collisionMemory"):
         if seeded.get(section) != after.get(section):
             problems.append(section)
     return problems

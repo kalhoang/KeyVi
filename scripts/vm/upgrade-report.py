@@ -32,8 +32,8 @@ sys.dont_write_bytecode = True  # the sibling modules below are loaded from scri
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # python3 -I leaves the script's folder out of sys.path
 
 from upgrade_evidence import (  # noqa: E402
-    CANDIDATE_ONLY_FIELDS, PROMPT_REASONS, compare_defaults, compare_settings, content_equal, diagnostics_events,
-    egress_phase, endpoint_text, is_loopback, key_values, load_json, load_plist, runtime_changes, seeded_survived,
+    CANDIDATE_ONLY_FIELDS, compare_defaults, compare_settings, content_equal, diagnostics_events, egress_phase,
+    endpoint_text, is_loopback, key_values, load_json, load_plist, runtime_changes, seeded_survived, tcc_prompted,
     tcc_requests,
 )
 from upgrade_feed import ArtefactError, check_artefacts, write_feed  # noqa: E402
@@ -43,6 +43,17 @@ TYPING_LIMIT_SECONDS = 5.0  # QA-R40
 MIN_MACROS = 50  # QA-R40
 MIN_SETTINGS = 10  # QA-R40: at least 10 settings besides the update switches
 UPDATE_SETTINGS = {"automaticallyCheckForUpdates", "automaticallyInstallUpdates", "updateChannel"}
+EGRESS_MINUTES_REQUIRED = 10  # spec/02-platform.md 13.7: 10 minutes per phase
+PERMISSION_WINDOW_SECONDS = 20  # the candidate's first launch: its permission checks run within the first seconds
+
+
+def is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def fold(text: str) -> str:
+    """Text compared as the driver compares titles: without case, with the typographic apostrophe folded."""
+    return text.replace("\u2019", "'").replace("\u2026", "...").strip().lower()
 
 
 # --- Checks --------------------------------------------------------------------------------------------------------
@@ -117,13 +128,15 @@ def check_seeded(run: Run) -> dict:
     rules = [a for a in apps if a.get("rule")]
     remembered = [a for a in apps if a.get("mode") and not a.get("rule")]
     macros = seeded.get("macros", [])
+    collision = seeded.get("collisionMemory", [])
     ok = len(settings) >= MIN_SETTINGS and len(macros) >= MIN_MACROS and rules and remembered \
-        and seeded.get("ruleOverrides")
+        and seeded.get("ruleOverrides") and collision
     evidence = (f"through the SettingsStore of {run.prev['version']}: {len(settings)} settings besides the update "
                 f"switches ({', '.join(settings)}), update switches {sorted(set(explicit) & UPDATE_SETTINGS)}, "
                 f"{len(rules)} per-app rules, {len(remembered)} remembered per-app modes, "
-                f"{len(seeded.get('ruleOverrides', []))} compatibility overrides, {len(macros)} macros, word lists "
-                f"and {len(seeded.get('user', {}).get('learnedWords', []))} per-app learned words")
+                f"{len(seeded.get('ruleOverrides', []))} compatibility overrides, {len(macros)} macros, word lists, "
+                f"{len(seeded.get('user', {}).get('learnedWords', []))} per-app learned words and {len(collision)} "
+                f"learned collision choices (collision-memory.json)")
     return check("seeded", "QA-R40 step 2: at least 10 settings, per-app rules and memory, 50 macros", bool(ok),
                  evidence, ["upgrade-out/seed.json", "upgrade-out/dumps/seeded.previous.json",
                             "upgrade-out/snapshots/seeded/"])
@@ -222,9 +235,11 @@ def check_content(run: Run) -> dict:
     lost = seeded_survived(seeded, after) + seeded_survived(
         {"appModes": at_exit.get("appModes", {})}, {"appModes": after.get("appModes", {})})
     ok = not problems and not lost and not session
-    evidence = (f"read by the {run.prev['version']} store at exit and the {run.cand['version']} store after loading: "
+    evidence = (f"read by the {run.prev['version']} store at exit and the {run.cand['version']} store (built from "
+                f"the candidate's commit {str(run.cand.get('commit', ''))[:12]}) after loading: "
                 f"{len(loaded.get('user', {}))} user fields, {len(loaded.get('appModes', {}).get('apps', []))} per-app "
-                f"entries, {len(loaded.get('ruleOverrides', []))} overrides, {len(loaded.get('macros', []))} macros; "
+                f"entries, {len(loaded.get('ruleOverrides', []))} overrides, {len(loaded.get('macros', []))} macros, "
+                f"{len(loaded.get('collisionMemory', []))} learned collision choices; "
                 f"differences: {problems or 'none'}; changes later in the new session (per-app order aside): "
                 f"{session or 'none'}; seeded or exit values missing 15 s after the update: {lost or 'none'}")
     return check("settings-content", "QA-R40 step 4: settings, rules, per-app memory and macros identical", ok,
@@ -232,17 +247,49 @@ def check_content(run: Run) -> dict:
 
 
 def check_defaults(run: Run) -> dict:
-    before = load_plist(run.out / "snapshots" / "defaults-at-exit.plist")
+    # The baseline is the export taken while the previous version ran, before the update check: the export at its
+    # exit runs after the copy of the settings folder, once the candidate may have started (relaunch.json defaultsAt
+    # against newStartedAt), so it is evidence only.
+    before = load_plist(run.out / "snapshots" / "defaults-before.plist")
     after = load_plist(run.out / "snapshots" / "defaults-after.plist")
     if not before or not after:
-        return check("defaults-domain", "PLT-R1108", None, "defaults exports missing", [])
-    result = compare_defaults(before, after, run.cand["version"], str(run.cand["build"]))
-    explained = [f"{c['key']} ({c['explainedBy']})" for c in result["changes"] if c["explainedBy"]]
-    evidence = (f"{result['keys']} keys; changed by design: {', '.join(explained) or 'none'}; other changes: "
-                f"{', '.join(result['unexplained']) or 'none'}")
+        return check("defaults-domain", "PLT-R1108", None, "defaults exports missing (before or after the update)", [])
+    result = compare_defaults(before, after)
+    relaunch = run.json("relaunch.json", {}) or {}
+    exported, started = relaunch.get("defaultsAt"), relaunch.get("newStartedAt")
+    exit_note = (f"; the export at the old version's exit ran {exported - started:+.3f} s from the candidate's start "
+                 f"(not the baseline)" if is_number(exported) and is_number(started) else "")
+    explained = [f"{c['key']} {c['before']} -> {c['after']} ({c['explainedBy']})" for c in result["changes"]
+                 if c["explainedBy"]]
+    unexplained = [f"{c['key']} {c['before']} -> {c['after']}" for c in result["changes"] if not c["explainedBy"]]
+    evidence = (f"export while {run.prev['version']} ran (before the update check) against the export 15 s after the "
+                f"relaunch: {result['keys']} keys; written by design: {'; '.join(explained) or 'none'}; NOT explained: "
+                f"{'; '.join(unexplained) or 'none'}{exit_note}")
     return check("defaults-domain", "PLT-R1108: the app's defaults domain survives the update",
-                 not result["unexplained"], evidence, ["upgrade-out/snapshots/defaults-at-exit.plist",
-                                                       "upgrade-out/snapshots/defaults-after.plist"])
+                 not result["unexplained"], evidence, ["upgrade-out/snapshots/defaults-before.plist",
+                                                       "upgrade-out/snapshots/defaults-after.plist",
+                                                       "upgrade-out/snapshots/defaults-at-exit.plist"])
+
+
+def permission_evidence(run: Run, started: float) -> dict:
+    """What the candidate's first launch showed or asked: TCC requests and prompts, prompt processes, its windows.
+    `missing` names the evidence that could not be read: without it "no prompt" cannot be shown."""
+    window = (int(started) - 1, started + PERMISSION_WINDOW_SECONDS)
+    requests = [r for r in tcc_requests(run.text("logs/tccd.log"), run.brand["APP_BUNDLE_ID_RELEASE"])
+                if is_number(r.get("time")) and window[0] <= r["time"] <= window[1]]
+    listing = run.text("evidence/prompt-processes.txt")
+    windows = run.json("evidence/app-windows-after.json")
+    missing = []
+    if not re.search(r"^#exit=[01]$", listing, re.M):  # pgrep: 0 found, 1 none; anything else is an error
+        missing.append("the prompt process list (evidence/prompt-processes.txt)")
+    if not isinstance(windows, list):
+        missing.append("the app's windows after the relaunch (evidence/app-windows-after.json)")
+    if not requests:
+        missing.append(f"a TCC request of the candidate in its first {PERMISSION_WINDOW_SECONDS} s (logs/tccd.log "
+                       f"with the UTC marker; the app checks its permissions at launch)")
+    return {"requests": requests, "prompts": [r for r in requests if tcc_prompted(r)],
+            "processes": [line for line in listing.splitlines() if "universalAccessAuthWarn" in line],
+            "windows": windows if isinstance(windows, list) else [], "missing": missing}
 
 
 def check_permissions(run: Run) -> dict:
@@ -253,30 +300,30 @@ def check_permissions(run: Run) -> dict:
     relaunch = run.json("relaunch.json", {}) or {}
     started = relaunch.get("newStartedAt") or 0
     # The first launch of the candidate only: later relaunches (channel switch, egress) are not the update.
-    events = [e for e in run.events() if int(started) - 1 <= e["epoch"] <= started + 20]
+    events = [e for e in run.events() if int(started) - 1 <= e["epoch"] <= started + PERMISSION_WINDOW_SECONDS]
     states = [e.get("fields", {}).get("to", "") for e in events if e.get("code") == "host.state"]
     transitions = [e for e in events if e.get("code") == "health.permissionTransition"]
-    prompts = [line for line in run.text("evidence/prompt-processes.txt").splitlines()
-               if "universalAccessAuthWarn" in line]
-    requests = [r for r in tcc_requests(run.text("logs/tccd.log"), run.brand["APP_BUNDLE_ID_RELEASE"])
-                if int(started) - 1 <= r.get("time", 0) <= started + 20]
-    tcc_prompts = [r for r in requests if r.get("authReason") in PROMPT_REASONS]
-    asked = sorted({f"{r['service'].replace('kTCCService', '')}={r.get('authValue', '?')}/{r.get('authReason', '?')}"
-                    for r in requests})
-    windows = run.json("evidence/app-windows-after.json", []) or []
-    ok = bool(granted) and granted == after and rows and all(r[3] == "2" for r in rows if len(r) > 3) \
-        and any(s.startswith("ready") for s in states) and "noPermission" not in states and not transitions \
-        and not prompts and not tcc_prompts and not windows
+    seen = permission_evidence(run, started)
+    asked = sorted({f"{r['service'].replace('kTCCService', '')}={r.get('authValue', '-')}/{r.get('authReason', '-')}"
+                    f"{'' if r.get('answered') else ' (no answer)'}" for r in seen["requests"]})
+    intact = bool(granted) and granted == after and bool(rows) and all(r[3] == "2" for r in rows if len(r) > 3)
+    quiet = any(s.startswith("ready") for s in states) and "noPermission" not in states and not transitions \
+        and not seen["prompts"] and not seen["processes"] and not seen["windows"]
+    passed = False if not (intact and quiet) else (None if seen["missing"] else True)
     evidence = (f"TCC rows for the bundle before and after identical: {granted == after} "
                 f"({len(rows)} rows, auth_value {sorted({r[3] for r in rows if len(r) > 3})}); host states after "
                 f"the relaunch {states}; permission transitions {len(transitions)}; prompt processes "
-                f"{prompts or 'none'}; TCC requests of the candidate in its first 20 s (service=authValue/authReason) {asked}, "
-                f"answered by a consent prompt {len(tcc_prompts)}; app windows after the relaunch "
-                f"{len(windows)} (the self-check shows the permission screen when a grant is lost, QA-R42)")
+                f"{seen['processes'] or 'none'}; TCC requests of the candidate in its first "
+                f"{PERMISSION_WINDOW_SECONDS} s (service=authValue/authReason) {asked}, prompted (consent answer, "
+                f"timeout or no answer) "
+                f"{len(seen['prompts'])}; app windows after the relaunch {len(seen['windows'])} (the self-check shows "
+                f"the permission screen when a grant is lost, QA-R42)"
+                f"{'; evidence missing: ' + '; '.join(seen['missing']) if seen['missing'] else ''}")
     return check("permissions", "QA-R40 step 4: permissions still granted, no new prompt (PRD-R52)",
-                 ok if after else None, evidence,
+                 passed if after else None, evidence,
                  ["upgrade-out/snapshots/tcc-before.txt", "upgrade-out/snapshots/tcc-after.txt",
-                  "upgrade-out/logs/tccd.log", "upgrade-out/evidence/after-relaunch.png"])
+                  "upgrade-out/logs/tccd.log", "upgrade-out/evidence/prompt-processes.txt",
+                  "upgrade-out/evidence/app-windows-after.json", "upgrade-out/evidence/after-relaunch.png"])
 
 
 def check_tap(run: Run) -> dict:
@@ -290,23 +337,39 @@ def check_tap(run: Run) -> dict:
                  ok if relaunch else None, evidence, ["upgrade-out/relaunch.json"])
 
 
+def typed_after_tap(attempt: dict, tap_at) -> bool:
+    """Every key of the attempt was posted once the candidate's tap was enabled: a key posted earlier passes through
+    unchanged, and d, u and y of the word read the same with or without the app."""
+    keys_at = attempt.get("keysStartedAt")
+    return is_number(tap_at) and is_number(keys_at) and keys_at > 0 and keys_at >= tap_at
+
+
 def check_typing(run: Run) -> dict:
     relaunch = run.json("relaunch.json", {}) or {}
-    latency = relaunch.get("typingLatencySeconds")
-    attempts = relaunch.get("attempts", [])
-    ok = isinstance(latency, (int, float)) and latency <= TYPING_LIMIT_SECONDS
-    base = relaunch.get("newStartedAt", 0)
+    base = relaunch.get("newStartedAt") or 0
+    tap_at = relaunch.get("tapEnabledAt")
+    attempts = relaunch.get("attempts") or []
+    counted = next((a for a in attempts if a.get("matched") and typed_after_tap(a, tap_at)), None)
+    latency = counted["keysStartedAt"] - base if counted else None
+    verified = counted["endedAt"] - base if counted and is_number(counted.get("endedAt")) else None
+    ok = latency is not None and latency <= TYPING_LIMIT_SECONDS
     tried = "; ".join(
-        (f"keys typed {a['keysStartedAt'] - base:.2f} to {a['keysEndedAt'] - base:.2f} s, " if a.get("keysStartedAt")
-         else "") + f"read {a['value']!r} at {a['endedAt'] - base:.2f} s" for a in attempts)
-    verified = relaunch.get("typingVerifiedLatencySeconds")
-    evidence = (f"TestHost field (keys of testhost.native.telex, expected 'duyệt'): {tried or 'nothing'}; typing worked "
-                f"from {latency if latency is None else round(latency, 3)} s after the new process started (the first "
-                f"key of the first attempt that read back right; limit {TYPING_LIMIT_SECONDS} s"
-                f"{'; read back at %.3f s' % verified if isinstance(verified, (int, float)) else ''}), no click or "
-                f"prompt in between")
+        (f"keys typed {a['keysStartedAt'] - base:.2f} to {a['keysEndedAt'] - base:.2f} s"
+         f"{'' if typed_after_tap(a, tap_at) else ' (before the tap: not counted)'}, " if a.get("keysStartedAt")
+         else "") + f"read {a.get('value')!r} at {a.get('endedAt', base) - base:.2f} s" for a in attempts)
+    tap_text = f"{tap_at - base:.3f} s" if is_number(tap_at) else "never"
+    evidence = (f"TestHost field (keys of testhost.native.telex, expected 'duyệt'): {tried or 'nothing'}; the "
+                f"candidate's tap was enabled at {tap_text}; typing worked from "
+                f"{'never' if latency is None else '%.3f s' % latency} after the new process started (the first key of "
+                f"the first attempt typed wholly after the tap that read back right; limit {TYPING_LIMIT_SECONDS} s"
+                f"{'; read back at %.3f s' % verified if verified is not None else ''}), no click or prompt in between")
     return check("typing-within-5s", "QA-R40 step 4: typing works in the test host within 5 s, no user action",
                  ok if relaunch else None, evidence, ["upgrade-out/relaunch.json"])
+
+
+def in_step(event: dict, start: str, end: str) -> bool:
+    """The event was logged during a step that ran from `start` to `end` (epoch seconds; the log has whole seconds)."""
+    return start.isdigit() and end.isdigit() and int(start) - 1 <= event["epoch"] <= int(end) + 1
 
 
 def check_channel(run: Run, probe: dict) -> dict:
@@ -314,23 +377,48 @@ def check_channel(run: Run, probe: dict) -> dict:
     if not rows:
         return check("channel-switch", "release.md 5.3: beta to stable and back", None, "not run", [])
     install = {"Install Update"} | {t for t in run.text("titles-install.txt").splitlines() if t}
+    up_to_date = [fold(t) for t in run.text("titles-uptodate.txt").splitlines() if t.strip()]
+    found_events = [e for e in run.events() if e.get("code") == "update.updateFound"]
     outcome, ok = [], len(rows) == 3
-    for index, channel, found in [(r + ["", ""])[:3] for r in rows]:
+    for index, channel, found, start, end in [(r + [""] * 5)[:5] for r in rows]:
         window = run.json(f"evidence/channel-{index}-{channel}-window.json", {}) or {}
         texts = " ".join(window.get("texts", []))
         offered = found in install
-        expected = channel == "beta"
-        good = offered == expected and (not offered or probe["version"] in texts)
+        logged = [e for e in found_events if in_step(e, start, end)]
+        probe_logged = [e for e in logged if e.get("fields", {}).get("build") == str(probe["build"])]
+        if channel == "beta":
+            good = offered and probe["version"] in texts and bool(probe_logged)
+            seen = f"probe {probe['version']} offered" if offered else f"'{found}' (no offer)"
+        else:
+            told = [t for t in up_to_date if t in fold(texts)]
+            good = not offered and not logged and bool(told)
+            seen = f"up to date ({told[0]!r})" if told else f"'{found}' with {texts[:120]!r}"
+        outcome.append(f"{channel}: {seen}, update.updateFound in this step {len(logged)} "
+                       f"(probe build {len(probe_logged)}){'' if good else ' (WRONG)'}")
         ok = ok and good
-        outcome.append(f"{channel}: {'probe ' + probe['version'] + ' offered' if offered else 'up to date'}"
-                       f"{'' if good else ' (WRONG)'}")
-    found_events = [e for e in run.events() if e.get("code") == "update.updateFound"
-                    and e.get("fields", {}).get("build") == str(probe["build"])]
     evidence = (f"feed with the candidate, the previous stable and a beta-only probe build {probe['build']}; "
-                f"{'; '.join(outcome)}; update.updateFound for the probe logged {len(found_events)} time(s); "
-                f"no downgrade offered on stable")
+                f"{'; '.join(outcome)}; on stable Sparkle must say it is up to date (its own localized text, "
+                f"titles-uptodate.txt), which also shows that nothing older was offered")
     return check("channel-switch", "release.md 5.3: beta to stable and back (PLT-R1101, PRD-R53)", ok, evidence,
                  ["upgrade-out/channel.tsv", "upgrade-out/evidence/"])
+
+
+def egress_gaps(run: Run, phase: str, report: dict, minutes: int, duration: int) -> list:
+    """What the phase did not cover, each a reason it cannot pass (13.7 asks for 10 minutes with a forced check, and
+    the capture must have seen every packet)."""
+    gaps = []
+    if minutes < EGRESS_MINUTES_REQUIRED:
+        gaps.append(f"shortened to {minutes} min with --egress-minutes (13.7: {EGRESS_MINUTES_REQUIRED} min)")
+    if duration < minutes * 60 - 5:
+        gaps.append(f"ran {duration} s of {minutes * 60}")
+    if not (run.json(f"evidence/egress-{phase}-menu.json", {}) or {}).get("pressed"):
+        gaps.append("no forced check from the menu")
+    dropped = report["tcpdumpDropped"]
+    if dropped is None:
+        gaps.append("tcpdump printed no capture statistics")
+    elif dropped:
+        gaps.append(f"tcpdump: {dropped} packets dropped by the kernel (a connection attempt may be missing)")
+    return gaps
 
 
 def check_egress(run: Run, phase: str, minutes: int) -> tuple:
@@ -338,30 +426,43 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
     report = egress_phase(run.out, phase, run.brand["APP_DISPLAY_NAME"], hosts)
     report["allowedHosts"] = report["allowedHosts"] if phase == "local" else hosts
     menu = run.json(f"evidence/egress-{phase}-menu.json", {}) or {}
-    duration = 0
-    if report["started"].isdigit() and report["ended"].isdigit():
-        duration = int(report["ended"]) - int(report["started"])
-    allowed_seen = [c for c in report["connections"] if c["allowed"] and c["process"] == run.brand["APP_DISPLAY_NAME"]
-                    and not (phase == "production" and is_loopback(c["remote"]))]
+    found = (run.json(f"evidence/egress-{phase}-find.json", {}) or {}).get("found")
+    started, ended = report["started"], report["ended"]
+    duration = int(ended) - int(started) if started.isdigit() and ended.isdigit() else 0
+    gaps = egress_gaps(run, phase, report, minutes, duration)
     if phase == "local":
-        allowed_seen = [c for c in report["connections"] if c["port"] == 443]
-    ran = bool(report["started"])
-    ok = ran and not report["disallowed"] and not report["disallowedLookups"] and bool(menu.get("pressed")) \
-        and bool(allowed_seen) and duration >= minutes * 60 - 5
+        appcasts = [r for r in run.requests() if r.get("path", "").startswith("/appcast.xml") and duration
+                    and int(started) <= r.get("at", 0) <= int(ended)]
+        reached = f"{len(appcasts)} appcast request(s) of the app reached the local feed during the phase"
+        if not appcasts:
+            gaps.append("no appcast request reached the local feed during the phase")
+    else:
+        seen = [c for c in report["connections"] if c["allowed"] and c["process"] == run.brand["APP_DISPLAY_NAME"]
+                and not is_loopback(c["remote"])]
+        reached = f"{len(seen)} connection(s) of the app to the site host"
+        if not seen:
+            gaps.append("no connection of the app to the site host")
+    bad_lookups = report["disallowedLookups"]
+    violated = bool(report["disallowed"] or bad_lookups)
     endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}/{c['transport']}"
                           f"{' (' + c['name'] + ')' if c['name'] else ''}{'' if c['allowed'] else ' NOT ALLOWED'}"
                           for c in report["connections"])
-    evidence = (f"{duration} s with a forced check ({menu.get('pressed')}); {report['tcpdumpLines']} tcpdump lines, "
-                f"{report['lsofSamples']} lsof samples, {report['nettopLines']} nettop lines; allowed: "
-                f"{', '.join(report['allowedHosts'])} {report['allowedAddresses'] if phase == 'production' else ''}; "
-                f"endpoints: {endpoints or 'none'}; DNS lookups by the app: {report['lookups'] or 'none'}"
-                f"{'; NOT ALLOWED lookups: ' + ', '.join(report['disallowedLookups']) if report['disallowedLookups'] else ''}")
+    evidence = (f"{duration} s; forced check {menu.get('pressed')!r}, Sparkle's window: "
+                f"{repr(found) if found else 'none found within 120 s'}; {reached}; {report['tcpdumpLines']} tcpdump "
+                f"lines ({report['tcpdumpDropped']} packets dropped by the kernel), {report['lsofSamples']} lsof "
+                f"samples, {report['nettopLines']} nettop lines; allowed: {', '.join(report['allowedHosts'])} "
+                f"{report['allowedAddresses'] if phase == 'production' else ''}; endpoints: {endpoints or 'none'}; DNS "
+                f"lookups by the app: {report['lookups'] or 'none'}"
+                f"{'; NOT ALLOWED lookups: ' + ', '.join(bad_lookups) if bad_lookups else ''}"
+                f"{'; not covered: ' + '; '.join(gaps) if gaps else ''}")
     name = "egress-local" if phase == "local" else "egress-production"
     requirement = ("spec/02-platform.md 13.7 phase 1: local appcast, forced check, only allowed hosts" if phase == "local"
                    else "spec/02-platform.md 13.7 phase 2: production feed, only the site host (PLT-R906)")
-    return check(name, requirement, ok if ran else None, evidence,
-                 [f"upgrade-out/egress/{phase}-tcpdump.txt", f"upgrade-out/egress/{phase}-nettop.csv",
-                  f"upgrade-out/egress/{phase}-lsof.txt", f"upgrade-out/egress/{phase}-dns.txt"]), report
+    passed = None if not started else (False if violated else (None if gaps else True))
+    return check(name, requirement, passed, evidence,
+                 [f"upgrade-out/egress/{phase}-tcpdump.txt", f"upgrade-out/egress/{phase}-tcpdump.err",
+                  f"upgrade-out/egress/{phase}-nettop.csv", f"upgrade-out/egress/{phase}-lsof.txt",
+                  f"upgrade-out/egress/{phase}-dns.txt"]), report
 
 
 def check_update_egress(run: Run) -> tuple:
@@ -375,7 +476,7 @@ def check_update_egress(run: Run) -> tuple:
     item = check("egress-update", "spec/02-platform.md 13.7 (advisory): what the update itself contacts", ok
                  if report["started"] else None,
                  f"endpoints during the update: {endpoints or 'none'}; DNS lookups by the app and its helpers: "
-                 f"{report['lookups'] or 'none'}",
+                 f"{report['lookups'] or 'none'}; tcpdump: {report['tcpdumpDropped']} packets dropped by the kernel",
                  ["upgrade-out/egress/update-tcpdump.txt", "upgrade-out/egress/update-nettop.csv",
                   "upgrade-out/egress/update-lsof.txt"])
     item["advisory"] = True

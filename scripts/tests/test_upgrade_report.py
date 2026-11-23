@@ -372,17 +372,26 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(settings["unexplained"], ["settings.json changed in the new session without a user action"])
 
     def test_the_defaults_domain_allows_only_the_keys_that_change_by_design(self):
-        # As seen in run 20261122T214034Z-upgrade: the launch guard and the self-check store integer fingerprints.
+        # As seen in run 20261123T042942Z-upgrade between the export while 1.0.1 ran and the one after the update:
+        # the launch guard and the self-check store integer fingerprints, the old version's quit cleared the crash
+        # streak, its update check stamped SULastCheckTime and AppKit saved the frame of Sparkle's update window.
         before = {"diagnostics.redactionSalt": b"salt", "launchGuard.appVersion": 3450518130,
-                  "launch.lastVersionFingerprint": 2513584745694642, "launchGuard.inProgressSince": 0.0,
+                  "launch.lastVersionFingerprint": 2513584745694642, "launchGuard.inProgressSince": 1795408644.69,
                   "SUEnableAutomaticChecks": False, "PermissionLastGrantedIdentity": 4208059965609703}
         after = dict(before, **{"launchGuard.appVersion": 3923503363, "launch.lastVersionFingerprint": 1763444526767235,
-                                "launchGuard.inProgressSince": 1795393351.9})
-        self.assertEqual(report.compare_defaults(before, after, "1.1.0", "1010099")["unexplained"], [])
+                                "launchGuard.inProgressSince": 1795408679.89, "launchGuard.recentCrashes": 0,
+                                "launchGuard.firstCrashAt": 0.0, "SULastCheckTime": report.dt.datetime(2026, 11, 23),
+                                "NSWindow Frame SUUpdateAlert2": "246 266 561 402 0 0 1024 738 "})
+        self.assertEqual(report.compare_defaults(before, after)["unexplained"], [])
         lost = dict(after, **{"diagnostics.redactionSalt": b"other", "PermissionLastGrantedIdentity": 1})
         lost.pop("SUEnableAutomaticChecks")
-        self.assertEqual(report.compare_defaults(before, lost, "1.1.0", "1010099")["unexplained"],
+        self.assertEqual(report.compare_defaults(before, lost)["unexplained"],
                          ["PermissionLastGrantedIdentity", "SUEnableAutomaticChecks", "diagnostics.redactionSalt"])
+        # A rule covers only the values its code writes, and never a removed key.
+        crashed = dict(after, **{"launchGuard.recentCrashes": 2})
+        self.assertEqual(report.compare_defaults(before, crashed)["unexplained"], ["launchGuard.recentCrashes"])
+        gone = {k: v for k, v in after.items() if k != "launchGuard.appVersion"}
+        self.assertEqual(report.compare_defaults(before, gone)["unexplained"], ["launchGuard.appVersion"])
 
     def test_store_dumps_compare_every_field_and_new_fields_must_read_as_not_set(self):
         before = {"user": {"tonePlacement": "set(modern)"}, "appModes": {"apps": []}, "macros": [1]}
@@ -398,6 +407,25 @@ class ComparisonTests(unittest.TestCase):
                           ruleOverrides=[])
         self.assertEqual(report.seeded_survived(seeded, after_apps), [])
         self.assertEqual(report.seeded_survived(seeded, dict(after_apps, appModes={"apps": []})), ["appModes a"])
+        # The learned collision choices (collision-memory.json, PLT-R914) are compared like the macros.
+        learned = dict(before, collisionMemory=['{"word":"bar"}'])
+        self.assertEqual(report.content_equal(learned, dict(after, collisionMemory=[]), report.CANDIDATE_ONLY_FIELDS),
+                         ["collisionMemory differs"])
+        self.assertEqual(report.seeded_survived(dict(seeded, collisionMemory=['{"word":"bar"}']), after_apps),
+                         ["collisionMemory"])
+
+
+START = 1_800_000_000.0
+TCCD_RUN = """#timezone=UTC
+{t0} Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=40.1, function=<private>, service=kTCCServiceAccessibility, preflight=yes, query=1, client_dict=(null)
+{t0} Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_SUBJECT: msgID=40.1, subject={bundle},
+{t0} Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_RESULT: msgID=40.1, authValue=2, authReason=4, authVersion=1, desired_auth=0, error=(null),
+#exit=0
+"""
+
+
+def utc_stamp(epoch: float, fmt: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
+    return report.dt.datetime.fromtimestamp(epoch, report.dt.timezone.utc).strftime(fmt)
 
 
 def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_probe: bool = True) -> dict:
@@ -406,71 +434,91 @@ def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_pr
     for sub in ("snapshots/at-exit", "snapshots/loaded", "snapshots/after", "snapshots/seeded", "evidence", "egress",
                 "logs", "dumps"):
         (out / sub).mkdir(parents=True, exist_ok=True)
-    start = 1_800_000_000.0
-    files = {"settings.json": json.dumps(settings_doc("1.0.1")), "macros.json": "{}"}
+    start = START
+    files = {"settings.json": json.dumps(settings_doc("1.0.1")), "macros.json": "{}",
+             "collision-memory.json": json.dumps({"schemaVersion": 1, "entries": [{"word": "bar"}]})}
     for snap in ("at-exit", "loaded", "after", "seeded"):
         for name, text in files.items():
             (out / "snapshots" / snap / name).write_text(text)
-    defaults = {"diagnostics.redactionSalt": b"s", "launchGuard.inProgressSince": start - 60}
-    with (out / "snapshots" / "defaults-at-exit.plist").open("wb") as handle:
-        plistlib.dump(defaults, handle)
-    with (out / "snapshots" / "defaults-after.plist").open("wb") as handle:
-        plistlib.dump(dict(defaults, **{"launchGuard.inProgressSince": start}), handle)
+    defaults = {"diagnostics.redactionSalt": b"s", "launchGuard.inProgressSince": start - 60,
+                "SUEnableAutomaticChecks": False}
+    for name, values in (("before", defaults), ("at-exit", dict(defaults, **{"launchGuard.inProgressSince": 0.0})),
+                         ("after", dict(defaults, **{"launchGuard.inProgressSince": start}))):
+        with (out / "snapshots" / f"defaults-{name}.plist").open("wb") as handle:
+            plistlib.dump(values, handle)
     tcc = f"kTCCServiceAccessibility|{BUNDLE}|0|2|4|FADE\nkTCCServiceListenEvent|{BUNDLE}|0|2|4|FADE\n"
     (out / "snapshots" / "tcc-granted.txt").write_text(tcc)
     (out / "snapshots" / "tcc-after.txt").write_text(tcc)
+    (out / "logs" / "tccd.log").write_text(
+        TCCD_RUN.replace("{t0}", utc_stamp(start + 0.5, "%Y-%m-%d %H:%M:%S.500")).replace("{bundle}", BUNDLE))
     designated = 'identifier "x" and anchor apple generic'
     (out / "evidence" / "app-before.txt").write_text(
         f"version=1.0.1\nbuild=1000199\ndesignated={designated}\nspctl=/Applications/x.app: accepted source=Notarized\n")
     (out / "evidence" / "app-after.txt").write_text(f"version=1.1.0-beta.1\nbuild=1010001\ndesignated={designated}\n")
     (out / "evidence" / "typing-before.json").write_text(json.dumps({"matched": True}))
     (out / "evidence" / "app-windows-after.json").write_text("[]")
-    (out / "evidence" / "prompt-processes.txt").write_text("")
+    (out / "evidence" / "prompt-processes.txt").write_text("#exit=1\n")
     (out / "evidence" / "update-offer-find.json").write_text(json.dumps(
         {"found": "Install Update", "window": {"texts": ["A new version 1.1.0-beta.1 is available"]}}))
     (out / "evidence" / "update-offer-menu.json").write_text(json.dumps({"pressed": "Check for updates..."}))
     (out / "evidence" / "update-ready-find.json").write_text(json.dumps({"found": "Install and Relaunch"}))
     (out / "evidence" / "update-install-press.json").write_text(json.dumps({"pressed": "Install and Relaunch"}))
-    (out / "feed-requests.jsonl").write_text(
-        json.dumps({"path": "/appcast.xml", "status": 200}) + "\n"
-        + json.dumps({"path": f"/download/{SLUG}-1.1.0-beta.1.zip", "status": 200, "size": 9, "userAgent": "u"}) + "\n")
+    requests = [{"path": "/appcast.xml", "status": 200, "at": start - 30},
+                {"path": f"/download/{SLUG}-1.1.0-beta.1.zip", "status": 200, "size": 9, "userAgent": "u",
+                 "at": start - 20},
+                {"kind": "dns", "name": HOST, "type": "HTTPS", "answers": 0, "at": start + 100},
+                {"path": "/appcast.xml", "status": 200, "at": start + 130}]
+    (out / "feed-requests.jsonl").write_text("".join(json.dumps(r) + "\n" for r in requests))
+    keys_at = start + typing  # the first key of the one typing attempt; it counts only after the tap (start + tap)
     (out / "relaunch.json").write_text(json.dumps({
         "oldExitedAt": start - 2, "snapshotAt": start - 1.99, "newProcessBeforeSnapshot": False, "newPid": 900,
-        "newStartedAt": start, "tapLatencySeconds": tap, "taps": [],
-        "typingLatencySeconds": typing, "attempts": [{"value": "duyệt", "endedAt": start + typing}]}))
-    events = [{"at": "2027-01-15T08:00:00Z", "code": "lifecycle.launched",
-               "fields": {"version": "1.1.0-beta.1", "build": "1010001"}},
-              {"at": "2027-01-15T08:00:00Z", "code": "host.state", "fields": {"to": "readyVietnamese"}}]
-    stamp = report.dt.datetime.fromtimestamp(start, report.dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        "newStartedAt": start, "tapEnabledAt": start + tap, "tapLatencySeconds": tap, "taps": [],
+        "defaultsAt": start + 0.4,
+        "attempts": [{"value": "duyệt", "matched": True, "startedAt": keys_at - 0.1, "keysStartedAt": keys_at,
+                      "keysEndedAt": keys_at + 0.7, "endedAt": keys_at + 1.0}]}))
+    events = [{"at": start, "code": "lifecycle.launched", "fields": {"version": "1.1.0-beta.1", "build": "1010001"}},
+              {"at": start, "code": "host.state", "fields": {"to": "readyVietnamese"}}]
+    probe = {"build": 1010002, "version": "1.1.0-beta.1-channelprobe"}
+    rows = []
+    for index, channel in ((1, "beta"), (2, "stable"), (3, "beta")):
+        offered = channel == "beta" and offered_probe
+        step_start = int(start) + 50 + index * 20
+        rows.append(f"{index}\t{channel}\t{'Install Update' if offered else 'OK'}\t{step_start}\t{step_start + 8}")
+        texts = [f"{probe['version']} is now available"] if offered else [
+            "You’re up to date!", f"{NAME} 1.0.1 is currently the newest version available."]
+        (out / "evidence" / f"channel-{index}-{channel}-window.json").write_text(json.dumps({"texts": texts}))
+        if offered:
+            events.append({"at": step_start + 4, "code": "update.updateFound", "fields": {"build": str(probe["build"])}})
+    events.append({"at": start + 700, "code": "update.updateFound", "fields": {"build": str(probe["build"])}})
     (out / "logs" / "app-diagnostics.jsonl").write_text(
-        "".join(json.dumps(dict(e, at=stamp)) + "\n" for e in events))
+        "".join(json.dumps(dict(e, at=utc_stamp(e["at"]))) + "\n" for e in events))
+    (out / "channel.tsv").write_text("\n".join(rows) + "\n")
+    (out / "titles-install.txt").write_text("Install Update\n")
+    (out / "titles-uptodate.txt").write_text("You’re up to date!\nBạn đang dùng phiên bản mới nhất!\n")
+    collision = ['{"context":"afterEnglish","word":"bar"}']
     dump = {"user": {"tonePlacement": "set(modern)"}, "explicitSettings": [f"s{i}" for i in range(12)],
             "appModes": {"globalMode": "vi", "apps": [{"bundle": "a", "rule": "ignore", "mode": None},
                                                      {"bundle": "b", "rule": None, "mode": "en"}]},
-            "ruleOverrides": [{"rule": "{}"}], "macros": [{"id": str(i)} for i in range(50)], "safeMode": False,
-            "readOnlyFiles": [], "notices": []}
+            "ruleOverrides": [{"rule": "{}"}], "macros": [{"id": str(i)} for i in range(50)],
+            "collisionMemory": collision, "safeMode": False, "readOnlyFiles": [], "notices": []}
     (out / "dumps" / "seeded.previous.json").write_text(json.dumps(dump))
     (out / "dumps" / "at-exit.previous.json").write_text(json.dumps(dump))
     after = dict(dump, user=dict(dump["user"], typoCorrection="unset", neverCorrect=[]))
     (out / "dumps" / "after.candidate.json").write_text(json.dumps(after))
     (out / "dumps" / "loaded.candidate.json").write_text(json.dumps(after))
-    probe = {"build": 1010002, "version": "1.1.0-beta.1-channelprobe"}
-    rows = []
-    for index, channel in ((1, "beta"), (2, "stable"), (3, "beta")):
-        offered = channel == "beta" and offered_probe
-        rows.append(f"{index}\t{channel}\t{'Install Update' if offered else 'OK'}")
-        texts = [f"{probe['version']} is now available"] if offered else ["You're up to date!"]
-        (out / "evidence" / f"channel-{index}-{channel}-window.json").write_text(json.dumps({"texts": texts}))
-    (out / "channel.tsv").write_text("\n".join(rows) + "\n")
-    (out / "titles-install.txt").write_text("Install Update\n")
-    for phase, nettop in (("update", NETTOP.splitlines()[:3]), ("local", NETTOP.splitlines()[:3]),
-                          ("production", [NETTOP.splitlines()[0], NETTOP.splitlines()[1], NETTOP.splitlines()[3]])):
+    phases = {"update": (int(start) - 40, NETTOP.splitlines()[:3]), "local": (int(start) + 120, NETTOP.splitlines()[:3]),
+              "production": (int(start) + 800, [NETTOP.splitlines()[0], NETTOP.splitlines()[1],
+                                                NETTOP.splitlines()[3]])}
+    for phase, (phase_start, nettop) in phases.items():
         (out / "egress" / f"{phase}-nettop.csv").write_text("\n".join(nettop) + "\n")
         (out / "egress" / f"{phase}-lsof.txt").write_text("#t 1\n" * 600)
         (out / "egress" / f"{phase}-dns.txt").write_text(DNS)
-        (out / "egress" / f"{phase}-started").write_text("1800000000\n")
-        (out / "egress" / f"{phase}-ended").write_text("1800000600\n")
+        (out / "egress" / f"{phase}-tcpdump.err").write_text(
+            "92 packets captured\n830 packets received by filter\n0 packets dropped by kernel\n")
+        (out / "egress" / f"{phase}-started").write_text(f"{phase_start}\n")
+        (out / "egress" / f"{phase}-ended").write_text(f"{phase_start + 600}\n")
         (out / "evidence" / f"egress-{phase}-menu.json").write_text(json.dumps({"pressed": "Check for updates..."}))
+        (out / "evidence" / f"egress-{phase}-find.json").write_text(json.dumps({"found": "OK"}))
     artefacts = {"previous": {"version": "1.0.1", "build": 1000199, "commit": "a", "dmg": {"sha256": "0" * 64}},
                  "candidate": {"version": "1.1.0-beta.1", "build": 1010001, "commit": "b",
                                "zip": {"path": f"/x/{SLUG}-1.1.0-beta.1.zip", "sha256": "1" * 64, "length": 9},
@@ -478,17 +526,27 @@ def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_pr
     return {"artefacts": artefacts, "feed": {"probe": probe}}
 
 
+def edit_json(path: Path, change) -> None:
+    """Rewrites a JSON evidence file of a synthetic run with `change(data)` (which returns the new data)."""
+    path.write_text(json.dumps(change(json.loads(path.read_text(encoding="utf-8")))), encoding="utf-8")
+
+
 class VerdictTests(unittest.TestCase):
-    def evaluate(self, **kwargs) -> dict:
+    def evaluate(self, change=None, minutes: int = 10, **kwargs) -> dict:
+        """The verdict of a synthetic passing run, after `change(upgrade-out folder)` when given."""
         with tempfile.TemporaryDirectory() as tmp:
             data = write_run(Path(tmp), **kwargs)
+            if change:
+                change(Path(tmp) / "upgrade-out")
             run = report.Run(Path(tmp), data["artefacts"], report.brand_values(REPO / "scripts" / "brand.env"))
-            stops = kwargs.get("stops", [])
-            return report.evaluate(run, data["feed"], {"channel": True, "egress": True, "minutes": 10,
-                                                       "watchdogStops": stops})
+            return report.evaluate(run, data["feed"], {"channel": True, "egress": True, "minutes": minutes,
+                                                       "watchdogStops": []})
 
     def results(self, result: dict) -> dict:
         return {c["id"]: c["result"] for c in result["checks"]}
+
+    def evidence(self, result: dict, identifier: str) -> str:
+        return next(c["evidence"] for c in result["checks"] if c["id"] == identifier)
 
     def test_a_complete_run_passes_every_check(self):
         result = self.evaluate()
@@ -501,8 +559,120 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(self.results(result)["typing-within-5s"], "fail")
         self.assertEqual(result["verdict"], "FAIL")
 
+    def test_a_word_typed_before_the_tap_was_enabled_does_not_count(self):
+        # d, u and y read the same without the app: keys posted before its tap prove nothing (QA-R40).
+        result = self.evaluate(tap=1.0, typing=0.6)
+        self.assertEqual(self.results(result)["typing-within-5s"], "fail")
+        self.assertIn("before the tap: not counted", self.evidence(result, "typing-within-5s"))
+
+        def second_attempt(out: Path) -> None:
+            edit_json(out / "relaunch.json", lambda r: dict(r, attempts=r["attempts"] + [
+                {"value": "duyệt", "matched": True, "keysStartedAt": START + 3.2, "keysEndedAt": START + 3.9,
+                 "endedAt": START + 4.2}]))
+        later = self.evaluate(second_attempt, tap=1.0, typing=0.6)
+        self.assertEqual(self.results(later)["typing-within-5s"], "pass")
+        self.assertIn("typing worked from 3.200 s", self.evidence(later, "typing-within-5s"))
+
+    def test_the_defaults_baseline_is_the_export_taken_while_the_previous_version_ran(self):
+        # A key the candidate drops in its first second is already gone from the export at the old version's exit
+        # (taken after the candidate started); the export before the update check still has it.
+        def dropped_early(out: Path) -> None:
+            for name in ("at-exit", "after"):
+                path = out / "snapshots" / f"defaults-{name}.plist"
+                values = report.load_plist(path)
+                values.pop("SUEnableAutomaticChecks")
+                with path.open("wb") as handle:
+                    plistlib.dump(values, handle)
+        result = self.evaluate(dropped_early)
+        self.assertEqual(self.results(result)["defaults-domain"], "fail")
+        self.assertIn("SUEnableAutomaticChecks False -> <absent>", self.evidence(result, "defaults-domain"))
+
+    def test_missing_permission_evidence_is_not_a_pass(self):
+        for name in ("evidence/app-windows-after.json", "evidence/prompt-processes.txt", "logs/tccd.log"):
+            with self.subTest(missing=name):
+                result = self.evaluate(lambda out, name=name: (out / name).unlink())
+                self.assertEqual(self.results(result)["permissions"], "not-run")
+                self.assertEqual(result["verdict"], "INCOMPLETE")
+        failed_listing = self.evaluate(lambda out: (out / "evidence" / "prompt-processes.txt").write_text("#exit=3\n"))
+        self.assertEqual(self.results(failed_listing)["permissions"], "not-run")
+        # Compact timestamps without the UTC marker cannot be placed in time.
+        no_zone = self.evaluate(lambda out: (out / "logs" / "tccd.log").write_text(
+            "\n".join((out / "logs" / "tccd.log").read_text().splitlines()[1:]) + "\n"))
+        self.assertEqual(self.results(no_zone)["permissions"], "not-run")
+
+    def test_a_prompt_nobody_answered_or_a_window_fails_the_permissions_check(self):
+        pending = """{t} Df tccd[1:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=41.1, function=<private>, service=kTCCServicePostEvent, preflight=no, query=1, client_dict=(null)
+{t} Df tccd[1:1] [com.apple.TCC:access] AUTHREQ_SUBJECT: msgID=41.1, subject={bundle},
+""".replace("{t}", utc_stamp(START + 1, "%Y-%m-%d %H:%M:%S.100")).replace("{bundle}", BUNDLE)
+
+        def add_pending(out: Path) -> None:
+            log = out / "logs" / "tccd.log"
+            log.write_text(log.read_text() + pending)
+        self.assertEqual(self.results(self.evaluate(add_pending))["permissions"], "fail")
+        window = self.evaluate(lambda out: (out / "evidence" / "app-windows-after.json").write_text(
+            json.dumps([{"title": "Permissions", "texts": [], "buttons": []}])))
+        self.assertEqual(self.results(window)["permissions"], "fail")
+
+    def test_the_candidate_store_must_read_the_learned_collision_choices(self):
+        def lost(out: Path) -> None:
+            for name in ("loaded", "after"):
+                edit_json(out / "dumps" / f"{name}.candidate.json", lambda d: dict(d, collisionMemory=[]))
+        result = self.evaluate(lost)
+        self.assertEqual(self.results(result)["settings-content"], "fail")
+        self.assertIn("collisionMemory differs", self.evidence(result, "settings-content"))
+        unseeded = self.evaluate(lambda out: edit_json(out / "dumps" / "seeded.previous.json",
+                                                       lambda d: dict(d, collisionMemory=[])))
+        self.assertEqual(self.results(unseeded)["seeded"], "fail")
+
     def test_a_beta_channel_that_offers_nothing_fails_the_channel_switch(self):
         self.assertEqual(self.results(self.evaluate(offered_probe=False))["channel-switch"], "fail")
+
+    def test_stable_must_say_up_to_date_and_find_nothing(self):
+        def error_alert(out: Path) -> None:
+            (out / "evidence" / "channel-2-stable-window.json").write_text(json.dumps(
+                {"texts": ["Update Error!", "An error occurred in retrieving update information."]}))
+        result = self.evaluate(error_alert)
+        self.assertEqual(self.results(result)["channel-switch"], "fail")
+
+        def found_on_stable(out: Path) -> None:
+            stable = (out / "channel.tsv").read_text().splitlines()[1].split("\t")
+            log = out / "logs" / "app-diagnostics.jsonl"
+            log.write_text(log.read_text() + json.dumps({"at": utc_stamp(int(stable[3]) + 2),
+                                                         "code": "update.updateFound",
+                                                         "fields": {"build": "1010001"}}) + "\n")
+        self.assertEqual(self.results(self.evaluate(found_on_stable))["channel-switch"], "fail")
+        # The probe build found later (the production phase: the real next beta has the same build) is not counted.
+        self.assertIn("update.updateFound in this step 1 (probe build 1)", self.evidence(self.evaluate(), "channel-switch"))
+
+    def test_a_shortened_or_incomplete_egress_phase_is_not_a_pass(self):
+        short = self.evaluate(minutes=1)
+        self.assertEqual(self.results(short)["egress-local"], "not-run")
+        self.assertEqual(self.results(short)["egress-production"], "not-run")
+        self.assertEqual(short["verdict"], "INCOMPLETE")
+        self.assertIn("shortened to 1 min", self.evidence(short, "egress-local"))
+        drops = self.evaluate(lambda out: (out / "egress" / "local-tcpdump.err").write_text(
+            "3017 packets captured\n14655 packets dropped by kernel\n"))
+        self.assertEqual(self.results(drops)["egress-local"], "not-run")
+        self.assertIn("14655 packets dropped by the kernel", self.evidence(drops, "egress-local"))
+        no_stats = self.evaluate(lambda out: (out / "egress" / "production-tcpdump.err").write_text(""))
+        self.assertEqual(self.results(no_stats)["egress-production"], "not-run")
+
+        def no_feed_request(out: Path) -> None:
+            lines = (out / "feed-requests.jsonl").read_text().splitlines()
+            (out / "feed-requests.jsonl").write_text("\n".join(lines[:3]) + "\n")
+        silent = self.evaluate(no_feed_request)
+        self.assertEqual(self.results(silent)["egress-local"], "not-run")
+        self.assertIn("no appcast request reached the local feed", self.evidence(silent, "egress-local"))
+        nothing_found = self.evaluate(lambda out: (out / "evidence" / "egress-local-find.json").write_text("{}"))
+        self.assertIn("Sparkle's window: none found", self.evidence(nothing_found, "egress-local"))
+
+    def test_a_disallowed_endpoint_fails_even_an_incomplete_phase(self):
+        def leak(out: Path) -> None:
+            (out / "egress" / "local-tcpdump.txt").write_text(TCPDUMP)  # the app reaches 93.184.216.34 over UDP
+            (out / "egress" / "local-tcpdump.err").write_text("12 packets dropped by kernel\n")
+        result = self.evaluate(leak, minutes=5)
+        self.assertEqual(self.results(result)["egress-local"], "fail")
+        self.assertEqual(result["verdict"], "FAIL")
 
     def test_the_update_egress_is_advisory_and_a_late_exit_snapshot_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -586,7 +756,8 @@ class TcpdumpTests(unittest.TestCase):
         self.assertEqual(result["disallowedLookups"], ["tracker.example"])
 
 
-TCCD = """2026-11-23 01:57:50.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=7.1, function=<private>, service=kTCCServiceAccessibility, preflight=yes, query=1, client_dict=(null)
+TCCD = """#timezone=UTC
+2026-11-23 01:57:50.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=7.1, function=<private>, service=kTCCServiceAccessibility, preflight=yes, query=1, client_dict=(null)
 2026-11-23 01:57:50.301 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_ATTRIBUTION: msgID=7.1, attribution={requesting={TCCDProcess: identifier={bundle}, pid=2227, auid=501, euid=501, binary_path=/x}, },
 2026-11-23 01:57:50.302 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_RESULT: msgID=7.1, authValue=2, authReason=4, authVersion=1, desired_auth=0, error=(null),
 2026-11-23 01:57:51.300 Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_CTX: msgID=8.1, function=<private>, service=kTCCServiceListenEvent, preflight=no, query=1, client_dict=(null)
@@ -602,8 +773,21 @@ class TccLogTests(unittest.TestCase):
         requests = sorted(report.tcc_requests(TCCD, BUNDLE), key=lambda r: r["msgID"])
         self.assertEqual([(r["service"], r["authValue"], r["authReason"]) for r in requests],
                          [("kTCCServiceAccessibility", "2", "4"), ("kTCCServiceListenEvent", "2", "2")])
-        self.assertEqual([r["msgID"] for r in requests if r["authReason"] in report.PROMPT_REASONS], ["8.1"])
+        self.assertEqual([r["msgID"] for r in requests if report.tcc_prompted(r)], ["8.1"])
         self.assertAlmostEqual(requests[0]["time"], 1795399070.3, places=1)
+
+    def test_times_need_the_utc_marker_and_an_unanswered_request_is_a_prompt(self):
+        unzoned = report.tcc_requests(TCCD.split("\n", 1)[1], BUNDLE)
+        self.assertEqual({r["time"] for r in unzoned}, {None})
+        self.assertTrue(report.tcc_prompted({"preflight": False, "answered": False}))
+        self.assertFalse(report.tcc_prompted({"preflight": True, "answered": False}))
+        self.assertFalse(report.tcc_prompted({"preflight": False, "answered": True, "authReason": "4"}))
+        self.assertTrue(report.tcc_prompted({"preflight": True, "answered": True, "authReason": "9"}))
+
+    def test_tcpdump_drops_come_from_its_closing_statistics(self):
+        self.assertEqual(report.tcpdump_dropped("3017 packets captured\n2552004 packets received by filter\n"
+                                                "14655 packets dropped by kernel\n"), 14655)
+        self.assertEqual(report.tcpdump_dropped("listening on pktap,all\n"), None)
 
 
 class FeedServerTests(unittest.TestCase):
