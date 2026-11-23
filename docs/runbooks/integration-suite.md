@@ -150,7 +150,10 @@ The release candidate's egress test runs in the tart VM lab with the upgrade tes
 `egress-production`). The release build has no hooks, so that script forces the update check from the status menu
 and samples the app and Sparkle's helpers with `tcpdump` on the PKTAP interface (every connection attempt and DNS
 lookup with the process that made it; a phase in which the kernel dropped packets does not pass), with `nettop` and
-`lsof` beside it. The steps below are for a physical runner with the hooks build.
+`lsof` beside it. It samples the install of the update too: there the app and the helpers may reach only the local
+feed and the certificate revocation check that macOS makes in `Autoupdate` with Apple's OCSP service on TCP port 443
+(PLT-R906 and 13.7, amended 2026-11-23 by [ADR 0011](../decisions/0011-pa-decisions-2026-11-23.md) item 1); in the
+two 10-minute phases only the allowed host passes. The steps below are for a physical runner with the hooks build.
 
 1. Phase `local`: serve a local appcast on the loopback server, point the test build's feed at it (VERIFY the
    mechanism with Sparkle 2: `defaults write <APP_BUNDLE_ID_DEV> SUFeedURL http://127.0.0.1:8000/appcast.xml`, or a
