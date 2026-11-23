@@ -253,22 +253,39 @@ wait_for_idle || early_result 4 SKIPPED "the host was not idle within $wait_minu
 
 WATCHDOG_PID=""
 WATCHDOG_LINES=0
+# Runs watchdog.sh as run-lab.sh does (watchdog.stop removed, the script in the background, watchdog.stop touched at
+# the end) and starts it again if it ends while this run's VM still runs: every lab script shares the stop file, and
+# on 2026-11-23 another one touched it two seconds after this run's watchdog started, which left the VM unguarded.
+watchdog_keeper() {
+  local pid
+  while [[ ! -e "$run_dir/.watchdog-done" ]]; do
+    rm -f "$watchdog_dir/watchdog.stop"
+    "$watchdog_dir/watchdog.sh" >>"$watchdog_dir/watchdog.log" 2>&1 &
+    pid=$!
+    wait "$pid" 2>/dev/null || true
+    [[ -e "$run_dir/.watchdog-done" ]] && break
+    printf '%s watchdog.sh ended while the VM ran; started again\n' "$(date '+%F %T')" >>"$run_dir/watchdog-restarts.txt"
+    sleep 1
+  done
+}
 start_watchdog() {
   if [[ -z "$watchdog_dir" || ! -x "$watchdog_dir/watchdog.sh" ]]; then
     lab_log "warning: no watchdog (--watchdog DIR with watchdog.sh); the VM runs without one"
     return 0
   fi
-  rm -f "$watchdog_dir/watchdog.stop"
+  rm -f "$run_dir/.watchdog-done"
   WATCHDOG_LINES="$(wc -l <"$watchdog_dir/watchdog.log" 2>/dev/null | tr -d ' ' || echo 0)"
-  "$watchdog_dir/watchdog.sh" >>"$watchdog_dir/watchdog.log" 2>&1 &
+  watchdog_keeper &
   WATCHDOG_PID=$!
-  lab_log "watchdog $watchdog_dir/watchdog.sh running (pid $WATCHDOG_PID)"
+  printf '%s\n' "$watchdog_dir/watchdog.sh" >"$run_dir/watchdog-used.txt"
+  lab_log "watchdog $watchdog_dir/watchdog.sh running beside the VM"
 }
 # shellcheck disable=SC2329 # called from upgrade_cleanup, the EXIT trap
 stop_watchdog() {
   [[ -n "$WATCHDOG_PID" ]] || return 0
-  touch "$watchdog_dir/watchdog.stop"
+  touch "$run_dir/.watchdog-done" "$watchdog_dir/watchdog.stop"
   wait "$WATCHDOG_PID" 2>/dev/null || true
+  rm -f "$run_dir/.watchdog-done"
   WATCHDOG_PID=""
 }
 watchdog_stops() { # the watchdog's stop lines of this run

@@ -405,8 +405,12 @@ re-signed. So everything happens inside the VM, which is thrown away afterwards:
 - `scripts/vm/guest/local-feed-server.py` serves the run's feed folder over HTTPS on `127.0.0.1` and `::1`, port
   443, and logs every request (`feed-requests.jsonl`: path, status, size, user agent);
 - the VM's `/etc/hosts` maps the site host to both loopback addresses, so the build fetches its own, unchanged URLs
-  (appcast, update archive, release-notes page) from that server. The mapping is removed for the production phase of
-  the egress test.
+  (appcast, update archive, release-notes page) from that server;
+- `/etc/resolver/<site host>` sends every other DNS query for the site host to the same server, which answers none
+  of them. `/etc/hosts` covers only A and AAAA records: in run `20261122T214034Z-upgrade` the site's real HTTPS
+  record (HTTP/3 with an address hint) made the build fetch the update archive from the production host over QUIC,
+  past the local feed (the published archive has the same bytes, so the update still installed);
+- both are removed for the production phase of the egress test.
 
 The feed (`in/feed/` of the run folder, written by `upgrade-report.py feed`) holds the candidate's item, with the
 candidate's channel (`beta` for `X.Y.Z-beta.N`, none for a stable release), the previous stable's item (older, so
@@ -429,7 +433,8 @@ On the host: the artefact checks above, the run folder `VM_LAB_RUNS/<UTC timesta
 the resource rule of section 3 as a gate: it waits, checking every 2 minutes for up to `--wait-idle` minutes
 (default 240), until the load average is under 5, the memory pressure level under 4 (critical), at least 45 % of the
 memory free, no other VM runs and no `xcodebuild` runs. It starts `watchdog.sh` from `--watchdog DIR` (default
-`VM_LAB_ROOT/kv-ops`) beside the VM and records its stops. Then, in the throwaway clone `<vm>-upgrade` (4096 MB,
+`VM_LAB_ROOT/kv-ops`) beside the VM as `run-lab.sh` does, records its stops, and starts it again when it ends while
+the VM runs (every lab script shares `watchdog.stop`; the restarts go to `watchdog-restarts.txt`). Then, in the throwaway clone `<vm>-upgrade` (4096 MB,
 4 CPUs by default; deleted at the end), the guest half:
 
 1. builds `upgrade-driver.swift` (accessibility, synthetic keys, event-tap list, relaunch watch), TestHost from this
@@ -448,7 +453,8 @@ memory free, no other VM runs and no `xcodebuild` runs. It starts `watchdog.sh` 
 6. forces an update check from the status menu, presses Sparkle's Install Update and Install and Relaunch, copies
    the settings folder and the defaults domain the moment the old process exits (before the new version can load
    or write them), then records the new process's start time, when its event tap is enabled (`CGGetEventTapList`,
-   every 10 ms) and when typing into TestHost first gives `duyệt`, without any click in between. It copies the
+   every 10 ms) and when typing into TestHost first gives `duyệt`, without any click in between (the field is found
+   and focused before the relaunch, so an attempt costs the keys and one read, about a second). It copies the
    settings folder again 0.5 seconds after that tap is enabled (at the latest 4 seconds after the start): the
    store has loaded the folder by then, so a migration has written, while a change of the new session's own per-app
    memory cannot have landed yet (written 5 seconds after the change, PLT-R392);
@@ -483,7 +489,7 @@ part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
 | `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process or prompt in the `tccd` log, and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
 | `typing-within-5s` | TestHost reads `duyệt` at most 5 seconds after the process started |
-| `egress-update` | During the update the app and Sparkle's helpers reached only loopback (the local feed) and looked up no other name |
+| `egress-update` (advisory, outside the verdict) | Records what the download, the signature checks and the install reached; passes when that was only loopback (the local feed) and no other name was looked up |
 | `channel-switch` | Beta offers the probe build, stable offers nothing, beta offers it again |
 | `egress-local` | 10 minutes, a forced check, a connection to the local feed, no remote address but loopback and no DNS lookup of another name |
 | `egress-production` | 10 minutes, a forced check, a connection to the site host, no remote address outside loopback and the addresses the VM resolved for the site host during the phase, and no DNS lookup of another name |

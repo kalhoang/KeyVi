@@ -110,9 +110,10 @@ finish() {
   # Evidence the host needs even after a failure; the VM is thrown away afterwards.
   sampler_stop 2>/dev/null
   cp "$app_logs/diagnostics.jsonl" "$out/logs/app-diagnostics.jsonl" 2>/dev/null
-  log show --start "$log_start" --style compact --predicate 'subsystem BEGINSWITH "org.sparkle-project"' \
+  # /usr/bin/log: scripts/lib/common.sh defines a shell function named log.
+  /usr/bin/log show --start "$log_start" --style compact --predicate 'subsystem BEGINSWITH "org.sparkle-project"' \
     >"$out/logs/sparkle.log" 2>&1
-  log show --start "$log_start" --style compact --predicate 'process == "tccd"' >"$out/logs/tccd.log" 2>&1
+  /usr/bin/log show --start "$log_start" --style compact --predicate 'process == "tccd"' >"$out/logs/tccd.log" 2>&1
   screencapture -x "$out/evidence/screen-final.png" 2>/dev/null
   restore_hosts
   feed_stop
@@ -230,15 +231,19 @@ feed_stop() {
   sudo -n kill "$(cat /tmp/upgrade-feed.pid)" 2>/dev/null
   sudo -n rm -f /tmp/upgrade-feed.pid
 }
+# /etc/hosts answers A and AAAA only; /etc/resolver/<site host> sends every other query for the host (the HTTPS
+# record with its h3 and address hints above all) to the feed server's DNS, which answers none of them.
 map_hosts() {
   sudo -n cp /etc/hosts "$hosts_backup" || return 1
   printf '127.0.0.1 %s\n::1 %s\n' "$APP_SITE_HOST" "$APP_SITE_HOST" | sudo -n tee -a /etc/hosts >/dev/null || return 1
   hosts_mapped=1
+  sudo -n mkdir -p /etc/resolver || return 1
+  printf 'nameserver 127.0.0.1\n' | sudo -n tee "/etc/resolver/$APP_SITE_HOST" >/dev/null || return 1
   flush_dns
 }
 restore_hosts() {
   [ "$hosts_mapped" = 1 ] || return 0
-  sudo -n cp "$hosts_backup" /etc/hosts && hosts_mapped=0
+  sudo -n cp "$hosts_backup" /etc/hosts && sudo -n rm -f "/etc/resolver/$APP_SITE_HOST" && hosts_mapped=0
   flush_dns
 }
 flush_dns() {
@@ -329,7 +334,7 @@ use_appcast appcast-upgrade.xml || stop "no appcast-upgrade.xml in the feed"
 : >"$out/feed-requests.jsonl"
 # shellcheck disable=SC2024 # the server log belongs to this user on purpose
 sudo -n /usr/bin/python3 -I scripts/vm/guest/local-feed-server.py --root "$feed" --cert "$tls/leaf.pem" \
-  --key "$tls/leaf.key" --log "$out/feed-requests.jsonl" --pid-file /tmp/upgrade-feed.pid \
+  --key "$tls/leaf.key" --log "$out/feed-requests.jsonl" --dns-host "$APP_SITE_HOST" --pid-file /tmp/upgrade-feed.pid \
   >"$out/logs/feed-server.log" 2>&1 &
 map_hosts || stop "could not map $APP_SITE_HOST in /etc/hosts"
 ok=0
@@ -339,7 +344,12 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
 done
 [ "$ok" = 1 ] || stop "the local feed does not answer on https://$APP_SITE_HOST/appcast.xml (logs/feed-server.log)"
-dscacheutil -q host -a name "$APP_SITE_HOST" >"$out/evidence/hosts-mapped.txt" 2>&1
+{
+  dscacheutil -q host -a name "$APP_SITE_HOST"
+  scutil --dns | grep -A3 "domain   : $APP_SITE_HOST"
+} >"$out/evidence/hosts-mapped.txt" 2>&1
+grep -q "domain   : $APP_SITE_HOST" "$out/evidence/hosts-mapped.txt" ||
+  stop "the resolver for $APP_SITE_HOST is not in use (evidence/hosts-mapped.txt)"
 note "feed: https://$APP_SITE_HOST/appcast.xml served from this VM ($(grep -c '<item>' "$feed/appcast.xml") items)"
 step_ok
 

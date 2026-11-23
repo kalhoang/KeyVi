@@ -282,7 +282,7 @@ func activate(_ bundle: String) {
     open.arguments = ["-b", bundle]
     try? open.run()
     open.waitUntilExit()
-    let deadline = now() + 3
+    let deadline = now() + 1  // the system-wide focus can read empty for a moment; do not wait on it longer
     while now() < deadline, (frontmost()["bundle"] as? String) != bundle { pause(0.05) }
 }
 
@@ -333,6 +333,51 @@ func typeOnce(bundle: String, field: String, keys: String, expect: String, reset
     pause(0.4)
     let value = string(input, kAXValueAttribute) ?? "<unreadable>"
     return TypingAttempt(startedAt: started, endedAt: now(), value: value, matched: value == expect)
+}
+
+/// The TestHost field of the relaunch measurement, looked up once. An attempt re-activates TestHost only when it is
+/// not the frontmost app, then presses Reset fields, focuses the field, types the keys and reads the field.
+final class TypingTarget {
+    let bundle: String
+    let field: String
+    let reset: String?
+    private var pid: pid_t = 0
+    private var input: AXUIElement?
+    private var resetButton: AXUIElement?
+
+    init(bundle: String, field: String, reset: String?) {
+        self.bundle = bundle
+        self.field = field
+        self.reset = reset
+    }
+
+    /// Finds and focuses the field; false when TestHost or the field is missing.
+    func prepare() -> Bool {
+        activate(bundle)
+        guard let found = runningApplication(bundle)?.processIdentifier else { return false }
+        pid = found
+        input = element(identifier: field, in: found)
+        resetButton = reset.flatMap { element(identifier: $0, in: found) }
+        guard let input else { return false }
+        AXUIElementSetAttributeValue(input, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        return true
+    }
+
+    func attempt(keys: String, expect: String) -> TypingAttempt {
+        let started = now()
+        if input == nil, !prepare() {
+            pause(0.2)
+            return TypingAttempt(startedAt: started, endedAt: now(), value: "<no field>", matched: false)
+        }
+        guard let input else { return TypingAttempt(startedAt: started, endedAt: now(), value: "", matched: false) }
+        if (frontmost()["pid"] as? Int) != Int(pid) { activate(bundle) }
+        if let resetButton { AXUIElementPerformAction(resetButton, kAXPressAction as CFString) }
+        AXUIElementSetAttributeValue(input, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        type(keys)
+        pause(0.3)
+        let value = string(input, kAXValueAttribute) ?? "<unreadable>"
+        return TypingAttempt(startedAt: started, endedAt: now(), value: value, matched: value == expect)
+    }
 }
 
 // MARK: - Commands
@@ -471,6 +516,12 @@ func relaunchCommand(_ arguments: Arguments) {
     let watch = arguments.number("watch", default: 30)
     var report: [String: Any] = ["oldPid": Int(oldPid), "executable": executable, "armedAt": now()]
 
+    // The TestHost field is found and focused before the update relaunches the app, so each timed attempt below
+    // costs only the keys and one read (a tree walk on a loaded guest took seconds on 2026-11-23).
+    let target = TypingTarget(
+        bundle: arguments.required("typing-bundle"), field: arguments.required("field"), reset: arguments.one("reset"))
+    report["typingPrepared"] = target.prepare()
+
     let exitDeadline = now() + timeout
     while isAlive(oldPid) {
         guard now() < exitDeadline else {
@@ -485,12 +536,13 @@ func relaunchCommand(_ arguments: Arguments) {
     if let source = arguments.one("snapshot-src"), let destination = arguments.one("snapshot-dst") {
         report["snapshotError"] = copySnapshot(from: source, to: destination) ?? NSNull()
         report["snapshotAt"] = now()
+        report["newProcessBeforeSnapshot"] = !processIdentifiers(executable: executable).filter { $0 != oldPid }
+            .isEmpty
     }
     if let domain = arguments.one("defaults-domain"), let file = arguments.one("defaults-dst") {
         report["defaultsExportStatus"] = Int(exportDefaults(domain: domain, to: file))
         report["defaultsAt"] = now()
     }
-    report["newProcessBeforeSnapshot"] = !processIdentifiers(executable: executable).filter { $0 != oldPid }.isEmpty
 
     var newPid: pid_t = 0
     let startDeadline = now() + timeout
@@ -542,13 +594,11 @@ func relaunchCommand(_ arguments: Arguments) {
     }
     loadedThread.start()
 
-    let bundle = arguments.required("typing-bundle")
-    let field = arguments.required("field")
     let keys = arguments.required("keys")
     let expect = arguments.required("expect")
     var attempts: [TypingAttempt] = []
     while now() < started + watch {
-        let attempt = typeOnce(bundle: bundle, field: field, keys: keys, expect: expect, reset: arguments.one("reset"))
+        let attempt = target.attempt(keys: keys, expect: expect)
         attempts.append(attempt)
         if attempt.matched { break }
     }

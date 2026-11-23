@@ -62,7 +62,8 @@ RUNTIME_RULE = ("use, not a migration: the app focused after the relaunch moves 
 # Keys of the app's defaults domain that change on every launch or update by design; every other key must be equal.
 DEFAULTS_RULES = {
     "launchGuard.inProgressSince": "start time of the current launch (LaunchGuard.beginLaunch, PLT-R1009)",
-    "launchGuard.appVersion": "version of the running build (LaunchGuard.adoptVersion, PLT-R1009)",
+    "launchGuard.appVersion": "fingerprint of the running build's version, new after an update (LaunchGuard.adoptVersion, "
+                              "PLT-R1009)",
     "launch.lastVersionFingerprint": "version of the running build for the post-update self-check "
                                      "(UpdateSelfCheck.noteLaunch, QA-R42)",
     "SULastCheckTime": "Sparkle's time of the last update check",
@@ -415,11 +416,13 @@ def tcpdump_events(text: str) -> list:
                 continue  # only the opening SYN of a connection
             event.update(kind="syn", transport="tcp", remote=dst[0], port=dst[1])
         elif dst[1] == 53:
-            names = re.findall(r"\b(?:A|AAAA|HTTPS|SVCB|CNAME)\? (\S+?)\.? ", rest + " ")
-            event.update(kind="dns-query", transport="udp", remote=dst[0], port=53, names=names)
+            names = re.findall(r"\b(?:A|AAAA|HTTPS|SVCB|CNAME|Type\d+)\? (\S+?)\.? ", rest + " ")
+            event.update(kind="dns-query", transport="udp", remote=dst[0], port=53, names=names,
+                         txid=rest.split("+", 1)[0].strip())
         elif src[1] == 53:
             event.update(kind="dns-answer", transport="udp", remote=src[0], port=53,
-                         addresses=re.findall(r"\b(?:A|AAAA) ([0-9a-fA-F:.]+[0-9a-fA-F])\b", rest))
+                         addresses=re.findall(r"\b(?:A|AAAA) ([0-9a-fA-F:.]+[0-9a-fA-F])\b", rest),
+                         txid=rest.split(" ", 1)[0].strip())
         else:
             event.update(kind="udp", transport="udp", remote=dst[0], port=dst[1])
         events.append(event)
@@ -448,6 +451,10 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> d
     if phase == "production":
         allowed = dns_addresses(read("dns.txt")) | {
             a for e in events if e["kind"] == "dns-answer" for a in e.get("addresses", [])}
+    # The name an address was looked up under (a query and its answer share the transaction ID), for the evidence.
+    asked = {e["txid"]: e["names"] for e in events if e["kind"] == "dns-query" and e.get("names")}
+    named = {a: asked.get(e.get("txid"), [""])[0] for e in events if e["kind"] == "dns-answer"
+             for a in e.get("addresses", [])}
     endpoints = {}
     for flow in flows:
         key = (flow["process"], flow["remote"], flow["port"], flow["transport"])
@@ -455,7 +462,7 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list) -> d
             ok = is_loopback(flow["remote"]) or flow["remote"] in allowed
             endpoints[key] = {"process": flow["process"], "remote": flow["remote"], "port": flow["port"],
                               "transport": flow["transport"], "allowed": ok, "firstSeen": flow["time"],
-                              "seenBy": flow["source"]}
+                              "seenBy": flow["source"], "name": named.get(flow["remote"], "")}
         elif flow["source"] not in endpoints[key]["seenBy"]:
             endpoints[key]["seenBy"] += "," + flow["source"]
     connections = sorted(endpoints.values(), key=lambda e: (e["process"], e["remote"], e["port"]))
@@ -575,8 +582,6 @@ def compare_defaults(before: dict, after: dict, cand_version: str, cand_build: s
         if old == new:
             continue
         reason = DEFAULTS_RULES.get(key, "")
-        if key == "launchGuard.appVersion" and cand_version not in str(new):
-            reason = ""
         changes.append({"key": key, "before": repr(old)[:120], "after": repr(new)[:120], "explainedBy": reason})
         if not reason:
             unexplained.append(key)
@@ -778,7 +783,11 @@ def check_files(run: Run) -> tuple:
     result = compare_settings(exit_snapshot, first, run.prev["version"], run.cand["version"])
     runtime = runtime_changes(loaded, after) if loaded.is_dir() else {"notes": [], "unexplained": []}
     relaunch = run.json("relaunch.json", {}) or {}
-    early = relaunch.get("newProcessBeforeSnapshot") is True
+    # The exit snapshot counts only when it was complete before the new process started.
+    if relaunch.get("snapshotAt") and relaunch.get("newStartedAt"):
+        early = relaunch["snapshotAt"] >= relaunch["newStartedAt"]
+    else:
+        early = relaunch.get("newProcessBeforeSnapshot") is True
     summary = ", ".join(f"{f['file']} {f['status']}" for f in result["files"])
     loaded_at = relaunch.get("loadedSnapshotAt")
     evidence = (f"exit snapshot ({relaunch.get('snapshotAt', 0) - relaunch.get('oldExitedAt', 0):.3f} s after "
@@ -928,7 +937,8 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
     ok = ran and not report["disallowed"] and not report["disallowedLookups"] and bool(menu.get("pressed")) \
         and bool(allowed_seen) and duration >= minutes * 60 - 5
     endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}/{c['transport']}"
-                          f"{'' if c['allowed'] else ' NOT ALLOWED'}" for c in report["connections"])
+                          f"{' (' + c['name'] + ')' if c['name'] else ''}{'' if c['allowed'] else ' NOT ALLOWED'}"
+                          for c in report["connections"])
     evidence = (f"{duration} s with a forced check ({menu.get('pressed')}); {report['tcpdumpLines']} tcpdump lines, "
                 f"{report['lsofSamples']} lsof samples, {report['nettopLines']} nettop lines; allowed: "
                 f"{', '.join(report['allowedHosts'])} {report['allowedAddresses'] if phase == 'production' else ''}; "
@@ -943,14 +953,21 @@ def check_egress(run: Run, phase: str, minutes: int) -> tuple:
 
 
 def check_update_egress(run: Run) -> tuple:
+    """Advisory, outside the verdict: 13.7 measures two 10-minute phases with nothing to install; this records what
+    the download, the signature checks and the install contacted."""
     report = egress_phase(run.out, "update", run.brand["APP_DISPLAY_NAME"], [run.brand["APP_SITE_HOST"]])
     ok = bool(report["started"]) and not report["disallowed"] and not report["disallowedLookups"]
-    endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}" for c in report["connections"])
-    return check("egress-update", "spec/02-platform.md 13.7: the update itself contacts only the local feed", ok
+    endpoints = ", ".join(f"{c['process']} {endpoint_text(c['remote'], c['port'])}/{c['transport']}"
+                          f"{' (' + c['name'] + ')' if c['name'] else ''}{'' if c['allowed'] else ' NOT LOOPBACK'}"
+                          for c in report["connections"])
+    item = check("egress-update", "spec/02-platform.md 13.7 (advisory): what the update itself contacts", ok
                  if report["started"] else None,
-                 f"endpoints during the update: {endpoints or 'none'}; DNS lookups: {report['lookups'] or 'none'}",
+                 f"endpoints during the update: {endpoints or 'none'}; DNS lookups by the app and its helpers: "
+                 f"{report['lookups'] or 'none'}",
                  ["upgrade-out/egress/update-tcpdump.txt", "upgrade-out/egress/update-nettop.csv",
-                  "upgrade-out/egress/update-lsof.txt"]), report
+                  "upgrade-out/egress/update-lsof.txt"])
+    item["advisory"] = True
+    return item, report
 
 
 def evaluate(run: Run, feed: dict, options: dict) -> dict:
@@ -971,24 +988,33 @@ def evaluate(run: Run, feed: dict, options: dict) -> dict:
         else:
             item = check(f"egress-{phase}", "spec/02-platform.md 13.7", None, "skipped (--no-egress)", [])
         checks.append(item)
-    failed = [c["id"] for c in checks if c["result"] == "fail"]
-    missing = [c["id"] for c in checks if c["result"] == "not-run"]
+    failed = [c["id"] for c in checks if c["result"] == "fail" and not c.get("advisory")]
+    missing = [c["id"] for c in checks if c["result"] == "not-run" and not c.get("advisory")]
+    advisories = [c["id"] for c in checks if c.get("advisory") and c["result"] == "fail"]
     if options.get("watchdogStops"):
         verdict = "ABORTED"
     elif failed:
         verdict = "FAIL"
     else:
         verdict = "INCOMPLETE" if missing else "PASS"
-    return {"verdict": verdict, "failed": failed, "notRun": missing, "checks": checks,
+    return {"verdict": verdict, "failed": failed, "notRun": missing, "advisories": advisories, "checks": checks,
             "settingsFiles": files_detail, "egress": egress}
 
 
 def summary_text(result: dict) -> str:
     lines = [f"RESULT: {result['verdict']}  ({result['previous']['version']} -> {result['candidate']['version']})", ""]
     for item in result["checks"]:
-        lines.append(f"[{item['result'].upper():7}] {item['id']}: {item['evidence']}")
-    for stop in result.get("watchdog", {}).get("stops", []):
+        tag = item["result"].upper() + ("*" if item.get("advisory") else "")
+        lines.append(f"[{tag:8}] {item['id']}: {item['evidence']}")
+    if any(item.get("advisory") for item in result["checks"]):
+        lines.append("(* advisory: reported, not part of the verdict)")
+    watchdog = result.get("watchdog", {})
+    if not watchdog.get("used", True):
+        lines.append("[WATCHDOG] none ran beside the VM")
+    for stop in watchdog.get("stops", []):
         lines.append(f"[WATCHDOG] {stop}")
+    for restart in watchdog.get("restarts", []):
+        lines.append(f"[WATCHDOG] {restart}")
     if result.get("guest", {}).get("stopped"):
         lines.append(f"[GUEST] {result['guest']['stopped']}")
     return "\n".join(lines) + "\n"
@@ -1051,7 +1077,9 @@ def command_analyse(args) -> int:
             "zip": run.cand["zip"], "signatureSource": run.cand.get("signatureSource")},
         "feed": {"method": "site host mapped to loopback in the VM's /etc/hosts; local HTTPS server with a VM-only CA",
                  "host": brand.get("APP_SITE_HOST"), **feed},
-        "watchdog": {"stops": stops},
+        "watchdog": {"stops": stops, "used": (run_dir / "watchdog-used.txt").is_file(),
+                     "restarts": [line for line in (run_dir / "watchdog-restarts.txt").read_text(encoding="utf-8")
+                                  .splitlines() if line] if (run_dir / "watchdog-restarts.txt").is_file() else []},
         "guest": {"steps": run.steps(), "stopped": " ".join(stopped[0][2:]) if stopped else ""},
     })
     if result["guest"]["stopped"] and result["verdict"] == "PASS":

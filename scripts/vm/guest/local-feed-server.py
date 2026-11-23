@@ -5,10 +5,15 @@ Serves the run's appcast, update archive and release-notes page from one folder 
 addresses, with a certificate issued by a throwaway CA that only the disposable VM trusts. The VM's /etc/hosts maps
 the production site host to these addresses, so the release build under test fetches its own, unchanged feed URL
 (SUFeedURL) from here. Every request is appended to a JSON lines log: time, client, method, path, status, size, Host
-header and user agent. Runs INSIDE the VM only (as root, for port 443); it refuses a real Mac.
+header and user agent. Runs INSIDE the VM only (as root, for ports 443 and 53); it refuses a real Mac.
+
+With --dns-host HOST it also answers DNS for HOST on the loopback addresses, port 53 (the guest points
+/etc/resolver/HOST at it): A is 127.0.0.1, AAAA is ::1 and every other type (the HTTPS record above all) has no
+answer. /etc/hosts covers only A and AAAA, and on 2026-11-23 the real HTTPS record (alpn h3, ipv4hint) made the
+release build download the archive from the production host over HTTP/3, past the local feed. Every query is logged.
 
 Usage: python3 -I local-feed-server.py --root DIR --cert PEM --key PEM --log FILE [--port N]
-       [--bind ADDRESS]... [--pid-file FILE]
+       [--bind ADDRESS]... [--dns-host HOST] [--pid-file FILE]
 """
 from __future__ import annotations
 
@@ -18,7 +23,9 @@ import json
 import os
 import signal
 import socket
+import socketserver
 import ssl
+import struct
 import subprocess
 import sys
 import threading
@@ -81,6 +88,60 @@ class FeedHandler(SimpleHTTPRequestHandler):
         sys.stderr.write("%s - %s\n" % (self.address_string(), format % args))
 
 
+DNS_TYPES = {1: "A", 28: "AAAA", 64: "SVCB", 65: "HTTPS"}
+
+
+def dns_reply(query: bytes, host: str) -> tuple:
+    """(reply, name, type, answers) for one DNS query: A/AAAA of HOST on loopback, nothing for any other type,
+    NXDOMAIN for any other name. (b"", "", 0, 0) for a packet that is not a query."""
+    if len(query) < 17 or query[2] & 0x80:
+        return b"", "", 0, 0
+    ident, flags = struct.unpack(">HH", query[:4])
+    index, labels = 12, []
+    while index < len(query) and query[index]:
+        length = query[index]
+        labels.append(query[index + 1:index + 1 + length].decode("ascii", "replace"))
+        index += 1 + length
+    index += 1
+    if index + 4 > len(query):
+        return b"", "", 0, 0
+    qtype, _qclass = struct.unpack(">HH", query[index:index + 4])
+    question = query[12:index + 4]
+    name = ".".join(labels).lower().rstrip(".")
+    answer, rcode = b"", 0
+    if name != host:
+        rcode = 3
+    elif qtype in (1, 28):
+        family, address = (socket.AF_INET, "127.0.0.1") if qtype == 1 else (socket.AF_INET6, "::1")
+        rdata = socket.inet_pton(family, address)
+        answer = struct.pack(">HHHIH", 0xC00C, qtype, 1, 30, len(rdata)) + rdata
+    reply_flags = 0x8000 | 0x0400 | (flags & 0x0100) | 0x0080 | rcode
+    header = struct.pack(">HHHHHH", ident, reply_flags, 1, 1 if answer else 0, 0, 0)
+    return header + question + answer, name, qtype, 1 if answer else 0
+
+
+def make_dns_server(address: str, host: str, log_path: str):
+    family = socket.AF_INET6 if ":" in address else socket.AF_INET
+
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self):
+            data, sock = self.request
+            reply, name, qtype, answers = dns_reply(data, host)
+            if not reply:
+                return
+            sock.sendto(reply, self.client_address)
+            record = {"at": time.time(), "kind": "dns", "client": self.client_address[0], "name": name,
+                      "type": DNS_TYPES.get(qtype, str(qtype)), "answers": answers}
+            with FeedHandler.log_lock, open(log_path, "a", encoding="utf-8") as log:
+                log.write(json.dumps(record, sort_keys=True) + "\n")
+
+    class Server(socketserver.ThreadingUDPServer):
+        address_family = family
+        daemon_threads = True
+
+    return Server((address, 53), Handler)
+
+
 def make_server(address: str, port: int, handler, context: ssl.SSLContext) -> ThreadingHTTPServer:
     family = socket.AF_INET6 if ":" in address else socket.AF_INET
 
@@ -104,6 +165,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--log", required=True)
     parser.add_argument("--port", type=int, default=443)
     parser.add_argument("--bind", action="append", default=[])
+    parser.add_argument("--dns-host")
     parser.add_argument("--pid-file")
     args = parser.parse_args(argv)
     binds = args.bind or ["127.0.0.1", "::1"]
@@ -113,6 +175,8 @@ def main(argv: list[str]) -> int:
     FeedHandler.log_path = args.log
     handler = functools.partial(FeedHandler, directory=args.root)
     servers = [make_server(address, args.port, handler, context) for address in binds]
+    if args.dns_host:
+        servers += [make_dns_server(address, args.dns_host.lower(), args.log) for address in binds]
     if args.pid_file:
         with open(args.pid_file, "w", encoding="utf-8") as pid_file:
             pid_file.write(str(os.getpid()))

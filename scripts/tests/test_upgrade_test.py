@@ -367,17 +367,17 @@ class ComparisonTests(unittest.TestCase):
         self.assertEqual(settings["unexplained"], ["settings.json changed in the new session without a user action"])
 
     def test_the_defaults_domain_allows_only_the_keys_that_change_by_design(self):
-        before = {"diagnostics.redactionSalt": b"salt", "launchGuard.appVersion": "1.0.1 (1000199)",
-                  "launchGuard.inProgressSince": 1.0, "SUEnableAutomaticChecks": False}
-        after = dict(before, **{"launchGuard.appVersion": "1.1.0 (1010099)", "launchGuard.inProgressSince": 2.0})
+        # As seen in run 20261122T214034Z-upgrade: the launch guard and the self-check store integer fingerprints.
+        before = {"diagnostics.redactionSalt": b"salt", "launchGuard.appVersion": 3450518130,
+                  "launch.lastVersionFingerprint": 2513584745694642, "launchGuard.inProgressSince": 0.0,
+                  "SUEnableAutomaticChecks": False, "PermissionLastGrantedIdentity": 4208059965609703}
+        after = dict(before, **{"launchGuard.appVersion": 3923503363, "launch.lastVersionFingerprint": 1763444526767235,
+                                "launchGuard.inProgressSince": 1795393351.9})
         self.assertEqual(report.compare_defaults(before, after, "1.1.0", "1010099")["unexplained"], [])
-        lost = dict(after, **{"diagnostics.redactionSalt": b"other"})
+        lost = dict(after, **{"diagnostics.redactionSalt": b"other", "PermissionLastGrantedIdentity": 1})
         lost.pop("SUEnableAutomaticChecks")
         self.assertEqual(report.compare_defaults(before, lost, "1.1.0", "1010099")["unexplained"],
-                         ["SUEnableAutomaticChecks", "diagnostics.redactionSalt"])
-        wrong = dict(after, **{"launchGuard.appVersion": "1.0.9 (1000999)"})
-        self.assertEqual(report.compare_defaults(before, wrong, "1.1.0", "1010099")["unexplained"],
-                         ["launchGuard.appVersion"])
+                         ["PermissionLastGrantedIdentity", "SUEnableAutomaticChecks", "diagnostics.redactionSalt"])
 
     def test_store_dumps_compare_every_field_and_new_fields_must_read_as_not_set(self):
         before = {"user": {"tonePlacement": "set(modern)"}, "appModes": {"apps": []}, "macros": [1]}
@@ -498,6 +498,23 @@ class VerdictTests(unittest.TestCase):
 
     def test_a_beta_channel_that_offers_nothing_fails_the_channel_switch(self):
         self.assertEqual(self.results(self.evaluate(offered_probe=False))["channel-switch"], "fail")
+
+    def test_the_update_egress_is_advisory_and_a_late_exit_snapshot_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = write_run(Path(tmp))
+            nettop = "\n".join([NETTOP.splitlines()[0], NETTOP.splitlines()[5], NETTOP.splitlines()[6]]) + "\n"
+            (Path(tmp) / "upgrade-out" / "egress" / "update-nettop.csv").write_text(nettop)  # Autoupdate to Apple
+            relaunch = json.loads((Path(tmp) / "upgrade-out" / "relaunch.json").read_text())
+            relaunch["snapshotAt"] = relaunch["newStartedAt"] + 0.1
+            (Path(tmp) / "upgrade-out" / "relaunch.json").write_text(json.dumps(relaunch))
+            run = report.Run(Path(tmp), data["artefacts"], report.brand_values(REPO / "scripts" / "brand.env"))
+            result = report.evaluate(run, data["feed"], {"channel": True, "egress": True, "minutes": 10,
+                                                         "watchdogStops": []})
+        results = self.results(result)
+        self.assertEqual(results["egress-update"], "fail")
+        self.assertEqual(result["advisories"], ["egress-update"])
+        self.assertEqual(results["settings-files"], "fail")
+        self.assertEqual(result["failed"], ["settings-files"])
 
     def test_the_command_writes_result_and_summary_and_exits_by_verdict(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -652,6 +669,18 @@ class UpgradeScriptTests(LabTestCase):
         self.assertIn("stop vm", (self.tmp / "run" / "watchdog-stops.txt").read_text())
         self.assertEqual(json.loads((self.tmp / "run" / "result.json").read_text())["verdict"], "ABORTED")
 
+    def test_a_watchdog_ended_by_another_script_is_started_again(self):
+        ops = self.tmp / "ops2"
+        ops.mkdir()
+        write_exe(ops / "watchdog.sh", '#!/bin/bash\necho "start"\n')  # ends at once, as when watchdog.stop appears
+        result = self.upgrade("--wait-idle", "0", "--watchdog", str(ops), FAKE_NO_AGENT="1", VM_AGENT_TIMEOUT="3")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        restarts = (self.tmp / "run" / "watchdog-restarts.txt").read_text()
+        self.assertIn("started again", restarts)
+        self.assertGreaterEqual(len((ops / "watchdog.log").read_text().splitlines()), 2)
+        self.assertTrue((ops / "watchdog.stop").exists())
+        self.assertIn("started again", (self.tmp / "run" / "summary.txt").read_text())
+
 
 TCPDUMP = """1800000001.100000 (proc {name}:812) IP6 ::1.50211 > ::1.443: Flags [S], seq 1, win 65535, length 0
 1800000001.100010 () IP6 ::1.50211 > ::1.443: Flags [S], seq 1, win 65535, length 0
@@ -721,6 +750,39 @@ class FeedServerTests(unittest.TestCase):
         self.assertEqual([(r["path"], r["status"], r["size"]) for r in lines][0], ("/appcast.xml", 200, 6))
         self.assertEqual(lines[0]["userAgent"], "probe/1")
         self.assertEqual(lines[1]["status"], 404)
+
+
+def dns_query(name: str, qtype: int, ident: int = 0x1234) -> bytes:
+    import struct
+    labels = b"".join(bytes([len(p)]) + p.encode() for p in name.split(".")) + b"\x00"
+    return struct.pack(">HHHHHH", ident, 0x0100, 1, 0, 0, 1) + labels + struct.pack(">HH", qtype, 1)
+
+
+class LocalDnsTests(unittest.TestCase):
+    """The feed server's DNS: loopback for A and AAAA of the site host, nothing for the HTTPS record (the record that
+    sent the download to the production host over HTTP/3 in run 20261122T214034Z-upgrade)."""
+
+    def server(self):
+        spec = importlib.util.spec_from_file_location("feed_server_dns", FEED_SERVER)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_a_and_aaaa_answer_loopback_and_https_has_no_answer(self):
+        import struct
+        dns = self.server()
+        reply, name, qtype, answers = dns.dns_reply(dns_query(HOST, 1), HOST)
+        self.assertEqual((name, qtype, answers), (HOST, 1, 1))
+        self.assertEqual(struct.unpack(">H", reply[:2])[0], 0x1234)
+        self.assertEqual(reply[-4:], bytes([127, 0, 0, 1]))
+        reply, _, _, answers = dns.dns_reply(dns_query(HOST, 28), HOST)
+        self.assertEqual((answers, reply[-16:]), (1, bytes(15) + b"\x01"))
+        reply, _, _, answers = dns.dns_reply(dns_query(HOST, 65), HOST)
+        self.assertEqual(answers, 0)
+        self.assertEqual(struct.unpack(">H", reply[2:4])[0] & 0x000F, 0)  # NOERROR, no data
+        reply, _, _, _ = dns.dns_reply(dns_query("other." + HOST, 1), HOST)
+        self.assertEqual(struct.unpack(">H", reply[2:4])[0] & 0x000F, 3)  # NXDOMAIN
+        self.assertEqual(dns.dns_reply(b"short", HOST)[0], b"")
 
 
 class GuestScriptTests(unittest.TestCase):
