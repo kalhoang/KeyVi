@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.1.0-beta.2",
+      "build": 1010002,
+      "channel": "beta",
+      "date": "2026-11-23",
+      "dmgUrl": "https://keyvi.kal.vn/download/keyvi-1.1.0-beta.2.dmg",
+      "sha256": "7638a947b49e33f3d0d83414cb41c70908dac1ddbeab84b1b234469e5e14de49",
+      "size": 9933334,
+      "minimumSystemVersion": "12.0",
+      "notes": {
+        "vi": "### Sửa lỗi\n\n- Nhấn Escape ngay sau một từ nay trả lại từ tiếng Việt khi KeyVi đổi từ đó sang tiếng Anh chỉ vì các từ đứng trước là tiếng Anh: trong \"Thanks Giving bả với\", dấu cách sau \"bả\" làm từ này thành \"bar\" và Escape không lấy lại được \"bả\"; nay thì được. Điều này cũng áp dụng cho các từ thông dụng như \"there\" và \"this\" gõ sau từ tiếng Anh, nên nhấn Escape ngay sau một từ như vậy sẽ đổi từ đó; nhấn Escape thêm lần nữa để dùng như bình thường. Từ tự nó đã là tiếng Anh, như \"best\", không bị ảnh hưởng.",
+        "en": "### Fixed\n\n- Escape pressed right after a word now undoes a switch to English that KeyVi made only because the words before it were English: in \"Thanks Giving bả với\", the space after \"bả\" gave \"bar\" and Escape could not bring \"bả\" back; now it does. This also applies to common words such as \"there\" and \"this\" typed after English words, so Escape right after one of them changes it; press Escape again for its usual action. Words that are English on their own, such as \"best\", are not affected."
+      }
+    },
+    {
       "version": "1.1.0-beta.1",
       "build": 1010001,
       "channel": "beta",
