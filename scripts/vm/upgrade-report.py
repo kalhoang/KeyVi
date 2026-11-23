@@ -500,7 +500,7 @@ def update_downloads(run: Run, report: dict) -> list:
 
 def update_gaps(run: Run, report: dict, downloads: list) -> list:
     """What the capture of the install did not cover, each a reason the check cannot pass: the capture itself, its
-    start, every packet, and the download of the update it should contain."""
+    start, every packet, the download of the update it should contain, and the install up to the relaunch."""
     gaps = [] if report["tcpdumpCaptured"] else ["no capture of the install (egress/update-tcpdump.txt)"]
     started = report["started"]
     if not started.isdigit():
@@ -512,14 +512,35 @@ def update_gaps(run: Run, report: dict, downloads: list) -> list:
     if not any(c["process"] == app and is_loopback(c["remote"]) and "tcpdump" in c["seenBy"]
                for c in report["connections"]):
         gaps.append("no connection of the app to the local feed in the capture")
+    if report["tcpdumpCaptured"]:
+        gaps += capture_reach_gaps(run, report, downloads)
+    return gaps
+
+
+def capture_reach_gaps(run: Run, report: dict, downloads: list) -> list:
+    """The capture covers the install only if it still captured after the download and the relaunch: tcpdump prints
+    its statistics, without drops, on any orderly exit, so its last packet is the evidence that it ran that long
+    (the guest sends one to the discard port just before it stops the capture, upgrade-guest.sh capture_mark)."""
+    last = report["tcpdumpLastAt"]
+    ends = f"the capture ends at {last:.3f}" if last is not None else "the capture has no packet"
+    gaps = []
+    downloaded = max((d["at"] for d in downloads), default=None)
+    if downloaded is not None and (last is None or last < downloaded):
+        gaps.append(f"{ends}, before the download of the candidate's archive ({downloaded:.3f})")
+    relaunched = (run.json("relaunch.json", {}) or {}).get("newStartedAt")
+    if not is_number(relaunched):
+        gaps.append("no start time of the updated app (relaunch.json newStartedAt)")
+    elif last is None or last < relaunched:
+        gaps.append(f"{ends}, before the relaunch of the updated app ({relaunched:.3f})")
     return gaps
 
 
 def check_update_egress(run: Run) -> tuple:
     """13.7 and PLT-R906 during the install (amended on 2026-11-23, docs/decisions/0011-pa-decisions-2026-11-23.md):
-    the download, the signature checks and the install reach only the local feed, the site host, and the system's
-    revocation check of the update's signature (upgrade_evidence.REVOCATION_*). A disallowed endpoint or lookup fails
-    whatever else is missing; a capture that may have missed a packet, or that is missing, is not evidence of none."""
+    the download, the signature checks and the install reach only the local feed (the site host is mapped to it) and
+    the system's revocation check of the update's signature (upgrade_evidence.REVOCATION_*). A disallowed endpoint or
+    lookup fails whatever else is missing; a capture that may have missed a packet, that ends before the install, or
+    that is missing, is not evidence of none."""
     report = egress_phase(run.out, "update", run.brand["APP_DISPLAY_NAME"], [run.brand["APP_SITE_HOST"]],
                           revocation=True)
     downloads = update_downloads(run, report)
@@ -527,20 +548,21 @@ def check_update_egress(run: Run) -> tuple:
     started, ended = report["started"], report["ended"]
     window = (f"from {started} to {ended} ({int(ended) - int(started)} s)" if started.isdigit() and ended.isdigit()
               else f"from {started or 'an unknown time'} to the end of the update step")
+    last = report["tcpdumpLastAt"]
     bad_lookups = report["disallowedLookupsBy"]
     violated = bool(report["disallowed"] or bad_lookups)
     evidence = (f"capture of the install {window}: {report['tcpdumpLines']} tcpdump lines "
-                f"({report['tcpdumpDropped']} packets dropped by the kernel); the local feed served the candidate's "
-                f"archive {len(downloads)} time(s) during the capture; allowed: {'; '.join(report['allowedHosts'])}"
-                f"{' ' + str(report['allowedAddresses']) if report['allowedAddresses'] else ''}; revocation checks: "
-                f"{endpoints_text(report['revocationChecks']) or 'none'}; endpoints: "
+                f"({report['tcpdumpDropped']} packets dropped by the kernel, the capture's last packet at "
+                f"{f'{last:.3f}' if last is not None else 'none'}); the local feed served the candidate's "
+                f"archive {len(downloads)} time(s) during the capture; allowed: {'; '.join(report['allowedHosts'])}; "
+                f"revocation checks: {endpoints_text(report['revocationChecks']) or 'none'}; endpoints: "
                 f"{endpoints_text(report['connections']) or 'none'}; DNS lookups by the app and its helpers: "
                 f"{', '.join(report['lookupsBy']) or 'none'}"
                 f"{'; NOT ALLOWED lookups: ' + ', '.join(bad_lookups) if bad_lookups else ''}"
                 f"{'; not covered: ' + '; '.join(gaps) if gaps else ''}")
     passed = False if violated else (None if gaps else True)
     item = check("egress-update", "spec/02-platform.md 13.7 and PLT-R906 (amended 2026-11-23): during the install "
-                 "only the local feed, the site host and the system's revocation check of the update's signature",
+                 "only the local feed and the system's revocation check of the update's signature",
                  passed, evidence, ["upgrade-out/egress/update-tcpdump.txt", "upgrade-out/egress/update-tcpdump.err",
                                     "upgrade-out/feed-requests.jsonl"])
     return item, report

@@ -212,6 +212,13 @@ sampler_stop() {
     sudo -n rm -f "$file"
   done
 }
+# One datagram to the discard port on loopback, which the running tcpdump captures: the capture's last packet then
+# shows that it ran until here (the host passes the install only with a captured packet at or after the relaunch;
+# tcpdump prints its statistics, without drops, however early it stops). The 2 s let tcpdump read it before the stop.
+capture_mark() {
+  printf 'end\n' 2>/dev/null >/dev/udp/127.0.0.1/9 || true
+  sleep 2
+}
 sampler_start() { # sampler_start <phase> [light]: light = tcpdump only, for the update, whose relaunch is timed
   local phase="$1" mode="${2:-full}" dir="$out/egress"
   sampler_stop
@@ -552,6 +559,7 @@ run_driver "$out/evidence/app-windows-after.json" windows "$bundle" || {
   note "the window listing failed (logs/driver.log)"
   rm -f "$out/evidence/app-windows-after.json"
 }
+capture_mark
 sampler_stop
 printf '%s\n' "$(date +%s)" >"$out/egress/update-ended"
 note "now: $(sed -n 's/^version=//p' "$out/evidence/app-after.txt") ($(sed -n 's/^build=//p' "$out/evidence/app-after.txt"))"

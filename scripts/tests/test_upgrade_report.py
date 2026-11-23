@@ -432,6 +432,9 @@ UPDATE_OCSP_ANSWER = ("1799999981.630000 (proc mDNSResponder:229, eproc Autoupda
                       "192.168.64.55.52731: 1192 2/0/0 A 17.253.61.136, A 17.253.61.154 (69)")
 UPDATE_OCSP_SYN = ("1799999981.640000 (proc trustd:371, eproc Autoupdate:2047) IP 192.168.64.55.63623 > "
                    "17.253.61.136.443: Flags [SEW], seq 3, win 65535, length 0")
+# The guest's datagram to the discard port just before it stops the capture (upgrade-guest.sh capture_mark), 16 s after
+# the relaunch (START): the capture's last packet shows it ran past the install.
+UPDATE_CAPTURE_MARK = "1800000016.000000 (proc bash:1700) IP 127.0.0.1.60001 > 127.0.0.1.9: UDP, length 4"
 UPDATE_TCPDUMP = """1799999975.100000 (proc mDNSResponder:229, eproc {name}:1946) IP 127.0.0.1.63636 > 127.0.0.1.53: 25043+ Type65? {host}. (30)
 1799999975.100020 (proc Python:915) IP 127.0.0.1.63636 > 127.0.0.1.53: 25043+ Type65? {host}. (30)
 1799999975.200000 (proc {name}:1946) IP6 ::1.49158 > ::1.443: Flags [S], seq 1, win 65535, length 0
@@ -443,8 +446,9 @@ UPDATE_TCPDUMP = """1799999975.100000 (proc mDNSResponder:229, eproc {name}:1946
 {answer}
 {syn}
 1799999982.400000 (proc syspolicyd:256) IP 192.168.64.55.61620 > 17.248.224.65.443: quic, protected
+{mark}
 """.replace("{name}", NAME).replace("{host}", HOST).replace("{lookup}", UPDATE_OCSP_LOOKUP).replace(
-    "{answer}", UPDATE_OCSP_ANSWER).replace("{syn}", UPDATE_OCSP_SYN)
+    "{answer}", UPDATE_OCSP_ANSWER).replace("{syn}", UPDATE_OCSP_SYN).replace("{mark}", UPDATE_CAPTURE_MARK)
 
 
 def utc_stamp(epoch: float, fmt: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
@@ -764,6 +768,14 @@ def capture_edit(old: str, new: str, phase: str = "update"):
     return change
 
 
+def capture_append(lines: str, phase: str):
+    """A change for VerdictHelpers.evaluate: adds `lines` to the phase's tcpdump capture (created when missing)."""
+    def change(out: Path) -> None:
+        path = out / "egress" / f"{phase}-tcpdump.txt"
+        path.write_text((path.read_text(encoding="utf-8") if path.is_file() else "") + lines, encoding="utf-8")
+    return change
+
+
 class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
     """egress-update: during the install, only the local feed, the site host and the system's revocation check of the
     update's signature (PLT-R906 and spec/02-platform.md 13.7 as amended on 2026-11-23)."""
@@ -782,14 +794,11 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
         self.assertIn("served the candidate's archive 1 time(s) during the capture", evidence)
         self.assertNotIn("NOT ALLOWED", evidence)
         self.assertFalse(next(c for c in result["checks"] if c["id"] == "egress-update").get("advisory"))
-        # The name behind the CDN name, answered through its CNAME, and the check over QUIC pass too.
+        self.assertIn("the capture's last packet at 1800000016.000", evidence)
+        # The name behind the CDN name, answered through its CNAME, passes too.
         cname = capture_edit("A? ocsp2.g.aaplimg.com.", "A? ocsp2.apple.com.")
         answer = capture_edit("1192 2/0/0 A", "1192 3/0/0 CNAME ocsp2.g.aaplimg.com., A")
         self.assert_update(self.evaluate(lambda out: (cname(out), answer(out))), "pass", "PASS")
-        quic = capture_edit("17.253.61.136.443: Flags [SEW], seq 3, win 65535, length 0",
-                            "17.253.61.136.443: UDP, length 1200")
-        self.assertIn("17.253.61.136:443/udp (ocsp2.g.aaplimg.com)",
-                      self.assert_update(self.evaluate(quic), "pass", "PASS"))
         # Runs before the guest wrote update-ended: the capture lasts until the end of the step.
         self.assert_update(self.evaluate(lambda out: (out / "egress" / "update-ended").unlink()), "pass", "PASS")
 
@@ -809,10 +818,27 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
         # An answer that belongs to another query (same ID, another client port) resolves nothing.
         stray = capture_edit("192.168.64.55.52731: 1192 2/0/0", "192.168.64.55.52799: 1192 2/0/0")
         self.assert_update(self.evaluate(stray), "fail", "FAIL")
+        # A later query with the same ID from the same port (mDNSResponder's socket serves every process) does not
+        # relabel an earlier answer: Safari's tracker.example answer, then the connection, then Autoupdate's query.
+        safari = "(proc mDNSResponder:229, eproc com.apple.Safari:1234)"
+        relabel_lookup = UPDATE_OCSP_LOOKUP.replace("(proc mDNSResponder:229, eproc Autoupdate:2047)", safari).replace(
+            "1192+ A? ocsp2.g.aaplimg.com.", "900+ A? tracker.example.")
+        relabel_answer = UPDATE_OCSP_ANSWER.replace("(proc mDNSResponder:229, eproc Autoupdate:2047)", safari).replace(
+            "1192 2/0/0", "900 2/0/0")
+        later_query = UPDATE_OCSP_LOOKUP.replace("1799999981.590000", "1799999983.000000").replace(
+            "1192+ A? ocsp2.g.aaplimg.com.", "900+ A? ocsp.apple.com.")
+
+        def relabelled(out: Path) -> None:
+            capture_edit(UPDATE_OCSP_LOOKUP + "\n" + UPDATE_OCSP_ANSWER + "\n" + UPDATE_OCSP_SYN + "\n",
+                         "\n".join((relabel_lookup, relabel_answer, UPDATE_OCSP_SYN, later_query)) + "\n")(out)
+        self.assertIn("trustd for Autoupdate 17.253.61.136:443/tcp (tracker.example) NOT ALLOWED",
+                      self.assert_update(self.evaluate(relabelled), "fail", "FAIL"))
 
     def test_a_lookup_of_a_name_that_only_resembles_apples_revocation_service_fails(self):
+        # Only the names PLT-R906 lists: ocsp.apple.com, ocsp2.apple.com and their CDN names under g.aaplimg.com.
         for name in ("ocsp.apple.com.evil.example", "xocsp.apple.com", "ocsp.aaplimg.com.example",
-                     "ocsp2.g.aaplimg.com.evil.example", "ocsp2-apple.com", "ocspx.apple.com", "ocsp2.apple.co"):
+                     "ocsp2.g.aaplimg.com.evil.example", "ocsp2-apple.com", "ocspx.apple.com", "ocsp2.apple.co",
+                     "ocsp7.apple.com", "ocsp3.g.aaplimg.com"):
             with self.subTest(name=name):
                 evidence = self.assert_update(self.evaluate(capture_edit("A? ocsp2.g.aaplimg.com.", f"A? {name}.")),
                                               "fail", "FAIL")
@@ -821,7 +847,9 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
         for name in ("ocsp.apple.com", "ocsp2.apple.com", "OCSP2.Apple.COM.", "ocsp2.g.aaplimg.com",
                      "ocsp.g.aaplimg.com"):
             self.assertTrue(report.is_revocation_name(name), name)
-        for name in ("ocsp2.apple.com.edgesuite.net", "a1845.dscg2.akamai.net", "ocsp12.apple.com", "apple.com"):
+        for name in ("ocsp2.apple.com.edgesuite.net", "a1845.dscg2.akamai.net", "ocsp12.apple.com", "apple.com",
+                     "ocsp1.apple.com", "ocsp7.apple.com", "ocsp3.g.aaplimg.com", "ocsp2-lb.aaplimg.com",
+                     "ocsp.aaplimg.com"):
             self.assertFalse(report.is_revocation_name(name), name)
 
     def test_only_trustd_for_autoupdate_may_make_the_revocation_check(self):
@@ -833,6 +861,11 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
                               self.assert_update(self.evaluate(change), "fail", "FAIL"))
         port80 = capture_edit("17.253.61.136.443: Flags", "17.253.61.136.80: Flags")
         self.assert_update(self.evaluate(port80), "fail", "FAIL")
+        # TCP port 443 only: the same check over QUIC (UDP 443) is another transport and fails (PLT-R906).
+        quic = capture_edit("17.253.61.136.443: Flags [SEW], seq 3, win 65535, length 0",
+                            "17.253.61.136.443: UDP, length 1200")
+        self.assertIn("trustd for Autoupdate 17.253.61.136:443/udp (ocsp2.g.aaplimg.com) NOT ALLOWED",
+                      self.assert_update(self.evaluate(quic), "fail", "FAIL"))
         # The app may not look the name up either.
         app_lookup = capture_edit("(proc mDNSResponder:229, eproc Autoupdate:2047) IP 192.168.64.55.52731 >",
                                   f"(proc mDNSResponder:229, eproc {NAME}:1946) IP 192.168.64.55.52731 >")
@@ -872,6 +905,71 @@ class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
         unseen = self.evaluate(capture_edit(app_syn, ""))
         self.assertIn("no connection of the app to the local feed in the capture",
                       self.assert_update(unseen, "not-run", "INCOMPLETE"))
+
+    def test_a_capture_that_ends_before_the_install_is_not_a_pass(self):
+        # tcpdump prints its statistics, without drops, on any orderly exit: a capture cut after the app's first
+        # request to the local feed shows nothing of the download, the signature checks or the relaunch.
+        def truncated(out: Path) -> None:
+            path = out / "egress" / "update-tcpdump.txt"
+            lines = path.read_text(encoding="utf-8").splitlines()
+            path.write_text("\n".join(lines[:3]) + "\n", encoding="utf-8")
+        evidence = self.assert_update(self.evaluate(truncated), "not-run", "INCOMPLETE")
+        self.assertIn("the capture ends at 1799999975.200, before the download of the candidate's archive "
+                      "(1799999980.000)", evidence)
+        self.assertIn("before the relaunch of the updated app (1800000000.000)", evidence)
+        # Past the download but before the relaunch.
+        before_relaunch = self.evaluate(capture_edit(UPDATE_CAPTURE_MARK + "\n", ""))
+        evidence = self.assert_update(before_relaunch, "not-run", "INCOMPLETE")
+        self.assertIn("the capture ends at 1799999982.400, before the relaunch of the updated app", evidence)
+        self.assertNotIn("before the download", evidence)
+        # Without the relaunch time the capture cannot be shown to cover the install.
+        unknown = self.evaluate(lambda out: edit_json(out / "relaunch.json",
+                                                      lambda r: {k: v for k, v in r.items() if k != "newStartedAt"}))
+        self.assertIn("no start time of the updated app (relaunch.json newStartedAt)",
+                      self.evidence(unknown, "egress-update"))
+        self.assertEqual(self.results(unknown)["egress-update"], "not-run")
+
+    def test_the_site_hosts_addresses_are_not_allowed_during_the_install(self):
+        # The site host is mapped to loopback for the install: an address of it reached then is a leaked mapping
+        # (13.7: only the local feed, apart from the revocation check), whatever the port or who resolved it.
+        lookup = (f"1799999976.000000 (proc mDNSResponder:229, eproc com.apple.Safari:1234) IP 192.168.64.55.57100 > "
+                  f"192.168.64.1.53: 4242+ A? {HOST}. (30)\n"
+                  f"1799999976.050000 (proc mDNSResponder:229, eproc com.apple.Safari:1234) IP 192.168.64.1.53 > "
+                  "192.168.64.55.57100: 4242 1/0/0 A 104.21.6.100 (46)\n")
+        for flow in (f"(proc {NAME}:1946) IP 192.168.64.55.50310 > 104.21.6.100.443: Flags [S], seq 1, length 0",
+                     f"(proc {NAME}:1946) IP 192.168.64.55.50311 > 104.21.6.100.80: Flags [S], seq 1, length 0",
+                     "(proc Autoupdate:2047) IP 192.168.64.55.50312 > 104.21.6.100.8443: UDP, length 1200"):
+            with self.subTest(flow=flow):
+                def reached(out: Path, flow=flow) -> None:
+                    path = out / "egress" / "update-tcpdump.txt"
+                    path.write_text(path.read_text() + lookup + f"1799999977.000000 {flow}\n")
+                evidence = self.assert_update(self.evaluate(reached), "fail", "FAIL")
+                self.assertIn("104.21.6.100", evidence)
+                self.assertIn(f"({HOST}) NOT ALLOWED", evidence)
+                self.assertNotIn("104.21.6.100']", evidence)  # not listed among the allowed addresses
+
+    def test_a_lookup_of_any_record_type_or_an_unreadable_one_fails_in_every_phase(self):
+        # A TXT or SRV lookup (remote configuration over DNS, service discovery) is a lookup like an A query, and a
+        # query whose question cannot be read fails closed.
+        def lookup(rtype: str, name: str) -> str:
+            return (f"1799999990.000000 (proc mDNSResponder:229, eproc {NAME}:1946) IP 192.168.64.55.50000 > "
+                    f"192.168.64.1.53: 777+ {rtype}? {name}. (40)\n")
+        unreadable = (f"1799999990.500000 (proc mDNSResponder:229, eproc {NAME}:1946) IP 192.168.64.55.50001 > "
+                      "192.168.64.1.53: 778+ (Class 5)? odd.example. (40)\n")
+        for phase, check_id in (("update", "egress-update"), ("local", "egress-local"),
+                                ("production", "egress-production")):
+            for rtype in ("TXT", "SRV"):
+                with self.subTest(phase=phase, rtype=rtype):
+                    result = self.evaluate(capture_append(lookup(rtype, "c2VjcmV0.evil.example"), phase))
+                    self.assertEqual(self.results(result)[check_id], "fail", self.evidence(result, check_id))
+                    # Names are compared and listed folded to lower case (DNS names ignore case).
+                    self.assertIn("c2vjcmv0.evil.example", self.evidence(result, check_id).split("NOT ALLOWED")[-1])
+            with self.subTest(phase=phase, unreadable=True):
+                result = self.evaluate(capture_append(unreadable, phase))
+                self.assertEqual(self.results(result)[check_id], "fail", self.evidence(result, check_id))
+                self.assertIn("unparsed query", self.evidence(result, check_id).split("NOT ALLOWED")[-1])
+        # The site host looked up with another record type is still the allowed host.
+        self.assert_update(self.evaluate(capture_append(lookup("TXT", HOST), "update")), "pass", "PASS")
 
     def test_a_disallowed_host_fails_even_when_the_capture_dropped_packets_or_has_no_start(self):
         leak = (f"1799999983.000000 (proc {NAME}:1946) IP 192.168.64.55.50301 > 93.184.216.34.443: Flags [S], "
@@ -917,6 +1015,24 @@ class TcpdumpTests(unittest.TestCase):
         self.assertEqual(queries, [[HOST], ["tracker.example"]])
         answers = [e["addresses"] for e in events if e["kind"] == "dns-answer"]
         self.assertEqual(answers, [["104.21.1.1", "172.67.1.1"]])
+
+    def test_the_question_of_every_record_type_is_read_and_an_unreadable_one_is_marked(self):
+        query = f"1800000002.000000 (proc mDNSResponder:240, eproc {NAME}:812) IP 192.168.64.43.63136 > 192.168.64.1.53: "
+        questions = {"4+ TXT? a.example. (30)": ["a.example"], "5+ SRV? _x._tcp.b.example. (30)": ["_x._tcp.b.example"],
+                     "6+ MX? c.example. (30)": ["c.example"], "7+ NS? d.example. (30)": ["d.example"],
+                     "8+ ANY? e.example. (30)": ["e.example"], "9+ NAPTR? f.example. (30)": ["f.example"],
+                     "10+ NSAP_PTR? g.example. (30)": ["g.example"], "11+ [1au] A? h.example. (41)": ["h.example"],
+                     "12+ TXT CHAOS? version.bind. (30)": ["version.bind"], "13+ Type65? i.example. (30)": ["i.example"],
+                     "14+ (Class 5)? j.example. (30)": [], "15 [|domain]": []}
+        for summary, names in questions.items():
+            with self.subTest(summary=summary):
+                event = report.tcpdump_events(query + summary)[0]
+                self.assertEqual((event["kind"], event["names"], event["unparsed"]), ("dns-query", names, not names))
+        events = report.tcpdump_events("\n".join(query + s for s in questions))
+        asked, refused = report.phase_lookups(events, {"a.example"}, False)
+        self.assertNotIn((NAME, "a.example"), refused)
+        self.assertIn((NAME, "version.bind"), refused)
+        self.assertEqual(len([n for _, n in refused if n.startswith("unparsed query")]), 2)
 
     def test_the_production_phase_flags_other_hosts_and_other_lookups(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -13,17 +13,24 @@ import re
 from pathlib import Path
 
 EGRESS_PROCESSES = ("Autoupdate", "Updater", "com.apple.WebKit.Networking")
-# The system's revocation check of the update's signature, the one endpoint besides the local feed and the site host
-# allowed while an update installs (PLT-R906 and spec/02-platform.md 13.7 as amended on 2026-11-23,
+# The system's revocation check of the update's signature, the one endpoint besides the local feed allowed while an
+# update installs (PLT-R906 and spec/02-platform.md 13.7 as amended on 2026-11-23,
 # docs/decisions/0011-pa-decisions-2026-11-23.md). From the install captures of the upgrade runs of 2026-11-22 and 23:
 # mDNSResponder looks up Apple's OCSP name for Autoupdate (ocsp2.g.aaplimg.com, the CDN name behind ocsp2.apple.com;
 # ocsp2.apple.com itself in the other phases), then trustd connects for Autoupdate to an address of the answer, TCP
-# 443. Allowed: a lookup of one of these names (whole name, any case) by Autoupdate, and a connection of trustd for
-# Autoupdate to TCP or UDP 443 of an address the capture saw resolved from one of them before the connection. Any
-# other process, port or address, or a name that only resembles these, is not allowed.
-REVOCATION_NAMES = (re.compile(r"ocsp[0-9]?\.apple\.com"), re.compile(r"ocsp[0-9]?\.g\.aaplimg\.com"))
+# 443. Allowed: a lookup of one of the names PLT-R906 lists (ocsp.apple.com, ocsp2.apple.com and their CDN names
+# ocsp.g.aaplimg.com, ocsp2.g.aaplimg.com; whole name, any case) for Autoupdate, and a connection of trustd for
+# Autoupdate to TCP port 443 of an address the capture saw resolved from one of them before the connection. Any other
+# process, port, transport (QUIC included) or address, or a name that only resembles these, is not allowed.
+REVOCATION_NAMES = (re.compile(r"ocsp2?\.apple\.com"), re.compile(r"ocsp2?\.g\.aaplimg\.com"))
 REVOCATION_PORT = 443
+REVOCATION_TRANSPORT = "tcp"
 REVOCATION_CLIENTS = {"Autoupdate": ("trustd",)}  # the process checked for: the processes that may send for it
+# The question of a DNS query in tcpdump's summary, of any record type (`A?`, `TXT?`, `SRV?`, `Type65?`, with the class
+# when it is not IN: `TXT CHAOS?`). A query of the app or a helper whose question this cannot read is a lookup of
+# UNPARSED_QUERY, which no allowed host matches: an unknown format fails closed.
+DNS_QUESTION = re.compile(r"\b[A-Za-z][A-Za-z0-9_-]*\? (\S+?)\.?(?= )")
+UNPARSED_QUERY = "unparsed query"
 # Fields of the candidate's UserSettings that the previous stable does not have, with the value a file written by
 # the previous stable reads as (Migrations.swift: "absent is unset", "an empty list").
 CANDIDATE_ONLY_FIELDS = {"typoCorrection": "unset", "neverCorrect": []}
@@ -202,10 +209,16 @@ def split_endpoint(text: str):
     return (strip_scope(head), int(tail)) if tail.isdigit() and is_address(strip_scope(head)) else None
 
 
+def dns_name(name: str) -> str:
+    """A DNS name as compared: lower case, without the final dot; the root stays `.`."""
+    return name.lower().rstrip(".") or "."
+
+
 def tcpdump_events(text: str) -> list:
     """Connection attempts and DNS lookups of `tcpdump -i pktap,all -k NP -n -tt` (every TCP SYN and UDP datagram
     with the process it belongs to and the one that sent it, PKTAP): kind syn, udp, dns-query or dns-answer. A DNS
-    packet carries its transaction ID and the client's endpoint, which pair a query with its answer."""
+    packet carries its transaction ID and the client's endpoint, which pair a query with its answer; a query whose
+    question could not be read is marked `unparsed`."""
     events = []
     for line in text.splitlines():
         match = TCPDUMP_LINE.match(line)
@@ -228,9 +241,9 @@ def tcpdump_events(text: str) -> list:
                 continue  # only the opening SYN of a connection
             event.update(kind="syn", transport="tcp", remote=dst[0], port=dst[1])
         elif dst[1] == 53:
-            names = re.findall(r"\b(?:A|AAAA|HTTPS|SVCB|CNAME|Type\d+)\? (\S+?)\.? ", rest + " ")
+            names = DNS_QUESTION.findall(rest + " ")
             event.update(kind="dns-query", transport="udp", remote=dst[0], port=53, names=names,
-                         txid=dns_id(rest), client=endpoint_text(*src))
+                         unparsed=not names, txid=dns_id(rest), client=endpoint_text(*src))
         elif src[1] == 53:
             event.update(kind="dns-answer", transport="udp", remote=src[0], port=53,
                          addresses=re.findall(r"\b(?:A|AAAA) ([0-9a-fA-F:.]+[0-9a-fA-F])\b", rest),
@@ -255,14 +268,15 @@ def matches(process: str, names: tuple) -> bool:
 
 def is_revocation_name(name: str) -> bool:
     """One of Apple's OCSP names (REVOCATION_NAMES): the whole name, in any case, with or without the final dot."""
-    folded = name.lower().rstrip(".")
+    folded = dns_name(name)
     return any(pattern.fullmatch(folded) for pattern in REVOCATION_NAMES)
 
 
 def revocation_text() -> str:
     names = ", ".join(pattern.pattern.replace("\\", "") for pattern in REVOCATION_NAMES)
     clients = ", ".join(f"{' or '.join(senders)} for {client}" for client, senders in REVOCATION_CLIENTS.items())
-    return f"Apple's certificate revocation service ({names}, port {REVOCATION_PORT}) checked by {clients}"
+    return (f"Apple's certificate revocation service ({names}, {REVOCATION_TRANSPORT.upper()} port {REVOCATION_PORT}) "
+            f"checked by {clients}")
 
 
 def epoch(text):
@@ -274,13 +288,20 @@ def epoch(text):
 
 def dns_resolutions(events: list) -> dict:
     """address -> [(name, time)]: every A and AAAA record of a DNS answer in the capture, under the name its query
-    asked for (a query and its answer share the transaction ID and the client's endpoint). The lookups of every
-    process count: they show which name an address stood for at that moment."""
-    asked = {(e["txid"], e["client"]): e["names"][0].lower().rstrip(".") for e in events
-             if e["kind"] == "dns-query" and e.get("names") and e.get("txid")}
-    resolved = {}
-    for event in events:
-        name = asked.get((event.get("txid"), event.get("client"))) if event["kind"] == "dns-answer" else None
+    asked for: the latest query at or before the answer with the same transaction ID and client endpoint (events in
+    time order, the capture's order for equal times), so a later query that repeats both cannot relabel an earlier
+    answer. The lookups of every process count: they show which name an address stood for at that moment."""
+    timed = sorted(enumerate(events), key=lambda item: (epoch(item[1]["time"]) or 0.0, item[0]))
+    current, resolved = {}, {}
+    for _, event in timed:
+        key = (event.get("txid"), event.get("client"))
+        if event["kind"] == "dns-query" and event.get("txid"):
+            if event.get("names"):
+                current[key] = dns_name(event["names"][0])
+            else:
+                current.pop(key, None)  # an unreadable question resolves nothing
+            continue
+        name = current.get(key) if event["kind"] == "dns-answer" else None
         for address in event.get("addresses", []) if name else []:
             resolved.setdefault(address, []).append((name, event["time"]))
     return resolved
@@ -288,11 +309,11 @@ def dns_resolutions(events: list) -> dict:
 
 def revocation_name(flow: dict, resolved: dict) -> str:
     """The OCSP name the flow's address was resolved from before the flow, when the flow can be the system's
-    revocation check (sent by a process REVOCATION_CLIENTS allows, to REVOCATION_PORT over TCP or UDP); "" otherwise.
-    A flow without an epoch time (nettop) cannot be placed after its lookup."""
+    revocation check (sent by a process REVOCATION_CLIENTS allows, to REVOCATION_PORT over REVOCATION_TRANSPORT);
+    "" otherwise. A flow without an epoch time (nettop) cannot be placed after its lookup."""
     at = epoch(flow["time"])
     if flow.get("sender", flow["process"]) not in REVOCATION_CLIENTS.get(flow["process"], ()) \
-            or flow["port"] != REVOCATION_PORT or flow["transport"] not in ("tcp", "udp") or at is None:
+            or flow["port"] != REVOCATION_PORT or flow["transport"] != REVOCATION_TRANSPORT or at is None:
         return ""
     names = [name for name, time in resolved.get(flow["remote"], [])
              if is_revocation_name(name) and epoch(time) is not None and epoch(time) <= at]
@@ -333,12 +354,22 @@ def phase_endpoints(flows: list, allowed: set, resolved: dict, revocation: bool)
 
 def phase_lookups(events: list, hosts: set, revocation: bool) -> tuple:
     """(process, name) of every DNS lookup of the app and the helpers, and those not allowed: any name but the
-    allowed hosts, except, on the install, Apple's OCSP names looked up for a process REVOCATION_CLIENTS names."""
-    asked = sorted({(e["process"], n.lower().rstrip(".")) for e in events if e["kind"] == "dns-query"
-                    for n in e["names"]})
+    allowed hosts, except, on the install, Apple's OCSP names looked up for a process REVOCATION_CLIENTS names. A
+    query whose question could not be read counts as a lookup of UNPARSED_QUERY (with its ID and time), never allowed."""
+    queries = [e for e in events if e["kind"] == "dns-query"]
+    asked = sorted({(e["process"], dns_name(n)) for e in queries for n in e["names"]} | {
+        (e["process"], f"{UNPARSED_QUERY} (ID {e.get('txid') or '?'}, {e['time']})") for e in queries
+        if e.get("unparsed")})
     refused = [(process, name) for process, name in asked if name not in hosts and not (
         revocation and process in REVOCATION_CLIENTS and is_revocation_name(name))]
     return asked, refused
+
+
+def capture_end(text: str):
+    """The time of the last packet of a `tcpdump -tt` capture (any process), None when it has none."""
+    times = [epoch(line.split(" ", 1)[0]) for line in text.splitlines() if line.strip()]
+    times = [t for t in times if t is not None]
+    return max(times) if times else None
 
 
 def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list, revocation: bool = False) -> dict:
@@ -346,8 +377,9 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list, revo
     tcpdump (PKTAP) sees every connection attempt with its process as long as the kernel dropped no packet
     (tcpdumpDropped); nettop and lsof add what was open at each second. Allowed: loopback (the local feed) and, on
     the production feed, the addresses the VM resolved for the allowed hosts during the phase; a DNS lookup of any
-    other name is a disallowed attempt too. With `revocation` (the install): loopback, the addresses the capture saw
-    resolved from the allowed hosts, and the system's revocation check of the update's signature (REVOCATION_*)."""
+    other name is a disallowed attempt too. With `revocation` (the install, where the site host is mapped to the local
+    feed): loopback, lookups of the allowed hosts, and the system's revocation check of the update's signature
+    (REVOCATION_*); an address of the site host reached then is not allowed."""
     egress = run / "egress"
     read = lambda suffix: (egress / f"{phase}-{suffix}").read_text(encoding="utf-8", errors="replace") \
         if (egress / f"{phase}-{suffix}").is_file() else ""
@@ -356,7 +388,7 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list, revo
     events = [e for e in captured if matches(e["process"], names)]
     flows = [f for f in nettop_flows(read("nettop.csv")) + lsof_flows(read("lsof.txt"))
              if matches(f["process"], names)] + [e for e in events if e["kind"] in ("syn", "udp")]
-    hosts = {h.lower().rstrip(".") for h in allowed_hosts}
+    hosts = {dns_name(h) for h in allowed_hosts}
     resolved = dns_resolutions(captured)
     allowed, described = set(), ["loopback (local feed)"]
     if phase == "production":
@@ -364,15 +396,13 @@ def egress_phase(run: Path, phase: str, app_name: str, allowed_hosts: list, revo
             a for e in events if e["kind"] == "dns-answer" for a in e.get("addresses", [])}
         described = sorted(hosts)
     elif revocation:
-        allowed = dns_addresses(read("dns.txt")) | {
-            address for address, seen in resolved.items() if any(name in hosts for name, _ in seen)}
-        described += sorted(hosts) + [revocation_text()]
+        described += [f"lookups of {host}" for host in sorted(hosts)] + [revocation_text()]
     connections = phase_endpoints(flows, allowed, resolved, revocation)
     asked, refused = phase_lookups(events, hosts, revocation)
     return {"phase": phase, "allowedHosts": described, "allowedAddresses": sorted(allowed),
             "lsofSamples": samples_taken(read("lsof.txt")), "nettopLines": len(read("nettop.csv").splitlines()),
             "tcpdumpLines": len(read("tcpdump.txt").splitlines()),
-            "tcpdumpDropped": tcpdump_dropped(read("tcpdump.err")),
+            "tcpdumpDropped": tcpdump_dropped(read("tcpdump.err")), "tcpdumpLastAt": capture_end(read("tcpdump.txt")),
             "tcpdumpCaptured": (egress / f"{phase}-tcpdump.txt").is_file(), "connections": connections,
             "revocationChecks": [c for c in connections if c["allowedAs"] == "revocation check"],
             "lookups": sorted({name for _, name in asked}), "lookupsBy": [f"{p} {n}" for p, n in asked],

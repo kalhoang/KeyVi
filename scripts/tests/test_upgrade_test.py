@@ -274,6 +274,12 @@ class GuestScriptTests(unittest.TestCase):
         step = guest[guest.index("sampler_start update light"):guest.index("# --- 8b.")]
         self.assertLess(step.index("flush_dns"), step.index("forced_check update-offer install"))
         self.assertLess(step.index("sampler_stop"), step.index('>"$out/egress/update-ended"'))
+        # The host passes the install only with a captured packet at or after the relaunch: the guest sends one
+        # datagram to the discard port on loopback, after the relaunch and before it stops the capture.
+        self.assertLess(step.index('wait "$watcher"'), step.index("capture_mark"))
+        self.assertLess(step.index("capture_mark"), step.index("sampler_stop"))
+        mark = guest[guest.index("capture_mark() {"):]
+        self.assertIn(">/dev/udp/127.0.0.1/9", mark[:mark.index("\n}")])
 
     def test_the_driver_types_only_once_the_new_tap_is_enabled(self):
         driver = DRIVER.read_text(encoding="utf-8")
