@@ -1,0 +1,545 @@
+{
+  "comment": "Fixture of scripts/vm/upgrade-test.sh (QA-R40): what the previous stable's own settings store writes before the update. Bundle IDs are test fixtures (PLT-R501). D16 clickIconToToggle stays unset: with it the status item toggles the mode instead of opening the menu the test uses for its forced update check. collisionMemory: learned collision choices (PLT-R914) for words on the bundled collision lists of both versions (ambiguity.tsv, collision-supplement.txt); strong signals are corrections, weak ones acceptances.",
+  "settings": {
+    "tonePlacement": "modern",
+    "englishRestore": false,
+    "telexStandaloneW": false,
+    "telexBracketKeys": true,
+    "restoreHotkey": null,
+    "macrosInEnglishMode": true,
+    "toggleHotkey": {
+      "type": "modifierTap",
+      "chord": "optionShift"
+    },
+    "showSwitchIndicator": false,
+    "soundOnSwitch": true,
+    "interfaceLanguage": "en",
+    "learnCollisionChoices": false,
+    "lookaheadRevision": false,
+    "automaticallyCheckForUpdates": false,
+    "automaticallyInstallUpdates": false
+  },
+  "keepAsTyped": [
+    "github",
+    "kubectl",
+    "nginx"
+  ],
+  "keepVietnamese": [
+    "nhe",
+    "thoi"
+  ],
+  "learnedWords": [
+    {
+      "list": "keepAsTyped",
+      "raw": "deploy",
+      "app": "com.apple.Terminal"
+    },
+    {
+      "list": "keepAsTyped",
+      "raw": "merge",
+      "app": "com.microsoft.VSCode"
+    },
+    {
+      "list": "keepVietnamese",
+      "raw": "mas",
+      "app": "com.apple.Notes"
+    }
+  ],
+  "globalMode": "vi",
+  "rememberedModes": [
+    {
+      "bundle": "com.apple.Safari",
+      "mode": "en"
+    },
+    {
+      "bundle": "com.apple.Notes",
+      "mode": "vi"
+    },
+    {
+      "bundle": "com.apple.mail",
+      "mode": "en"
+    },
+    {
+      "bundle": "com.google.Chrome",
+      "mode": "vi"
+    },
+    {
+      "bundle": "com.apple.finder",
+      "mode": "vi"
+    },
+    {
+      "bundle": "org.mozilla.firefox",
+      "mode": "en"
+    },
+    {
+      "bundle": "com.microsoft.VSCode",
+      "mode": "en"
+    },
+    {
+      "bundle": "com.apple.MobileSMS",
+      "mode": "vi"
+    }
+  ],
+  "appRules": [
+    {
+      "bundle": "com.apple.Terminal",
+      "rule": "alwaysEnglish"
+    },
+    {
+      "bundle": "com.googlecode.iterm2",
+      "rule": "alwaysEnglish"
+    },
+    {
+      "bundle": "com.apple.dt.Xcode",
+      "rule": "ignore"
+    },
+    {
+      "bundle": "com.apple.TextEdit",
+      "rule": "alwaysVietnamese"
+    },
+    {
+      "bundle": "com.tinyspeck.slackmacgap",
+      "rule": "alwaysVietnamese"
+    }
+  ],
+  "ruleOverrides": [
+    {
+      "createdAt": "2026-11-20T08:00:00Z",
+      "rule": {
+        "id": "user.compat.com.microsoft.Word",
+        "summary": "Compatibility mode chosen in the Apps pane: typeSlower",
+        "match": {
+          "bundleIds": [
+            "com.microsoft.Word"
+          ]
+        },
+        "action": {
+          "strategy": "backspaceReplace",
+          "params": {
+            "interEventDelayUs": 5000
+          }
+        },
+        "provenance": {
+          "source": "user-suggestion",
+          "date": "2026-11-20"
+        }
+      }
+    },
+    {
+      "createdAt": "2026-11-20T08:01:00Z",
+      "rule": {
+        "id": "user.compat.com.google.Chrome",
+        "summary": "Compatibility mode chosen in the Apps pane: selectThenType",
+        "match": {
+          "bundleIds": [
+            "com.google.Chrome"
+          ]
+        },
+        "action": {
+          "strategy": "selectReplace"
+        },
+        "provenance": {
+          "source": "user-suggestion",
+          "date": "2026-11-20"
+        }
+      }
+    },
+    {
+      "createdAt": "2026-11-20T08:02:00Z",
+      "rule": {
+        "id": "user.compat.com.apple.Notes",
+        "summary": "Compatibility mode chosen in the Apps pane: pasteText",
+        "match": {
+          "bundleIds": [
+            "com.apple.Notes"
+          ]
+        },
+        "action": {
+          "strategy": "paste"
+        },
+        "provenance": {
+          "source": "user-suggestion",
+          "date": "2026-11-20"
+        }
+      }
+    }
+  ],
+  "macros": [
+    {
+      "id": "5EED0000-0000-4000-8000-000000000001",
+      "trigger": "vn",
+      "expansion": "Việt Nam",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000002",
+      "trigger": "hcm",
+      "expansion": "Thành phố Hồ Chí Minh",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000003",
+      "trigger": "hn",
+      "expansion": "Hà Nội",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000004",
+      "trigger": "ty",
+      "expansion": "cảm ơn bạn nhiều",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000005",
+      "trigger": "xc",
+      "expansion": "xin chào",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000006",
+      "trigger": "ks",
+      "expansion": "khách sạn",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000007",
+      "trigger": "ck",
+      "expansion": "chuyển khoản",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000008",
+      "trigger": "dc",
+      "expansion": "địa chỉ",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000009",
+      "trigger": "sdt",
+      "expansion": "số điện thoại",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000A",
+      "trigger": "cty",
+      "expansion": "công ty",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000B",
+      "trigger": "tp",
+      "expansion": "thành phố",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000C",
+      "trigger": "ttg",
+      "expansion": "thời gian",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000D",
+      "trigger": "ktr",
+      "expansion": "kiểm tra",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000E",
+      "trigger": "bc",
+      "expansion": "báo cáo",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000000F",
+      "trigger": "hd",
+      "expansion": "hợp đồng",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000010",
+      "trigger": "kh",
+      "expansion": "khách hàng",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000011",
+      "trigger": "nv",
+      "expansion": "nhân viên",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000012",
+      "trigger": "gd",
+      "expansion": "giám đốc",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000013",
+      "trigger": "tl",
+      "expansion": "trả lời",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000014",
+      "trigger": "lh",
+      "expansion": "liên hệ",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000015",
+      "trigger": "vd",
+      "expansion": "ví dụ",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000016",
+      "trigger": "dt",
+      "expansion": "điện thoại",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000017",
+      "trigger": "tt",
+      "expansion": "thông tin",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000018",
+      "trigger": "cn",
+      "expansion": "chủ nhật",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000019",
+      "trigger": "t2",
+      "expansion": "thứ hai",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001A",
+      "trigger": "t3",
+      "expansion": "thứ ba",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001B",
+      "trigger": "t4",
+      "expansion": "thứ tư",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001C",
+      "trigger": "t5",
+      "expansion": "thứ năm",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001D",
+      "trigger": "t6",
+      "expansion": "thứ sáu",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001E",
+      "trigger": "t7",
+      "expansion": "thứ bảy",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000001F",
+      "trigger": "sn",
+      "expansion": "sinh nhật",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000020",
+      "trigger": "cmsn",
+      "expansion": "chúc mừng sinh nhật",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000021",
+      "trigger": "nm",
+      "expansion": "năm mới",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000022",
+      "trigger": "ccm",
+      "expansion": "chúc cả nhà mạnh khỏe",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000023",
+      "trigger": "hb",
+      "expansion": "hẹn gặp lại",
+      "adaptCase": false,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000024",
+      "trigger": "ok1",
+      "expansion": "được rồi nha",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000025",
+      "trigger": "dl",
+      "expansion": "dữ liệu",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000026",
+      "trigger": "pm",
+      "expansion": "phần mềm",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000027",
+      "trigger": "mt",
+      "expansion": "máy tính",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000028",
+      "trigger": "ud",
+      "expansion": "ứng dụng",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000029",
+      "trigger": "gv",
+      "expansion": "giáo viên",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002A",
+      "trigger": "hs",
+      "expansion": "học sinh",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002B",
+      "trigger": "sv",
+      "expansion": "sinh viên",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002C",
+      "trigger": "bv",
+      "expansion": "bệnh viện",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002D",
+      "trigger": "nh",
+      "expansion": "ngân hàng",
+      "adaptCase": false,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002E",
+      "trigger": "qc",
+      "expansion": "quảng cáo",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-00000000002F",
+      "trigger": "ntn",
+      "expansion": "như thế này",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000030",
+      "trigger": "bh",
+      "expansion": "bảo hành",
+      "adaptCase": true,
+      "enabled": true
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000031",
+      "trigger": "tk",
+      "expansion": "tài khoản",
+      "adaptCase": true,
+      "enabled": false
+    },
+    {
+      "id": "5EED0000-0000-4000-8000-000000000032",
+      "trigger": "mk",
+      "expansion": "mật khẩu mới",
+      "adaptCase": false,
+      "enabled": true
+    }
+  ],
+  "collisionMemory": [
+    {
+      "word": "bar",
+      "context": "afterEnglish",
+      "side": "vietnamese",
+      "strength": "strong"
+    },
+    {
+      "word": "air",
+      "context": "sentenceStart",
+      "side": "english",
+      "strength": "strong"
+    },
+    {
+      "word": "arcs",
+      "context": "afterVietnamese",
+      "side": "vietnamese",
+      "strength": "weak"
+    },
+    {
+      "word": "asap",
+      "context": "afterNeutral",
+      "side": "english",
+      "strength": "strong"
+    }
+  ]
+}

@@ -101,7 +101,7 @@ When a grant goes stale (after a macOS update, a changed signing identity, or a 
 | Workflow | Trigger | Content |
 |---|---|---|
 | `integration.yml` | push to `main`, release tags, manual | The test build with the integration hooks, platform integration tests (QA-R11) with the privacy canary scan, compatibility scenarios (13.2), end-to-end benchmarks (one run per merge, five nightly, QA-R14), soak of 1,000,000 keystrokes (QA-R16, nightly) |
-| Release gate | before every release | Upgrade test (QA-R40, [release](release.md) section 5), egress test (`compat-harness egress`, [integration-suite.md](integration-suite.md) section 5), fresh-install checks |
+| Release gate | before every release | Upgrade test (QA-R40), channel switch and egress test in one command, `scripts/vm/upgrade-test.sh` ([release](release.md) section 5, [VM test lab](vm-test-lab.md) section 12); fresh-install checks |
 
 The integration test list is in QA-R11: the 200 most common Vietnamese words in both methods, English restore, backspace across punctuation, fast typing at 15 keys per second, toggle hotkey, per-app rule switching, macro expansion, restore hotkey rules, Secure Input on and off, tap disable and recovery, and permission revoked mid-session (must fail open).
 
