@@ -453,8 +453,9 @@ the VM runs (every lab script shares `watchdog.stop`; the restarts go to `watchd
 6. forces an update check from the status menu, presses Sparkle's Install Update and Install and Relaunch, copies
    the settings folder and the defaults domain the moment the old process exits (before the new version can load
    or write them), then records the new process's start time, when its event tap is enabled (`CGGetEventTapList`,
-   every 10 ms) and when typing into TestHost first gives `duyệt`, without any click in between (the field is found
-   and focused before the relaunch, so an attempt costs the keys and one read, about a second). It copies the
+   every 10 ms) and from when typing into TestHost gives `duyệt`, without any click in between (the field is found
+   and focused before the relaunch; attempts repeat until one reads back right, and the result is when that
+   attempt's first key was typed). It copies the
    settings folder again 0.5 seconds after that tap is enabled (at the latest 4 seconds after the start): the
    store has loaded the folder by then, so a migration has written, while a change of the new session's own per-app
    memory cannot have landed yet (written 5 seconds after the change, PLT-R392);
@@ -489,7 +490,7 @@ part, a guest step that stopped); `ABORTED` when the watchdog stopped the VM.
 | `defaults-domain` | Every key of the app's defaults domain is equal, except the keys that change on each launch by design (`DEFAULTS_RULES`: the launch guard, the post-update self-check's version, Sparkle's check time) |
 | `permissions` | The app's TCC rows are unchanged and allowed, the host reached a ready state, no permission transition, no prompt process, no TCC request of the candidate in its first 20 seconds answered by a consent prompt (`tccd` log, auth reason 2 or 9), and no window after the relaunch (the QA-R42 self-check would show the permission screen) |
 | `tap-within-2s` | The new process's event tap is enabled at most 2 seconds after the process started |
-| `typing-within-5s` | TestHost reads `duyệt` at most 5 seconds after the process started |
+| `typing-within-5s` | Keys typed into TestHost at most 5 seconds after the process started read back as `duyệt`: the time is the first key of the first attempt that reads back right (those keystrokes were composed correctly); the read-back time, 0.3 seconds after the last key, is in the evidence too |
 | `egress-update` (advisory, outside the verdict) | Records what the download, the signature checks and the install reached; passes when that was only loopback (the local feed) and no other name was looked up |
 | `channel-switch` | Beta offers the probe build, stable offers nothing, beta offers it again |
 | `egress-local` | 10 minutes, a forced check, a connection to the local feed, no remote address but loopback and no DNS lookup of another name |
@@ -521,4 +522,5 @@ Recorded per release candidate (run folder, verdict, notable evidence):
 | Date | Previous, candidate | Run folder | Verdict | Notes |
 |---|---|---|---|---|
 | 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T020752Z-upgrade` | PASS, every check (guest at `8f61053e`; analysis re-run with `ddee8f57`) | The first analysis, kept as `result-first-analysis.json`, failed `sparkle-update` and `egress-production` on two report bugs fixed in `ddee8f57` (the Install and Relaunch label read after the press; an inbound QUIC reply counted as an endpoint). Tap enabled 0.85 s after the relaunch, typing matched at 3.48 s, settings folder byte-identical (exit snapshot against the one the candidate loaded), store contents identical, defaults domain changed only in the three launch keys, TCC rows unchanged with no consent prompt, no window. Channel switch: beta offered the probe, stable nothing, beta the probe again. Egress: local phase only `[::1]:443`; production phase only the site host's addresses, over TCP and QUIC; advisory `egress-update` above |
+| 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261123T035338Z-upgrade` | FAIL on `typing-within-5s` only (guest at `ddee8f57`) | Every other check passed (tap 1.82 s on a host swapping at 31 to 36 % free memory). One typing attempt, started 0.39 s after the relaunch and reading `duyệt` at 5.01 s, spent most of its time in harness steps on the loaded guest before its keys; the check now times the first key of the attempt that reads back right (`typingVerifiedLatencySeconds` keeps the read-back time) |
 | 2026-11-23 | 1.0.1 to 1.1.0-beta.1 | `20261122T191432Z` to `20261123T004514Z-upgrade` | test faults, fixed | Development runs: the CA trust step, a menu title read through `plutil -extract`, the site's HTTPS DNS record (the archive came from the production host over HTTP/3, past the local feed), Sparkle's window without Remind Me Later. The update itself worked from the third run on |

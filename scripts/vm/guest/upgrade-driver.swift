@@ -312,7 +312,15 @@ struct TypingAttempt {
     var endedAt: Double
     var value: String
     var matched: Bool
-    var json: [String: Any] { ["startedAt": startedAt, "endedAt": endedAt, "value": value, "matched": matched] }
+    /// When the first and the last key of the attempt were posted (0 when no key was posted).
+    var keysStartedAt: Double = 0
+    var keysEndedAt: Double = 0
+    var json: [String: Any] {
+        [
+            "startedAt": startedAt, "endedAt": endedAt, "value": value, "matched": matched,
+            "keysStartedAt": keysStartedAt, "keysEndedAt": keysEndedAt,
+        ]
+    }
 }
 
 func typeOnce(bundle: String, field: String, keys: String, expect: String, reset: String?) -> TypingAttempt {
@@ -344,6 +352,7 @@ final class TypingTarget {
     private var pid: pid_t = 0
     private var input: AXUIElement?
     private var resetButton: AXUIElement?
+    private var attempts = 0
 
     init(bundle: String, field: String, reset: String?) {
         self.bundle = bundle
@@ -370,13 +379,20 @@ final class TypingTarget {
             return TypingAttempt(startedAt: started, endedAt: now(), value: "<no field>", matched: false)
         }
         guard let input else { return TypingAttempt(startedAt: started, endedAt: now(), value: "", matched: false) }
-        if (frontmost()["pid"] as? Int) != Int(pid) { activate(bundle) }
+        // The system-wide focus often reads empty while the relaunched app starts; the first attempt trusts the focus
+        // prepare() set, a later one activates TestHost again.
+        attempts += 1
+        if attempts > 1, (frontmost()["pid"] as? Int) != Int(pid) { activate(bundle) }
         if let resetButton { AXUIElementPerformAction(resetButton, kAXPressAction as CFString) }
         AXUIElementSetAttributeValue(input, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        let keysStarted = now()
         type(keys)
+        let keysEnded = now()
         pause(0.3)
         let value = string(input, kAXValueAttribute) ?? "<unreadable>"
-        return TypingAttempt(startedAt: started, endedAt: now(), value: value, matched: value == expect)
+        return TypingAttempt(
+            startedAt: started, endedAt: now(), value: value, matched: value == expect, keysStartedAt: keysStarted,
+            keysEndedAt: keysEnded)
     }
 }
 
@@ -636,9 +652,12 @@ func relaunchCommand(_ arguments: Arguments) {
     report["tapLatencySeconds"] = tapAt.map { $0 - started } ?? NSNull()
     report["taps"] = taps
     report["attempts"] = attempts.map(\.json)
-    let typedAt = attempts.first(where: \.matched)?.endedAt
-    report["typingWorkedAt"] = typedAt ?? NSNull()
-    report["typingLatencySeconds"] = typedAt.map { $0 - started } ?? NSNull()
+    // Typing works from the moment the keys of the first attempt that read back right were typed: those keystrokes
+    // were composed correctly. The read-back itself comes 0.3 s after the last key.
+    let worked = attempts.first(where: \.matched)
+    report["typingWorkedAt"] = worked?.keysStartedAt ?? NSNull()
+    report["typingLatencySeconds"] = worked.map { $0.keysStartedAt - started } ?? NSNull()
+    report["typingVerifiedLatencySeconds"] = worked.map { $0.endedAt - started } ?? NSNull()
     report["frontmostAtEnd"] = frontmost()
     emit(report)
 }

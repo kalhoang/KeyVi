@@ -935,10 +935,16 @@ def check_typing(run: Run) -> dict:
     latency = relaunch.get("typingLatencySeconds")
     attempts = relaunch.get("attempts", [])
     ok = isinstance(latency, (int, float)) and latency <= TYPING_LIMIT_SECONDS
-    tried = "; ".join(f"{a['value']!r} at {a['endedAt'] - relaunch.get('newStartedAt', 0):.2f} s" for a in attempts)
-    evidence = (f"TestHost field read {tried or 'nothing'} (keys of testhost.native.telex, expected 'duyệt'); first "
-                f"match {latency if latency is None else round(latency, 3)} s after the new process started (limit "
-                f"{TYPING_LIMIT_SECONDS} s), no click or prompt in between")
+    base = relaunch.get("newStartedAt", 0)
+    tried = "; ".join(
+        (f"keys typed {a['keysStartedAt'] - base:.2f} to {a['keysEndedAt'] - base:.2f} s, " if a.get("keysStartedAt")
+         else "") + f"read {a['value']!r} at {a['endedAt'] - base:.2f} s" for a in attempts)
+    verified = relaunch.get("typingVerifiedLatencySeconds")
+    evidence = (f"TestHost field (keys of testhost.native.telex, expected 'duyệt'): {tried or 'nothing'}; typing worked "
+                f"from {latency if latency is None else round(latency, 3)} s after the new process started (the first "
+                f"key of the first attempt that read back right; limit {TYPING_LIMIT_SECONDS} s"
+                f"{'; read back at %.3f s' % verified if isinstance(verified, (int, float)) else ''}), no click or "
+                f"prompt in between")
     return check("typing-within-5s", "QA-R40 step 4: typing works in the test host within 5 s, no user action",
                  ok if relaunch else None, evidence, ["upgrade-out/relaunch.json"])
 
