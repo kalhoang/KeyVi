@@ -510,6 +510,10 @@ step_ok
 step "update: forced check from the menu, Install Update, Install and Relaunch"
 # tcpdump alone here: nettop and lsof each walk every process once a second and would slow the timed relaunch.
 sampler_start update light
+# With the cache empty, every name resolved during the install is looked up while tcpdump runs: the host allows the
+# system's revocation check of the update's signature only to an address the capture saw resolved from Apple's OCSP
+# names (a cached answer left such a connection without its lookup in run 20261123T020752Z-upgrade).
+flush_dns
 forced_check update-offer install 90 || stop "no update offered by the local feed (evidence/update-offer-*.json)"
 run_driver "$out/evidence/update-ready-find.json" press "$bundle" "${relaunch_args[@]}" --find-only --timeout 240 \
   --dump "$out/evidence/update-ready-window.json" || stop "Sparkle never got ready to install"
@@ -549,6 +553,7 @@ run_driver "$out/evidence/app-windows-after.json" windows "$bundle" || {
   rm -f "$out/evidence/app-windows-after.json"
 }
 sampler_stop
+printf '%s\n' "$(date +%s)" >"$out/egress/update-ended"
 note "now: $(sed -n 's/^version=//p' "$out/evidence/app-after.txt") ($(sed -n 's/^build=//p' "$out/evidence/app-after.txt"))"
 step_ok
 

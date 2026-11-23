@@ -422,6 +422,29 @@ TCCD_RUN = """#timezone=UTC
 {t0} Df tccd[164:1] [com.apple.TCC:access] AUTHREQ_RESULT: msgID=40.1, authValue=2, authReason=4, authVersion=1, desired_auth=0, error=(null),
 #exit=0
 """
+# The capture of the install (tcpdump alone, from START - 40), as in run 20261123T055630Z-upgrade: the app's lookup of
+# the site host (answered by the local feed's DNS) and its connection to the local feed, a lookup of Safari's, and the
+# system's revocation check of the update's signature: mDNSResponder looks up Apple's OCSP name for Autoupdate, then
+# trustd connects for Autoupdate to an address of the answer. syspolicyd is the system's, not the app's.
+UPDATE_OCSP_LOOKUP = ("1799999981.590000 (proc mDNSResponder:229, eproc Autoupdate:2047) IP 192.168.64.55.52731 > "
+                      "192.168.64.1.53: 1192+ A? ocsp2.g.aaplimg.com. (37)")
+UPDATE_OCSP_ANSWER = ("1799999981.630000 (proc mDNSResponder:229, eproc Autoupdate:2047) IP 192.168.64.1.53 > "
+                      "192.168.64.55.52731: 1192 2/0/0 A 17.253.61.136, A 17.253.61.154 (69)")
+UPDATE_OCSP_SYN = ("1799999981.640000 (proc trustd:371, eproc Autoupdate:2047) IP 192.168.64.55.63623 > "
+                   "17.253.61.136.443: Flags [SEW], seq 3, win 65535, length 0")
+UPDATE_TCPDUMP = """1799999975.100000 (proc mDNSResponder:229, eproc {name}:1946) IP 127.0.0.1.63636 > 127.0.0.1.53: 25043+ Type65? {host}. (30)
+1799999975.100020 (proc Python:915) IP 127.0.0.1.63636 > 127.0.0.1.53: 25043+ Type65? {host}. (30)
+1799999975.200000 (proc {name}:1946) IP6 ::1.49158 > ::1.443: Flags [S], seq 1, win 65535, length 0
+1799999975.200010 () IP6 ::1.49158 > ::1.443: Flags [S], seq 1, win 65535, length 0
+1799999975.300000 (proc mDNSResponder:229, eproc {name}:1946) IP 127.0.0.1.53 > 127.0.0.1.63636: 25043* 0/0/0 (30)
+1799999978.500000 (proc mDNSResponder:229, eproc com.apple.Safari:1234) IP 192.168.64.55.57037 > 192.168.64.1.53: 10933+ A? token.safebrowsing.apple. (42)
+1799999978.550000 (proc mDNSResponder:229, eproc com.apple.Safari:1234) IP 192.168.64.1.53 > 192.168.64.55.57037: 10933 3/0/0 CNAME safebrowsing.g.aaplimg.com., A 17.253.61.154, A 17.253.61.146 (146)
+{lookup}
+{answer}
+{syn}
+1799999982.400000 (proc syspolicyd:256) IP 192.168.64.55.61620 > 17.248.224.65.443: quic, protected
+""".replace("{name}", NAME).replace("{host}", HOST).replace("{lookup}", UPDATE_OCSP_LOOKUP).replace(
+    "{answer}", UPDATE_OCSP_ANSWER).replace("{syn}", UPDATE_OCSP_SYN)
 
 
 def utc_stamp(epoch: float, fmt: str = "%Y-%m-%dT%H:%M:%SZ") -> str:
@@ -506,13 +529,16 @@ def write_run(folder: Path, *, tap: float = 0.4, typing: float = 1.8, offered_pr
     after = dict(dump, user=dict(dump["user"], typoCorrection="unset", neverCorrect=[]))
     (out / "dumps" / "after.candidate.json").write_text(json.dumps(after))
     (out / "dumps" / "loaded.candidate.json").write_text(json.dumps(after))
-    phases = {"update": (int(start) - 40, NETTOP.splitlines()[:3]), "local": (int(start) + 120, NETTOP.splitlines()[:3]),
+    phases = {"update": (int(start) - 40, []), "local": (int(start) + 120, NETTOP.splitlines()[:3]),
               "production": (int(start) + 800, [NETTOP.splitlines()[0], NETTOP.splitlines()[1],
                                                 NETTOP.splitlines()[3]])}
     for phase, (phase_start, nettop) in phases.items():
-        (out / "egress" / f"{phase}-nettop.csv").write_text("\n".join(nettop) + "\n")
-        (out / "egress" / f"{phase}-lsof.txt").write_text("#t 1\n" * 600)
-        (out / "egress" / f"{phase}-dns.txt").write_text(DNS)
+        if phase == "update":  # tcpdump alone during the install (upgrade-guest.sh: sampler_start update light)
+            (out / "egress" / "update-tcpdump.txt").write_text(UPDATE_TCPDUMP)
+        else:
+            (out / "egress" / f"{phase}-nettop.csv").write_text("\n".join(nettop) + "\n")
+            (out / "egress" / f"{phase}-lsof.txt").write_text("#t 1\n" * 600)
+            (out / "egress" / f"{phase}-dns.txt").write_text(DNS)
         (out / "egress" / f"{phase}-tcpdump.err").write_text(
             "92 packets captured\n830 packets received by filter\n0 packets dropped by kernel\n")
         (out / "egress" / f"{phase}-started").write_text(f"{phase_start}\n")
@@ -531,7 +557,9 @@ def edit_json(path: Path, change) -> None:
     path.write_text(json.dumps(change(json.loads(path.read_text(encoding="utf-8")))), encoding="utf-8")
 
 
-class VerdictTests(unittest.TestCase):
+class VerdictHelpers:
+    """The verdict of a synthetic run (write_run), changed by the test first."""
+
     def evaluate(self, change=None, minutes: int = 10, **kwargs) -> dict:
         """The verdict of a synthetic passing run, after `change(upgrade-out folder)` when given."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -548,6 +576,8 @@ class VerdictTests(unittest.TestCase):
     def evidence(self, result: dict, identifier: str) -> str:
         return next(c["evidence"] for c in result["checks"] if c["id"] == identifier)
 
+
+class VerdictTests(VerdictHelpers, unittest.TestCase):
     def test_a_complete_run_passes_every_check(self):
         result = self.evaluate()
         self.assertEqual(result["verdict"], "PASS", [c for c in result["checks"] if c["result"] != "pass"])
@@ -685,23 +715,21 @@ class VerdictTests(unittest.TestCase):
         self.assertEqual(self.results(result)["egress-local"], "fail")
         self.assertEqual(result["verdict"], "FAIL")
 
-    def test_the_update_egress_is_advisory_and_a_late_exit_snapshot_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            data = write_run(Path(tmp))
+    def test_a_late_exit_snapshot_fails_and_the_update_egress_is_part_of_the_verdict(self):
+        def late_and_leaking(out: Path) -> None:
             nettop = "\n".join([NETTOP.splitlines()[0], NETTOP.splitlines()[5], NETTOP.splitlines()[6]]) + "\n"
-            (Path(tmp) / "upgrade-out" / "egress" / "update-nettop.csv").write_text(nettop)  # Autoupdate to Apple
-            relaunch = json.loads((Path(tmp) / "upgrade-out" / "relaunch.json").read_text())
+            (out / "egress" / "update-nettop.csv").write_text(nettop)  # Autoupdate's own socket to an Apple address
+            relaunch = json.loads((out / "relaunch.json").read_text())
             relaunch["snapshotAt"] = relaunch["newStartedAt"] + 0.1  # copied after the start: allowed by itself
             relaunch["snapshotModified"] = {"settings.json": relaunch["newStartedAt"] + 0.05}  # but written after it
-            (Path(tmp) / "upgrade-out" / "relaunch.json").write_text(json.dumps(relaunch))
-            run = report.Run(Path(tmp), data["artefacts"], report.brand_values(REPO / "scripts" / "brand.env"))
-            result = report.evaluate(run, data["feed"], {"channel": True, "egress": True, "minutes": 10,
-                                                         "watchdogStops": []})
+            (out / "relaunch.json").write_text(json.dumps(relaunch))
+        result = self.evaluate(late_and_leaking)
         results = self.results(result)
         self.assertEqual(results["egress-update"], "fail")
-        self.assertEqual(result["advisories"], ["egress-update"])
         self.assertEqual(results["settings-files"], "fail")
-        self.assertEqual(result["failed"], ["settings-files"])
+        self.assertEqual(result["failed"], ["settings-files", "egress-update"])
+        self.assertEqual(result["advisories"], [])
+        self.assertIn("Autoupdate 17.253.1.1:443/tcp NOT ALLOWED", self.evidence(result, "egress-update"))
 
     def test_the_command_writes_result_and_summary_and_exits_by_verdict(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -724,6 +752,141 @@ class VerdictTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(report.main(args), 5)
             self.assertEqual(json.loads((folder / "result.json").read_text())["verdict"], "ABORTED")
+
+
+def capture_edit(old: str, new: str, phase: str = "update"):
+    """A change for VerdictHelpers.evaluate: replaces `old` by `new` in the phase's tcpdump capture."""
+    def change(out: Path) -> None:
+        path = out / "egress" / f"{phase}-tcpdump.txt"
+        text = path.read_text(encoding="utf-8")
+        assert old in text, old
+        path.write_text(text.replace(old, new), encoding="utf-8")
+    return change
+
+
+class UpdateEgressTests(VerdictHelpers, unittest.TestCase):
+    """egress-update: during the install, only the local feed, the site host and the system's revocation check of the
+    update's signature (PLT-R906 and spec/02-platform.md 13.7 as amended on 2026-11-23)."""
+
+    def assert_update(self, result: dict, expected: str, verdict: str) -> str:
+        self.assertEqual(self.results(result)["egress-update"], expected, self.evidence(result, "egress-update"))
+        self.assertEqual(result["verdict"], verdict)
+        return self.evidence(result, "egress-update")
+
+    def test_the_revocation_check_of_trustd_for_autoupdate_passes_and_is_named(self):
+        result = self.evaluate()
+        evidence = self.assert_update(result, "pass", "PASS")
+        self.assertIn("trustd for Autoupdate 17.253.61.136:443/tcp (ocsp2.g.aaplimg.com)", evidence)
+        self.assertIn("revocation checks: trustd for Autoupdate", evidence)
+        self.assertIn(f"{NAME} [::1]:443/tcp", evidence)
+        self.assertIn("served the candidate's archive 1 time(s) during the capture", evidence)
+        self.assertNotIn("NOT ALLOWED", evidence)
+        self.assertFalse(next(c for c in result["checks"] if c["id"] == "egress-update").get("advisory"))
+        # The name behind the CDN name, answered through its CNAME, and the check over QUIC pass too.
+        cname = capture_edit("A? ocsp2.g.aaplimg.com.", "A? ocsp2.apple.com.")
+        answer = capture_edit("1192 2/0/0 A", "1192 3/0/0 CNAME ocsp2.g.aaplimg.com., A")
+        self.assert_update(self.evaluate(lambda out: (cname(out), answer(out))), "pass", "PASS")
+        quic = capture_edit("17.253.61.136.443: Flags [SEW], seq 3, win 65535, length 0",
+                            "17.253.61.136.443: UDP, length 1200")
+        self.assertIn("17.253.61.136:443/udp (ocsp2.g.aaplimg.com)",
+                      self.assert_update(self.evaluate(quic), "pass", "PASS"))
+        # Runs before the guest wrote update-ended: the capture lasts until the end of the step.
+        self.assert_update(self.evaluate(lambda out: (out / "egress" / "update-ended").unlink()), "pass", "PASS")
+
+    def test_an_apple_address_reached_without_a_matching_lookup_fails(self):
+        no_lookup = capture_edit(UPDATE_OCSP_LOOKUP + "\n" + UPDATE_OCSP_ANSWER + "\n", "")
+        evidence = self.assert_update(self.evaluate(no_lookup), "fail", "FAIL")
+        self.assertIn("trustd for Autoupdate 17.253.61.136:443/tcp NOT ALLOWED", evidence)
+        # Resolved only after the connection (times decide, not the order of the lines): the lookup does not explain it.
+        early_syn = UPDATE_OCSP_SYN.replace("1799999981.640000", "1799999981.500000")
+        self.assert_update(self.evaluate(capture_edit(UPDATE_OCSP_SYN, early_syn)), "fail", "FAIL")
+        # A lookup without a connection (trustd had the answer cached) is allowed by itself.
+        self.assert_update(self.evaluate(capture_edit(UPDATE_OCSP_SYN + "\n", "")), "pass", "PASS")
+        # An address answered only for another name (Safari's lookup), even one on Apple's CDN.
+        other = capture_edit("> 17.253.61.136.443: Flags [SEW]", "> 17.253.61.146.443: Flags [SEW]")
+        self.assertIn("17.253.61.146:443/tcp (token.safebrowsing.apple) NOT ALLOWED",
+                      self.assert_update(self.evaluate(other), "fail", "FAIL"))
+        # An answer that belongs to another query (same ID, another client port) resolves nothing.
+        stray = capture_edit("192.168.64.55.52731: 1192 2/0/0", "192.168.64.55.52799: 1192 2/0/0")
+        self.assert_update(self.evaluate(stray), "fail", "FAIL")
+
+    def test_a_lookup_of_a_name_that_only_resembles_apples_revocation_service_fails(self):
+        for name in ("ocsp.apple.com.evil.example", "xocsp.apple.com", "ocsp.aaplimg.com.example",
+                     "ocsp2.g.aaplimg.com.evil.example", "ocsp2-apple.com", "ocspx.apple.com", "ocsp2.apple.co"):
+            with self.subTest(name=name):
+                evidence = self.assert_update(self.evaluate(capture_edit("A? ocsp2.g.aaplimg.com.", f"A? {name}.")),
+                                              "fail", "FAIL")
+                self.assertIn(f"NOT ALLOWED lookups: Autoupdate {name}", evidence)
+                self.assertIn("17.253.61.136:443/tcp", evidence)
+        for name in ("ocsp.apple.com", "ocsp2.apple.com", "OCSP2.Apple.COM.", "ocsp2.g.aaplimg.com",
+                     "ocsp.g.aaplimg.com"):
+            self.assertTrue(report.is_revocation_name(name), name)
+        for name in ("ocsp2.apple.com.edgesuite.net", "a1845.dscg2.akamai.net", "ocsp12.apple.com", "apple.com"):
+            self.assertFalse(report.is_revocation_name(name), name)
+
+    def test_only_trustd_for_autoupdate_may_make_the_revocation_check(self):
+        for meta in (f"(proc {NAME}:1946)", f"(proc trustd:371, eproc {NAME}:1946)", "(proc Autoupdate:2047)",
+                     "(proc trustd:371, eproc Updater:2050)"):
+            with self.subTest(meta=meta):
+                change = capture_edit("(proc trustd:371, eproc Autoupdate:2047)", meta)
+                self.assertIn("17.253.61.136:443/tcp (ocsp2.g.aaplimg.com) NOT ALLOWED",
+                              self.assert_update(self.evaluate(change), "fail", "FAIL"))
+        port80 = capture_edit("17.253.61.136.443: Flags", "17.253.61.136.80: Flags")
+        self.assert_update(self.evaluate(port80), "fail", "FAIL")
+        # The app may not look the name up either.
+        app_lookup = capture_edit("(proc mDNSResponder:229, eproc Autoupdate:2047) IP 192.168.64.55.52731 >",
+                                  f"(proc mDNSResponder:229, eproc {NAME}:1946) IP 192.168.64.55.52731 >")
+        self.assertIn(f"NOT ALLOWED lookups: {NAME} ocsp2.g.aaplimg.com",
+                      self.assert_update(self.evaluate(app_lookup), "fail", "FAIL"))
+        # Outside the install the revocation check is not allowed: the other phases stay as strict as before.
+        def local_check(out: Path) -> None:
+            path = out / "egress" / "local-tcpdump.txt"
+            path.write_text("\n".join((UPDATE_OCSP_LOOKUP, UPDATE_OCSP_ANSWER, UPDATE_OCSP_SYN)) + "\n")
+        local = self.evaluate(local_check)
+        self.assertEqual(self.results(local)["egress-local"], "fail")
+        self.assertEqual(self.results(local)["egress-update"], "pass")
+
+    def test_a_capture_with_drops_without_statistics_or_missing_is_not_a_pass(self):
+        err = "117 packets captured\n6225 packets received by filter\n259 packets dropped by kernel\n"
+        drops = self.evaluate(lambda out: (out / "egress" / "update-tcpdump.err").write_text(err))
+        self.assertIn("259 packets dropped by the kernel", self.assert_update(drops, "not-run", "INCOMPLETE"))
+        self.assertIn("trustd for Autoupdate 17.253.61.136:443/tcp (ocsp2.g.aaplimg.com)",
+                      self.evidence(drops, "egress-update"))
+        no_stats = self.evaluate(lambda out: (out / "egress" / "update-tcpdump.err").write_text("tcpdump: listening\n"))
+        self.assertIn("tcpdump printed no capture statistics", self.assert_update(no_stats, "not-run", "INCOMPLETE"))
+        missing = self.evaluate(lambda out: (out / "egress" / "update-tcpdump.txt").unlink())
+        self.assertIn("no capture of the install", self.assert_update(missing, "not-run", "INCOMPLETE"))
+        unstarted = self.evaluate(lambda out: (out / "egress" / "update-started").unlink())
+        self.assertIn("no start time of the capture", self.assert_update(unstarted, "not-run", "INCOMPLETE"))
+
+        def downloaded_before(out: Path) -> None:
+            path = out / "feed-requests.jsonl"
+            lines = [json.loads(line) for line in path.read_text().splitlines()]
+            lines[1]["at"] = START - 50  # before the capture started
+            path.write_text("".join(json.dumps(line) + "\n" for line in lines))
+        early = self.evaluate(downloaded_before)
+        self.assertIn("no download of the candidate's archive while the capture ran",
+                      self.assert_update(early, "not-run", "INCOMPLETE"))
+        app_syn = (f"1799999975.200000 (proc {NAME}:1946) IP6 ::1.49158 > ::1.443: Flags [S], seq 1, win 65535, "
+                   "length 0\n")
+        unseen = self.evaluate(capture_edit(app_syn, ""))
+        self.assertIn("no connection of the app to the local feed in the capture",
+                      self.assert_update(unseen, "not-run", "INCOMPLETE"))
+
+    def test_a_disallowed_host_fails_even_when_the_capture_dropped_packets_or_has_no_start(self):
+        leak = (f"1799999983.000000 (proc {NAME}:1946) IP 192.168.64.55.50301 > 93.184.216.34.443: Flags [S], "
+                "seq 7, win 65535, length 0\n")
+
+        def leak_with_drops(out: Path) -> None:
+            path = out / "egress" / "update-tcpdump.txt"
+            path.write_text(path.read_text() + leak)
+            (out / "egress" / "update-tcpdump.err").write_text("12 packets dropped by kernel\n")
+            (out / "egress" / "update-started").unlink()
+        result = self.evaluate(leak_with_drops)
+        evidence = self.assert_update(result, "fail", "FAIL")
+        self.assertIn("egress-update", result["failed"])
+        self.assertIn(f"{NAME} 93.184.216.34:443/tcp NOT ALLOWED", evidence)
+        self.assertIn("12 packets dropped by the kernel", evidence)
 
 
 TCPDUMP = """1800000001.100000 (proc {name}:812) IP6 ::1.50211 > ::1.443: Flags [S], seq 1, win 65535, length 0
@@ -765,6 +928,22 @@ class TcpdumpTests(unittest.TestCase):
         self.assertEqual({c["remote"] for c in result["disallowed"]}, {"93.184.216.34"})  # softwareupdated ignored
         self.assertIn("104.21.1.1", result["allowedAddresses"])  # from the app's own DNS answer
         self.assertEqual(result["disallowedLookups"], ["tracker.example"])
+
+    def test_a_packet_sent_for_another_process_names_both_and_answers_join_their_query(self):
+        events = report.tcpdump_events(UPDATE_TCPDUMP)
+        syn = next(e for e in events if e["kind"] == "syn" and e["remote"] == "17.253.61.136")
+        self.assertEqual((syn["sender"], syn["process"], syn["port"], syn["transport"]),
+                         ("trustd", "Autoupdate", 443, "tcp"))
+        app = next(e for e in events if e["kind"] == "syn" and e["remote"] == "::1")
+        self.assertEqual((app["sender"], app["process"]), (NAME, NAME))
+        resolved = report.dns_resolutions(events)
+        self.assertEqual(resolved["17.253.61.136"], [("ocsp2.g.aaplimg.com", "1799999981.630000")])
+        self.assertEqual({name for name, _ in resolved["17.253.61.154"]},
+                         {"token.safebrowsing.apple", "ocsp2.g.aaplimg.com"})
+        # An authoritative answer (`25043*`) still carries the query's ID.
+        answer = next(e for e in events if e["kind"] == "dns-answer" and e["process"] == NAME)
+        self.assertEqual(answer["txid"], "25043")
+        self.assertEqual(answer["client"], "127.0.0.1:63636")
 
 
 TCCD = """#timezone=UTC

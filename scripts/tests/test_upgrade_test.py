@@ -266,6 +266,15 @@ class GuestScriptTests(unittest.TestCase):
         self.assertIn('sparkle_titles "You\u2019re up to date!" >"$out/titles-uptodate.txt"', guest)
         self.assertIn('"$channel_start" "$(date +%s)"', guest)
 
+    def test_the_install_capture_sees_every_lookup_and_records_its_end(self):
+        # The host allows the revocation check only to an address the capture saw resolved from Apple's OCSP names:
+        # the DNS cache is flushed once tcpdump runs, before the forced check (a cached answer left a connection of
+        # trustd for Autoupdate without its lookup in run 20261123T020752Z-upgrade).
+        guest = GUEST.read_text(encoding="utf-8")
+        step = guest[guest.index("sampler_start update light"):guest.index("# --- 8b.")]
+        self.assertLess(step.index("flush_dns"), step.index("forced_check update-offer install"))
+        self.assertLess(step.index("sampler_stop"), step.index('>"$out/egress/update-ended"'))
+
     def test_the_driver_types_only_once_the_new_tap_is_enabled(self):
         driver = DRIVER.read_text(encoding="utf-8")
         loop = driver[driver.index("var attempts: [TypingAttempt] = []\n    // An attempt starts"):]
