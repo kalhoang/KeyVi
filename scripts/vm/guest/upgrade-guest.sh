@@ -201,8 +201,8 @@ sampler_stop() {
     sudo -n rm -f "$file"
   done
 }
-sampler_start() { # sampler_start <phase>
-  local phase="$1" dir="$out/egress"
+sampler_start() { # sampler_start <phase> [light]: light = tcpdump only, for the update, whose relaunch is timed
+  local phase="$1" mode="${2:-full}" dir="$out/egress"
   sampler_stop
   printf '%s\n' "$(date +%s)" >"$dir/$phase-started"
   # Every TCP SYN (IPv4 and IPv6) and UDP datagram with the process that sent it (PKTAP metadata, -k NP), and
@@ -212,6 +212,10 @@ sampler_start() { # sampler_start <phase>
   sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-tcpdump.pid; exec /usr/sbin/tcpdump -i pktap,all -k NP -n -l -tt "$1"' \
     sh "(tcp and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0) or (ip6 and tcp and (ip6[53] & 0x12) == 0x02) or (udp and not port 5353)" \
     >"$dir/$phase-tcpdump.txt" 2>"$dir/$phase-tcpdump.err" &
+  if [ "$mode" = light ]; then
+    sleep 2
+    return 0
+  fi
   # shellcheck disable=SC2024
   sudo -n /bin/sh -c 'echo $$ > /tmp/upgrade-nettop.pid; exec /usr/bin/nettop -L 0 -s 1 -n -x' \
     >"$dir/$phase-nettop.csv" 2>"$dir/$phase-nettop.err" &
@@ -483,7 +487,8 @@ step_ok
 
 # --- 8. Update through Sparkle -----------------------------------------------------------------------------------
 step "update: forced check from the menu, Install Update, Install and Relaunch"
-sampler_start update
+# tcpdump alone here: nettop and lsof each walk every process once a second and would slow the timed relaunch.
+sampler_start update light
 forced_check update-offer install 90 || stop "no update offered by the local feed (evidence/update-offer-*.json)"
 run_driver "$out/evidence/update-ready-find.json" press "$bundle" "${relaunch_args[@]}" --find-only --timeout 240 \
   --dump "$out/evidence/update-ready-window.json" || stop "Sparkle never got ready to install"
