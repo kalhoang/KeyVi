@@ -408,6 +408,10 @@ def tcpdump_events(text: str) -> list:
         src, dst = split_endpoint(match.group("src")), split_endpoint(match.group("dst"))
         if not process or not src or not dst:
             continue
+        # PKTAP tags received packets with the process too: a datagram from a service port to an ephemeral port
+        # (QUIC replies, run 20261123T020752Z-upgrade) is inbound, and its sender is the remote end.
+        if src[1] < 1024 <= dst[1] and src[1] != 53 and "Flags [" not in match.group("rest"):
+            src, dst = dst, src
         rest = match.group("rest")
         event = {"time": match.group("time"), "process": process, "pid": pid, "source": "tcpdump"}
         flags = re.match(r"Flags \[([^\]]*)\]", rest)
@@ -742,14 +746,21 @@ def check_update(run: Run) -> dict:
     found = run.json("evidence/update-offer-find.json", {}) or {}
     ready = run.json("evidence/update-ready-find.json", {}) or {}
     pressed = run.json("evidence/update-install-press.json", {}) or {}
+    relaunch = run.json("relaunch.json", {}) or {}
+    # The press is shown by the button the driver located in the ready window (its label, or the window it dumped,
+    # when the app ended before the label could be read) and by the relaunch that followed.
+    ready_titles = {b.get("title") for b in (pressed.get("window") or {}).get("buttons", [])}
+    pressed_label = pressed.get("pressed") or pressed.get("found") or (
+        ready.get("found") if ready.get("found") in ready_titles and relaunch.get("newPid") else "")
     zip_name = Path(run.cand["zip"]["path"]).name
     downloads = [r for r in run.requests() if r.get("path", "").endswith("/" + zip_name) and r.get("status") == 200]
     appcasts = [r for r in run.requests() if r.get("path", "").startswith("/appcast.xml")]
     texts = " ".join((found.get("window") or {}).get("texts", []))
-    ok = bool(found.get("found")) and bool(ready.get("found")) and bool(pressed.get("pressed")) and bool(downloads) \
+    ok = bool(found.get("found")) and bool(ready.get("found")) and bool(pressed_label) and bool(downloads) \
         and run.cand["version"] in texts
     evidence = (f"forced check from the status menu; Sparkle offered '{texts[:160]}'; pressed "
-                f"'{found.get('found')}', then '{pressed.get('pressed')}'; the local feed served "
+                f"'{found.get('found')}', then '{pressed_label}' (the app relaunched as {relaunch.get('newPid')}); the "
+                f"local feed served "
                 f"{len(appcasts)} appcast request(s) and {zip_name} {len(downloads)} time(s) "
                 f"({downloads[0].get('size') if downloads else 0} bytes, user agent "
                 f"'{downloads[0].get('userAgent', '') if downloads else ''}')")

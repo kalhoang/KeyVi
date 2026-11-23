@@ -692,6 +692,7 @@ TCPDUMP = """1800000001.100000 (proc {name}:812) IP6 ::1.50211 > ::1.443: Flags 
 1800000003.000000 (proc mDNSResponder:240, eproc {name}:812) IP 192.168.64.43.63137 > 192.168.64.1.53: 5+ AAAA? tracker.example. (33)
 1800000003.100000 (proc {name}:812) IP 192.168.64.43.50301 > 93.184.216.34.443: UDP, length 1200
 1800000004.000000 (proc softwareupdated:300) IP 192.168.64.43.50400 > 17.253.1.1.443: Flags [S], seq 9, length 0
+1800000005.000000 (proc {name}:812) IP 104.21.1.1.443 > 192.168.64.43.57696: quic, initial, scid 01d2, length 22
 """.replace("{name}", NAME).replace("{host}", HOST)
 
 
@@ -703,6 +704,8 @@ class TcpdumpTests(unittest.TestCase):
         self.assertIn(("syn", NAME, "104.21.1.1", 443), kinds)
         self.assertIn(("udp", NAME, "93.184.216.34", 443), kinds)
         self.assertIn(("syn", "softwareupdated", "17.253.1.1", 443), kinds)
+        self.assertIn(("udp", NAME, "104.21.1.1", 443), kinds)  # an inbound QUIC reply names its sender
+        self.assertNotIn("192.168.64.43", {k[2] for k in kinds})
         self.assertEqual(len([k for k in kinds if k[0] == "syn" and k[2] == "::1"]), 1)  # no ACK, no blank meta
         queries = [e["names"] for e in events if e["kind"] == "dns-query"]
         self.assertEqual(queries, [[HOST], ["tracker.example"]])

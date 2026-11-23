@@ -436,6 +436,8 @@ func pressCommand(_ arguments: Arguments, bundle: String) {
         {
             let described = describeWindow(window)
             if let file = arguments.one("dump") { try? jsonData(described).write(to: URL(fileURLWithPath: file)) }
+            // Read before the press: Install and Relaunch ends the app, and its elements read empty afterwards.
+            let label = title(button)
             var pressed: Any = NSNull()
             if arguments.flags.contains("close-window") {
                 // Sparkle 2.10's update window has no Remind Me Later button: closing it dismisses the offer without
@@ -446,9 +448,9 @@ func pressCommand(_ arguments: Arguments, bundle: String) {
                 }
             } else if !arguments.flags.contains("find-only") {
                 AXUIElementPerformAction(button, kAXPressAction as CFString)
-                pressed = title(button)
+                pressed = label
             }
-            emit(["pressed": pressed, "found": title(button), "at": now(), "window": described])
+            emit(["pressed": pressed, "found": label, "at": now(), "window": described])
             return
         }
         pause(0.25)
