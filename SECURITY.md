@@ -69,7 +69,7 @@ Out of scope:
 ## Design facts that help you test
 
 - The app is not sandboxed (an event tap needs Accessibility), runs with the hardened runtime and has no entitlements.
-- The only network traffic is the update check. No telemetry, no remote configuration.
+- The only network traffic of the app is the update check (the appcast and update archives on `keyvi.kal.vn`). While an update installs, macOS may check the update's signing certificate with Apple's OCSP service, as it does for any signed app: the system's trust service (`trustd`) makes that request on behalf of Sparkle's installer (`Autoupdate`), and the app adds no data to it (see the privacy page, [keyvi.kal.vn/en/privacy](https://keyvi.kal.vn/en/privacy/)). No telemetry, no remote configuration.
 - No listening sockets, no XPC listeners, no AppleScript dictionary. A URL scheme may only open the Settings window.
 - The Sparkle EdDSA private key is never stored in CI. Update signing happens on the maintainer's Mac.
 

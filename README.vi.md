@@ -45,7 +45,7 @@ Hãy kéo ứng dụng vào thư mục `/Applications` trước lần mở đầ
 ## Quyền riêng tư
 
 - Nội dung bạn gõ không bao giờ rời khỏi máy và không bao giờ được ghi xuống đĩa. Ngoại lệ duy nhất là bản ghi thao tác gõ để báo lỗi do chính bạn bấm bắt đầu: từ 60 đến 180 giây, có đồng hồ đếm ngược hiện rõ, bạn xem lại trước khi chia sẻ, tự xóa sau 24 giờ và không bao giờ tự động gửi đi.
-- Lưu lượng mạng tự động duy nhất là kiểm tra cập nhật (appcast và gói cập nhật trên `keyvi.kal.vn`).
+- Lưu lượng mạng tự động duy nhất của ứng dụng là kiểm tra cập nhật (appcast và gói cập nhật trên `keyvi.kal.vn`). Khi cài bản cập nhật, macOS có thể kiểm tra chữ ký của bản cập nhật với Apple, như với mọi ứng dụng có chữ ký; ứng dụng không gửi dữ liệu nào trong lần kiểm tra này.
 - Không có telemetry, không phân tích sử dụng, không dịch vụ báo cáo sự cố, không cấu hình từ xa.
 - Dữ liệu chẩn đoán không chứa ký tự đã gõ, từ đã gõ, nội dung viết tắt, nội dung bộ nhớ tạm hay tiêu đề cửa sổ.
 
